@@ -335,7 +335,7 @@ export default function RestoranPage() {
                   <img 
                     src="/logo.png" 
                     alt="Logo" 
-                    className="w-8 h-8 mr-3"
+                    className="w-12 h-12 mr-3"
                   />
                   <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
                     🍽️ {selectedRestaurant?.name}

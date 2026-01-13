@@ -430,7 +430,7 @@ export default function KuryePage() {
             <img 
               src="/logo.png" 
               alt="Logo" 
-              className="w-8 h-8 mr-3"
+              className="w-10 h-10 mr-3"
             />
             <h1 className="text-2xl font-bold">🚀 Kurye Paneli</h1>
           </div>
