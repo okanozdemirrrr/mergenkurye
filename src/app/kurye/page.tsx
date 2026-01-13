@@ -43,6 +43,9 @@ export default function KuryePage() {
   const [courierStatus, setCourierStatus] = useState<'idle' | 'busy' | null>(null)
   const [isActive, setIsActive] = useState(false)
   const [statusUpdating, setStatusUpdating] = useState(false)
+  const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null)
+  const [locationError, setLocationError] = useState<string | null>(null)
+  const [watchId, setWatchId] = useState<number | null>(null)
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -170,19 +173,133 @@ export default function KuryePage() {
     }
   }
 
+  // Konum güncelleme fonksiyonu
+  const updateLocationInDatabase = async (lat: number, lng: number) => {
+    const courierId = sessionStorage.getItem(LOGIN_COURIER_ID_KEY)
+    if (!courierId) return
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ 
+          last_lat: lat,
+          last_lng: lng
+        })
+        .eq('id', courierId)
+
+      if (error) {
+        console.error('Konum güncelleme hatası:', error)
+      } else {
+        console.log('Konum güncellendi:', { lat, lng })
+      }
+    } catch (error: any) {
+      console.error('Konum güncelleme hatası:', error)
+    }
+  }
+
+  // Konum takibi başlat
+  const startLocationTracking = () => {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      setLocationError('Konum servisi desteklenmiyor')
+      return
+    }
+
+    const options = {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 30000 // 30 saniye cache
+    }
+
+    const successCallback = (position: GeolocationPosition) => {
+      const { latitude, longitude } = position.coords
+      setCurrentLocation({ lat: latitude, lng: longitude })
+      setLocationError(null)
+      
+      // Veritabanını güncelle
+      updateLocationInDatabase(latitude, longitude)
+    }
+
+    const errorCallback = (error: GeolocationPositionError) => {
+      let errorMessage = 'Konum alınamadı'
+      switch (error.code) {
+        case error.PERMISSION_DENIED:
+          errorMessage = 'Konum izni reddedildi'
+          break
+        case error.POSITION_UNAVAILABLE:
+          errorMessage = 'Konum bilgisi mevcut değil'
+          break
+        case error.TIMEOUT:
+          errorMessage = 'Konum alma zaman aşımı'
+          break
+      }
+      setLocationError(errorMessage)
+      console.error('Konum hatası:', errorMessage)
+    }
+
+    // Canlı konum takibi başlat
+    const id = navigator.geolocation.watchPosition(
+      successCallback,
+      errorCallback,
+      options
+    )
+    
+    setWatchId(id)
+
+    // 30 saniyede bir manuel güncelleme (watchPosition yeterli değilse)
+    const intervalId = setInterval(() => {
+      if (currentLocation) {
+        updateLocationInDatabase(currentLocation.lat, currentLocation.lng)
+      }
+    }, 30000)
+
+    // Cleanup için interval ID'sini sakla
+    return () => {
+      clearInterval(intervalId)
+    }
+  }
+
+  // Konum takibini durdur
+  const stopLocationTracking = () => {
+    if (typeof window !== 'undefined' && watchId !== null) {
+      navigator.geolocation.clearWatch(watchId)
+      setWatchId(null)
+      setCurrentLocation(null)
+    }
+  }
+
   useEffect(() => {
     if (isLoggedIn) {
       fetchPackages()
       fetchDailyStats()
       fetchCourierStatus()
+      
+      // Konum takibini başlat
+      const cleanupLocation = startLocationTracking()
+      
       const interval = setInterval(() => {
         fetchPackages()
         fetchDailyStats()
         fetchCourierStatus()
       }, 30000)
-      return () => clearInterval(interval)
+      
+      return () => {
+        clearInterval(interval)
+        stopLocationTracking()
+        if (cleanupLocation) cleanupLocation()
+      }
     }
   }, [isLoggedIn])
+
+  // Aktif durumu değiştiğinde konum takibini kontrol et
+  useEffect(() => {
+    if (isLoggedIn) {
+      if (isActive) {
+        startLocationTracking()
+      } else {
+        stopLocationTracking()
+      }
+    }
+  }, [isActive, isLoggedIn])
 
   const handleUpdateStatus = async (packageId: number, nextStatus: string, additionalData = {}) => {
     try {
@@ -263,6 +380,32 @@ export default function KuryePage() {
               <span className="text-sm text-slate-400">
                 {isActive ? 'Aktif' : 'Pasif'} - {courierStatus === 'idle' ? 'Boşta' : courierStatus === 'busy' ? 'Meşgul' : 'Bilinmiyor'}
               </span>
+            </div>
+          </div>
+
+          {/* Konum Bilgisi */}
+          <div className="mb-4 p-3 bg-slate-800 rounded-lg">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-slate-300">📍 Konum Durumu:</span>
+              <div className="text-right">
+                {currentLocation ? (
+                  <div className="text-xs">
+                    <div className="text-green-400 font-medium">✅ Konum Aktif</div>
+                    <div className="text-slate-400">
+                      {currentLocation.lat.toFixed(6)}, {currentLocation.lng.toFixed(6)}
+                    </div>
+                  </div>
+                ) : locationError ? (
+                  <div className="text-xs">
+                    <div className="text-red-400 font-medium">❌ Konum Hatası</div>
+                    <div className="text-slate-400">{locationError}</div>
+                  </div>
+                ) : (
+                  <div className="text-xs">
+                    <div className="text-yellow-400 font-medium">⏳ Konum Alınıyor...</div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           

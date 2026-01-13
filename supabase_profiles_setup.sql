@@ -113,3 +113,18 @@ ALTER TABLE public.packages ADD COLUMN IF NOT EXISTS delivered_at timestamp with
 
 -- Şemayı yenile ki hata anında gitsin
 NOTIFY pgrst, 'reload schema';
+-- Profiles tablosuna konum sütunları ekle (couriers tablosu yerine profiles kullanıyoruz)
+DO $$ 
+BEGIN
+  -- last_lat alanını ekle
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name = 'profiles' AND column_name = 'last_lat') THEN
+    ALTER TABLE profiles ADD COLUMN last_lat DECIMAL(10, 8);
+  END IF;
+  
+  -- last_lng alanını ekle
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name = 'profiles' AND column_name = 'last_lng') THEN
+    ALTER TABLE profiles ADD COLUMN last_lng DECIMAL(11, 8);
+  END IF;
+END $$;
