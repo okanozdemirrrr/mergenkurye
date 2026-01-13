@@ -36,28 +36,28 @@ export default function CourierMap({ couriers }: CourierMapProps) {
   // Samsun/Merkez koordinatları
   const samsunCenter: [number, number] = [41.2867, 36.3300]
 
-  // HER ŞEYİ GÖSTER - SADECE KOORDINAT KONTROLÜ!
+  // SADECE KOORDİNAT KONTROLÜ - is_active'e bakma!
   const allCouriers = couriers || []
   
-  // Koordinatları sayıya çevir ve kontrol et
-  const couriersWithValidCoords = allCouriers.filter(courier => {
-    const lat = Number(courier.last_lat)
-    const lng = Number(courier.last_lng)
+  console.log('🗺️ [CourierMap] Gelen tüm kuryeler:', allCouriers.length)
+  console.log('🗺️ [CourierMap] Kurye listesi:', allCouriers.map(c => ({
+    name: c.full_name,
+    lat: c.last_lat,
+    lng: c.last_lng,
+    isActive: c.isActive
+  })))
+  
+  // Koordinatları kontrol et - basit kontrol
+  const couriersWithCoords = allCouriers.filter(courier => {
+    const hasLat = courier.last_lat !== null && courier.last_lat !== undefined && courier.last_lat !== 0
+    const hasLng = courier.last_lng !== null && courier.last_lng !== undefined && courier.last_lng !== 0
     
-    console.log(`🔍 [CourierMap] ${courier.full_name}:`)
-    console.log(`   - last_lat: ${courier.last_lat} -> ${lat} (valid: ${!isNaN(lat) && lat !== 0})`)
-    console.log(`   - last_lng: ${courier.last_lng} -> ${lng} (valid: ${!isNaN(lng) && lng !== 0})`)
+    console.log(`🔍 [CourierMap] ${courier.full_name}: lat=${courier.last_lat} (${hasLat}), lng=${courier.last_lng} (${hasLng})`)
     
-    // Koordinat 0 değil ve sayı ise kabul et
-    const hasValidCoords = !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0
-    console.log(`   - hasValidCoords: ${hasValidCoords}`)
-    
-    return hasValidCoords
+    return hasLat && hasLng
   })
 
-  console.log('🗺️ [CourierMap] Gelen tüm kuryeler:', allCouriers.length)
-  console.log('🗺️ [CourierMap] Geçerli koordinatlı kuryeler:', couriersWithValidCoords.length)
-  console.log('🗺️ [CourierMap] Geçerli koordinatlı kurye listesi:', couriersWithValidCoords)
+  console.log('🗺️ [CourierMap] Koordinatlı kuryeler:', couriersWithCoords.length)
 
   if (!mounted) {
     return (
@@ -127,8 +127,8 @@ export default function CourierMap({ couriers }: CourierMapProps) {
           }
         `}</style>
         
-        {/* SADECE GEÇERLİ KOORDİNATLI KURYELERİ GÖSTER */}
-        {couriersWithValidCoords.map((courier) => {
+        {/* KOORDİNATI OLAN KURYELERİ GÖSTER */}
+        {couriersWithCoords.map((courier) => {
           const lat = Number(courier.last_lat)
           const lng = Number(courier.last_lng)
           
@@ -175,12 +175,8 @@ export default function CourierMap({ couriers }: CourierMapProps) {
           )
         })}
         
-        {/* EĞER GEÇERLİ KOORDİNAT YOKSA VARSAYILAN KONUMDA GÖSTER */}
-        {allCouriers.filter(courier => {
-          const lat = Number(courier.last_lat)
-          const lng = Number(courier.last_lng)
-          return isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0
-        }).map((courier, index) => {
+        {/* KOORDİNATI OLMAYAN KURYELERİ VARSAYILAN KONUMDA GÖSTER */}
+        {allCouriers.filter(courier => !couriersWithCoords.includes(courier)).map((courier, index) => {
           // Samsun merkezi + küçük offset
           const defaultLat = 41.2867 + (index * 0.001)
           const defaultLng = 36.3300 + (index * 0.001)
@@ -226,7 +222,7 @@ export default function CourierMap({ couriers }: CourierMapProps) {
       {/* Harita altında kurye bilgisi */}
       <div className="mt-2 text-center text-sm text-slate-600 dark:text-slate-400">
         📍 Haritada {allCouriers.length} kurye gösteriliyor 
-        ({couriersWithValidCoords.length} gerçek konum, {allCouriers.length - couriersWithValidCoords.length} varsayılan konum)
+        ({couriersWithCoords.length} gerçek konum, {allCouriers.length - couriersWithCoords.length} varsayılan konum)
         {allCouriers.length === 0 && (
           <div className="text-xs text-red-600 mt-1">
             ❌ Couriers tablosunda veri yok! SQL'i çalıştırın.

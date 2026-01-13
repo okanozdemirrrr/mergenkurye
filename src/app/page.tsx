@@ -157,7 +157,7 @@ export default function Home() {
           id: courier.id,
           full_name: courier.full_name,
           isActive: Boolean(courier.is_active), // Kesinlikle boolean'a çevir
-          status: courier.is_active ? (courier.status || 'idle') : 'inactive', // Aktif değilse inactive
+          status: courier.status || 'idle', // Supabase'den gelen status'u direkt kullan
           last_lat: courier.last_lat,
           last_lng: courier.last_lng,
           deliveryCount: 0,
@@ -167,7 +167,7 @@ export default function Home() {
         
         console.log(`🔄 [fetchCouriers] MAPPED: ${mappedCourier.full_name}`)
         console.log(`   - isActive: ${mappedCourier.isActive} (type: ${typeof mappedCourier.isActive})`)
-        console.log(`   - status: ${mappedCourier.status}`)
+        console.log(`   - status: ${mappedCourier.status} (RAW: ${courier.status})`)
         
         return mappedCourier
       })
@@ -667,9 +667,9 @@ export default function Home() {
                       </span>
                     </div>
                   </div>
-                  {/* DİNAMİK ROZETLER - Profiles tablosundan gelen durumlar */}
-                  {c.status === 'inactive' && <span className="text-[10px] bg-gray-100 text-gray-700 px-2 py-1 rounded-md font-bold">⚫ AKTİF DEĞİL</span>}
-                  {c.status === 'idle' && c.isActive && <span className="text-[10px] bg-green-100 text-green-700 px-2 py-1 rounded-md font-bold">🟢 BOŞTA</span>}
+                  {/* DİNAMİK ROZETLER - Couriers tablosundan gelen durumlar */}
+                  {!c.isActive && <span className="text-[10px] bg-gray-100 text-gray-700 px-2 py-1 rounded-md font-bold">⚫ AKTİF DEĞİL</span>}
+                  {c.isActive && c.status === 'idle' && <span className="text-[10px] bg-green-100 text-green-700 px-2 py-1 rounded-md font-bold">🟢 BOŞTA</span>}
                   {c.status === 'assigned' && <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded-md font-bold">🔵 PAKETİ BEKLİYOR</span>}
                   {c.status === 'picking_up' && <span className="text-[10px] bg-yellow-100 text-yellow-700 px-2 py-1 rounded-md font-bold">🟡 KURYEDE (ALMAYA GİDİYOR)</span>}
                   {c.status === 'on_the_way' && <span className="text-[10px] bg-red-100 text-red-700 px-2 py-1 rounded-md font-bold">🔴 TESLİMATTA (YOLDA)</span>}
@@ -754,13 +754,13 @@ export default function Home() {
                   <div className="flex justify-between">
                     <span className="text-slate-600 dark:text-slate-400">Durum:</span>
                     <span className={`font-medium ${
-                      c.status === 'inactive' ? 'text-gray-600' :
+                      !c.isActive ? 'text-gray-600' :
                       c.status === 'idle' ? 'text-green-600' :
                       c.status === 'assigned' ? 'text-blue-600' :
                       c.status === 'picking_up' ? 'text-yellow-600' :
                       'text-red-600'
                     }`}>
-                      {c.status === 'inactive' ? 'Aktif Değil' :
+                      {!c.isActive ? 'Aktif Değil' :
                        c.status === 'idle' ? 'Boşta' :
                        c.status === 'assigned' ? 'Paket Bekliyor' :
                        c.status === 'picking_up' ? 'Alıyor' : 'Teslimatta'}
