@@ -401,7 +401,7 @@ export default function KuryePage() {
             <img 
               src="/logo.png" 
               alt="Logo" 
-              className="w-16 h-16 mx-auto mb-4"
+              className="w-36 h-36 mx-auto mb-4"
             />
             <h1 className="text-3xl font-bold text-white">Kurye Girişi</h1>
           </div>
@@ -430,7 +430,7 @@ export default function KuryePage() {
             <img 
               src="/logo.png" 
               alt="Logo" 
-              className="w-10 h-10 mr-3"
+              className="w-30 h-30 mr-3"
             />
             <h1 className="text-2xl font-bold">🚀 Kurye Paneli</h1>
           </div>

@@ -458,7 +458,7 @@ export default function Home() {
               <img 
                 src="/logo.png" 
                 alt="Logo" 
-                className="w-10 h-10 mr-3"
+                className="w-30 h-30 mr-3"
               />
               <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
                 📊 Admin Panel
