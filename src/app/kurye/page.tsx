@@ -22,8 +22,8 @@ const LOGIN_STORAGE_KEY = 'kurye_logged_in'
 const LOGIN_COURIER_ID_KEY = 'kurye_logged_courier_id'
 
 const COURIER_CREDENTIALS = {
-  'Ahmet Abi': 'ahmet55123',
-  'Taha': 'taha123'
+  'ahmet55': 'ahmet55123',
+  'taha': 'taha123'
 }
 
 export default function KuryePage() {
@@ -110,9 +110,9 @@ export default function KuryePage() {
     if (!courierId) return
 
     try {
-      // Supabase bağlantısını yenile
+      // Couriers tablosundan kurye bilgilerini çek
       const { data, error } = await supabase
-        .from('profiles')
+        .from('couriers')
         .select('status, is_active')
         .eq('id', courierId)
         .single()
@@ -125,10 +125,10 @@ export default function KuryePage() {
       if (data) {
         setCourierStatus(data.status)
         setIsActive(data.is_active || false)
-        console.log('Kurye durumu yüklendi:', data) // Debug için
+        console.log('✅ Kurye durumu yüklendi:', data) // Debug için
       }
     } catch (error: any) {
-      console.error('Kurye durumu alınamadı:', error)
+      console.error('❌ Kurye durumu alınamadı:', error)
       setErrorMessage('Kurye durumu alınamadı: ' + error.message)
     }
   }
@@ -142,10 +142,10 @@ export default function KuryePage() {
 
     try {
       setStatusUpdating(true)
-      console.log('Durum güncelleniyor:', { courierId, newStatus, newIsActive }) // Debug için
+      console.log('🔄 Durum güncelleniyor:', { courierId, newStatus, newIsActive }) // Debug için
       
       const { error } = await supabase
-        .from('profiles')
+        .from('couriers')
         .update({ 
           status: newStatus,
           is_active: newIsActive
@@ -153,14 +153,14 @@ export default function KuryePage() {
         .eq('id', courierId)
 
       if (error) {
-        console.error('Güncelleme hatası:', error)
+        console.error('❌ Güncelleme hatası:', error)
         throw error
       }
 
       // Başarılı güncelleme sonrası state'i güncelle
       setCourierStatus(newStatus)
       setIsActive(newIsActive)
-      setSuccessMessage(newIsActive ? 'Aktif duruma geçildi!' : 'Pasif duruma geçildi!')
+      setSuccessMessage(newIsActive ? '✅ Aktif duruma geçildi!' : '❌ Pasif duruma geçildi!')
       setTimeout(() => setSuccessMessage(''), 2000)
       
       // Durumu tekrar çek (doğrulama için)
@@ -176,11 +176,16 @@ export default function KuryePage() {
   // Konum güncelleme fonksiyonu
   const updateLocationInDatabase = async (lat: number, lng: number) => {
     const courierId = sessionStorage.getItem(LOGIN_COURIER_ID_KEY)
-    if (!courierId) return
+    console.log('🔄 Konum güncelleme çalışıyor:', { courierId, lat, lng })
+    
+    if (!courierId) {
+      console.error('❌ Kurye ID bulunamadı!')
+      return
+    }
 
     try {
       const { error } = await supabase
-        .from('profiles')
+        .from('couriers')
         .update({ 
           last_lat: lat,
           last_lng: lng
@@ -188,12 +193,12 @@ export default function KuryePage() {
         .eq('id', courierId)
 
       if (error) {
-        console.error('Konum güncelleme hatası:', error)
+        console.error('❌ Konum güncelleme hatası:', error)
       } else {
-        console.log('Konum güncellendi:', { lat, lng })
+        console.log('✅ Konum başarıyla güncellendi:', { courierId, lat, lng })
       }
     } catch (error: any) {
-      console.error('Konum güncelleme hatası:', error)
+      console.error('❌ Konum güncelleme hatası:', error)
     }
   }
 
@@ -577,17 +582,37 @@ export default function KuryePage() {
 
   async function handleLogin(e: any) {
     e.preventDefault();
+    console.log('🔐 Giriş denemesi:', loginForm.username)
+    
     const pw = COURIER_CREDENTIALS[loginForm.username as keyof typeof COURIER_CREDENTIALS];
     if (pw && pw === loginForm.password) {
-      const { data } = await supabase.from('profiles').select('id').eq('full_name', loginForm.username).single();
-      if (data) {
-        sessionStorage.setItem(LOGIN_STORAGE_KEY, 'true');
-        sessionStorage.setItem(LOGIN_COURIER_ID_KEY, data.id);
-        setIsLoggedIn(true);
-        setSelectedCourierId(data.id);
+      try {
+        // Couriers tablosundan username ile kurye bilgilerini çek
+        const { data, error } = await supabase
+          .from('couriers')
+          .select('id, full_name')
+          .eq('username', loginForm.username)
+          .single();
+          
+        if (error) {
+          console.error('❌ Kurye bulunamadı:', error)
+          setErrorMessage("Kurye bulunamadı!");
+          return
+        }
+        
+        if (data) {
+          console.log('✅ Kurye bulundu:', data)
+          sessionStorage.setItem(LOGIN_STORAGE_KEY, 'true');
+          sessionStorage.setItem(LOGIN_COURIER_ID_KEY, data.id);
+          setIsLoggedIn(true);
+          setSelectedCourierId(data.id);
+        }
+      } catch (error: any) {
+        console.error('❌ Giriş hatası:', error)
+        setErrorMessage("Giriş hatası: " + error.message);
       }
     } else {
-      setErrorMessage("Hatalı giriş!");
+      setErrorMessage("Hatalı kullanıcı adı veya şifre!");
     }
   }
 }

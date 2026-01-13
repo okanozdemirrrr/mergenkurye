@@ -98,7 +98,7 @@ export default function Home() {
     try {
       const { data, error } = await supabase
         .from('packages')
-        .select('*, restaurants(name), profiles(full_name)')
+        .select('*, restaurants(name), couriers(full_name)')
         .eq('status', 'delivered')
         .order('delivered_at', { ascending: false })
         .limit(50) // Son 50 teslimat
@@ -108,9 +108,9 @@ export default function Home() {
       const transformedData = (data || []).map((pkg: any) => ({
         ...pkg,
         restaurant: pkg.restaurants,
-        courier_name: pkg.profiles?.full_name,
+        courier_name: pkg.couriers?.full_name,
         restaurants: undefined,
-        profiles: undefined
+        couriers: undefined
       }))
 
       setDeliveredPackages(transformedData)
@@ -122,14 +122,14 @@ export default function Home() {
   const fetchCouriers = async () => {
     try {
       const { data, error } = await supabase
-        .from('profiles')
+        .from('couriers')
         .select('id, full_name, last_lat, last_lng, is_active, status')
         .order('id', { ascending: true })
 
       if (error) throw error
       const couriersData = data || []
       
-      console.log('🔍 fetchCouriers - Profiles tablosundan gelen ham veri:', couriersData)
+      console.log('🔍 fetchCouriers - Couriers tablosundan gelen ham veri:', couriersData)
       
       setCouriers(couriersData)
       
