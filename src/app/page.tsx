@@ -123,11 +123,14 @@ export default function Home() {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name')
+        .select('id, full_name, last_lat, last_lng, is_active, status')
         .order('id', { ascending: true })
 
       if (error) throw error
       const couriersData = data || []
+      
+      console.log('🔍 fetchCouriers - Profiles tablosundan gelen ham veri:', couriersData)
+      
       setCouriers(couriersData)
       
       if (couriersData.length > 0) {
@@ -252,6 +255,8 @@ export default function Home() {
 
       // Profiles tablosundan gelen bilgileri işle
       profilesData?.forEach(profile => {
+        console.log(`🚴 ${profile.full_name}: is_active=${profile.is_active}, lat=${profile.last_lat}, lng=${profile.last_lng}`)
+        
         activeStatuses[profile.id] = profile.is_active || false
         
         if (!profile.is_active) {

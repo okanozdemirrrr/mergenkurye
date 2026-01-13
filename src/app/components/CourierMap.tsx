@@ -36,14 +36,15 @@ export default function CourierMap({ couriers }: CourierMapProps) {
   // Samsun/Merkez koordinatları
   const samsunCenter: [number, number] = [41.2867, 36.3300]
 
-  // Konumu olan aktif kuryeler
-  const activeCouriersWithLocation = couriers.filter(
-    courier => courier.last_lat && courier.last_lng && courier.is_active
+  // Konumu olan kuryeler (status filtresi kaldırıldı)
+  const couriersWithLocation = couriers.filter(
+    courier => courier.last_lat && courier.last_lng
   )
 
   console.log('CourierMap - Toplam kurye:', couriers.length)
-  console.log('CourierMap - Konumu olan aktif kurye:', activeCouriersWithLocation.length)
-  console.log('CourierMap - Kurye verileri:', activeCouriersWithLocation)
+  console.log('CourierMap - Konumu olan kurye:', couriersWithLocation.length)
+  console.log('CourierMap - Tüm kurye verileri:', couriers)
+  console.log('CourierMap - Konumu olan kurye verileri:', couriersWithLocation)
 
   if (!mounted) {
     return (
@@ -121,10 +122,10 @@ export default function CourierMap({ couriers }: CourierMapProps) {
       
       {/* Harita altında kurye bilgisi */}
       <div className="mt-2 text-center text-sm text-slate-600 dark:text-slate-400">
-        📍 Haritada {activeCouriersWithLocation.length} aktif kurye gösteriliyor
-        {activeCouriersWithLocation.length === 0 && (
+        📍 Haritada {couriersWithLocation.length} kurye gösteriliyor
+        {couriersWithLocation.length === 0 && (
           <div className="text-xs text-orange-600 mt-1">
-            ⚠️ Henüz konum paylaşan aktif kurye yok
+            ⚠️ Henüz konum paylaşan kurye yok - Kurye panelinden "Pakete Hazırım" butonuna basılması gerekiyor
           </div>
         )}
       </div>
