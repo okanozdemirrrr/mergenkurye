@@ -233,15 +233,7 @@ export default function Home() {
 
   const fetchCourierStatuses = async (courierIds: string[]) => {
     try {
-      // Profiles tablosundan is_active, status ve konum bilgilerini çek
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, is_active, status, last_lat, last_lng, full_name')
-        .in('id', courierIds)
-
-      if (profilesError) throw profilesError
-
-      // Aktif paket durumlarını da kontrol et (meşgul olup olmadığını anlamak için)
+      // Sadece aktif paket durumlarını kontrol et
       const { data: packagesData, error: packagesError } = await supabase
         .from('packages')
         .select('courier_id, status')
@@ -250,44 +242,40 @@ export default function Home() {
 
       if (packagesError) throw packagesError
 
-      const statuses: { [key: string]: any } = {}
-      const activeStatuses: { [key: string]: boolean } = {}
-
-      // Profiles tablosundan gelen bilgileri işle
-      profilesData?.forEach(profile => {
-        console.log(`🚴 ${profile.full_name}: is_active=${profile.is_active}, lat=${profile.last_lat}, lng=${profile.last_lng}`)
+      // Kurye durumlarını hesapla (couriers tablosundan gelen verilerle)
+      setCouriers(prev => prev.map(c => {
+        console.log(`🚴 ${c.full_name}: is_active=${c.isActive}, lat=${c.last_lat}, lng=${c.last_lng}`)
         
-        activeStatuses[profile.id] = profile.is_active || false
+        let finalStatus = 'inactive'
         
-        if (!profile.is_active) {
-          statuses[profile.id] = 'inactive' // Aktif değil
+        if (!c.isActive) {
+          finalStatus = 'inactive' // Aktif değil
         } else {
           // Aktif ama paket durumuna bak
-          const courierPackages = packagesData?.filter(p => p.courier_id === profile.id) || []
+          const courierPackages = packagesData?.filter(p => p.courier_id === c.id) || []
           
           if (courierPackages.length === 0) {
-            statuses[profile.id] = 'idle' // Boşta
+            finalStatus = 'idle' // Boşta
           } else if (courierPackages.some(p => p.status === 'on_the_way')) {
-            statuses[profile.id] = 'on_the_way' // Yolda
+            finalStatus = 'on_the_way' // Yolda
           } else if (courierPackages.some(p => p.status === 'picking_up')) {
-            statuses[profile.id] = 'picking_up' // Alıyor
+            finalStatus = 'picking_up' // Alıyor
           } else if (courierPackages.some(p => p.status === 'assigned')) {
-            statuses[profile.id] = 'assigned' // Atanmış
+            finalStatus = 'assigned' // Atanmış
           } else {
-            statuses[profile.id] = 'idle' // Boşta
+            finalStatus = 'idle' // Boşta
           }
         }
-      })
 
-      setCouriers(prev => prev.map(c => {
-        const profile = profilesData?.find(p => p.id === c.id)
         return {
           ...c, 
-          status: statuses[c.id] || 'inactive',
-          isActive: activeStatuses[c.id] || false,
-          last_lat: profile?.last_lat || null,
-          last_lng: profile?.last_lng || null
+          status: finalStatus
         }
+      }))
+    } catch (error: any) { 
+      console.error('Kurye durumları alınırken hata:', error) 
+    }
+  }
       }))
     } catch (error: any) { 
       console.error('Kurye durumları alınırken hata:', error) 

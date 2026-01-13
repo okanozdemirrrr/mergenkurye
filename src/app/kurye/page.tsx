@@ -64,6 +64,8 @@ export default function KuryePage() {
 
     try {
       setIsLoading(true)
+      console.log('📦 Paketler çekiliyor, courierID:', courierId)
+      
       const { data, error } = await supabase
         .from('packages')
         .select('*, restaurants(name)')
@@ -71,14 +73,20 @@ export default function KuryePage() {
         .neq('status', 'delivered')
         .order('created_at', { ascending: false })
 
-      if (error) throw error
+      if (error) {
+        console.error('❌ Paket çekme hatası:', error)
+        throw error
+      }
       
       const transformed = (data || []).map((pkg: any) => ({
         ...pkg,
         restaurant: pkg.restaurants
       }))
+      
+      console.log('✅ Paketler yüklendi:', transformed)
       setPackages(transformed)
     } catch (error: any) {
+      console.error('❌ Paketler yüklenemedi:', error)
       setErrorMessage('Paketler yüklenemedi: ' + error.message)
     } finally {
       setIsLoading(false)
@@ -89,19 +97,32 @@ export default function KuryePage() {
     const courierId = sessionStorage.getItem(LOGIN_COURIER_ID_KEY)
     if (!courierId) return
 
-    const todayStart = new Date(); todayStart.setHours(0,0,0,0)
-    
-    const { data, error } = await supabase
-      .from('packages')
-      .select('amount, payment_method, status')
-      .eq('courier_id', courierId)
-      .eq('status', 'delivered')
-      .gte('created_at', todayStart.toISOString())
+    try {
+      console.log('📊 Günlük istatistikler çekiliyor, courierID:', courierId)
+      
+      const todayStart = new Date(); todayStart.setHours(0,0,0,0)
+      
+      const { data, error } = await supabase
+        .from('packages')
+        .select('amount, payment_method, status')
+        .eq('courier_id', courierId)
+        .eq('status', 'delivered')
+        .gte('created_at', todayStart.toISOString())
 
-    if (!error && data) {
-      setDeliveredCount(data.length)
-      setCashTotal(data.filter(p => p.payment_method === 'cash').reduce((sum, p) => sum + (p.amount || 0), 0))
-      setCardTotal(data.filter(p => p.payment_method === 'card').reduce((sum, p) => sum + (p.amount || 0), 0))
+      if (error) {
+        console.error('❌ İstatistik hatası:', error)
+        throw error
+      }
+
+      if (data) {
+        console.log('✅ İstatistikler yüklendi:', data)
+        setDeliveredCount(data.length)
+        setCashTotal(data.filter(p => p.payment_method === 'cash').reduce((sum, p) => sum + (p.amount || 0), 0))
+        setCardTotal(data.filter(p => p.payment_method === 'card').reduce((sum, p) => sum + (p.amount || 0), 0))
+      }
+    } catch (error: any) {
+      console.error('❌ İstatistik yüklenemedi:', error)
+      setErrorMessage('İstatistikler yüklenemedi: ' + error.message)
     }
   }
 
