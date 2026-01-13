@@ -397,7 +397,14 @@ export default function KuryePage() {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
         <form onSubmit={handleLogin} className="bg-slate-900 p-8 rounded-3xl border border-slate-800 w-full max-w-md">
-          <h1 className="text-3xl font-bold text-white text-center mb-8">Kurye Girişi</h1>
+          <div className="text-center mb-8">
+            <img 
+              src="/logo.png" 
+              alt="Logo" 
+              className="w-16 h-16 mx-auto mb-4"
+            />
+            <h1 className="text-3xl font-bold text-white">Kurye Girişi</h1>
+          </div>
           <input 
             type="text" placeholder="Kullanıcı Adı" 
             className="w-full p-4 mb-4 bg-slate-800 rounded-xl text-white outline-none focus:ring-2 focus:ring-blue-500"
@@ -419,7 +426,14 @@ export default function KuryePage() {
     <div className="min-h-screen bg-slate-950 text-white p-4">
       <div className="max-w-2xl mx-auto">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">🚀 Kurye Paneli</h1>
+          <div className="flex items-center">
+            <img 
+              src="/logo.png" 
+              alt="Logo" 
+              className="w-8 h-8 mr-3"
+            />
+            <h1 className="text-2xl font-bold">🚀 Kurye Paneli</h1>
+          </div>
           <button onClick={() => { sessionStorage.clear(); window.location.reload(); }} className="bg-red-900/50 text-red-400 px-4 py-2 rounded-lg text-sm">Çıkış</button>
         </div>
 

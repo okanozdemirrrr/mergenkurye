@@ -455,6 +455,11 @@ export default function Home() {
           <div className="flex justify-between items-center h-16">
             {/* Logo/Title */}
             <div className="flex items-center">
+              <img 
+                src="/logo.png" 
+                alt="Logo" 
+                className="w-8 h-8 mr-3"
+              />
               <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
                 📊 Admin Panel
               </h1>

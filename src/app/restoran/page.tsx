@@ -264,7 +264,11 @@ export default function RestoranPage() {
         <div className="bg-white dark:bg-slate-800 shadow-2xl rounded-3xl p-8 w-full max-w-md border border-orange-200 dark:border-slate-700">
           <div className="text-center mb-8">
             <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-3xl">🍽️</span>
+              <img 
+                src="/logo.png" 
+                alt="Logo" 
+                className="w-12 h-12"
+              />
             </div>
             <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Restoran Girişi</h1>
             <p className="text-slate-600 dark:text-slate-400">Hesabınıza giriş yapın</p>
@@ -327,9 +331,16 @@ export default function RestoranPage() {
             {/* Başlık */}
             <div className="flex justify-between items-center mb-8">
               <div>
-                <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
-                  🍽️ {selectedRestaurant?.name}
-                </h1>
+                <div className="flex items-center mb-2">
+                  <img 
+                    src="/logo.png" 
+                    alt="Logo" 
+                    className="w-8 h-8 mr-3"
+                  />
+                  <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+                    🍽️ {selectedRestaurant?.name}
+                  </h1>
+                </div>
                 <p className="text-slate-600 dark:text-slate-400">
                   Yeni sipariş bilgilerini girin
                 </p>
