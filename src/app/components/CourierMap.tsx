@@ -44,20 +44,35 @@ export default function CourierMap({ couriers }: CourierMapProps) {
     name: c.full_name,
     lat: c.last_lat,
     lng: c.last_lng,
-    isActive: c.isActive
+    isActive: c.isActive,
+    status: c.status
   })))
   
-  // Koordinatları kontrol et - basit kontrol
+  // Koordinatları kontrol et - Number() ile zorlayarak
   const couriersWithCoords = allCouriers.filter(courier => {
-    const hasLat = courier.last_lat !== null && courier.last_lat !== undefined && courier.last_lat !== 0
-    const hasLng = courier.last_lng !== null && courier.last_lng !== undefined && courier.last_lng !== 0
+    const lat = Number(courier.last_lat)
+    const lng = Number(courier.last_lng)
     
-    console.log(`🔍 [CourierMap] ${courier.full_name}: lat=${courier.last_lat} (${hasLat}), lng=${courier.last_lng} (${hasLng})`)
+    const hasValidLat = !isNaN(lat) && lat !== 0 && lat !== null
+    const hasValidLng = !isNaN(lng) && lng !== 0 && lng !== null
     
-    return hasLat && hasLng
+    console.log(`🔍 [CourierMap] ${courier.full_name}:`)
+    console.log(`   - last_lat: ${courier.last_lat} -> Number: ${lat} -> Valid: ${hasValidLat}`)
+    console.log(`   - last_lng: ${courier.last_lng} -> Number: ${lng} -> Valid: ${hasValidLng}`)
+    console.log(`   - isActive: ${courier.isActive}`)
+    console.log(`   - status: ${courier.status}`)
+    
+    return hasValidLat && hasValidLng
   })
 
   console.log('🗺️ [CourierMap] Koordinatlı kuryeler:', couriersWithCoords.length)
+  console.log('🗺️ [CourierMap] Koordinatlı kurye detayları:', couriersWithCoords.map(c => ({
+    name: c.full_name,
+    lat: c.last_lat,
+    lng: c.last_lng,
+    isActive: c.isActive,
+    status: c.status
+  })))
 
   if (!mounted) {
     return (
@@ -228,6 +243,16 @@ export default function CourierMap({ couriers }: CourierMapProps) {
             ❌ Couriers tablosunda veri yok! SQL'i çalıştırın.
           </div>
         )}
+        {allCouriers.length > 0 && couriersWithCoords.length === 0 && (
+          <div className="text-xs text-orange-600 mt-1">
+            ⚠️ Hiçbir kuryenin gerçek konumu yok! Kurye panelinden konum paylaşımı yapılmalı.
+          </div>
+        )}
+        <div className="text-xs text-slate-500 mt-1">
+          Aktif kuryeler: {allCouriers.filter(c => c.isActive).length} • 
+          Konumu paylaşan: {couriersWithCoords.length} • 
+          Son güncelleme: {new Date().toLocaleTimeString('tr-TR')}
+        </div>
       </div>
     </div>
   )

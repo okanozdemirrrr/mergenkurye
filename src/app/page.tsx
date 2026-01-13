@@ -151,23 +151,25 @@ export default function Home() {
         console.log(`   - last_lng: ${courier.last_lng} (type: ${typeof courier.last_lng})`)
       })
       
-      // is_active -> isActive mapping
+      // is_active -> isActive mapping ve koordinat dönüşümü
       const couriersData = data.map(courier => {
         const mappedCourier = {
           id: courier.id,
           full_name: courier.full_name,
           isActive: Boolean(courier.is_active), // Kesinlikle boolean'a çevir
           status: courier.status || 'idle', // Supabase'den gelen status'u direkt kullan
-          last_lat: courier.last_lat,
-          last_lng: courier.last_lng,
-          deliveryCount: 0,
-          todayDeliveryCount: 0,
-          activePackageCount: 0
+          last_lat: courier.last_lat ? Number(courier.last_lat) : null, // Sayıya çevir
+          last_lng: courier.last_lng ? Number(courier.last_lng) : null, // Sayıya çevir
+          deliveryCount: 0, // Packages tablosundan hesaplanacak
+          todayDeliveryCount: 0, // Packages tablosundan hesaplanacak
+          activePackageCount: 0 // Packages tablosundan hesaplanacak
         }
         
         console.log(`🔄 [fetchCouriers] MAPPED: ${mappedCourier.full_name}`)
         console.log(`   - isActive: ${mappedCourier.isActive} (type: ${typeof mappedCourier.isActive})`)
         console.log(`   - status: ${mappedCourier.status} (RAW: ${courier.status})`)
+        console.log(`   - last_lat: ${mappedCourier.last_lat} (RAW: ${courier.last_lat}, type: ${typeof mappedCourier.last_lat})`)
+        console.log(`   - last_lng: ${mappedCourier.last_lng} (RAW: ${courier.last_lng}, type: ${typeof mappedCourier.last_lng})`)
         
         return mappedCourier
       })
@@ -190,16 +192,22 @@ export default function Home() {
     }
   }
 
-  // Kuryelerin aktif paket sayılarını hesapla
   const fetchCourierActivePackageCounts = async (courierIds: string[]) => {
     try {
+      console.log('📊 [fetchCourierActivePackageCounts] Başlıyor, kurye IDs:', courierIds)
+      
       const { data, error } = await supabase
         .from('packages')
         .select('courier_id')
         .in('courier_id', courierIds)
         .neq('status', 'delivered') // Teslim edilmemiş paketler
 
-      if (error) throw error
+      if (error) {
+        console.error('❌ [fetchCourierActivePackageCounts] Hata:', error)
+        throw error
+      }
+
+      console.log('✅ [fetchCourierActivePackageCounts] Aktif paketler:', data)
 
       const counts: { [key: string]: number } = {}
       data?.forEach((pkg) => { 
@@ -207,25 +215,34 @@ export default function Home() {
           counts[pkg.courier_id] = (counts[pkg.courier_id] || 0) + 1 
         }
       })
+
+      console.log('📊 [fetchCourierActivePackageCounts] Hesaplanan sayılar:', counts)
 
       setCouriers(prev => prev.map(c => ({ 
         ...c, 
         activePackageCount: counts[c.id] || 0 
       })))
     } catch (error: any) {
-      console.error('Aktif paket sayıları alınırken hata:', error)
+      console.error('❌ [fetchCourierActivePackageCounts] Aktif paket sayıları alınırken hata:', error)
     }
   }
 
   const fetchCourierDeliveryCounts = async (courierIds: string[]) => {
     try {
+      console.log('📊 [fetchCourierDeliveryCounts] Başlıyor, kurye IDs:', courierIds)
+      
       const { data, error } = await supabase
         .from('packages')
         .select('courier_id')
         .eq('status', 'delivered')
         .in('courier_id', courierIds)
 
-      if (error) throw error
+      if (error) {
+        console.error('❌ [fetchCourierDeliveryCounts] Hata:', error)
+        throw error
+      }
+
+      console.log('✅ [fetchCourierDeliveryCounts] Teslim edilen paketler:', data)
 
       const counts: { [key: string]: number } = {}
       data?.forEach((pkg) => { 
@@ -234,12 +251,14 @@ export default function Home() {
         }
       })
 
+      console.log('📊 [fetchCourierDeliveryCounts] Hesaplanan sayılar:', counts)
+
       setCouriers(prev => prev.map(c => ({ 
         ...c, 
         deliveryCount: counts[c.id] || 0 
       })))
     } catch (error: any) {
-      console.error('Kurye teslimat sayıları alınırken hata:', error)
+      console.error('❌ [fetchCourierDeliveryCounts] Kurye teslimat sayıları alınırken hata:', error)
     }
   }
 
@@ -274,11 +293,6 @@ export default function Home() {
   }
 
   // fetchCourierStatuses fonksiyonu kaldırıldı - artık fetchCouriers'da tüm bilgiler geliyor
-      }))
-    } catch (error: any) { 
-      console.error('Kurye durumları alınırken hata:', error) 
-    }
-  }
 
   const handleAssignCourier = async (packageId: number) => {
     const courierId = selectedCouriers[packageId]
@@ -500,6 +514,29 @@ export default function Home() {
         {/* Harita Bölümü */}
         <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
           <h2 className="text-2xl font-bold mb-4">🗺️ Kurye Haritası</h2>
+          
+          {/* Debug Bilgileri */}
+          <div className="mb-4 p-3 bg-slate-100 dark:bg-slate-700 rounded-lg text-sm">
+            <div className="font-bold mb-2">📊 Kurye Veri Durumu:</div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+              <div>Toplam Kurye: <span className="font-bold text-blue-600">{couriers.length}</span></div>
+              <div>Aktif Kurye: <span className="font-bold text-green-600">{couriers.filter(c => c.isActive).length}</span></div>
+              <div>Konumu Olan: <span className="font-bold text-purple-600">
+                {couriers.filter(c => c.last_lat && c.last_lng && Number(c.last_lat) !== 0 && Number(c.last_lng) !== 0).length}
+              </span></div>
+              <div>Haritada Görünen: <span className="font-bold text-orange-600">
+                {couriers.filter(c => {
+                  const lat = Number(c.last_lat)
+                  const lng = Number(c.last_lng)
+                  return !isNaN(lat) && lat !== 0 && !isNaN(lng) && lng !== 0
+                }).length}
+              </span></div>
+            </div>
+            <div className="mt-2 text-xs text-slate-600 dark:text-slate-400">
+              Son güncelleme: {new Date().toLocaleTimeString('tr-TR')} (10 saniyede bir otomatik)
+            </div>
+          </div>
+          
           <CourierMap couriers={couriers} />
           <div className="mt-4 flex flex-wrap gap-2 text-sm">
             <div className="flex items-center gap-1">
@@ -737,62 +774,117 @@ export default function Home() {
       <>
         <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
           <h2 className="text-2xl font-bold mb-6">🚴 Kurye Yönetimi</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {couriers.map(c => (
-              <div key={c.id} className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border dark:border-slate-600">
-                <div className="flex justify-between items-start mb-3">
-                  <button
-                    onClick={() => handleCourierClick(c.id)}
-                    className="font-bold text-lg text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors cursor-pointer"
-                  >
-                    {c.full_name}
-                  </button>
-                  <div className={`w-3 h-3 rounded-full ${c.isActive ? 'bg-green-500' : 'bg-red-500'}`}></div>
+          
+          {/* Debug Bilgileri */}
+          <div className="mb-6 p-4 bg-slate-100 dark:bg-slate-700 rounded-lg">
+            <div className="font-bold mb-2">📊 Kurye Durumu Özeti:</div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">{couriers.length}</div>
+                <div className="text-xs text-slate-600 dark:text-slate-400">Toplam Kurye</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">{couriers.filter(c => c.isActive).length}</div>
+                <div className="text-xs text-slate-600 dark:text-slate-400">Aktif Kurye</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-red-600">{couriers.filter(c => !c.isActive).length}</div>
+                <div className="text-xs text-slate-600 dark:text-slate-400">Pasif Kurye</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-600">
+                  {couriers.reduce((sum, c) => sum + (c.activePackageCount || 0), 0)}
                 </div>
-                
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-slate-600 dark:text-slate-400">Durum:</span>
-                    <span className={`font-medium ${
-                      !c.isActive ? 'text-gray-600' :
-                      c.status === 'idle' ? 'text-green-600' :
-                      c.status === 'assigned' ? 'text-blue-600' :
-                      c.status === 'picking_up' ? 'text-yellow-600' :
-                      'text-red-600'
-                    }`}>
-                      {!c.isActive ? 'Aktif Değil' :
-                       c.status === 'idle' ? 'Boşta' :
-                       c.status === 'assigned' ? 'Paket Bekliyor' :
-                       c.status === 'picking_up' ? 'Alıyor' : 'Teslimatta'}
-                    </span>
-                  </div>
-                  
-                  <div className="flex justify-between">
-                    <span className="text-slate-600 dark:text-slate-400">Aktif Paket:</span>
-                    <span className="font-bold text-blue-600">{c.activePackageCount || 0}</span>
-                  </div>
-                  
-                  <div className="flex justify-between">
-                    <span className="text-slate-600 dark:text-slate-400">Bugün Teslim:</span>
-                    <span className="font-bold text-green-600">{c.todayDeliveryCount || 0}</span>
-                  </div>
-                  
-                  <div className="flex justify-between">
-                    <span className="text-slate-600 dark:text-slate-400">Toplam Teslim:</span>
-                    <span className="font-bold text-purple-600">{c.deliveryCount || 0}</span>
-                  </div>
-
-                  <div className="mt-3 pt-2 border-t border-slate-200 dark:border-slate-600">
+                <div className="text-xs text-slate-600 dark:text-slate-400">Toplam Aktif Paket</div>
+              </div>
+            </div>
+            <div className="mt-3 text-xs text-slate-600 dark:text-slate-400 text-center">
+              Son güncelleme: {new Date().toLocaleTimeString('tr-TR')} • Otomatik güncelleme: 10 saniye
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {couriers.length === 0 ? (
+              <div className="col-span-full text-center py-8 text-slate-500">
+                <div className="text-4xl mb-2">🚫</div>
+                <div className="font-bold">Kurye bulunamadı!</div>
+                <div className="text-sm mt-2">Couriers tablosunda veri yok. SQL'i çalıştırın.</div>
+              </div>
+            ) : (
+              couriers.map(c => (
+                <div key={c.id} className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border dark:border-slate-600">
+                  <div className="flex justify-between items-start mb-3">
                     <button
                       onClick={() => handleCourierClick(c.id)}
-                      className="w-full text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 py-2 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+                      className="font-bold text-lg text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors cursor-pointer"
                     >
-                      📊 Detaylı Rapor Görüntüle
+                      {c.full_name}
                     </button>
+                    <div className="flex items-center gap-2">
+                      <div className={`w-3 h-3 rounded-full ${c.isActive ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                      <div className="text-xs text-slate-500">
+                        {c.last_lat && c.last_lng ? '📍' : '❌'}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-slate-600 dark:text-slate-400">Durum:</span>
+                      <span className={`font-medium ${
+                        !c.isActive ? 'text-gray-600' :
+                        c.status === 'idle' ? 'text-green-600' :
+                        c.status === 'assigned' ? 'text-blue-600' :
+                        c.status === 'picking_up' ? 'text-yellow-600' :
+                        'text-red-600'
+                      }`}>
+                        {!c.isActive ? 'Aktif Değil' :
+                         c.status === 'idle' ? 'Boşta' :
+                         c.status === 'assigned' ? 'Paket Bekliyor' :
+                         c.status === 'picking_up' ? 'Alıyor' : 'Teslimatta'}
+                      </span>
+                    </div>
+                    
+                    <div className="flex justify-between">
+                      <span className="text-slate-600 dark:text-slate-400">Aktif Paket:</span>
+                      <span className="font-bold text-blue-600">{c.activePackageCount || 0}</span>
+                    </div>
+                    
+                    <div className="flex justify-between">
+                      <span className="text-slate-600 dark:text-slate-400">Bugün Teslim:</span>
+                      <span className="font-bold text-green-600">{c.todayDeliveryCount || 0}</span>
+                    </div>
+                    
+                    <div className="flex justify-between">
+                      <span className="text-slate-600 dark:text-slate-400">Toplam Teslim:</span>
+                      <span className="font-bold text-purple-600">{c.deliveryCount || 0}</span>
+                    </div>
+
+                    {/* Konum Bilgisi */}
+                    <div className="flex justify-between">
+                      <span className="text-slate-600 dark:text-slate-400">Konum:</span>
+                      <span className={`text-xs font-medium ${
+                        c.last_lat && c.last_lng ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {c.last_lat && c.last_lng ? 
+                          `${Number(c.last_lat).toFixed(4)}, ${Number(c.last_lng).toFixed(4)}` : 
+                          'Konum yok'
+                        }
+                      </span>
+                    </div>
+
+                    <div className="mt-3 pt-2 border-t border-slate-200 dark:border-slate-600">
+                      <button
+                        onClick={() => handleCourierClick(c.id)}
+                        className="w-full text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 py-2 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+                      >
+                        📊 Detaylı Rapor Görüntüle
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
