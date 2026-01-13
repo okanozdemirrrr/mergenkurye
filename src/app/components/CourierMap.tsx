@@ -33,14 +33,6 @@ export default function CourierMap({ couriers }: CourierMapProps) {
     setMounted(true)
   }, [])
 
-  if (!mounted) {
-    return (
-      <div className="w-full h-96 bg-slate-100 dark:bg-slate-700 rounded-2xl flex items-center justify-center">
-        <div className="text-slate-500">🗺️ Harita yükleniyor...</div>
-      </div>
-    )
-  }
-
   // Samsun/Merkez koordinatları
   const samsunCenter: [number, number] = [41.2867, 36.3300]
 
@@ -48,6 +40,18 @@ export default function CourierMap({ couriers }: CourierMapProps) {
   const activeCouriersWithLocation = couriers.filter(
     courier => courier.last_lat && courier.last_lng && courier.is_active
   )
+
+  console.log('CourierMap - Toplam kurye:', couriers.length)
+  console.log('CourierMap - Konumu olan aktif kurye:', activeCouriersWithLocation.length)
+  console.log('CourierMap - Kurye verileri:', activeCouriersWithLocation)
+
+  if (!mounted) {
+    return (
+      <div className="w-full h-96 bg-slate-100 dark:bg-slate-700 rounded-2xl flex items-center justify-center">
+        <div className="text-slate-500">🗺️ Harita yükleniyor...</div>
+      </div>
+    )
+  }
 
   // Kurye durumuna göre marker rengi
   const getMarkerIcon = (courier: Courier) => {
@@ -114,6 +118,16 @@ export default function CourierMap({ couriers }: CourierMapProps) {
           </Marker>
         ))}
       </MapContainer>
+      
+      {/* Harita altında kurye bilgisi */}
+      <div className="mt-2 text-center text-sm text-slate-600 dark:text-slate-400">
+        📍 Haritada {activeCouriersWithLocation.length} aktif kurye gösteriliyor
+        {activeCouriersWithLocation.length === 0 && (
+          <div className="text-xs text-orange-600 mt-1">
+            ⚠️ Henüz konum paylaşan aktif kurye yok
+          </div>
+        )}
+      </div>
     </div>
   )
 }
