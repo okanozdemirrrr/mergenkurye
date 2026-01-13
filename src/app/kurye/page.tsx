@@ -115,7 +115,7 @@ export default function KuryePage() {
         .from('couriers')
         .select('status, is_active')
         .eq('id', courierId)
-        .single()
+        .maybeSingle()
 
       if (error) {
         console.error('Kurye durumu hatası:', error)
@@ -592,7 +592,7 @@ export default function KuryePage() {
           .from('couriers')
           .select('id, full_name')
           .eq('username', loginForm.username)
-          .single();
+          .maybeSingle();
           
         if (error) {
           console.error('❌ Kurye bulunamadı:', error)
@@ -606,6 +606,8 @@ export default function KuryePage() {
           sessionStorage.setItem(LOGIN_COURIER_ID_KEY, data.id);
           setIsLoggedIn(true);
           setSelectedCourierId(data.id);
+        } else {
+          setErrorMessage("Kurye bulunamadı!");
         }
       } catch (error: any) {
         console.error('❌ Giriş hatası:', error)
