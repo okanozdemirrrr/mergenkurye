@@ -121,37 +121,54 @@ export default function Home() {
 
   const fetchCouriers = async () => {
     try {
+      console.log('🔍 Couriers tablosundan veri çekiliyor...')
+      
       const { data, error } = await supabase
         .from('couriers')
-        .select('id, full_name, last_lat, last_lng, is_active, status')
+        .select('*')
         .order('id', { ascending: true })
 
-      if (error) throw error
+      if (error) {
+        console.error('❌ Couriers tablosu hatası:', error)
+        throw error
+      }
+      
+      console.log('✅ Couriers tablosundan gelen RAW veri:', data)
+      
+      if (!data || data.length === 0) {
+        console.warn('⚠️ Couriers tablosu boş!')
+        setCouriers([])
+        return
+      }
       
       // is_active -> isActive mapping
-      const couriersData = (data || []).map(courier => ({
-        ...courier,
-        isActive: courier.is_active,
-        is_active: undefined // Temizle
+      const couriersData = data.map(courier => ({
+        id: courier.id,
+        full_name: courier.full_name,
+        isActive: courier.is_active || false,
+        status: courier.status || 'idle',
+        last_lat: courier.last_lat,
+        last_lng: courier.last_lng,
+        deliveryCount: 0,
+        todayDeliveryCount: 0,
+        activePackageCount: 0
       }))
       
-      console.log('🔍 fetchCouriers - Couriers tablosundan gelen ham veri:', data)
-      console.log('🔍 fetchCouriers - Dönüştürülmüş veri:', couriersData)
-      
+      console.log('✅ Dönüştürülmüş kurye verileri:', couriersData)
       setCouriers(couriersData)
       
+      // Paket sayılarını ayrı olarak çek
       if (couriersData.length > 0) {
         const ids = couriersData.map(c => c.id)
-        // Tüm sayıları packages tablosundan anlık çek
         await Promise.all([
           fetchCourierDeliveryCounts(ids),
           fetchCourierTodayDeliveryCounts(ids),
-          fetchCourierStatuses(ids),
           fetchCourierActivePackageCounts(ids)
         ])
       }
     } catch (error: any) {
-      console.error('Kuryeler yüklenirken hata:', error.message)
+      console.error('❌ Kuryeler yüklenirken hata:', error)
+      setErrorMessage('Kuryeler yüklenemedi: ' + error.message)
     }
   }
 
@@ -327,10 +344,8 @@ export default function Home() {
     // Harita için 10 saniyede bir konum güncelleme
     const mapInterval = setInterval(async () => {
       if (activeTab === 'live') {
-        const ids = couriers.map(c => c.id)
-        if (ids.length > 0) {
-          await fetchCourierStatuses(ids)
-        }
+        // Sadece kurye verilerini yenile
+        await fetchCouriers()
       }
     }, 10000)
 

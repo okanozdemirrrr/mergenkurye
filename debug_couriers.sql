@@ -1,31 +1,36 @@
--- Debug için couriers tablosunu kontrol et
+-- KURYE VERİLERİNİ TAMAMEN SIFIRLA VE YENİDEN OLUŞTUR
 -- Bu SQL'i Supabase SQL Editor'da çalıştır
 
--- Önce couriers tablosunu kontrol et
-SELECT * FROM couriers LIMIT 1;
+-- Önce couriers tablosunu sil ve yeniden oluştur
+DROP TABLE IF EXISTS couriers CASCADE;
 
--- is_active kolonunu ekle (eğer yoksa)
-ALTER TABLE couriers ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT false;
+-- Couriers tablosunu yeniden oluştur
+CREATE TABLE couriers (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  username TEXT UNIQUE NOT NULL,
+  password TEXT NOT NULL,
+  full_name TEXT NOT NULL,
+  is_active BOOLEAN DEFAULT false,
+  status TEXT DEFAULT 'idle' CHECK (status IN ('idle', 'busy', 'picking_up', 'on_the_way', 'assigned', 'inactive')),
+  last_lat DECIMAL(10, 8),
+  last_lng DECIMAL(11, 8),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
--- status kolonunu ekle (eğer yoksa)
-ALTER TABLE couriers ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'idle' CHECK (status IN ('idle', 'busy', 'picking_up', 'on_the_way', 'assigned', 'inactive'));
+-- RLS politikalarını ayarla
+ALTER TABLE couriers ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Everyone can view couriers" ON couriers FOR SELECT USING (true);
+CREATE POLICY "Couriers can update own data" ON couriers FOR UPDATE USING (true);
 
--- last_lat ve last_lng kolonlarını ekle (eğer yoksa)
-ALTER TABLE couriers ADD COLUMN IF NOT EXISTS last_lat DECIMAL(10, 8);
-ALTER TABLE couriers ADD COLUMN IF NOT EXISTS last_lng DECIMAL(11, 8);
-
--- Couriers tablosunu kontrol et
-SELECT * FROM couriers;
-
--- Eğer tablo boşsa, test verilerini ekle
+-- ZORUNLU: Test verilerini ekle
 INSERT INTO couriers (username, password, full_name, is_active, status, last_lat, last_lng) VALUES 
   ('ahmet55', 'ahmet55123', 'Ahmet Abi', true, 'idle', 41.2867, 36.3300),
-  ('taha', 'taha123', 'Taha', true, 'idle', 41.2900, 36.3350)
-ON CONFLICT (username) DO UPDATE SET
-  is_active = EXCLUDED.is_active,
-  status = EXCLUDED.status,
-  last_lat = EXCLUDED.last_lat,
-  last_lng = EXCLUDED.last_lng;
+  ('taha', 'taha123', 'Taha', true, 'idle', 41.2900, 36.3350);
 
 -- Sonucu kontrol et
+SELECT 'COURIERS TABLOSU:' as info;
 SELECT id, username, full_name, is_active, status, last_lat, last_lng FROM couriers;
+
+-- Toplam sayıyı göster
+SELECT COUNT(*) as toplam_kurye FROM couriers;

@@ -36,21 +36,15 @@ export default function CourierMap({ couriers }: CourierMapProps) {
   // Samsun/Merkez koordinatları
   const samsunCenter: [number, number] = [41.2867, 36.3300]
 
-  // Konumu olan kuryeler (tümü)
-  const couriersWithLocation = couriers.filter(
-    courier => courier.last_lat && courier.last_lng
-  )
-  
-  // Konumu olan aktif kuryeler
-  const activeCouriersWithLocation = couriers.filter(
-    courier => courier.last_lat && courier.last_lng && courier.isActive
-  )
+  // HER ŞEYİ GÖSTER - FİLTRE YOK!
+  const allCouriers = couriers || []
 
-  console.log('CourierMap - Toplam kurye:', couriers.length)
-  console.log('CourierMap - Konumu olan kurye (tümü):', couriersWithLocation.length)
-  console.log('CourierMap - Konumu olan aktif kurye:', activeCouriersWithLocation.length)
-  console.log('CourierMap - Tüm kurye verileri:', couriers)
-  console.log('CourierMap - Konumu olan kurye verileri:', couriersWithLocation)
+  console.log('🗺️ CourierMap - Gelen tüm kuryeler:', allCouriers)
+  console.log('🗺️ CourierMap - Kurye sayısı:', allCouriers.length)
+  
+  allCouriers.forEach(courier => {
+    console.log(`🚴 ${courier.full_name}: lat=${courier.last_lat}, lng=${courier.last_lng}, active=${courier.isActive}`)
+  })
 
   if (!mounted) {
     return (
@@ -120,51 +114,60 @@ export default function CourierMap({ couriers }: CourierMapProps) {
           }
         `}</style>
         
-        {couriersWithLocation.map((courier) => (
-          <Marker
-            key={courier.id}
-            position={[courier.last_lat!, courier.last_lng!]}
-            icon={getMarkerIcon(courier)}
-          >
-            <Tooltip permanent direction="top" offset={[0, -45]} className="courier-tooltip">
-              <span className="font-bold text-sm">{courier.full_name}</span>
-            </Tooltip>
-            <Popup>
-              <div className="text-center p-2">
-                <div className="font-bold text-lg mb-1">🚴 {courier.full_name}</div>
-                <div className={`text-sm px-2 py-1 rounded-full ${
-                  !courier.isActive ? 'bg-gray-100 text-gray-700' :
-                  courier.status === 'idle' ? 'bg-green-100 text-green-700' :
-                  courier.status === 'assigned' ? 'bg-blue-100 text-blue-700' :
-                  courier.status === 'picking_up' ? 'bg-yellow-100 text-yellow-700' :
-                  courier.status === 'on_the_way' ? 'bg-red-100 text-red-700' :
-                  'bg-gray-100 text-gray-700'
-                }`}>
-                  {!courier.isActive ? '⚫ Pasif' :
-                   courier.status === 'idle' ? '🟢 Boşta' :
-                   courier.status === 'assigned' ? '🔵 Paket Bekliyor' :
-                   courier.status === 'picking_up' ? '🟡 Alıyor' :
-                   courier.status === 'on_the_way' ? '🔴 Teslimatta' : '⚫ Bilinmiyor'}
+        {/* HER KURYEYİ GÖSTER - FİLTRE YOK */}
+        {allCouriers.map((courier) => {
+          // Eğer konum yoksa Samsun merkezine koy
+          const lat = courier.last_lat || 41.2867
+          const lng = courier.last_lng || 36.3300
+          
+          return (
+            <Marker
+              key={courier.id}
+              position={[lat, lng]}
+              icon={getMarkerIcon(courier)}
+            >
+              <Tooltip permanent direction="top" offset={[0, -45]} className="courier-tooltip">
+                <span className="font-bold text-sm">{courier.full_name}</span>
+              </Tooltip>
+              <Popup>
+                <div className="text-center p-2">
+                  <div className="font-bold text-lg mb-1">🚴 {courier.full_name}</div>
+                  <div className={`text-sm px-2 py-1 rounded-full ${
+                    !courier.isActive ? 'bg-gray-100 text-gray-700' :
+                    courier.status === 'idle' ? 'bg-green-100 text-green-700' :
+                    courier.status === 'assigned' ? 'bg-blue-100 text-blue-700' :
+                    courier.status === 'picking_up' ? 'bg-yellow-100 text-yellow-700' :
+                    courier.status === 'on_the_way' ? 'bg-red-100 text-red-700' :
+                    'bg-gray-100 text-gray-700'
+                  }`}>
+                    {!courier.isActive ? '⚫ Pasif' :
+                     courier.status === 'idle' ? '🟢 Boşta' :
+                     courier.status === 'assigned' ? '🔵 Paket Bekliyor' :
+                     courier.status === 'picking_up' ? '🟡 Alıyor' :
+                     courier.status === 'on_the_way' ? '🔴 Teslimatta' : '⚫ Bilinmiyor'}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {lat.toFixed(6)}, {lng.toFixed(6)}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    Aktif: {courier.isActive ? 'Evet' : 'Hayır'}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {courier.last_lat ? 'Gerçek konum' : 'Varsayılan konum'}
+                  </div>
                 </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  {courier.last_lat?.toFixed(6)}, {courier.last_lng?.toFixed(6)}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  Aktif: {courier.isActive ? 'Evet' : 'Hayır'}
-                </div>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
+              </Popup>
+            </Marker>
+          )
+        })}
       </MapContainer>
       
       {/* Harita altında kurye bilgisi */}
       <div className="mt-2 text-center text-sm text-slate-600 dark:text-slate-400">
-        📍 Haritada {couriersWithLocation.length} kurye gösteriliyor 
-        ({activeCouriersWithLocation.length} aktif, {couriersWithLocation.length - activeCouriersWithLocation.length} pasif)
-        {couriersWithLocation.length === 0 && (
-          <div className="text-xs text-orange-600 mt-1">
-            ⚠️ Henüz konum paylaşan kurye yok - Kurye panelinden "Pakete Hazırım" butonuna basılması gerekiyor
+        📍 Haritada {allCouriers.length} kurye gösteriliyor (FİLTRE YOK - HEPSI GÖSTERİLİYOR)
+        {allCouriers.length === 0 && (
+          <div className="text-xs text-red-600 mt-1">
+            ❌ Couriers tablosunda veri yok! SQL'i çalıştırın.
           </div>
         )}
       </div>
