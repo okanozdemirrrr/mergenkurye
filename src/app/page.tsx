@@ -143,21 +143,34 @@ export default function Home() {
       
       // Her kurye için detaylı log
       data.forEach(courier => {
-        console.log(`🚴 [fetchCouriers] ${courier.full_name}: is_active=${courier.is_active}, status=${courier.status}, lat=${courier.last_lat}, lng=${courier.last_lng}`)
+        console.log(`🚴 [fetchCouriers] RAW: ${courier.full_name}`)
+        console.log(`   - id: ${courier.id}`)
+        console.log(`   - is_active: ${courier.is_active} (type: ${typeof courier.is_active})`)
+        console.log(`   - status: ${courier.status}`)
+        console.log(`   - last_lat: ${courier.last_lat} (type: ${typeof courier.last_lat})`)
+        console.log(`   - last_lng: ${courier.last_lng} (type: ${typeof courier.last_lng})`)
       })
       
       // is_active -> isActive mapping
-      const couriersData = data.map(courier => ({
-        id: courier.id,
-        full_name: courier.full_name,
-        isActive: Boolean(courier.is_active), // Kesinlikle boolean'a çevir
-        status: courier.is_active ? (courier.status || 'idle') : 'inactive', // Aktif değilse inactive
-        last_lat: courier.last_lat,
-        last_lng: courier.last_lng,
-        deliveryCount: 0,
-        todayDeliveryCount: 0,
-        activePackageCount: 0
-      }))
+      const couriersData = data.map(courier => {
+        const mappedCourier = {
+          id: courier.id,
+          full_name: courier.full_name,
+          isActive: Boolean(courier.is_active), // Kesinlikle boolean'a çevir
+          status: courier.is_active ? (courier.status || 'idle') : 'inactive', // Aktif değilse inactive
+          last_lat: courier.last_lat,
+          last_lng: courier.last_lng,
+          deliveryCount: 0,
+          todayDeliveryCount: 0,
+          activePackageCount: 0
+        }
+        
+        console.log(`🔄 [fetchCouriers] MAPPED: ${mappedCourier.full_name}`)
+        console.log(`   - isActive: ${mappedCourier.isActive} (type: ${typeof mappedCourier.isActive})`)
+        console.log(`   - status: ${mappedCourier.status}`)
+        
+        return mappedCourier
+      })
       
       console.log('✅ [fetchCouriers] Dönüştürülmüş kurye verileri:', couriersData)
       setCouriers(couriersData)

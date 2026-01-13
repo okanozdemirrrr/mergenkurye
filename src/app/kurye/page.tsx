@@ -156,6 +156,8 @@ export default function KuryePage() {
 
   const updateCourierStatus = async (newStatus: 'idle' | 'busy', newIsActive: boolean) => {
     const courierId = sessionStorage.getItem(LOGIN_COURIER_ID_KEY)
+    console.log('🔄 [updateCourierStatus] Başlıyor:', { courierId, newStatus, newIsActive })
+    
     if (!courierId) {
       setErrorMessage('Kurye ID bulunamadı')
       return
@@ -163,19 +165,56 @@ export default function KuryePage() {
 
     try {
       setStatusUpdating(true)
-      console.log('🔄 Durum güncelleniyor:', { courierId, newStatus, newIsActive }) // Debug için
       
-      const { error } = await supabase
+      // Önce mevcut durumu kontrol et
+      console.log('🔍 [updateCourierStatus] Güncelleme öncesi mevcut durum kontrol ediliyor...')
+      const { data: beforeData, error: beforeError } = await supabase
+        .from('couriers')
+        .select('id, full_name, is_active, status')
+        .eq('id', courierId)
+        .single()
+      
+      if (beforeError) {
+        console.error('❌ [updateCourierStatus] Mevcut durum okunamadı:', beforeError)
+      } else {
+        console.log('📊 [updateCourierStatus] Güncelleme öncesi durum:', beforeData)
+      }
+      
+      // Güncelleme yap
+      console.log('🔄 [updateCourierStatus] Güncelleme yapılıyor...', { 
+        table: 'couriers',
+        update: { status: newStatus, is_active: newIsActive },
+        where: { id: courierId }
+      })
+      
+      const { error, data } = await supabase
         .from('couriers')
         .update({ 
           status: newStatus,
           is_active: newIsActive
         })
         .eq('id', courierId)
+        .select() // Güncellenen veriyi geri al
 
       if (error) {
-        console.error('❌ Güncelleme hatası:', error)
+        console.error('❌ [updateCourierStatus] Güncelleme hatası:', error)
         throw error
+      }
+
+      console.log('✅ [updateCourierStatus] Güncelleme başarılı, dönen veri:', data)
+
+      // Güncelleme sonrası kontrol et
+      console.log('🔍 [updateCourierStatus] Güncelleme sonrası kontrol ediliyor...')
+      const { data: afterData, error: afterError } = await supabase
+        .from('couriers')
+        .select('id, full_name, is_active, status')
+        .eq('id', courierId)
+        .single()
+      
+      if (afterError) {
+        console.error('❌ [updateCourierStatus] Güncelleme sonrası durum okunamadı:', afterError)
+      } else {
+        console.log('📊 [updateCourierStatus] Güncelleme sonrası durum:', afterData)
       }
 
       // Başarılı güncelleme sonrası state'i güncelle
@@ -184,12 +223,8 @@ export default function KuryePage() {
       setSuccessMessage(newIsActive ? '✅ Aktif duruma geçildi!' : '❌ Pasif duruma geçildi!')
       setTimeout(() => setSuccessMessage(''), 2000)
       
-      // Güncelleme sonrası doğrulama için tekrar çek
-      console.log('🔄 Güncelleme sonrası doğrulama yapılıyor...')
-      setTimeout(async () => {
-        await fetchCourierStatus()
-      }, 1000)
     } catch (error: any) {
+      console.error('❌ [updateCourierStatus] Genel hata:', error)
       setErrorMessage('Durum güncellenemedi: ' + error.message)
       setTimeout(() => setErrorMessage(''), 3000)
     } finally {

@@ -34,3 +34,22 @@ SELECT id, username, full_name, is_active, status, last_lat, last_lng FROM couri
 
 -- Toplam sayıyı göster
 SELECT COUNT(*) as toplam_kurye FROM couriers;
+
+-- DEBUG: Kurye güncellemesini test et
+-- Ahmet Abi'yi pasif yap
+UPDATE couriers SET is_active = false, status = 'inactive' WHERE username = 'ahmet55';
+
+-- Sonucu kontrol et
+SELECT 'AHMET ABİ PASİF YAPILDI:' as info;
+SELECT id, username, full_name, is_active, status FROM couriers WHERE username = 'ahmet55';
+
+-- Ahmet Abi'yi tekrar aktif yap
+UPDATE couriers SET is_active = true, status = 'idle' WHERE username = 'ahmet55';
+
+-- Sonucu kontrol et
+SELECT 'AHMET ABİ AKTİF YAPILDI:' as info;
+SELECT id, username, full_name, is_active, status FROM couriers WHERE username = 'ahmet55';
+
+-- Tüm kuryeleri göster
+SELECT 'TÜM KURYELER:' as info;
+SELECT id, username, full_name, is_active, status, last_lat, last_lng FROM couriers ORDER BY full_name;

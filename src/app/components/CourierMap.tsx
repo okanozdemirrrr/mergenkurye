@@ -36,15 +36,28 @@ export default function CourierMap({ couriers }: CourierMapProps) {
   // Samsun/Merkez koordinatları
   const samsunCenter: [number, number] = [41.2867, 36.3300]
 
-  // HER ŞEYİ GÖSTER - FİLTRE YOK!
+  // HER ŞEYİ GÖSTER - SADECE KOORDINAT KONTROLÜ!
   const allCouriers = couriers || []
-
-  console.log('🗺️ CourierMap - Gelen tüm kuryeler:', allCouriers)
-  console.log('🗺️ CourierMap - Kurye sayısı:', allCouriers.length)
   
-  allCouriers.forEach(courier => {
-    console.log(`🚴 ${courier.full_name}: lat=${courier.last_lat}, lng=${courier.last_lng}, active=${courier.isActive}`)
+  // Koordinatları sayıya çevir ve kontrol et
+  const couriersWithValidCoords = allCouriers.filter(courier => {
+    const lat = Number(courier.last_lat)
+    const lng = Number(courier.last_lng)
+    
+    console.log(`🔍 [CourierMap] ${courier.full_name}:`)
+    console.log(`   - last_lat: ${courier.last_lat} -> ${lat} (valid: ${!isNaN(lat) && lat !== 0})`)
+    console.log(`   - last_lng: ${courier.last_lng} -> ${lng} (valid: ${!isNaN(lng) && lng !== 0})`)
+    
+    // Koordinat 0 değil ve sayı ise kabul et
+    const hasValidCoords = !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0
+    console.log(`   - hasValidCoords: ${hasValidCoords}`)
+    
+    return hasValidCoords
   })
+
+  console.log('🗺️ [CourierMap] Gelen tüm kuryeler:', allCouriers.length)
+  console.log('🗺️ [CourierMap] Geçerli koordinatlı kuryeler:', couriersWithValidCoords.length)
+  console.log('🗺️ [CourierMap] Geçerli koordinatlı kurye listesi:', couriersWithValidCoords)
 
   if (!mounted) {
     return (
@@ -114,11 +127,12 @@ export default function CourierMap({ couriers }: CourierMapProps) {
           }
         `}</style>
         
-        {/* HER KURYEYİ GÖSTER - FİLTRE YOK */}
-        {allCouriers.map((courier) => {
-          // Eğer konum yoksa Samsun merkezine koy
-          const lat = courier.last_lat || 41.2867
-          const lng = courier.last_lng || 36.3300
+        {/* SADECE GEÇERLİ KOORDİNATLI KURYELERİ GÖSTER */}
+        {couriersWithValidCoords.map((courier) => {
+          const lat = Number(courier.last_lat)
+          const lng = Number(courier.last_lng)
+          
+          console.log(`📍 [CourierMap] Marker çiziliyor: ${courier.full_name} -> [${lat}, ${lng}]`)
           
           return (
             <Marker
@@ -152,8 +166,55 @@ export default function CourierMap({ couriers }: CourierMapProps) {
                   <div className="text-xs text-gray-500 mt-1">
                     Aktif: {courier.isActive ? 'Evet' : 'Hayır'}
                   </div>
+                  <div className="text-xs text-blue-500 mt-1 font-bold">
+                    ✅ Gerçek konum
+                  </div>
+                </div>
+              </Popup>
+            </Marker>
+          )
+        })}
+        
+        {/* EĞER GEÇERLİ KOORDİNAT YOKSA VARSAYILAN KONUMDA GÖSTER */}
+        {allCouriers.filter(courier => {
+          const lat = Number(courier.last_lat)
+          const lng = Number(courier.last_lng)
+          return isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0
+        }).map((courier, index) => {
+          // Samsun merkezi + küçük offset
+          const defaultLat = 41.2867 + (index * 0.001)
+          const defaultLng = 36.3300 + (index * 0.001)
+          
+          console.log(`📍 [CourierMap] Varsayılan marker: ${courier.full_name} -> [${defaultLat}, ${defaultLng}]`)
+          
+          return (
+            <Marker
+              key={`default-${courier.id}`}
+              position={[defaultLat, defaultLng]}
+              icon={getMarkerIcon(courier)}
+            >
+              <Tooltip permanent direction="top" offset={[0, -45]} className="courier-tooltip">
+                <span className="font-bold text-sm">{courier.full_name} (Varsayılan)</span>
+              </Tooltip>
+              <Popup>
+                <div className="text-center p-2">
+                  <div className="font-bold text-lg mb-1">🚴 {courier.full_name}</div>
+                  <div className={`text-sm px-2 py-1 rounded-full ${
+                    !courier.isActive ? 'bg-gray-100 text-gray-700' :
+                    courier.status === 'idle' ? 'bg-green-100 text-green-700' :
+                    'bg-gray-100 text-gray-700'
+                  }`}>
+                    {!courier.isActive ? '⚫ Pasif' :
+                     courier.status === 'idle' ? '🟢 Boşta' : '⚫ Bilinmiyor'}
+                  </div>
                   <div className="text-xs text-gray-500 mt-1">
-                    {courier.last_lat ? 'Gerçek konum' : 'Varsayılan konum'}
+                    {defaultLat.toFixed(6)}, {defaultLng.toFixed(6)}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    Aktif: {courier.isActive ? 'Evet' : 'Hayır'}
+                  </div>
+                  <div className="text-xs text-orange-500 mt-1 font-bold">
+                    ⚠️ Varsayılan konum (Gerçek konum yok)
                   </div>
                 </div>
               </Popup>
@@ -164,7 +225,8 @@ export default function CourierMap({ couriers }: CourierMapProps) {
       
       {/* Harita altında kurye bilgisi */}
       <div className="mt-2 text-center text-sm text-slate-600 dark:text-slate-400">
-        📍 Haritada {allCouriers.length} kurye gösteriliyor (FİLTRE YOK - HEPSI GÖSTERİLİYOR)
+        📍 Haritada {allCouriers.length} kurye gösteriliyor 
+        ({couriersWithValidCoords.length} gerçek konum, {allCouriers.length - couriersWithValidCoords.length} varsayılan konum)
         {allCouriers.length === 0 && (
           <div className="text-xs text-red-600 mt-1">
             ❌ Couriers tablosunda veri yok! SQL'i çalıştırın.
