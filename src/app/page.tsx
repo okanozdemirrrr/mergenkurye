@@ -21,6 +21,9 @@ interface Package {
   restaurant?: Restaurant | null
   created_at?: string
   assigned_at?: string
+  picked_up_at?: string
+  delivered_at?: string
+  courier_name?: string
 }
 
 interface Courier {

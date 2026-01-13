@@ -24,8 +24,13 @@ interface Package {
   amount: number
   status: string
   content?: string
+  courier_id?: string | null
   payment_method?: 'cash' | 'card'
+  restaurant_id?: number | null
   created_at?: string
+  assigned_at?: string
+  picked_up_at?: string
+  delivered_at?: string
   restaurant?: Restaurant
 }
 
