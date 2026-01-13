@@ -9,6 +9,7 @@ interface Package {
   delivery_address: string
   amount: number
   status: string
+  content?: string
   courier_id?: string | null
   payment_method?: 'cash' | 'card' | null
   created_at?: string
