@@ -238,6 +238,8 @@ export default function Home() {
 
       if (profilesError) throw profilesError
 
+      console.log('🔍 Profiles tablosundan gelen kurye verileri:', profilesData)
+
       // Aktif paket durumlarını da kontrol et (meşgul olup olmadığını anlamak için)
       const { data: packagesData, error: packagesError } = await supabase
         .from('packages')
@@ -252,6 +254,8 @@ export default function Home() {
 
       // Profiles tablosundan gelen bilgileri işle
       profilesData?.forEach(profile => {
+        console.log(`🚴 ${profile.full_name}: is_active=${profile.is_active}, lat=${profile.last_lat}, lng=${profile.last_lng}`)
+        
         activeStatuses[profile.id] = profile.is_active || false
         
         if (!profile.is_active) {
