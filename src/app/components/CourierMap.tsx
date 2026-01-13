@@ -18,7 +18,7 @@ interface Courier {
   full_name?: string
   last_lat?: number | null
   last_lng?: number | null
-  is_active?: boolean
+  isActive?: boolean  // is_active yerine isActive kullanıyoruz
   status?: string
 }
 
