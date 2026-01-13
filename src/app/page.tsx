@@ -121,32 +121,37 @@ export default function Home() {
 
   const fetchCouriers = async () => {
     try {
-      console.log('🔍 Couriers tablosundan veri çekiliyor...')
+      console.log('🔍 [fetchCouriers] Couriers tablosundan veri çekiliyor...')
       
       const { data, error } = await supabase
         .from('couriers')
         .select('*')
-        .order('id', { ascending: true })
+        .order('full_name', { ascending: true })
 
       if (error) {
-        console.error('❌ Couriers tablosu hatası:', error)
+        console.error('❌ [fetchCouriers] Couriers tablosu hatası:', error)
         throw error
       }
       
-      console.log('✅ Couriers tablosundan gelen RAW veri:', data)
+      console.log('✅ [fetchCouriers] Couriers tablosundan gelen RAW veri:', data)
       
       if (!data || data.length === 0) {
-        console.warn('⚠️ Couriers tablosu boş!')
+        console.warn('⚠️ [fetchCouriers] Couriers tablosu boş!')
         setCouriers([])
         return
       }
+      
+      // Her kurye için detaylı log
+      data.forEach(courier => {
+        console.log(`🚴 [fetchCouriers] ${courier.full_name}: is_active=${courier.is_active}, status=${courier.status}, lat=${courier.last_lat}, lng=${courier.last_lng}`)
+      })
       
       // is_active -> isActive mapping
       const couriersData = data.map(courier => ({
         id: courier.id,
         full_name: courier.full_name,
-        isActive: courier.is_active || false,
-        status: courier.status || 'idle',
+        isActive: Boolean(courier.is_active), // Kesinlikle boolean'a çevir
+        status: courier.is_active ? (courier.status || 'idle') : 'inactive', // Aktif değilse inactive
         last_lat: courier.last_lat,
         last_lng: courier.last_lng,
         deliveryCount: 0,
@@ -154,7 +159,7 @@ export default function Home() {
         activePackageCount: 0
       }))
       
-      console.log('✅ Dönüştürülmüş kurye verileri:', couriersData)
+      console.log('✅ [fetchCouriers] Dönüştürülmüş kurye verileri:', couriersData)
       setCouriers(couriersData)
       
       // Paket sayılarını ayrı olarak çek
@@ -167,7 +172,7 @@ export default function Home() {
         ])
       }
     } catch (error: any) {
-      console.error('❌ Kuryeler yüklenirken hata:', error)
+      console.error('❌ [fetchCouriers] Kuryeler yüklenirken hata:', error)
       setErrorMessage('Kuryeler yüklenemedi: ' + error.message)
     }
   }
@@ -255,51 +260,7 @@ export default function Home() {
     }
   }
 
-  const fetchCourierStatuses = async (courierIds: string[]) => {
-    try {
-      // Sadece aktif paket durumlarını kontrol et
-      const { data: packagesData, error: packagesError } = await supabase
-        .from('packages')
-        .select('courier_id, status')
-        .in('courier_id', courierIds)
-        .neq('status', 'delivered')
-
-      if (packagesError) throw packagesError
-
-      // Kurye durumlarını hesapla (couriers tablosundan gelen verilerle)
-      setCouriers(prev => prev.map(c => {
-        console.log(`🚴 ${c.full_name}: is_active=${c.isActive}, lat=${c.last_lat}, lng=${c.last_lng}`)
-        
-        let finalStatus = 'inactive'
-        
-        if (!c.isActive) {
-          finalStatus = 'inactive' // Aktif değil
-        } else {
-          // Aktif ama paket durumuna bak
-          const courierPackages = packagesData?.filter(p => p.courier_id === c.id) || []
-          
-          if (courierPackages.length === 0) {
-            finalStatus = 'idle' // Boşta
-          } else if (courierPackages.some(p => p.status === 'on_the_way')) {
-            finalStatus = 'on_the_way' // Yolda
-          } else if (courierPackages.some(p => p.status === 'picking_up')) {
-            finalStatus = 'picking_up' // Alıyor
-          } else if (courierPackages.some(p => p.status === 'assigned')) {
-            finalStatus = 'assigned' // Atanmış
-          } else {
-            finalStatus = 'idle' // Boşta
-          }
-        }
-
-        return {
-          ...c, 
-          status: finalStatus
-        }
-      }))
-    } catch (error: any) { 
-      console.error('Kurye durumları alınırken hata:', error) 
-    }
-  }
+  // fetchCourierStatuses fonksiyonu kaldırıldı - artık fetchCouriers'da tüm bilgiler geliyor
       }))
     } catch (error: any) { 
       console.error('Kurye durumları alınırken hata:', error) 
@@ -332,26 +293,18 @@ export default function Home() {
       fetchDeliveredPackages();
     }
 
-    // 30 saniyede bir güncelleme - packages ve couriers birlikte
+    // 10 saniyede bir HEPSINI güncelle (daha sık refresh)
     const interval = setInterval(async () => { 
+      console.log('🔄 10 saniyede bir otomatik refresh...')
       await fetchPackages(); 
-      await fetchCouriers(); // Kurye sayıları da packages ile birlikte güncellenir
+      await fetchCouriers(); // Kurye durumları da dahil
       if (activeTab === 'history') {
         await fetchDeliveredPackages();
       }
-    }, 30000)
-
-    // Harita için 10 saniyede bir konum güncelleme
-    const mapInterval = setInterval(async () => {
-      if (activeTab === 'live') {
-        // Sadece kurye verilerini yenile
-        await fetchCouriers()
-      }
-    }, 10000)
+    }, 10000) // 10 saniye
 
     return () => {
       clearInterval(interval)
-      clearInterval(mapInterval)
     }
   }, [restaurantFilter, activeTab])
 

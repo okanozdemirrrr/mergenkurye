@@ -184,8 +184,11 @@ export default function KuryePage() {
       setSuccessMessage(newIsActive ? '✅ Aktif duruma geçildi!' : '❌ Pasif duruma geçildi!')
       setTimeout(() => setSuccessMessage(''), 2000)
       
-      // Durumu tekrar çek (doğrulama için)
-      setTimeout(() => fetchCourierStatus(), 1000)
+      // Güncelleme sonrası doğrulama için tekrar çek
+      console.log('🔄 Güncelleme sonrası doğrulama yapılıyor...')
+      setTimeout(async () => {
+        await fetchCourierStatus()
+      }, 1000)
     } catch (error: any) {
       setErrorMessage('Durum güncellenemedi: ' + error.message)
       setTimeout(() => setErrorMessage(''), 3000)
