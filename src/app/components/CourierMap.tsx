@@ -48,15 +48,15 @@ export default function CourierMap({ couriers }: CourierMapProps) {
     status: c.status
   })))
   
-  // Koordinatları kontrol et - Number() ile zorlayarak
+  // Koordinatları kontrol et - 0 değilse göster
   const couriersWithCoords = allCouriers.filter(courier => {
     // Önce Number()'a çevir
     const lat = Number(courier.last_lat)
     const lng = Number(courier.last_lng)
     
-    // NaN, null, undefined, 0 kontrolü
-    const hasValidLat = !isNaN(lat) && lat !== 0 && courier.last_lat !== null && courier.last_lat !== undefined
-    const hasValidLng = !isNaN(lng) && lng !== 0 && courier.last_lng !== null && courier.last_lng !== undefined
+    // Sadece 0 değilse ve NaN değilse kabul et
+    const hasValidLat = !isNaN(lat) && lat !== 0
+    const hasValidLng = !isNaN(lng) && lng !== 0
     
     console.log(`🔍 [CourierMap] ${courier.full_name}:`)
     console.log(`   - RAW last_lat: ${courier.last_lat} (type: ${typeof courier.last_lat})`)

@@ -146,7 +146,7 @@ export default function Home() {
       data.forEach(courier => {
         console.log(`🚴 [fetchCouriers] RAW: ${courier.full_name}`)
         console.log(`   - id: ${courier.id}`)
-        console.log(`   - is_active: ${courier.is_active} (type: ${typeof courier.is_active})`)
+        console.log(`   - is_active: ${courier.is_active} (type: ${typeof courier.is_active}) (strict: ${courier.is_active === true})`)
         console.log(`   - status: ${courier.status}`)
         console.log(`   - last_lat: ${courier.last_lat} (type: ${typeof courier.last_lat})`)
         console.log(`   - last_lng: ${courier.last_lng} (type: ${typeof courier.last_lng})`)
@@ -157,7 +157,7 @@ export default function Home() {
         const mappedCourier = {
           id: courier.id,
           full_name: courier.full_name,
-          isActive: Boolean(courier.is_active), // Kesinlikle boolean'a çevir
+          isActive: courier.is_active === true, // Kesin eşitlik kontrolü
           status: courier.status || 'idle', // Supabase'den gelen status'u direkt kullan
           last_lat: courier.last_lat ? Number(courier.last_lat) : null, // Sayıya çevir
           last_lng: courier.last_lng ? Number(courier.last_lng) : null, // Sayıya çevir
