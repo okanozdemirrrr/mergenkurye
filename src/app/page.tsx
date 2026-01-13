@@ -2,6 +2,17 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from './lib/supabase'
+import dynamic from 'next/dynamic'
+
+// Haritayı SSR olmadan yükle (Leaflet için gerekli)
+const CourierMap = dynamic(() => import('./components/CourierMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-96 bg-slate-100 dark:bg-slate-700 rounded-2xl flex items-center justify-center">
+      <div className="text-slate-500">🗺️ Harita yükleniyor...</div>
+    </div>
+  )
+})
 
 interface Restaurant {
   id: number
@@ -33,6 +44,8 @@ interface Courier {
   todayDeliveryCount?: number
   isActive?: boolean
   activePackageCount?: number
+  last_lat?: number | null
+  last_lng?: number | null
   status?: 'idle' | 'picking_up' | 'on_the_way' | 'assigned' | 'inactive'
 }
 
@@ -215,13 +228,12 @@ export default function Home() {
     }
   }
 
-  // YENİLENMİŞ DURUM MANTIĞI - Profiles tablosundan çek
   const fetchCourierStatuses = async (courierIds: string[]) => {
     try {
-      // Profiles tablosundan is_active ve status bilgilerini çek
+      // Profiles tablosundan is_active, status ve konum bilgilerini çek
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, is_active, status')
+        .select('id, is_active, status, last_lat, last_lng, full_name')
         .in('id', courierIds)
 
       if (profilesError) throw profilesError
@@ -262,11 +274,16 @@ export default function Home() {
         }
       })
 
-      setCouriers(prev => prev.map(c => ({ 
-        ...c, 
-        status: statuses[c.id] || 'inactive',
-        isActive: activeStatuses[c.id] || false
-      })))
+      setCouriers(prev => prev.map(c => {
+        const profile = profilesData?.find(p => p.id === c.id)
+        return {
+          ...c, 
+          status: statuses[c.id] || 'inactive',
+          isActive: activeStatuses[c.id] || false,
+          last_lat: profile?.last_lat || null,
+          last_lng: profile?.last_lng || null
+        }
+      }))
     } catch (error: any) { 
       console.error('Kurye durumları alınırken hata:', error) 
     }
@@ -307,7 +324,20 @@ export default function Home() {
       }
     }, 30000)
 
-    return () => clearInterval(interval)
+    // Harita için 10 saniyede bir konum güncelleme
+    const mapInterval = setInterval(async () => {
+      if (activeTab === 'live') {
+        const ids = couriers.map(c => c.id)
+        if (ids.length > 0) {
+          await fetchCourierStatuses(ids)
+        }
+      }
+    }, 10000)
+
+    return () => {
+      clearInterval(interval)
+      clearInterval(mapInterval)
+    }
   }, [restaurantFilter, activeTab])
 
   const fetchRestaurants = async () => {
@@ -485,9 +515,34 @@ export default function Home() {
   // Tab Bileşenleri
   function LiveTrackingTab() {
     return (
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <div className="lg:col-span-3 bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
-          <h2 className="text-2xl font-bold mb-6">📦 Canlı Sipariş Takibi</h2>
+      <div className="space-y-6">
+        {/* Harita Bölümü */}
+        <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
+          <h2 className="text-2xl font-bold mb-4">🗺️ Kurye Haritası</h2>
+          <CourierMap couriers={couriers} />
+          <div className="mt-4 flex flex-wrap gap-2 text-sm">
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+              <span>Boşta</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+              <span>Paket Bekliyor</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+              <span>Alıyor</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+              <span>Teslimatta</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div className="lg:col-span-3 bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
+            <h2 className="text-2xl font-bold mb-6">📦 Canlı Sipariş Takibi</h2>
           
           {/* Sipariş Kartları */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -641,6 +696,7 @@ export default function Home() {
               ))}
             </div>
           </div>
+        </div>
         </div>
       </div>
     )
