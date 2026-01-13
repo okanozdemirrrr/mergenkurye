@@ -46,6 +46,7 @@ interface Courier {
   activePackageCount?: number
   last_lat?: number | null
   last_lng?: number | null
+  last_update?: string
   status?: 'idle' | 'picking_up' | 'on_the_way' | 'assigned' | 'inactive'
 }
 
@@ -161,6 +162,7 @@ export default function Home() {
           status: courier.status || 'idle', // Supabase'den gelen status'u direkt kullan
           last_lat: courier.last_lat ? Number(courier.last_lat) : null, // Sayıya çevir
           last_lng: courier.last_lng ? Number(courier.last_lng) : null, // Sayıya çevir
+          last_update: courier.last_update, // Timestamp ekle
           deliveryCount: 0, // Packages tablosundan hesaplanacak
           todayDeliveryCount: 0, // Packages tablosundan hesaplanacak
           activePackageCount: 0 // Packages tablosundan hesaplanacak

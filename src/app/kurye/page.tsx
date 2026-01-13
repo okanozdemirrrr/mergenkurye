@@ -191,7 +191,8 @@ export default function KuryePage() {
         .from('couriers')
         .update({ 
           status: newStatus,
-          is_active: newIsActive
+          is_active: newIsActive,
+          last_update: new Date().toISOString() // Timestamp güncelle
         })
         .eq('id', courierId)
         .select() // Güncellenen veriyi geri al
@@ -247,14 +248,15 @@ export default function KuryePage() {
         .from('couriers')
         .update({ 
           last_lat: lat,
-          last_lng: lng
+          last_lng: lng,
+          last_update: new Date().toISOString() // Timestamp güncelle
         })
         .eq('id', courierId)
 
       if (error) {
         console.error('❌ Konum güncelleme hatası:', error)
       } else {
-        console.log('✅ Konum başarıyla güncellendi:', { courierId, lat, lng })
+        console.log('✅ Konum ve timestamp başarıyla güncellendi:', { courierId, lat, lng, timestamp: new Date().toISOString() })
       }
     } catch (error: any) {
       console.error('❌ Konum güncelleme hatası:', error)

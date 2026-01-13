@@ -20,6 +20,7 @@ interface Courier {
   last_lng?: number | null
   isActive?: boolean  // is_active yerine isActive kullanıyoruz
   status?: string
+  last_update?: string
 }
 
 interface CourierMapProps {
@@ -48,15 +49,33 @@ export default function CourierMap({ couriers }: CourierMapProps) {
     status: c.status
   })))
   
-  // Koordinatları kontrol et - 0 değilse göster
+  // Koordinatları kontrol et - 0 değilse ve 1 dakikadır canlıysa göster
   const couriersWithCoords = allCouriers.filter(courier => {
     // Önce Number()'a çevir
     const lat = Number(courier.last_lat)
     const lng = Number(courier.last_lng)
     
-    // Sadece 0 değilse ve NaN değilse kabul et
+    // Koordinat kontrolü
     const hasValidLat = !isNaN(lat) && lat !== 0
     const hasValidLng = !isNaN(lng) && lng !== 0
+    
+    // Zaman kontrolü - 1 dakikadır sinyal var mı?
+    let isRecent = true
+    if (courier.last_update) {
+      const lastUpdate = new Date(courier.last_update)
+      const now = new Date()
+      const diffMinutes = (now.getTime() - lastUpdate.getTime()) / (1000 * 60)
+      isRecent = diffMinutes <= 1 // 1 dakika içinde güncelleme var mı?
+      
+      console.log(`⏰ [CourierMap] ${courier.full_name} zaman kontrolü:`)
+      console.log(`   - last_update: ${courier.last_update}`)
+      console.log(`   - şimdi: ${now.toISOString()}`)
+      console.log(`   - fark (dakika): ${diffMinutes.toFixed(2)}`)
+      console.log(`   - canlı mı: ${isRecent ? 'EVET ✅' : 'HAYALET ❌'}`)
+    } else {
+      console.log(`⏰ [CourierMap] ${courier.full_name}: last_update yok, hayalet sayılıyor`)
+      isRecent = false
+    }
     
     console.log(`🔍 [CourierMap] ${courier.full_name}:`)
     console.log(`   - RAW last_lat: ${courier.last_lat} (type: ${typeof courier.last_lat})`)
@@ -65,9 +84,10 @@ export default function CourierMap({ couriers }: CourierMapProps) {
     console.log(`   - Number last_lng: ${lng} -> Valid: ${hasValidLng}`)
     console.log(`   - isActive: ${courier.isActive}`)
     console.log(`   - status: ${courier.status}`)
-    console.log(`   - SONUÇ: ${hasValidLat && hasValidLng ? 'GEÇERLİ KONUM ✅' : 'GEÇERSİZ KONUM ❌'}`)
+    console.log(`   - isRecent: ${isRecent}`)
+    console.log(`   - SONUÇ: ${hasValidLat && hasValidLng && isRecent ? 'HARITADA GÖSTER ✅' : 'HARITADA GÖSTERME ❌'}`)
     
-    return hasValidLat && hasValidLng
+    return hasValidLat && hasValidLng && isRecent
   })
 
   console.log('🗺️ [CourierMap] Koordinatlı kuryeler:', couriersWithCoords.length)
@@ -241,8 +261,8 @@ export default function CourierMap({ couriers }: CourierMapProps) {
       
       {/* Harita altında kurye bilgisi */}
       <div className="mt-2 text-center text-sm text-slate-600 dark:text-slate-400">
-        📍 Haritada {allCouriers.length} kurye gösteriliyor 
-        ({couriersWithCoords.length} gerçek konum, {allCouriers.length - couriersWithCoords.length} varsayılan konum)
+        📍 Haritada {couriersWithCoords.length} canlı kurye gösteriliyor 
+        (Toplam: {allCouriers.length}, Hayalet: {allCouriers.length - couriersWithCoords.length})
         {allCouriers.length === 0 && (
           <div className="text-xs text-red-600 mt-1">
             ❌ Couriers tablosunda veri yok! SQL'i çalıştırın.
@@ -250,13 +270,16 @@ export default function CourierMap({ couriers }: CourierMapProps) {
         )}
         {allCouriers.length > 0 && couriersWithCoords.length === 0 && (
           <div className="text-xs text-orange-600 mt-1">
-            ⚠️ Hiçbir kuryenin gerçek konumu yok! Kurye panelinden konum paylaşımı yapılmalı.
+            ⚠️ Hiçbir kurye canlı değil! 1 dakikadır sinyal yok veya konum paylaşımı kapalı.
           </div>
         )}
         <div className="text-xs text-slate-500 mt-1">
           Aktif kuryeler: {allCouriers.filter(c => c.isActive).length} • 
-          Konumu paylaşan: {couriersWithCoords.length} • 
+          Canlı kuryeler: {couriersWithCoords.length} • 
           Son güncelleme: {new Date().toLocaleTimeString('tr-TR')}
+        </div>
+        <div className="text-xs text-orange-600 mt-1">
+          ⚠️ 1 dakikadır sinyal vermeyen kuryeler haritadan kaldırılır
         </div>
       </div>
     </div>
