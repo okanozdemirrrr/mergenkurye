@@ -1,6 +1,19 @@
 -- Debug için couriers tablosunu kontrol et
 -- Bu SQL'i Supabase SQL Editor'da çalıştır
 
+-- Önce couriers tablosunu kontrol et
+SELECT * FROM couriers LIMIT 1;
+
+-- is_active kolonunu ekle (eğer yoksa)
+ALTER TABLE couriers ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT false;
+
+-- status kolonunu ekle (eğer yoksa)
+ALTER TABLE couriers ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'idle' CHECK (status IN ('idle', 'busy', 'picking_up', 'on_the_way', 'assigned', 'inactive'));
+
+-- last_lat ve last_lng kolonlarını ekle (eğer yoksa)
+ALTER TABLE couriers ADD COLUMN IF NOT EXISTS last_lat DECIMAL(10, 8);
+ALTER TABLE couriers ADD COLUMN IF NOT EXISTS last_lng DECIMAL(11, 8);
+
 -- Couriers tablosunu kontrol et
 SELECT * FROM couriers;
 

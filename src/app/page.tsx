@@ -127,9 +127,16 @@ export default function Home() {
         .order('id', { ascending: true })
 
       if (error) throw error
-      const couriersData = data || []
       
-      console.log('🔍 fetchCouriers - Couriers tablosundan gelen ham veri:', couriersData)
+      // is_active -> isActive mapping
+      const couriersData = (data || []).map(courier => ({
+        ...courier,
+        isActive: courier.is_active,
+        is_active: undefined // Temizle
+      }))
+      
+      console.log('🔍 fetchCouriers - Couriers tablosundan gelen ham veri:', data)
+      console.log('🔍 fetchCouriers - Dönüştürülmüş veri:', couriersData)
       
       setCouriers(couriersData)
       

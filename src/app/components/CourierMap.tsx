@@ -36,13 +36,19 @@ export default function CourierMap({ couriers }: CourierMapProps) {
   // Samsun/Merkez koordinatları
   const samsunCenter: [number, number] = [41.2867, 36.3300]
 
-  // Konumu olan kuryeler (status filtresi kaldırıldı)
+  // Konumu olan kuryeler (tümü)
   const couriersWithLocation = couriers.filter(
     courier => courier.last_lat && courier.last_lng
   )
+  
+  // Konumu olan aktif kuryeler
+  const activeCouriersWithLocation = couriers.filter(
+    courier => courier.last_lat && courier.last_lng && courier.isActive
+  )
 
   console.log('CourierMap - Toplam kurye:', couriers.length)
-  console.log('CourierMap - Konumu olan kurye:', couriersWithLocation.length)
+  console.log('CourierMap - Konumu olan kurye (tümü):', couriersWithLocation.length)
+  console.log('CourierMap - Konumu olan aktif kurye:', activeCouriersWithLocation.length)
   console.log('CourierMap - Tüm kurye verileri:', couriers)
   console.log('CourierMap - Konumu olan kurye verileri:', couriersWithLocation)
 
@@ -58,7 +64,7 @@ export default function CourierMap({ couriers }: CourierMapProps) {
   const getMarkerIcon = (courier: Courier) => {
     let color = '#6b7280' // Varsayılan gri
     
-    if (!courier.is_active) {
+    if (!courier.isActive) {
       color = '#9ca3af' // Pasif kuryeler için açık gri
     } else if (courier.status === 'idle') {
       color = '#10b981' // Yeşil - Boşta
@@ -127,14 +133,14 @@ export default function CourierMap({ couriers }: CourierMapProps) {
               <div className="text-center p-2">
                 <div className="font-bold text-lg mb-1">🚴 {courier.full_name}</div>
                 <div className={`text-sm px-2 py-1 rounded-full ${
-                  !courier.is_active ? 'bg-gray-100 text-gray-700' :
+                  !courier.isActive ? 'bg-gray-100 text-gray-700' :
                   courier.status === 'idle' ? 'bg-green-100 text-green-700' :
                   courier.status === 'assigned' ? 'bg-blue-100 text-blue-700' :
                   courier.status === 'picking_up' ? 'bg-yellow-100 text-yellow-700' :
                   courier.status === 'on_the_way' ? 'bg-red-100 text-red-700' :
                   'bg-gray-100 text-gray-700'
                 }`}>
-                  {!courier.is_active ? '⚫ Pasif' :
+                  {!courier.isActive ? '⚫ Pasif' :
                    courier.status === 'idle' ? '🟢 Boşta' :
                    courier.status === 'assigned' ? '🔵 Paket Bekliyor' :
                    courier.status === 'picking_up' ? '🟡 Alıyor' :
@@ -144,7 +150,7 @@ export default function CourierMap({ couriers }: CourierMapProps) {
                   {courier.last_lat?.toFixed(6)}, {courier.last_lng?.toFixed(6)}
                 </div>
                 <div className="text-xs text-gray-500 mt-1">
-                  Aktif: {courier.is_active ? 'Evet' : 'Hayır'}
+                  Aktif: {courier.isActive ? 'Evet' : 'Hayır'}
                 </div>
               </div>
             </Popup>
@@ -154,7 +160,8 @@ export default function CourierMap({ couriers }: CourierMapProps) {
       
       {/* Harita altında kurye bilgisi */}
       <div className="mt-2 text-center text-sm text-slate-600 dark:text-slate-400">
-        📍 Haritada {couriersWithLocation.length} kurye gösteriliyor
+        📍 Haritada {couriersWithLocation.length} kurye gösteriliyor 
+        ({activeCouriersWithLocation.length} aktif, {couriersWithLocation.length - activeCouriersWithLocation.length} pasif)
         {couriersWithLocation.length === 0 && (
           <div className="text-xs text-orange-600 mt-1">
             ⚠️ Henüz konum paylaşan kurye yok - Kurye panelinden "Pakete Hazırım" butonuna basılması gerekiyor
