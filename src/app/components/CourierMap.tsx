@@ -50,17 +50,22 @@ export default function CourierMap({ couriers }: CourierMapProps) {
   
   // Koordinatları kontrol et - Number() ile zorlayarak
   const couriersWithCoords = allCouriers.filter(courier => {
+    // Önce Number()'a çevir
     const lat = Number(courier.last_lat)
     const lng = Number(courier.last_lng)
     
-    const hasValidLat = !isNaN(lat) && lat !== 0 && lat !== null
-    const hasValidLng = !isNaN(lng) && lng !== 0 && lng !== null
+    // NaN, null, undefined, 0 kontrolü
+    const hasValidLat = !isNaN(lat) && lat !== 0 && courier.last_lat !== null && courier.last_lat !== undefined
+    const hasValidLng = !isNaN(lng) && lng !== 0 && courier.last_lng !== null && courier.last_lng !== undefined
     
     console.log(`🔍 [CourierMap] ${courier.full_name}:`)
-    console.log(`   - last_lat: ${courier.last_lat} -> Number: ${lat} -> Valid: ${hasValidLat}`)
-    console.log(`   - last_lng: ${courier.last_lng} -> Number: ${lng} -> Valid: ${hasValidLng}`)
+    console.log(`   - RAW last_lat: ${courier.last_lat} (type: ${typeof courier.last_lat})`)
+    console.log(`   - RAW last_lng: ${courier.last_lng} (type: ${typeof courier.last_lng})`)
+    console.log(`   - Number last_lat: ${lat} -> Valid: ${hasValidLat}`)
+    console.log(`   - Number last_lng: ${lng} -> Valid: ${hasValidLng}`)
     console.log(`   - isActive: ${courier.isActive}`)
     console.log(`   - status: ${courier.status}`)
+    console.log(`   - SONUÇ: ${hasValidLat && hasValidLng ? 'GEÇERLİ KONUM ✅' : 'GEÇERSİZ KONUM ❌'}`)
     
     return hasValidLat && hasValidLng
   })

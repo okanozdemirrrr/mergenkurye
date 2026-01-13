@@ -134,6 +134,7 @@ export default function Home() {
       }
       
       console.log('✅ [fetchCouriers] Couriers tablosundan gelen RAW veri:', data)
+      console.log('🔍 [fetchCouriers] Gelen Kuryeler:', data) // Yeni eklenen log
       
       if (!data || data.length === 0) {
         console.warn('⚠️ [fetchCouriers] Couriers tablosu boş!')
@@ -175,6 +176,7 @@ export default function Home() {
       })
       
       console.log('✅ [fetchCouriers] Dönüştürülmüş kurye verileri:', couriersData)
+      console.log('📊 [fetchCouriers] İsActive durumları:', couriersData.map(c => ({ name: c.full_name, isActive: c.isActive })))
       setCouriers(couriersData)
       
       // Paket sayılarını ayrı olarak çek
@@ -704,12 +706,9 @@ export default function Home() {
                       </span>
                     </div>
                   </div>
-                  {/* DİNAMİK ROZETLER - Couriers tablosundan gelen durumlar */}
+                  {/* DİNAMİK ROZETLER - SADECE is_active kolonuna bak */}
                   {!c.isActive && <span className="text-[10px] bg-gray-100 text-gray-700 px-2 py-1 rounded-md font-bold">⚫ AKTİF DEĞİL</span>}
-                  {c.isActive && c.status === 'idle' && <span className="text-[10px] bg-green-100 text-green-700 px-2 py-1 rounded-md font-bold">🟢 BOŞTA</span>}
-                  {c.status === 'assigned' && <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded-md font-bold">🔵 PAKETİ BEKLİYOR</span>}
-                  {c.status === 'picking_up' && <span className="text-[10px] bg-yellow-100 text-yellow-700 px-2 py-1 rounded-md font-bold">🟡 KURYEDE (ALMAYA GİDİYOR)</span>}
-                  {c.status === 'on_the_way' && <span className="text-[10px] bg-red-100 text-red-700 px-2 py-1 rounded-md font-bold">🔴 TESLİMATTA (YOLDA)</span>}
+                  {c.isActive && <span className="text-[10px] bg-green-100 text-green-700 px-2 py-1 rounded-md font-bold">🟢 AKTİF</span>}
                 </div>
               ))}
             </div>
@@ -832,16 +831,9 @@ export default function Home() {
                     <div className="flex justify-between">
                       <span className="text-slate-600 dark:text-slate-400">Durum:</span>
                       <span className={`font-medium ${
-                        !c.isActive ? 'text-gray-600' :
-                        c.status === 'idle' ? 'text-green-600' :
-                        c.status === 'assigned' ? 'text-blue-600' :
-                        c.status === 'picking_up' ? 'text-yellow-600' :
-                        'text-red-600'
+                        c.isActive ? 'text-green-600' : 'text-red-600'
                       }`}>
-                        {!c.isActive ? 'Aktif Değil' :
-                         c.status === 'idle' ? 'Boşta' :
-                         c.status === 'assigned' ? 'Paket Bekliyor' :
-                         c.status === 'picking_up' ? 'Alıyor' : 'Teslimatta'}
+                        {c.isActive ? 'Aktif' : 'Aktif Değil'}
                       </span>
                     </div>
                     
