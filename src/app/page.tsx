@@ -537,11 +537,19 @@ export default function Home() {
               </span></div>
             </div>
             <div className="mt-2 text-xs text-slate-600 dark:text-slate-400">
-              Son güncelleme: {new Date().toLocaleTimeString('tr-TR')} (10 saniyede bir otomatik)
-            </div>
-          </div>
-          
-          <CourierMap couriers={couriers} />
+  Son güncelleme: {new Date().toLocaleTimeString('tr-TR')} (10 saniyede bir otomatik)
+</div>
+</div>
+
+{/* BURAYI EKLEDİK: Süzgeç burada çalışıyor */}
+{(() => {
+  const visibleCouriers = couriers.filter(c => 
+    c.isActive === true && 
+    c.last_lat && 
+    Number(c.last_lat) !== 0
+  );
+  return <CourierMap couriers={visibleCouriers} />;
+})()}
           <div className="mt-4 flex flex-wrap gap-2 text-sm">
             <div className="flex items-center gap-1">
               <div className="w-3 h-3 bg-green-500 rounded-full"></div>
