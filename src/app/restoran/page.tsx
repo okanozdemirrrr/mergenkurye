@@ -268,8 +268,8 @@ export default function RestoranPage() {
               alt="Logo" 
               className="w-56 h-56 mx-auto mb-4"
             />
-            <h1 className="text-4xl font-black tracking-tight bg-gradient-to-r from-orange-500 to-yellow-500 bg-clip-text text-transparent mb-2">
-              Restoran Girişi
+            <h1 className="text-4xl font-black tracking-wider bg-gradient-to-r from-cyan-400 to-blue-900 bg-clip-text text-transparent mb-2" style={{fontFamily: 'Orbitron, sans-serif'}}>
+              RESTORAN GİRİŞİ
             </h1>
             <p className="text-slate-600 dark:text-slate-400">Hesabınıza giriş yapın</p>
           </div>
@@ -337,8 +337,8 @@ export default function RestoranPage() {
                     alt="Logo" 
                     className="w-56 h-56 mr-3"
                   />
-                  <h1 className="text-3xl font-black tracking-tight bg-gradient-to-r from-orange-500 to-yellow-500 bg-clip-text text-transparent">
-                    {selectedRestaurant?.name}
+                  <h1 className="text-3xl font-black tracking-wider bg-gradient-to-r from-cyan-400 to-blue-900 bg-clip-text text-transparent" style={{fontFamily: 'Orbitron, sans-serif'}}>
+                    {selectedRestaurant?.name.toUpperCase()}
                   </h1>
                 </div>
                 <p className="text-slate-600 dark:text-slate-400">
