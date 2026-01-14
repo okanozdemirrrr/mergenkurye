@@ -266,7 +266,7 @@ export default function RestoranPage() {
             <img 
               src="/logo.png" 
               alt="Logo" 
-              className="w-44 h-44 mx-auto mb-4"
+              className="w-56 h-56 mx-auto mb-4"
             />
             <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Restoran Girişi</h1>
             <p className="text-slate-600 dark:text-slate-400">Hesabınıza giriş yapın</p>
@@ -333,7 +333,7 @@ export default function RestoranPage() {
                   <img 
                     src="/logo.png" 
                     alt="Logo" 
-                    className="w-44 h-44 mr-3"
+                    className="w-56 h-56 mr-3"
                   />
                   <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
                     🍽️ {selectedRestaurant?.name}
