@@ -289,20 +289,42 @@ export default function Home() {
   // fetchCourierStatuses fonksiyonu kaldırıldı - artık fetchCouriers'da tüm bilgiler geliyor
 
   const handleAssignCourier = async (packageId: number) => {
+    console.log('🚀 [handleAssignCourier] Başlıyor:', packageId);
     const courierId = selectedCouriers[packageId]
-    if (!courierId) return
+    console.log('   - Seçili Kurye ID:', courierId);
+    console.log('   - selectedCouriers state:', selectedCouriers);
+    
+    if (!courierId) {
+      console.error('❌ Kurye ID yok, işlem iptal');
+      return;
+    }
+    
     try {
       setAssigningIds(prev => new Set(prev).add(packageId))
+      console.log('   - Supabase güncelleme başlıyor...');
+      
       const { error } = await supabase.from('packages').update({
         courier_id: courierId,
         status: 'assigned',
         assigned_at: new Date().toISOString()
       }).eq('id', packageId)
-      if (error) throw error
+      
+      if (error) {
+        console.error('❌ Supabase hatası:', error);
+        throw error;
+      }
+      
+      console.log('✅ Kurye başarıyla atandı!');
       setSuccessMessage('Kurye atandı!')
-      fetchPackages(); fetchCouriers();
-    } catch (error: any) { setErrorMessage(error.message) }
-    finally { setAssigningIds(prev => { const n = new Set(prev); n.delete(packageId); return n }) }
+      fetchPackages(); 
+      fetchCouriers();
+    } catch (error: any) { 
+      console.error('❌ Hata:', error);
+      setErrorMessage(error.message);
+    }
+    finally { 
+      setAssigningIds(prev => { const n = new Set(prev); n.delete(packageId); return n });
+    }
   }
 
   useEffect(() => {
@@ -690,7 +712,13 @@ export default function Home() {
                         }
                       </select>
                       <button 
-                        onClick={() => handleAssignCourier(pkg.id)}
+                        onClick={() => {
+                          console.log('🔘 Kurye Ata butonuna tıklandı');
+                          console.log('   - Package ID:', pkg.id);
+                          console.log('   - Seçili Kurye ID:', selectedCouriers[pkg.id]);
+                          console.log('   - Atanıyor mu:', assigningIds.has(pkg.id));
+                          handleAssignCourier(pkg.id);
+                        }}
                         disabled={!selectedCouriers[pkg.id] || assigningIds.has(pkg.id)}
                         className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-3 py-1.5 rounded text-xs font-semibold transition-all disabled:cursor-not-allowed"
                       >
