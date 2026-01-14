@@ -324,15 +324,15 @@ export default function Home() {
       fetchDeliveredPackages();
     }
 
-    // 10 saniyede bir HEPSINI güncelle (daha sık refresh)
+    // 30 saniyede bir HEPSINI güncelle
     const interval = setInterval(async () => { 
-      console.log('🔄 10 saniyede bir otomatik refresh...')
+      console.log('🔄 30 saniyede bir otomatik refresh...')
       await fetchPackages(); 
       await fetchCouriers(); // Kurye durumları da dahil
       if (activeTab === 'history') {
         await fetchDeliveredPackages();
       }
-    }, 10000) // 10 saniye
+    }, 30000) // 30 saniye
 
     return () => {
       clearInterval(interval)

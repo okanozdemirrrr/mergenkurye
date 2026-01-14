@@ -18,7 +18,7 @@ interface Courier {
   full_name?: string
   last_lat?: number | null
   last_lng?: number | null
-  isActive?: boolean  // is_active yerine isActive kullanıyoruz
+  is_active?: boolean  // Veritabanındaki hali
   status?: string
   last_update?: string
 }
@@ -45,7 +45,7 @@ export default function CourierMap({ couriers }: CourierMapProps) {
     name: c.full_name,
     lat: c.last_lat,
     lng: c.last_lng,
-    isActive: c.isActive,
+    is_active: c.is_active,
     status: c.status
   })))
   
@@ -82,7 +82,7 @@ export default function CourierMap({ couriers }: CourierMapProps) {
     console.log(`   - RAW last_lng: ${courier.last_lng} (type: ${typeof courier.last_lng})`)
     console.log(`   - Number last_lat: ${lat} -> Valid: ${hasValidLat}`)
     console.log(`   - Number last_lng: ${lng} -> Valid: ${hasValidLng}`)
-    console.log(`   - isActive: ${courier.isActive}`)
+    console.log(`   - is_active: ${courier.is_active}`)
     console.log(`   - status: ${courier.status}`)
     console.log(`   - isRecent: ${isRecent}`)
     console.log(`   - SONUÇ: ${hasValidLat && hasValidLng && isRecent ? 'HARITADA GÖSTER ✅' : 'HARITADA GÖSTERME ❌'}`)
@@ -95,7 +95,7 @@ export default function CourierMap({ couriers }: CourierMapProps) {
     name: c.full_name,
     lat: c.last_lat,
     lng: c.last_lng,
-    isActive: c.isActive,
+    is_active: c.is_active,
     status: c.status
   })))
 
@@ -111,7 +111,7 @@ export default function CourierMap({ couriers }: CourierMapProps) {
   const getMarkerIcon = (courier: Courier) => {
     let color = '#6b7280' // Varsayılan gri
     
-    if (!courier.isActive) {
+    if (!courier.is_active) {
       color = '#9ca3af' // Pasif kuryeler için açık gri
     } else if (courier.status === 'idle') {
       color = '#10b981' // Yeşil - Boşta
@@ -187,14 +187,14 @@ export default function CourierMap({ couriers }: CourierMapProps) {
                 <div className="text-center p-2">
                   <div className="font-bold text-lg mb-1">🚴 {courier.full_name}</div>
                   <div className={`text-sm px-2 py-1 rounded-full ${
-                    !courier.isActive ? 'bg-gray-100 text-gray-700' :
+                    !courier.is_active ? 'bg-gray-100 text-gray-700' :
                     courier.status === 'idle' ? 'bg-green-100 text-green-700' :
                     courier.status === 'assigned' ? 'bg-blue-100 text-blue-700' :
                     courier.status === 'picking_up' ? 'bg-yellow-100 text-yellow-700' :
                     courier.status === 'on_the_way' ? 'bg-red-100 text-red-700' :
                     'bg-gray-100 text-gray-700'
                   }`}>
-                    {!courier.isActive ? '⚫ Pasif' :
+                    {!courier.is_active ? '⚫ Pasif' :
                      courier.status === 'idle' ? '🟢 Boşta' :
                      courier.status === 'assigned' ? '🔵 Paket Bekliyor' :
                      courier.status === 'picking_up' ? '🟡 Alıyor' :
@@ -204,7 +204,7 @@ export default function CourierMap({ couriers }: CourierMapProps) {
                     {lat.toFixed(6)}, {lng.toFixed(6)}
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
-                    Aktif: {courier.isActive ? 'Evet' : 'Hayır'}
+                    Aktif: {courier.is_active ? 'Evet' : 'Hayır'}
                   </div>
                   <div className="text-xs text-blue-500 mt-1 font-bold">
                     ✅ Gerçek konum
@@ -236,18 +236,18 @@ export default function CourierMap({ couriers }: CourierMapProps) {
                 <div className="text-center p-2">
                   <div className="font-bold text-lg mb-1">🚴 {courier.full_name}</div>
                   <div className={`text-sm px-2 py-1 rounded-full ${
-                    !courier.isActive ? 'bg-gray-100 text-gray-700' :
+                    !courier.is_active ? 'bg-gray-100 text-gray-700' :
                     courier.status === 'idle' ? 'bg-green-100 text-green-700' :
                     'bg-gray-100 text-gray-700'
                   }`}>
-                    {!courier.isActive ? '⚫ Pasif' :
+                    {!courier.is_active ? '⚫ Pasif' :
                      courier.status === 'idle' ? '🟢 Boşta' : '⚫ Bilinmiyor'}
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
                     {defaultLat.toFixed(6)}, {defaultLng.toFixed(6)}
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
-                    Aktif: {courier.isActive ? 'Evet' : 'Hayır'}
+                    Aktif: {courier.is_active ? 'Evet' : 'Hayır'}
                   </div>
                   <div className="text-xs text-orange-500 mt-1 font-bold">
                     ⚠️ Varsayılan konum (Gerçek konum yok)
@@ -274,7 +274,7 @@ export default function CourierMap({ couriers }: CourierMapProps) {
           </div>
         )}
         <div className="text-xs text-slate-500 mt-1">
-          Aktif kuryeler: {allCouriers.filter(c => c.isActive).length} • 
+          Aktif kuryeler: {allCouriers.filter(c => c.is_active).length} • 
           Canlı kuryeler: {couriersWithCoords.length} • 
           Son güncelleme: {new Date().toLocaleTimeString('tr-TR')}
         </div>
