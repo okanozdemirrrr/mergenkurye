@@ -685,25 +685,54 @@ export default function Home() {
           <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
             <h2 className="text-lg font-bold mb-4">🚴 Kurye Durumları</h2>
             <div className="space-y-3">
-              {couriers.map(c => (
-                <div key={c.id} className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl border dark:border-slate-600">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="font-bold text-sm">{c.full_name}</span>
-                    <div className="text-right">
-                      <span className="text-[10px] text-slate-500">{c.todayDeliveryCount || 0} bugün</span>
-                      <span className="text-[10px] text-green-600 dark:text-green-400 block font-semibold">
-                        {c.deliveryCount || 0} toplam teslim
-                      </span>
-                      <span className="text-[10px] text-blue-600 dark:text-blue-400 block font-semibold">
-                        {c.activePackageCount || 0} aktif paket
-                      </span>
+              {couriers.map(c => {
+                // Bu kuryenin paketlerini bul
+                const courierPackages = packages.filter(pkg => pkg.courier_id === c.id)
+                
+                return (
+                  <div key={c.id} className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl border dark:border-slate-600">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-bold text-sm">{c.full_name}</span>
+                      <div className="text-right">
+                        <span className="text-[10px] text-slate-500">{c.todayDeliveryCount || 0} bugün</span>
+                        <span className="text-[10px] text-green-600 dark:text-green-400 block font-semibold">
+                          {c.deliveryCount || 0} toplam teslim
+                        </span>
+                        <span className="text-[10px] text-blue-600 dark:text-blue-400 block font-semibold">
+                          {c.activePackageCount || 0} aktif paket
+                        </span>
+                      </div>
                     </div>
+                    
+                    {/* Aktiflik Durumu */}
+                    <div className="mb-2">
+                      {!c.isActive && <span className="text-[10px] bg-gray-100 text-gray-700 px-2 py-1 rounded-md font-bold">⚫ AKTİF DEĞİL</span>}
+                      {c.isActive && <span className="text-[10px] bg-green-100 text-green-700 px-2 py-1 rounded-md font-bold">🟢 AKTİF</span>}
+                    </div>
+                    
+                    {/* Paket Durumları */}
+                    {courierPackages.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {courierPackages.map(pkg => (
+                          <div key={pkg.id} className="text-[10px] flex items-center gap-1">
+                            <span className={`px-2 py-0.5 rounded-full font-semibold ${
+                              pkg.status === 'assigned' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                              pkg.status === 'picking_up' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
+                              'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                            }`}>
+                              {pkg.status === 'assigned' ? '👤 Atandı' :
+                               pkg.status === 'picking_up' ? '🏃 Alıyor' : '🚗 Yolda'}
+                            </span>
+                            <span className="text-slate-600 dark:text-slate-400 truncate">
+                              {pkg.customer_name}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  {/* DİNAMİK ROZETLER - SADECE is_active kolonuna bak */}
-                  {!c.isActive && <span className="text-[10px] bg-gray-100 text-gray-700 px-2 py-1 rounded-md font-bold">⚫ AKTİF DEĞİL</span>}
-                  {c.isActive && <span className="text-[10px] bg-green-100 text-green-700 px-2 py-1 rounded-md font-bold">🟢 AKTİF</span>}
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         </div>
