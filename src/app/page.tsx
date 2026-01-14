@@ -154,28 +154,17 @@ export default function Home() {
       })
       
       // is_active -> isActive mapping ve koordinat dönüşümü
-      const couriersData = data.map(courier => {
-        const mappedCourier = {
-          id: courier.id,
-          full_name: courier.full_name || courier.name || 'İsimsiz Kurye', // İsim kesin olsun
-          isActive: courier.is_active === true, // Kesin eşitlik kontrolü
-          status: courier.status || 'idle', // Supabase'den gelen status'u direkt kullan
-          last_lat: courier.last_lat ? Number(courier.last_lat) : null, // Sayıya çevir
-          last_lng: courier.last_lng ? Number(courier.last_lng) : null, // Sayıya çevir
-          last_update: courier.last_update, // Timestamp ekle
-          deliveryCount: 0, // Packages tablosundan hesaplanacak
-          todayDeliveryCount: 0, // Packages tablosundan hesaplanacak
-          activePackageCount: 0 // Packages tablosundan hesaplanacak
-        }
-        
-        console.log(`🔄 [fetchCouriers] MAPPED: ${mappedCourier.full_name}`)
-        console.log(`   - isActive: ${mappedCourier.isActive} (type: ${typeof mappedCourier.isActive})`)
-        console.log(`   - status: ${mappedCourier.status} (RAW: ${courier.status})`)
-        console.log(`   - last_lat: ${mappedCourier.last_lat} (RAW: ${courier.last_lat}, type: ${typeof mappedCourier.last_lat})`)
-        console.log(`   - last_lng: ${mappedCourier.last_lng} (RAW: ${courier.last_lng}, type: ${typeof mappedCourier.last_lng})`)
-        
-        return mappedCourier
-      })
+      const couriersData = data.map(courier => ({
+        ...courier,
+        id: courier.id,
+        full_name: courier.full_name || 'İsimsiz Kurye',
+        isActive: Boolean(courier.is_active), // Veritabanındaki is_active'i buraya bağla
+        last_lat: courier.last_lat ? Number(courier.last_lat) : null,
+        last_lng: courier.last_lng ? Number(courier.last_lng) : null,
+        deliveryCount: 0,
+        todayDeliveryCount: 0,
+        activePackageCount: 0
+      }))
       
       console.log('✅ [fetchCouriers] Dönüştürülmüş kurye verileri:', couriersData)
       console.log('📊 [fetchCouriers] İsActive durumları:', couriersData.map(c => ({ name: c.full_name, isActive: c.isActive })))

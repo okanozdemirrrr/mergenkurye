@@ -18,7 +18,8 @@ interface Courier {
   full_name?: string
   last_lat?: number | null
   last_lng?: number | null
-  is_active?: boolean  // Veritabanındaki hali
+  is_active?: boolean
+  isActive?: boolean // Vercel'in istediği her iki versiyonu da ekliyoruz
   status?: string
   last_update?: string
 }
