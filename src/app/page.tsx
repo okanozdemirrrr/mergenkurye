@@ -56,6 +56,18 @@ export default function Home() {
   const [selectedCouriers, setSelectedCouriers] = useState<{ [key: number]: string }>({})
   const [assigningIds, setAssigningIds] = useState<Set<number>>(new Set())
   const [restaurantFilter, setRestaurantFilter] = useState<number | null>(null)
+  const [previousPackageCount, setPreviousPackageCount] = useState(0)
+  const [showNotificationPopup, setShowNotificationPopup] = useState(false)
+  const [newOrderDetails, setNewOrderDetails] = useState<Package | null>(null)
+
+  // Bildirim sesi çal
+  const playNotificationSound = () => {
+    if (typeof window !== 'undefined') {
+      const audio = new Audio('/notification.mp3')
+      audio.volume = 0.5 // Ses seviyesi (0.0 - 1.0)
+      audio.play().catch(err => console.log('Ses çalınamadı:', err))
+    }
+  }
 
   const fetchPackages = async () => {
     try {
@@ -75,6 +87,20 @@ export default function Home() {
         restaurants: undefined
       }))
 
+      // Yeni sipariş kontrolü
+      if (previousPackageCount > 0 && transformedData.length > previousPackageCount) {
+        const newOrder = transformedData[0] // En yeni sipariş
+        playNotificationSound()
+        setNewOrderDetails(newOrder)
+        setShowNotificationPopup(true)
+        setNotificationMessage('🔔 Yeni sipariş geldi!')
+        setTimeout(() => {
+          setNotificationMessage('')
+          setShowNotificationPopup(false)
+        }, 8000) // 8 saniye göster
+      }
+      
+      setPreviousPackageCount(transformedData.length)
       setPackages(transformedData)
     } catch (error: any) {
       setErrorMessage('Siparişler yüklenirken hata: ' + error.message)
@@ -455,6 +481,73 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+      {/* YENİ SİPARİŞ POPUP BİLDİRİMİ */}
+      {showNotificationPopup && newOrderDetails && (
+        <div className="fixed top-4 right-4 z-[100] animate-bounce">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border-4 border-red-500 p-6 max-w-md relative">
+            {/* Kırmızı Alarm İkonu */}
+            <div className="absolute -top-3 -right-3 w-12 h-12 bg-red-500 rounded-full flex items-center justify-center animate-pulse">
+              <span className="text-2xl">🚨</span>
+            </div>
+            
+            {/* Kapatma Butonu */}
+            <button 
+              onClick={() => setShowNotificationPopup(false)}
+              className="absolute top-2 right-2 text-slate-400 hover:text-slate-600 text-xl"
+            >
+              ×
+            </button>
+            
+            {/* Başlık */}
+            <div className="mb-4">
+              <h2 className="text-2xl font-black text-red-600 dark:text-red-400 mb-1">
+                📦 YENİ SİPARİŞ GELDİ!
+              </h2>
+              <p className="text-sm text-slate-500">Hemen kurye atayın</p>
+            </div>
+            
+            {/* Sipariş Detayları */}
+            <div className="space-y-2 bg-slate-50 dark:bg-slate-700 p-4 rounded-xl">
+              <div className="flex justify-between">
+                <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">Restoran:</span>
+                <span className="text-sm font-bold text-slate-900 dark:text-white">
+                  {newOrderDetails.restaurant?.name}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">Müşteri:</span>
+                <span className="text-sm font-bold text-slate-900 dark:text-white">
+                  {newOrderDetails.customer_name}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">Tutar:</span>
+                <span className="text-lg font-black text-green-600 dark:text-green-400">
+                  {newOrderDetails.amount}₺
+                </span>
+              </div>
+              {newOrderDetails.content && (
+                <div className="pt-2 border-t border-slate-200 dark:border-slate-600">
+                  <span className="text-xs text-slate-500">İçerik:</span>
+                  <p className="text-sm text-slate-700 dark:text-slate-300">{newOrderDetails.content}</p>
+                </div>
+              )}
+            </div>
+            
+            {/* Aksiyon Butonu */}
+            <button
+              onClick={() => {
+                setShowNotificationPopup(false)
+                setActiveTab('live')
+              }}
+              className="w-full mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-all"
+            >
+              Siparişe Git →
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Sticky Navbar */}
       <div className="sticky top-0 z-50 bg-white dark:bg-slate-800 shadow-lg border-b border-slate-200 dark:border-slate-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -500,7 +593,12 @@ export default function Home() {
       {/* Tab Content */}
       <div className="py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          {/* Başarı/Hata Mesajları */}
+          {/* Başarı/Hata/Bildirim Mesajları */}
+          {notificationMessage && (
+            <div className="mb-4 p-3 bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700 rounded-lg text-blue-800 dark:text-blue-300 animate-pulse">
+              {notificationMessage}
+            </div>
+          )}
           {successMessage && (
             <div className="mb-4 p-3 bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700 rounded-lg text-green-800 dark:text-green-300">
               {successMessage}
