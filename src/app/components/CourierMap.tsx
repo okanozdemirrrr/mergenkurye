@@ -49,7 +49,7 @@ export default function CourierMap({ couriers }: CourierMapProps) {
     status: c.status
   })))
   
-  // Koordinatları kontrol et - 0 değilse ve 1 dakikadır canlıysa göster
+  // Koordinatları kontrol et - Zaman kontrolü devre dışı (hayalet olmasınlar)
   const couriersWithCoords = allCouriers.filter(courier => {
     // Önce Number()'a çevir
     const lat = Number(courier.last_lat)
@@ -59,23 +59,8 @@ export default function CourierMap({ couriers }: CourierMapProps) {
     const hasValidLat = !isNaN(lat) && lat !== 0
     const hasValidLng = !isNaN(lng) && lng !== 0
     
-    // Zaman kontrolü - 1 dakikadır sinyal var mı?
-    let isRecent = true
-    if (courier.last_update) {
-      const lastUpdate = new Date(courier.last_update)
-      const now = new Date()
-      const diffMinutes = (now.getTime() - lastUpdate.getTime()) / (1000 * 60)
-      isRecent = diffMinutes <= 1 // 1 dakika içinde güncelleme var mı?
-      
-      console.log(`⏰ [CourierMap] ${courier.full_name} zaman kontrolü:`)
-      console.log(`   - last_update: ${courier.last_update}`)
-      console.log(`   - şimdi: ${now.toISOString()}`)
-      console.log(`   - fark (dakika): ${diffMinutes.toFixed(2)}`)
-      console.log(`   - canlı mı: ${isRecent ? 'EVET ✅' : 'HAYALET ❌'}`)
-    } else {
-      console.log(`⏰ [CourierMap] ${courier.full_name}: last_update yok, hayalet sayılıyor`)
-      isRecent = false
-    }
+    // Zaman kontrolü - DEVRE DIŞI (her zaman true)
+    const isRecent = true // Kuryeler hayalet olmasın
     
     console.log(`🔍 [CourierMap] ${courier.full_name}:`)
     console.log(`   - RAW last_lat: ${courier.last_lat} (type: ${typeof courier.last_lat})`)
@@ -84,7 +69,7 @@ export default function CourierMap({ couriers }: CourierMapProps) {
     console.log(`   - Number last_lng: ${lng} -> Valid: ${hasValidLng}`)
     console.log(`   - is_active: ${courier.is_active}`)
     console.log(`   - status: ${courier.status}`)
-    console.log(`   - isRecent: ${isRecent}`)
+    console.log(`   - isRecent: ${isRecent} (ZAMAN KONTROLÜ DEVRE DIŞI)`)
     console.log(`   - SONUÇ: ${hasValidLat && hasValidLng && isRecent ? 'HARITADA GÖSTER ✅' : 'HARITADA GÖSTERME ❌'}`)
     
     return hasValidLat && hasValidLng && isRecent
@@ -279,7 +264,7 @@ export default function CourierMap({ couriers }: CourierMapProps) {
           Son güncelleme: {new Date().toLocaleTimeString('tr-TR')}
         </div>
         <div className="text-xs text-orange-600 mt-1">
-          ⚠️ 1 dakikadır sinyal vermeyen kuryeler haritadan kaldırılır
+          ℹ️ Zaman kontrolü devre dışı - Tüm kuryeler haritada görünür
         </div>
       </div>
     </div>

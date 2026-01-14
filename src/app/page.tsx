@@ -157,7 +157,7 @@ export default function Home() {
       const couriersData = data.map(courier => {
         const mappedCourier = {
           id: courier.id,
-          full_name: courier.full_name,
+          full_name: courier.full_name || courier.name || 'İsimsiz Kurye', // İsim kesin olsun
           isActive: courier.is_active === true, // Kesin eşitlik kontrolü
           status: courier.status || 'idle', // Supabase'den gelen status'u direkt kullan
           last_lat: courier.last_lat ? Number(courier.last_lat) : null, // Sayıya çevir
@@ -542,7 +542,7 @@ export default function Home() {
               </span></div>
             </div>
             <div className="mt-2 text-xs text-slate-600 dark:text-slate-400">
-  Son güncelleme: {new Date().toLocaleTimeString('tr-TR')} (10 saniyede bir otomatik)
+  Son güncelleme: {new Date().toLocaleTimeString('tr-TR')} (30 saniyede bir otomatik)
 </div>
 </div>
 
@@ -813,7 +813,7 @@ export default function Home() {
               </div>
             </div>
             <div className="mt-3 text-xs text-slate-600 dark:text-slate-400 text-center">
-              Son güncelleme: {new Date().toLocaleTimeString('tr-TR')} • Otomatik güncelleme: 10 saniye
+              Son güncelleme: {new Date().toLocaleTimeString('tr-TR')} • Otomatik güncelleme: 30 saniye
             </div>
           </div>
           
