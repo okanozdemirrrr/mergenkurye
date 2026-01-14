@@ -691,7 +691,13 @@ export default function Home() {
                     <div className="border-t border-slate-200 dark:border-slate-600 pt-2 space-y-2">
                       <select 
                         value={selectedCouriers[pkg.id] || ''}
-                        onChange={(e) => handleCourierChange(pkg.id, e.target.value)}
+                        onChange={(e) => {
+                          console.log('📝 Dropdown değişti:');
+                          console.log('   - Package ID:', pkg.id);
+                          console.log('   - Seçilen Kurye ID:', e.target.value);
+                          handleCourierChange(pkg.id, e.target.value);
+                          console.log('   - State güncellendi, yeni selectedCouriers:', selectedCouriers);
+                        }}
                         className="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-transparent"
                         disabled={assigningIds.has(pkg.id)}
                       >
@@ -716,13 +722,21 @@ export default function Home() {
                           console.log('🔘 Kurye Ata butonuna tıklandı');
                           console.log('   - Package ID:', pkg.id);
                           console.log('   - Seçili Kurye ID:', selectedCouriers[pkg.id]);
+                          console.log('   - selectedCouriers tüm state:', selectedCouriers);
                           console.log('   - Atanıyor mu:', assigningIds.has(pkg.id));
+                          console.log('   - Buton disabled mi:', !selectedCouriers[pkg.id] || assigningIds.has(pkg.id));
+                          
+                          if (!selectedCouriers[pkg.id]) {
+                            alert('Lütfen önce bir kurye seçin!');
+                            return;
+                          }
+                          
                           handleAssignCourier(pkg.id);
                         }}
-                        disabled={!selectedCouriers[pkg.id] || assigningIds.has(pkg.id)}
-                        className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-3 py-1.5 rounded text-xs font-semibold transition-all disabled:cursor-not-allowed"
+                        disabled={false}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs font-semibold transition-all cursor-pointer"
                       >
-                        {assigningIds.has(pkg.id) ? '⏳ Atanıyor...' : '✅ Kurye Ata'}
+                        {assigningIds.has(pkg.id) ? '⏳ Atanıyor...' : '✅ Kurye Ata (TEST)'}
                       </button>
                     </div>
                   )}
