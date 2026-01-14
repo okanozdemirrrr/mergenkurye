@@ -59,7 +59,6 @@ export default function Home() {
 
   const fetchPackages = async () => {
     try {
-      setIsLoading(true)
       const { data, error } = await supabase
         .from('packages')
         .select('*, restaurants!inner(name)')
@@ -76,12 +75,9 @@ export default function Home() {
         restaurants: undefined
       }))
 
-      console.log('Paketler yüklendi:', transformedData) // Debug için
       setPackages(transformedData)
     } catch (error: any) {
       setErrorMessage('Siparişler yüklenirken hata: ' + error.message)
-    } finally {
-      setIsLoading(false)
     }
   }
 
@@ -326,23 +322,23 @@ export default function Home() {
   }
 
   useEffect(() => {
-    // İlk yükleme
-    fetchPackages(); 
-    fetchCouriers(); 
-    fetchRestaurants();
-    if (activeTab === 'history') {
-      fetchDeliveredPackages();
-    }
+    // İlk yükleme - loading göstermesin
+    setIsLoading(true)
+    Promise.all([
+      fetchPackages(), 
+      fetchCouriers(), 
+      fetchRestaurants(),
+      activeTab === 'history' ? fetchDeliveredPackages() : Promise.resolve()
+    ]).finally(() => setIsLoading(false))
 
-    // 30 saniyede bir HEPSINI güncelle
+    // 20 saniyede bir arka planda güncelle (loading göstermeden)
     const interval = setInterval(async () => { 
-      console.log('🔄 30 saniyede bir otomatik refresh...')
       await fetchPackages(); 
-      await fetchCouriers(); // Kurye durumları da dahil
+      await fetchCouriers();
       if (activeTab === 'history') {
         await fetchDeliveredPackages();
       }
-    }, 30000) // 30 saniye
+    }, 20000) // 20 saniye
 
     return () => {
       clearInterval(interval)
