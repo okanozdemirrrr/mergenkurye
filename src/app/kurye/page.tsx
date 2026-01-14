@@ -21,11 +21,6 @@ interface Package {
 const LOGIN_STORAGE_KEY = 'kurye_logged_in'
 const LOGIN_COURIER_ID_KEY = 'kurye_logged_courier_id'
 
-const COURIER_CREDENTIALS = {
-  'ahmet55': 'ahmet55123',
-  'taha': 'taha123'
-}
-
 export default function KuryePage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [loginForm, setLoginForm] = useState({ username: '', password: '' })
@@ -659,37 +654,41 @@ export default function KuryePage() {
     e.preventDefault();
     console.log('🔐 Giriş denemesi:', loginForm.username)
     
-    const pw = COURIER_CREDENTIALS[loginForm.username as keyof typeof COURIER_CREDENTIALS];
-    if (pw && pw === loginForm.password) {
-      try {
-        // Couriers tablosundan username ile kurye bilgilerini çek
-        const { data, error } = await supabase
-          .from('couriers')
-          .select('id, full_name')
-          .eq('username', loginForm.username)
-          .maybeSingle();
-          
-        if (error) {
-          console.error('❌ Kurye bulunamadı:', error)
-          setErrorMessage("Kurye bulunamadı!");
-          return
-        }
+    try {
+      // Couriers tablosundan username ve password ile kurye bilgilerini çek
+      const { data, error } = await supabase
+        .from('couriers')
+        .select('id, full_name, username, password')
+        .eq('username', loginForm.username)
+        .eq('password', loginForm.password)
+        .maybeSingle();
         
-        if (data) {
-          console.log('✅ Kurye bulundu:', data)
-          sessionStorage.setItem(LOGIN_STORAGE_KEY, 'true');
-          sessionStorage.setItem(LOGIN_COURIER_ID_KEY, data.id);
-          setIsLoggedIn(true);
-          setSelectedCourierId(data.id);
-        } else {
-          setErrorMessage("Kurye bulunamadı!");
-        }
-      } catch (error: any) {
-        console.error('❌ Giriş hatası:', error)
-        setErrorMessage("Giriş hatası: " + error.message);
+      if (error) {
+        console.error('❌ Veritabanı hatası:', error)
+        setErrorMessage("Veritabanı hatası!");
+        return
       }
-    } else {
-      setErrorMessage("Hatalı kullanıcı adı veya şifre!");
+      
+      if (data) {
+        console.log('✅ Kurye bulundu:', data)
+        
+        // Kurye aktif yap
+        await supabase
+          .from('couriers')
+          .update({ is_active: true, status: 'idle' })
+          .eq('id', data.id)
+        
+        sessionStorage.setItem(LOGIN_STORAGE_KEY, 'true');
+        sessionStorage.setItem(LOGIN_COURIER_ID_KEY, data.id);
+        setIsLoggedIn(true);
+        setSelectedCourierId(data.id);
+      } else {
+        console.error('❌ Hatalı giriş')
+        setErrorMessage("Hatalı kullanıcı adı veya şifre!");
+      }
+    } catch (error: any) {
+      console.error('❌ Giriş hatası:', error)
+      setErrorMessage("Giriş hatası: " + error.message);
     }
   }
 }
