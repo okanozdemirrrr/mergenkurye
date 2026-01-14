@@ -2,17 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from './lib/supabase'
-import dynamic from 'next/dynamic'
-
-// Haritayı SSR olmadan yükle (Leaflet için gerekli)
-const CourierMap = dynamic(() => import('./components/CourierMap'), {
-  ssr: false,
-  loading: () => (
-    <div className="w-full h-96 bg-slate-100 dark:bg-slate-700 rounded-2xl flex items-center justify-center">
-      <div className="text-slate-500">🗺️ Harita yükleniyor...</div>
-    </div>
-  )
-})
 
 interface Restaurant {
   id: number
@@ -541,80 +530,9 @@ export default function Home() {
   function LiveTrackingTab() {
     return (
       <div className="space-y-6">
-        {/* Harita Bölümü */}
-        <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
-          <h2 className="text-2xl font-bold mb-4">🗺️ Kurye Haritası</h2>
-          
-          {/* Debug Bilgileri */}
-          <div className="mb-4 p-3 bg-slate-100 dark:bg-slate-700 rounded-lg text-sm">
-            <div className="font-bold mb-2">📊 Kurye Veri Durumu:</div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-              <div>Toplam Kurye: <span className="font-bold text-blue-600">{couriers.length}</span></div>
-              <div>Aktif Kurye: <span className="font-bold text-green-600">{couriers.filter(c => c.isActive).length}</span></div>
-              <div>Konumu Olan: <span className="font-bold text-purple-600">
-                {couriers.filter(c => c.last_lat && c.last_lng && Number(c.last_lat) !== 0 && Number(c.last_lng) !== 0).length}
-              </span></div>
-              <div>Haritada Görünen: <span className="font-bold text-orange-600">
-                {couriers.filter(c => {
-                  const lat = Number(c.last_lat)
-                  const lng = Number(c.last_lng)
-                  return !isNaN(lat) && lat !== 0 && !isNaN(lng) && lng !== 0
-                }).length}
-              </span></div>
-            </div>
-            <div className="mt-2 text-xs text-slate-600 dark:text-slate-400">
-  Son güncelleme: {new Date().toLocaleTimeString('tr-TR')} (30 saniyede bir otomatik)
-</div>
-</div>
-
-{/* BURAYI EKLEDİK: Süzgeç burada çalışıyor */}
-{(() => {
-  const visibleCouriers = couriers.filter(c => 
-    c.isActive === true && 
-    c.last_lat && 
-    Number(c.last_lat) !== 0
-  );
-  return <CourierMap couriers={visibleCouriers} />;
-})()}
-          <div className="mt-4 flex flex-wrap gap-2 text-sm">
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-              <span>Boşta</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-              <span>Paket Bekliyor</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-              <span>Alıyor</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-              <span>Teslimatta</span>
-            </div>
-          </div>
-        </div>
-
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <div className="lg:col-span-3 bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
             <h2 className="text-2xl font-bold mb-6">📦 Canlı Sipariş Takibi</h2>
-          
-          {/* Debug Bilgileri */}
-          <div className="mb-6 p-4 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg border border-yellow-300 dark:border-yellow-700">
-            <div className="font-bold mb-2 text-yellow-800 dark:text-yellow-400">🔍 Debug Bilgileri:</div>
-            <div className="text-sm text-yellow-800 dark:text-yellow-300 space-y-1">
-              <div>Toplam Kurye: {couriers.length}</div>
-              <div>Aktif Kurye: {couriers.filter(c => c.isActive).length}</div>
-              <div>Pasif Kurye: {couriers.filter(c => !c.isActive).length}</div>
-              <div className="mt-2 font-bold">Kurye Detayları:</div>
-              {couriers.map(c => (
-                <div key={c.id} className="ml-4 text-xs">
-                  • {c.full_name}: isActive={String(c.isActive)}, is_active={String(c.is_active)}
-                </div>
-              ))}
-            </div>
-          </div>
           
           {/* Sipariş Kartları */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
