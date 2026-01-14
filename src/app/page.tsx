@@ -367,8 +367,55 @@ export default function Home() {
       }
     }, 20000) // 20 saniye
 
+    // REALTIME SUBSCRIPTION - Yeni paket geldiğinde anında bildirim
+    const channel = supabase
+      .channel('packages-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'packages'
+        },
+        async (payload) => {
+          console.log('🔔 REALTIME: Yeni paket eklendi!', payload)
+          
+          // Yeni paketin detaylarını çek
+          const { data: newPackage } = await supabase
+            .from('packages')
+            .select('*, restaurants(name)')
+            .eq('id', payload.new.id)
+            .single()
+          
+          if (newPackage) {
+            const transformedPackage = {
+              ...newPackage,
+              restaurant: newPackage.restaurants
+            }
+            
+            console.log('📦 Yeni paket detayları:', transformedPackage)
+            
+            // Ses çal ve popup göster
+            playNotificationSound()
+            setNewOrderDetails(transformedPackage)
+            setShowNotificationPopup(true)
+            setNotificationMessage('🔔 Yeni sipariş geldi!')
+            
+            setTimeout(() => {
+              setNotificationMessage('')
+              setShowNotificationPopup(false)
+            }, 8000)
+            
+            // Paket listesini güncelle
+            fetchPackages(false)
+          }
+        }
+      )
+      .subscribe()
+
     return () => {
       clearInterval(interval)
+      supabase.removeChannel(channel)
     }
   }, [restaurantFilter, activeTab])
 
