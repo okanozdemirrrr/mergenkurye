@@ -398,7 +398,7 @@ export default function KuryePage() {
               alt="Logo" 
               className="w-64 h-64 mx-auto mb-4"
             />
-            <h1 className="text-4xl font-black tracking-wider bg-gradient-to-r from-cyan-400 to-blue-900 bg-clip-text text-transparent" style={{fontFamily: 'Orbitron, sans-serif'}}>
+            <h1 className="text-4xl font-black tracking-wider bg-gradient-to-r from-gray-200 to-gray-500 bg-clip-text text-transparent" style={{fontFamily: 'Orbitron, sans-serif'}}>
               KURYE GİRİŞİ
             </h1>
           </div>
@@ -429,7 +429,7 @@ export default function KuryePage() {
               alt="Logo" 
               className="w-48 h-48 mr-3"
             />
-            <h1 className="text-3xl font-black tracking-wider bg-gradient-to-r from-cyan-400 to-blue-900 bg-clip-text text-transparent" style={{fontFamily: 'Orbitron, sans-serif'}}>
+            <h1 className="text-3xl font-black tracking-wider bg-gradient-to-r from-gray-200 to-gray-500 bg-clip-text text-transparent" style={{fontFamily: 'Orbitron, sans-serif'}}>
               KURYE PANELİ
             </h1>
           </div>
