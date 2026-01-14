@@ -268,7 +268,9 @@ export default function RestoranPage() {
               alt="Logo" 
               className="w-56 h-56 mx-auto mb-4"
             />
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Restoran Girişi</h1>
+            <h1 className="text-4xl font-black tracking-tight bg-gradient-to-r from-orange-500 to-yellow-500 bg-clip-text text-transparent mb-2">
+              Restoran Girişi
+            </h1>
             <p className="text-slate-600 dark:text-slate-400">Hesabınıza giriş yapın</p>
           </div>
           
@@ -335,8 +337,8 @@ export default function RestoranPage() {
                     alt="Logo" 
                     className="w-56 h-56 mr-3"
                   />
-                  <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
-                    🍽️ {selectedRestaurant?.name}
+                  <h1 className="text-3xl font-black tracking-tight bg-gradient-to-r from-orange-500 to-yellow-500 bg-clip-text text-transparent">
+                    {selectedRestaurant?.name}
                   </h1>
                 </div>
                 <p className="text-slate-600 dark:text-slate-400">

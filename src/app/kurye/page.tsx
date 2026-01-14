@@ -398,7 +398,9 @@ export default function KuryePage() {
               alt="Logo" 
               className="w-64 h-64 mx-auto mb-4"
             />
-            <h1 className="text-3xl font-bold text-white">Kurye Girişi</h1>
+            <h1 className="text-4xl font-black tracking-tight bg-gradient-to-r from-orange-500 to-yellow-500 bg-clip-text text-transparent">
+              Kurye Girişi
+            </h1>
           </div>
           <input 
             type="text" placeholder="Kullanıcı Adı" 
@@ -427,7 +429,9 @@ export default function KuryePage() {
               alt="Logo" 
               className="w-48 h-48 mr-3"
             />
-            <h1 className="text-2xl font-bold">🚀 Kurye Paneli</h1>
+            <h1 className="text-3xl font-black tracking-tight bg-gradient-to-r from-orange-500 to-yellow-500 bg-clip-text text-transparent">
+              Kurye Paneli
+            </h1>
           </div>
           <button onClick={() => { sessionStorage.clear(); window.location.reload(); }} className="bg-red-900/50 text-red-400 px-4 py-2 rounded-lg text-sm">Çıkış</button>
         </div>
