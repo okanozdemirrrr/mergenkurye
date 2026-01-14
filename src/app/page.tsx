@@ -43,6 +43,7 @@ interface Courier {
   deliveryCount?: number
   todayDeliveryCount?: number
   isActive?: boolean
+  is_active?: boolean // Veritabanından gelen ham veri
   activePackageCount?: number
   last_lat?: number | null
   last_lng?: number | null
@@ -568,6 +569,22 @@ export default function Home() {
           <div className="lg:col-span-3 bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
             <h2 className="text-2xl font-bold mb-6">📦 Canlı Sipariş Takibi</h2>
           
+          {/* Debug Bilgileri */}
+          <div className="mb-6 p-4 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg border border-yellow-300 dark:border-yellow-700">
+            <div className="font-bold mb-2 text-yellow-800 dark:text-yellow-400">🔍 Debug Bilgileri:</div>
+            <div className="text-sm text-yellow-800 dark:text-yellow-300 space-y-1">
+              <div>Toplam Kurye: {couriers.length}</div>
+              <div>Aktif Kurye: {couriers.filter(c => c.isActive).length}</div>
+              <div>Pasif Kurye: {couriers.filter(c => !c.isActive).length}</div>
+              <div className="mt-2 font-bold">Kurye Detayları:</div>
+              {couriers.map(c => (
+                <div key={c.id} className="ml-4 text-xs">
+                  • {c.full_name}: isActive={String(c.isActive)}, is_active={String(c.is_active)}
+                </div>
+              ))}
+            </div>
+          </div>
+          
           {/* Sipariş Kartları */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {isLoading ? (
@@ -656,6 +673,12 @@ export default function Home() {
                         disabled={assigningIds.has(pkg.id)}
                       >
                         <option value="">Kurye Seçin</option>
+                        {couriers.length === 0 && (
+                          <option disabled>Kurye bulunamadı</option>
+                        )}
+                        {couriers.filter(c => c.isActive).length === 0 && couriers.length > 0 && (
+                          <option disabled>Aktif kurye yok (Toplam: {couriers.length})</option>
+                        )}
                         {couriers
                           .filter(c => c.isActive) // Sadece aktif kuryeler
                           .map(c => (
