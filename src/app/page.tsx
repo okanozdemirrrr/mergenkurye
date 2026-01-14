@@ -69,7 +69,7 @@ export default function Home() {
     }
   }
 
-  const fetchPackages = async () => {
+  const fetchPackages = async (isInitialLoad = false) => {
     try {
       const { data, error } = await supabase
         .from('packages')
@@ -87,9 +87,10 @@ export default function Home() {
         restaurants: undefined
       }))
 
-      // Yeni sipariş kontrolü
-      if (previousPackageCount > 0 && transformedData.length > previousPackageCount) {
+      // Yeni sipariş kontrolü (sadece ilk yükleme değilse)
+      if (!isInitialLoad && previousPackageCount > 0 && transformedData.length > previousPackageCount) {
         const newOrder = transformedData[0] // En yeni sipariş
+        console.log('🔔 YENİ SİPARİŞ ALGILANDI:', newOrder)
         playNotificationSound()
         setNewOrderDetails(newOrder)
         setShowNotificationPopup(true)
@@ -351,7 +352,7 @@ export default function Home() {
     // İlk yükleme - loading göstermesin
     setIsLoading(true)
     Promise.all([
-      fetchPackages(), 
+      fetchPackages(true), // İlk yükleme flag'i
       fetchCouriers(), 
       fetchRestaurants(),
       activeTab === 'history' ? fetchDeliveredPackages() : Promise.resolve()
@@ -359,7 +360,7 @@ export default function Home() {
 
     // 20 saniyede bir arka planda güncelle (loading göstermeden)
     const interval = setInterval(async () => { 
-      await fetchPackages(); 
+      await fetchPackages(false); // İlk yükleme değil
       await fetchCouriers();
       if (activeTab === 'history') {
         await fetchDeliveredPackages();
