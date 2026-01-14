@@ -290,41 +290,50 @@ export default function Home() {
 
   const handleAssignCourier = async (packageId: number) => {
     console.log('🚀 [handleAssignCourier] Başlıyor:', packageId);
-    const courierId = selectedCouriers[packageId]
-    console.log('   - Seçili Kurye ID:', courierId);
-    console.log('   - selectedCouriers state:', selectedCouriers);
     
-    if (!courierId) {
-      console.error('❌ Kurye ID yok, işlem iptal');
-      return;
-    }
-    
-    try {
-      setAssigningIds(prev => new Set(prev).add(packageId))
-      console.log('   - Supabase güncelleme başlıyor...');
+    // State'i direkt kullanmak yerine, callback ile al
+    setSelectedCouriers(currentState => {
+      const courierId = currentState[packageId];
+      console.log('   - Seçili Kurye ID (callback):', courierId);
+      console.log('   - selectedCouriers state (callback):', currentState);
       
-      const { error } = await supabase.from('packages').update({
-        courier_id: courierId,
-        status: 'assigned',
-        assigned_at: new Date().toISOString()
-      }).eq('id', packageId)
-      
-      if (error) {
-        console.error('❌ Supabase hatası:', error);
-        throw error;
+      if (!courierId) {
+        console.error('❌ Kurye ID yok, işlem iptal');
+        alert('Lütfen önce bir kurye seçin!');
+        return currentState;
       }
       
-      console.log('✅ Kurye başarıyla atandı!');
-      setSuccessMessage('Kurye atandı!')
-      fetchPackages(); 
-      fetchCouriers();
-    } catch (error: any) { 
-      console.error('❌ Hata:', error);
-      setErrorMessage(error.message);
-    }
-    finally { 
-      setAssigningIds(prev => { const n = new Set(prev); n.delete(packageId); return n });
-    }
+      // Async işlemi başlat
+      (async () => {
+        try {
+          setAssigningIds(prev => new Set(prev).add(packageId));
+          console.log('   - Supabase güncelleme başlıyor...');
+          
+          const { error } = await supabase.from('packages').update({
+            courier_id: courierId,
+            status: 'assigned',
+            assigned_at: new Date().toISOString()
+          }).eq('id', packageId);
+          
+          if (error) {
+            console.error('❌ Supabase hatası:', error);
+            throw error;
+          }
+          
+          console.log('✅ Kurye başarıyla atandı!');
+          setSuccessMessage('Kurye atandı!');
+          fetchPackages(); 
+          fetchCouriers();
+        } catch (error: any) { 
+          console.error('❌ Hata:', error);
+          setErrorMessage(error.message);
+        } finally { 
+          setAssigningIds(prev => { const n = new Set(prev); n.delete(packageId); return n });
+        }
+      })();
+      
+      return currentState;
+    });
   }
 
   useEffect(() => {
