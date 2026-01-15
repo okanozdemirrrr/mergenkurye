@@ -53,12 +53,12 @@ export default function KuryePage() {
     }
   }, [])
 
-  const fetchPackages = async () => {
+  const fetchPackages = async (isInitialLoad = false) => {
     const courierId = sessionStorage.getItem(LOGIN_COURIER_ID_KEY)
     if (!courierId) return
 
     try {
-      setIsLoading(true)
+      if (isInitialLoad) setIsLoading(true)
       console.log('📦 Paketler çekiliyor, courierID:', courierId)
       
       const { data, error } = await supabase
@@ -84,7 +84,7 @@ export default function KuryePage() {
       console.error('❌ Paketler yüklenemedi:', error)
       setErrorMessage('Paketler yüklenemedi: ' + error.message)
     } finally {
-      setIsLoading(false)
+      if (isInitialLoad) setIsLoading(false)
     }
   }
 
@@ -330,18 +330,20 @@ export default function KuryePage() {
 
   useEffect(() => {
     if (isLoggedIn) {
-      fetchPackages()
+      // İlk yükleme
+      fetchPackages(true)
       fetchDailyStats()
       fetchCourierStatus()
       
       // Konum takibini başlat
       const cleanupLocation = startLocationTracking()
       
+      // Silent refresh - 20 saniyede bir
       const interval = setInterval(() => {
-        fetchPackages()
+        fetchPackages(false) // Silent refresh
         fetchDailyStats()
         fetchCourierStatus()
-      }, 30000)
+      }, 20000)
       
       return () => {
         clearInterval(interval)

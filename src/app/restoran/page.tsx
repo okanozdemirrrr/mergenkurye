@@ -146,7 +146,8 @@ export default function RestoranPage() {
     fetchRestaurants()
     if (isLoggedIn) {
       fetchPackages()
-      const interval = setInterval(fetchPackages, 30000)
+      // Silent refresh - 20 saniyede bir
+      const interval = setInterval(fetchPackages, 20000)
       return () => clearInterval(interval)
     }
   }, [isLoggedIn, selectedRestaurantId])
