@@ -442,13 +442,10 @@ export default function Home() {
       return
     }
     
-    console.log('✅ Menü açılıyor:', { x: e.clientX, y: e.clientY })
-    // Context menüyü aç
-    setContextMenu({
-      courier: courier,
-      x: e.clientX,
-      y: e.clientY
-    })
+    console.log('✅ Modal açılıyor direkt')
+    // Direkt modalı aç (context menü atlandı)
+    setSelectedTransferCourier(courier)
+    setShowTransferModal(true)
   }
 
   // Context menüyü kapat
