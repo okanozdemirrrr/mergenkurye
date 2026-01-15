@@ -563,7 +563,28 @@ export default function Home() {
             </div>
 
             {/* Tab Navigation */}
-            <nav className="flex space-x-1">
+            <nav className="flex space-x-1 items-center">
+              {/* TEST BUTONU */}
+              <button
+                onClick={() => {
+                  console.log('🧪 TEST: Bildirim tetikleniyor')
+                  playNotificationSound()
+                  setNewOrderDetails({
+                    id: 999,
+                    customer_name: 'Test Müşteri',
+                    delivery_address: 'Test Adres',
+                    amount: 100,
+                    status: 'waiting',
+                    restaurant: { id: 1, name: 'Test Restoran' }
+                  } as Package)
+                  setShowNotificationPopup(true)
+                  setTimeout(() => setShowNotificationPopup(false), 8000)
+                }}
+                className="px-3 py-2 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700 mr-2"
+              >
+                🧪 TEST
+              </button>
+              
               {[
                 { id: 'live', label: 'Canlı Takip', icon: '📦' },
                 { id: 'history', label: 'Geçmiş Siparişler', icon: '📋' },
