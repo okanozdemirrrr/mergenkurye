@@ -6,15 +6,10 @@ import { supabase } from '../lib/supabase'
 const LOGIN_STORAGE_KEY = 'restoran_logged_in'
 const LOGIN_RESTAURANT_ID_KEY = 'restoran_logged_restaurant_id'
 
-const RESTAURANT_CREDENTIALS = {
-  'egodöner': 'gökhan123',
-  'ömerusta': 'omerusta123', 
-  'ikramdöner': 'ikramdöner123'
-}
-
 interface Restaurant {
   id: string
   name: string
+  password?: string
 }
 
 interface Package {
@@ -103,41 +98,35 @@ export default function RestoranPage() {
     }
   }
 
-  // Login işlemi
+  // Login işlemi - Veritabanı sorgusu
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setErrorMessage('')
     
-    const password = RESTAURANT_CREDENTIALS[loginForm.username as keyof typeof RESTAURANT_CREDENTIALS]
-    if (password && password === loginForm.password) {
-      try {
-        // Restaurants tablosundan name ile eşleşen restoranı bul
-        const { data, error } = await supabase
-          .from('restaurants')
-          .select('id, name')
-          .eq('name', loginForm.username)
-          .single()
-        
-        if (error) {
-          console.error('Restoran sorgu hatası:', error)
-          throw error
-        }
-        
-        if (data) {
-          console.log('Bulunan restoran:', data) // Debug için
-          sessionStorage.setItem(LOGIN_STORAGE_KEY, 'true')
-          sessionStorage.setItem(LOGIN_RESTAURANT_ID_KEY, data.id)
-          setIsLoggedIn(true)
-          setSelectedRestaurantId(data.id)
-        } else {
-          setErrorMessage('Restoran bulunamadı!')
-        }
-      } catch (error: any) {
-        console.error('Login hatası:', error)
-        setErrorMessage('Giriş yapılırken hata oluştu: ' + error.message)
+    try {
+      // Restaurants tablosundan name ve password ile eşleşen restoranı bul
+      const { data, error } = await supabase
+        .from('restaurants')
+        .select('id, name, password')
+        .eq('name', loginForm.username)
+        .single()
+      
+      if (error) {
+        setErrorMessage('Restoran bulunamadı!')
+        return
       }
-    } else {
-      setErrorMessage('Hatalı kullanıcı adı veya şifre!')
+      
+      // Şifre kontrolü
+      if (data && data.password === loginForm.password) {
+        sessionStorage.setItem(LOGIN_STORAGE_KEY, 'true')
+        sessionStorage.setItem(LOGIN_RESTAURANT_ID_KEY, data.id)
+        setIsLoggedIn(true)
+        setSelectedRestaurantId(data.id)
+      } else {
+        setErrorMessage('Hatalı şifre!')
+      }
+    } catch (error: any) {
+      setErrorMessage('Giriş yapılırken hata oluştu')
     }
   }
 

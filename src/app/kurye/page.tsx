@@ -215,7 +215,7 @@ export default function KuryePage() {
 
       // Başarılı güncelleme sonrası state'i güncelle
       setCourierStatus(newStatus)
-      setIsActive(newIsActive)
+      setIs_active(newIsActive)
       setSuccessMessage(newIsActive ? '✅ Aktif duruma geçildi!' : '❌ Pasif duruma geçildi!')
       setTimeout(() => setSuccessMessage(''), 2000)
       
@@ -380,13 +380,13 @@ export default function KuryePage() {
   // Aktif durumu değiştiğinde konum takibini kontrol et
   useEffect(() => {
     if (isLoggedIn) {
-      if (isActive) {
+      if (is_active) {
         startLocationTracking()
       } else {
         stopLocationTracking()
       }
     }
-  }, [isActive, isLoggedIn])
+  }, [is_active, isLoggedIn])
 
   const handleUpdateStatus = async (packageId: number, nextStatus: string, additionalData = {}) => {
     try {
@@ -481,9 +481,9 @@ export default function KuryePage() {
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold">Kurye Durumu</h3>
             <div className="flex items-center gap-2">
-              <div className={`w-3 h-3 rounded-full ${isActive ? 'bg-green-500' : 'bg-red-500'}`}></div>
+              <div className={`w-3 h-3 rounded-full ${is_active ? 'bg-green-500' : 'bg-red-500'}`}></div>
               <span className="text-sm text-slate-400">
-                {isActive ? 'Aktif' : 'Pasif'} - {courierStatus === 'idle' ? 'Boşta' : courierStatus === 'busy' ? 'Meşgul' : 'Bilinmiyor'}
+                {is_active ? 'Aktif' : 'Pasif'} - {courierStatus === 'idle' ? 'Boşta' : courierStatus === 'busy' ? 'Meşgul' : 'Bilinmiyor'}
               </span>
             </div>
           </div>
