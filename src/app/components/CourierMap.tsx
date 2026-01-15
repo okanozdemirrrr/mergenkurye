@@ -3,20 +3,6 @@
 import { useEffect, useState, useRef } from 'react'
 import 'leaflet/dist/leaflet.css'
 
-interface Courier {
-  id: string
-  full_name?: string
-  last_lat?: number | null
-  last_lng?: number | null
-  is_active?: boolean
-  status?: 'idle' | 'picking_up' | 'on_the_way' | 'assigned' | 'inactive'
-  activePackageCount?: number
-}
-
-interface CourierMapProps {
-  couriers: Courier[]
-}
-
 // LocalStorage helpers
 const getStoredMapPosition = () => {
   if (typeof window === 'undefined') {
@@ -46,51 +32,51 @@ const saveMapPosition = (lat: number, lng: number, zoom: number) => {
   }
 }
 
-export default function CourierMap({ couriers }: CourierMapProps) {
+export default function CourierMap({ couriers }: any) {
   const [MapBridge, setMapBridge] = useState<any>(null)
   const mapPositionRef = useRef(getStoredMapPosition())
 
   useEffect(() => {
-    // Leaflet'i sadece TARAYICIDA (useEffect içinde) yükle
-    import('react-leaflet').then((mod) => {
-      const L = require('leaflet')
-      
-      // İkon hatasını burada fixle
-      delete L.Icon.Default.prototype._getIconUrl
+    // Leaflet'i dinamik olarak yükle (Hata almamak için şart)
+    const initMap = async () => {
+      const L = (await import('leaflet')).default
+      const ReactLeaflet = await import('react-leaflet')
+
+      // İkon fixlemesi (Karakter hatası almamak için doğrudan URL veriyoruz)
+      delete (L.Icon.Default.prototype as any)._getIconUrl
       L.Icon.Default.mergeOptions({
         iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
         iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
         shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
       })
-      
-      setMapBridge({ ...mod, L })
-    })
+
+      setMapBridge({ ...ReactLeaflet, L })
+    }
+
+    initMap()
   }, [])
 
-  if (!MapBridge || !couriers) {
+  if (!MapBridge) {
     return (
-      <div className="h-[400px] w-full bg-slate-800 rounded-2xl flex items-center justify-center text-white font-bold">
+      <div className="h-[400px] w-full bg-slate-900 animate-pulse flex items-center justify-center text-white font-bold">
         🗺️ Harita Yükleniyor...
       </div>
     )
   }
 
-  const { MapContainer, TileLayer, Marker, Popup, useMapEvents, L } = MapBridge
+  const { MapContainer, TileLayer, Marker, Popup, useMapEvents } = MapBridge
+  const L = MapBridge.L
 
   // Sadece aktif ve koordinatı olan kuryeler
-  const activeCouriersWithCoords = couriers.filter((courier: Courier) => {
-    if (!courier.is_active) return false
-    if (!courier.last_lat || !courier.last_lng) return false
-    
-    const lat = Number(courier.last_lat)
-    const lng = Number(courier.last_lng)
-    
-    if (isNaN(lat) || isNaN(lng)) return false
-    if (lat === 0 || lng === 0) return false
-    if (lat < 35 || lat > 45 || lng < 30 || lng > 40) return false
-    
-    return true
-  })
+  const activeCouriers = couriers && couriers.filter((c: any) => 
+    c.last_lat && 
+    c.last_lng && 
+    c.is_active &&
+    !isNaN(Number(c.last_lat)) &&
+    !isNaN(Number(c.last_lng)) &&
+    Number(c.last_lat) !== 0 &&
+    Number(c.last_lng) !== 0
+  )
 
   // Motor ikonu oluştur
   const createMotorcycleIcon = (color: string) => {
@@ -110,11 +96,13 @@ export default function CourierMap({ couriers }: CourierMapProps) {
   }
 
   // Motor ikonu rengini belirle
-  const getMotorcycleColor = (courier: Courier) => {
-    if (courier.status === 'on_the_way' || courier.status === 'picking_up') {
-      return '#f97316' // Orange-500 (Paket taşıyor)
+  const getMotorcycleColor = (status: string) => {
+    // Paket taşıyorsa (on_the_way veya picking_up) → Turuncu
+    if (status === 'on_the_way' || status === 'picking_up') {
+      return '#f97316' // Orange-500
     }
-    return '#22c55e' // Green-500 (Boşta)
+    // Boşta (idle) → Yeşil
+    return '#22c55e' // Green-500
   }
 
   // Harita olaylarını dinleyen component
@@ -142,45 +130,45 @@ export default function CourierMap({ couriers }: CourierMapProps) {
       <MapContainer 
         center={mapPosition.center} 
         zoom={mapPosition.zoom} 
-        style={{ height: '100%', width: '100%' }}
-        className="z-0"
+        style={{ height: '100%', width: '100%' }} 
+        scrollWheelZoom={true}
       >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        <TileLayer 
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         />
         
         {/* Harita olaylarını dinle */}
         <MapEventHandler />
         
         {/* Aktif kurye markerları */}
-        {activeCouriersWithCoords.map((courier: Courier) => {
-          const lat = Number(courier.last_lat)
-          const lng = Number(courier.last_lng)
-          const color = getMotorcycleColor(courier)
+        {activeCouriers && activeCouriers.map((c: any) => {
+          const color = getMotorcycleColor(c.status || 'idle')
           
           return (
-            <Marker
-              key={courier.id}
-              position={[lat, lng]}
+            <Marker 
+              key={c.id} 
+              position={[Number(c.last_lat), Number(c.last_lng)]}
               icon={createMotorcycleIcon(color)}
             >
               <Popup>
                 <div className="text-center p-2 min-w-[150px]">
-                  <div className="font-bold text-lg mb-2">🚴 {courier.full_name}</div>
+                  <div className="font-bold text-lg mb-2 text-slate-900">
+                    🚴 {c.full_name || 'Kurye'}
+                  </div>
                   
                   <div className={`text-sm px-3 py-1 rounded-full mb-2 ${
-                    courier.status === 'on_the_way' || courier.status === 'picking_up'
-                      ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
-                      : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                    c.status === 'on_the_way' || c.status === 'picking_up'
+                      ? 'bg-orange-100 text-orange-700'
+                      : 'bg-green-100 text-green-700'
                   }`}>
-                    {courier.status === 'on_the_way' ? '🚗 Teslimatta' :
-                     courier.status === 'picking_up' ? '🏃 Alıyor' :
+                    {c.status === 'on_the_way' ? '🚗 Teslimatta' :
+                     c.status === 'picking_up' ? '🏃 Alıyor' :
                      '🟢 Boşta'}
                   </div>
                   
-                  <div className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                    📦 {courier.activePackageCount || 0} Aktif Paket
+                  <div className="text-sm font-semibold text-slate-700">
+                    📦 {c.activePackageCount || 0} Aktif Paket
                   </div>
                 </div>
               </Popup>
