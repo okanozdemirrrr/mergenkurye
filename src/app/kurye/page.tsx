@@ -330,6 +330,9 @@ export default function KuryePage() {
 
   useEffect(() => {
     if (isLoggedIn) {
+      const courierId = sessionStorage.getItem(LOGIN_COURIER_ID_KEY)
+      if (!courierId) return
+
       // İlk yükleme
       fetchPackages(true)
       fetchDailyStats()
@@ -338,7 +341,27 @@ export default function KuryePage() {
       // Konum takibini başlat
       const cleanupLocation = startLocationTracking()
       
-      // Silent refresh - 20 saniyede bir
+      // Supabase Realtime - Kuryeye özel paket değişikliklerini dinle
+      const packagesChannel = supabase
+        .channel(`courier-packages-${courierId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'packages',
+            filter: `courier_id=eq.${courierId}`
+          },
+          (payload) => {
+            console.log('📦 Realtime: Paket değişikliği algılandı!', payload)
+            // Anında güncelle
+            fetchPackages(false)
+            fetchDailyStats()
+          }
+        )
+        .subscribe()
+      
+      // Yedek kontrol - 20 saniyede bir (Realtime çalışmazsa)
       const interval = setInterval(() => {
         fetchPackages(false) // Silent refresh
         fetchDailyStats()
@@ -347,6 +370,7 @@ export default function KuryePage() {
       
       return () => {
         clearInterval(interval)
+        supabase.removeChannel(packagesChannel)
         stopLocationTracking()
         if (cleanupLocation) cleanupLocation()
       }
