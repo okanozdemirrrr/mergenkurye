@@ -70,6 +70,11 @@ export default function Home() {
   const [selectedTransferCourier, setSelectedTransferCourier] = useState<Courier | null>(null)
   const [targetCourierId, setTargetCourierId] = useState<string>('')
 
+  // Debug: Context menu state değişikliğini izle
+  useEffect(() => {
+    console.log('🎯 Context Menu State:', contextMenu)
+  }, [contextMenu])
+
   // Bildirim sesi çal
   const playNotificationSound = () => {
     try {
@@ -414,18 +419,22 @@ export default function Home() {
 
   // SAĞ TIK MENÜSÜ FONKSİYONLARI
   const handleCourierClick = (e: React.MouseEvent, courier: Courier) => {
+    console.log('🖱️ KURYE TIKLANDI:', courier.full_name)
     e.preventDefault()
     e.stopPropagation()
     
     // Bu kuryenin paketlerini kontrol et
     const courierPackages = packages.filter(pkg => pkg.courier_id === courier.id)
+    console.log('📦 Paket sayısı:', courierPackages.length)
     
     if (courierPackages.length === 0) {
+      console.log('❌ Paket yok!')
       setErrorMessage('Bu kuryenin aktif paketi yok!')
       setTimeout(() => setErrorMessage(''), 3000)
       return
     }
     
+    console.log('✅ Menü açılıyor:', { x: e.clientX, y: e.clientY })
     // Context menüyü aç
     setContextMenu({
       courier: courier,
