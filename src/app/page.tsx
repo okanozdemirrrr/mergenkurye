@@ -419,8 +419,7 @@ export default function Home() {
 
   // SAĞ TIK MENÜSÜ FONKSİYONLARI
   const handleCourierCardClick = (e: React.MouseEvent, courier: Courier) => {
-    console.log('🖱️ KURYE TIKLANDI:', courier.full_name)
-    e.preventDefault()
+    console.log('🖱️ KURYE KARTA TIKLANDI:', courier.full_name)
     e.stopPropagation()
     
     // Bu kuryenin paketlerini kontrol et
