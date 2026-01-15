@@ -65,7 +65,6 @@ export default function Home() {
       const audio = new Audio('/notification.mp3')
       audio.volume = 0.7
       audio.play()
-      console.log('✅ Ses çalıyor')
     } catch (err) {
       console.error('❌ Ses hatası:', err)
     }
@@ -94,7 +93,6 @@ export default function Home() {
       const newPackages = transformedData.filter(p => !lastPackageIds.has(p.id))
       
       if (newPackages.length > 0 && lastPackageIds.size > 0) {
-        console.log('🔔 YENİ PAKET BULUNDU:', newPackages[0])
         playNotificationSound()
         setNewOrderDetails(newPackages[0])
         setShowNotificationPopup(true)
@@ -135,36 +133,17 @@ export default function Home() {
 
   const fetchCouriers = async () => {
     try {
-      console.log('🔍 [fetchCouriers] Couriers tablosundan veri çekiliyor...')
-      
       const { data, error } = await supabase
         .from('couriers')
         .select('*')
         .order('full_name', { ascending: true })
 
-      if (error) {
-        console.error('❌ [fetchCouriers] Couriers tablosu hatası:', error)
-        throw error
-      }
-      
-      console.log('✅ [fetchCouriers] Couriers tablosundan gelen RAW veri:', data)
-      console.log('🔍 [fetchCouriers] Gelen Kuryeler:', data) // Yeni eklenen log
+      if (error) throw error
       
       if (!data || data.length === 0) {
-        console.warn('⚠️ [fetchCouriers] Couriers tablosu boş!')
         setCouriers([])
         return
       }
-      
-      // Her kurye için detaylı log
-      data.forEach(courier => {
-        console.log(`🚴 [fetchCouriers] RAW: ${courier.full_name}`)
-        console.log(`   - id: ${courier.id}`)
-        console.log(`   - is_active: ${courier.is_active} (type: ${typeof courier.is_active}) (strict: ${courier.is_active === true})`)
-        console.log(`   - status: ${courier.status}`)
-        console.log(`   - last_lat: ${courier.last_lat} (type: ${typeof courier.last_lat})`)
-        console.log(`   - last_lng: ${courier.last_lng} (type: ${typeof courier.last_lng})`)
-      })
       
       // Koordinat dönüşümü
       const couriersData = data.map(courier => ({
@@ -179,8 +158,6 @@ export default function Home() {
         activePackageCount: 0
       }))
       
-      console.log('✅ [fetchCouriers] Dönüştürülmüş kurye verileri:', couriersData)
-      console.log('📊 [fetchCouriers] İsActive durumları:', couriersData.map(c => ({ name: c.full_name, is_active: c.is_active })))
       setCouriers(couriersData)
       
       // Paket sayılarını ayrı olarak çek
@@ -193,27 +170,19 @@ export default function Home() {
         ])
       }
     } catch (error: any) {
-      console.error('❌ [fetchCouriers] Kuryeler yüklenirken hata:', error)
       setErrorMessage('Kuryeler yüklenemedi: ' + error.message)
     }
   }
 
   const fetchCourierActivePackageCounts = async (courierIds: string[]) => {
     try {
-      console.log('📊 [fetchCourierActivePackageCounts] Başlıyor, kurye IDs:', courierIds)
-      
       const { data, error } = await supabase
         .from('packages')
         .select('courier_id')
         .in('courier_id', courierIds)
-        .neq('status', 'delivered') // Teslim edilmemiş paketler
+        .neq('status', 'delivered')
 
-      if (error) {
-        console.error('❌ [fetchCourierActivePackageCounts] Hata:', error)
-        throw error
-      }
-
-      console.log('✅ [fetchCourierActivePackageCounts] Aktif paketler:', data)
+      if (error) throw error
 
       const counts: { [key: string]: number } = {}
       data?.forEach((pkg) => { 
@@ -221,34 +190,25 @@ export default function Home() {
           counts[pkg.courier_id] = (counts[pkg.courier_id] || 0) + 1 
         }
       })
-
-      console.log('📊 [fetchCourierActivePackageCounts] Hesaplanan sayılar:', counts)
 
       setCouriers(prev => prev.map(c => ({ 
         ...c, 
         activePackageCount: counts[c.id] || 0 
       })))
     } catch (error: any) {
-      console.error('❌ [fetchCourierActivePackageCounts] Aktif paket sayıları alınırken hata:', error)
+      console.error('Aktif paket sayıları alınırken hata:', error)
     }
   }
 
   const fetchCourierDeliveryCounts = async (courierIds: string[]) => {
     try {
-      console.log('📊 [fetchCourierDeliveryCounts] Başlıyor, kurye IDs:', courierIds)
-      
       const { data, error } = await supabase
         .from('packages')
         .select('courier_id')
         .eq('status', 'delivered')
         .in('courier_id', courierIds)
 
-      if (error) {
-        console.error('❌ [fetchCourierDeliveryCounts] Hata:', error)
-        throw error
-      }
-
-      console.log('✅ [fetchCourierDeliveryCounts] Teslim edilen paketler:', data)
+      if (error) throw error
 
       const counts: { [key: string]: number } = {}
       data?.forEach((pkg) => { 
@@ -257,14 +217,12 @@ export default function Home() {
         }
       })
 
-      console.log('📊 [fetchCourierDeliveryCounts] Hesaplanan sayılar:', counts)
-
       setCouriers(prev => prev.map(c => ({ 
         ...c, 
         deliveryCount: counts[c.id] || 0 
       })))
     } catch (error: any) {
-      console.error('❌ [fetchCourierDeliveryCounts] Kurye teslimat sayıları alınırken hata:', error)
+      console.error('Kurye teslimat sayıları alınırken hata:', error)
     }
   }
 
@@ -301,16 +259,10 @@ export default function Home() {
   // fetchCourierStatuses fonksiyonu kaldırıldı - artık fetchCouriers'da tüm bilgiler geliyor
 
   const handleAssignCourier = async (packageId: number) => {
-    console.log('🚀 [handleAssignCourier] Başlıyor:', packageId);
-    
-    // State'i direkt kullanmak yerine, callback ile al
     setSelectedCouriers(currentState => {
       const courierId = currentState[packageId];
-      console.log('   - Seçili Kurye ID (callback):', courierId);
-      console.log('   - selectedCouriers state (callback):', currentState);
       
       if (!courierId) {
-        console.error('❌ Kurye ID yok, işlem iptal');
         alert('Lütfen önce bir kurye seçin!');
         return currentState;
       }
@@ -319,7 +271,6 @@ export default function Home() {
       (async () => {
         try {
           setAssigningIds(prev => new Set(prev).add(packageId));
-          console.log('   - Supabase güncelleme başlıyor...');
           
           const { error } = await supabase.from('packages').update({
             courier_id: courierId,
@@ -327,17 +278,12 @@ export default function Home() {
             assigned_at: new Date().toISOString()
           }).eq('id', packageId);
           
-          if (error) {
-            console.error('❌ Supabase hatası:', error);
-            throw error;
-          }
+          if (error) throw error;
           
-          console.log('✅ Kurye başarıyla atandı!');
           setSuccessMessage('Kurye atandı!');
           fetchPackages(); 
           fetchCouriers();
         } catch (error: any) { 
-          console.error('❌ Hata:', error);
           setErrorMessage(error.message);
         } finally { 
           setAssigningIds(prev => { const n = new Set(prev); n.delete(packageId); return n });
@@ -588,27 +534,6 @@ export default function Home() {
 
             {/* Tab Navigation */}
             <nav className="flex space-x-1 items-center">
-              {/* TEST BUTONU */}
-              <button
-                onClick={() => {
-                  console.log('🧪 TEST: Bildirim tetikleniyor')
-                  playNotificationSound()
-                  setNewOrderDetails({
-                    id: 999,
-                    customer_name: 'Test Müşteri',
-                    delivery_address: 'Test Adres',
-                    amount: 100,
-                    status: 'waiting',
-                    restaurant: { id: 1, name: 'Test Restoran' }
-                  } as Package)
-                  setShowNotificationPopup(true)
-                  setTimeout(() => setShowNotificationPopup(false), 8000)
-                }}
-                className="px-3 py-2 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700 mr-2"
-              >
-                🧪 TEST
-              </button>
-              
               {[
                 { id: 'live', label: 'Canlı Takip', icon: '📦' },
                 { id: 'history', label: 'Geçmiş Siparişler', icon: '📋' },
@@ -755,13 +680,7 @@ export default function Home() {
                     <div className="border-t border-slate-200 dark:border-slate-600 pt-2 space-y-2">
                       <select 
                         value={selectedCouriers[pkg.id] || ''}
-                        onChange={(e) => {
-                          console.log('📝 Dropdown değişti:');
-                          console.log('   - Package ID:', pkg.id);
-                          console.log('   - Seçilen Kurye ID:', e.target.value);
-                          handleCourierChange(pkg.id, e.target.value);
-                          console.log('   - State güncellendi, yeni selectedCouriers:', selectedCouriers);
-                        }}
+                        onChange={(e) => handleCourierChange(pkg.id, e.target.value)}
                         className="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-transparent"
                         disabled={assigningIds.has(pkg.id)}
                       >
@@ -782,25 +701,11 @@ export default function Home() {
                         }
                       </select>
                       <button 
-                        onClick={() => {
-                          console.log('🔘 Kurye Ata butonuna tıklandı');
-                          console.log('   - Package ID:', pkg.id);
-                          console.log('   - Seçili Kurye ID:', selectedCouriers[pkg.id]);
-                          console.log('   - selectedCouriers tüm state:', selectedCouriers);
-                          console.log('   - Atanıyor mu:', assigningIds.has(pkg.id));
-                          console.log('   - Buton disabled mi:', !selectedCouriers[pkg.id] || assigningIds.has(pkg.id));
-                          
-                          if (!selectedCouriers[pkg.id]) {
-                            alert('Lütfen önce bir kurye seçin!');
-                            return;
-                          }
-                          
-                          handleAssignCourier(pkg.id);
-                        }}
-                        disabled={false}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs font-semibold transition-all cursor-pointer"
+                        onClick={() => handleAssignCourier(pkg.id)}
+                        disabled={!selectedCouriers[pkg.id] || assigningIds.has(pkg.id)}
+                        className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white px-3 py-1.5 rounded text-xs font-semibold transition-all"
                       >
-                        {assigningIds.has(pkg.id) ? '⏳ Atanıyor...' : '✅ Kurye Ata (TEST)'}
+                        {assigningIds.has(pkg.id) ? '⏳ Atanıyor...' : '✅ Kurye Ata'}
                       </button>
                     </div>
                   )}
@@ -940,7 +845,7 @@ export default function Home() {
         <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
           <h2 className="text-2xl font-bold mb-6">🚴 Kurye Yönetimi</h2>
           
-          {/* Debug Bilgileri */}
+          {/* Kurye Durumu Özeti */}
           <div className="mb-6 p-4 bg-slate-100 dark:bg-slate-700 rounded-lg">
             <div className="font-bold mb-2">📊 Kurye Durumu Özeti:</div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -1282,43 +1187,10 @@ export default function Home() {
                       {deliveredOrders.length}
                     </span>
                   </div>
-
-                  {/* Debug bilgisi - geliştirme sırasında görmek için */}
-                  <div className="mt-3 pt-2 border-t border-slate-200 dark:border-slate-600">
-                    <div className="text-xs text-slate-500 dark:text-slate-400">
-                      ID: {r.id} | Aktif: {activeOrders.length} | Teslim: {deliveredOrders.length}
-                    </div>
-                  </div>
                 </div>
               </div>
             )
           })}
-        </div>
-
-        {/* Debug Paneli */}
-        <div className="mt-6 p-4 bg-slate-100 dark:bg-slate-700 rounded-lg">
-          <h3 className="font-bold mb-2">🔍 Debug Bilgileri</h3>
-          <div className="text-sm space-y-1">
-            <div>Toplam Restoran: {restaurants.length}</div>
-            <div>Aktif Paketler: {packages.length}</div>
-            <div>Teslim Edilen Paketler: {deliveredPackages.length}</div>
-            <div className="mt-2">
-              <strong>Aktif Paket Örnekleri:</strong>
-              {packages.slice(0, 3).map(p => (
-                <div key={p.id} className="ml-2 text-xs">
-                  - ID: {p.id}, Restaurant ID: {p.restaurant_id}, Restaurant Name: {p.restaurant?.name}
-                </div>
-              ))}
-            </div>
-            <div className="mt-2">
-              <strong>Restoran Örnekleri:</strong>
-              {restaurants.slice(0, 3).map(r => (
-                <div key={r.id} className="ml-2 text-xs">
-                  - ID: {r.id}, Name: {r.name}
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
     )
