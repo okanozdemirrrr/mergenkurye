@@ -2,6 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from './lib/supabase'
+import dynamic from 'next/dynamic'
+
+// Leaflet haritasını SSR olmadan yükle
+const CourierMap = dynamic(() => import('./components/CourierMap'), { ssr: false })
 
 interface Restaurant {
   id: number
@@ -593,8 +597,16 @@ export default function Home() {
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          <div className="lg:col-span-3 bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
-            <h2 className="text-2xl font-bold mb-6">📦 Canlı Sipariş Takibi</h2>
+          <div className="lg:col-span-3 space-y-6">
+            {/* HARİTA */}
+            <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
+              <h2 className="text-2xl font-bold mb-4">🗺️ Kurye Konumları</h2>
+              <CourierMap couriers={couriers} />
+            </div>
+
+            {/* SİPARİŞ KARTLARI */}
+            <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
+              <h2 className="text-2xl font-bold mb-6">📦 Canlı Sipariş Takibi</h2>
           
           {/* Sipariş Kartları */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -725,6 +737,7 @@ export default function Home() {
             )}
           </div>
         </div>
+      </div>
 
         {/* SAĞ PANEL: KURYELERİN DURUMU */}
         <div className="lg:col-span-1 space-y-4">
