@@ -373,7 +373,10 @@ export default function Home() {
       if (activeTab === 'history') fetchDeliveredPackages()
       setIsLoading(false)
     })
+  }, [])
 
+  // Realtime için ayrı useEffect
+  useEffect(() => {
     // Context menu veya modal açıksa Realtime'ı başlatma
     if (contextMenu || showTransferModal) {
       console.log('⏸️ Context menu açık, Realtime başlatılmadı')
@@ -412,7 +415,7 @@ export default function Home() {
       supabase.removeChannel(packagesChannel)
       supabase.removeChannel(couriersChannel)
     }
-  }, [restaurantFilter, activeTab, contextMenu, showTransferModal])
+  }, [contextMenu, showTransferModal])
 
   const fetchRestaurants = async () => {
     const { data } = await supabase.from('restaurants').select('id, name').order('name', { ascending: true })
