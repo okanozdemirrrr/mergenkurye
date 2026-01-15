@@ -108,13 +108,6 @@ export default function Home() {
       setPackages(transformedData)
     } catch (error: any) {
       setErrorMessage('Siparişler yüklenirken hata: ' + error.message)
-        }, 8000) // 8 saniye göster
-      }
-      
-      setPreviousPackageCount(transformedData.length)
-      setPackages(transformedData)
-    } catch (error: any) {
-      setErrorMessage('Siparişler yüklenirken hata: ' + error.message)
     }
   }
 
