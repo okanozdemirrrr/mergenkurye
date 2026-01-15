@@ -5,7 +5,14 @@ import { supabase } from './lib/supabase'
 import dynamic from 'next/dynamic'
 
 // Leaflet haritasını SSR olmadan yükle
-const CourierMap = dynamic(() => import('./components/CourierMap'), { ssr: false })
+const CourierMap = dynamic(() => import('./components/CourierMap'), { 
+  ssr: false,
+  loading: () => (
+    <div className="h-[400px] bg-slate-100 dark:bg-slate-700 animate-pulse rounded-2xl flex items-center justify-center">
+      <span className="text-slate-500">🗺️ Harita Yükleniyor...</span>
+    </div>
+  )
+})
 
 interface Restaurant {
   id: number

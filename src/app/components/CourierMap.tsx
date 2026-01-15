@@ -29,7 +29,13 @@ interface CourierMapProps {
 
 // LocalStorage'dan harita pozisyonunu oku
 const getStoredMapPosition = () => {
-  if (typeof window === 'undefined') return null
+  // SSR kontrolü - window yoksa default dön
+  if (typeof window === 'undefined') {
+    return {
+      center: [41.3500, 36.2200] as [number, number],
+      zoom: 13
+    }
+  }
   
   try {
     const stored = localStorage.getItem('courierMapPosition')
@@ -53,6 +59,7 @@ const getStoredMapPosition = () => {
 
 // LocalStorage'a harita pozisyonunu kaydet
 const saveMapPosition = (lat: number, lng: number, zoom: number) => {
+  // SSR kontrolü - window yoksa kaydetme
   if (typeof window === 'undefined') return
   
   try {
@@ -115,11 +122,23 @@ export default function CourierMap({ couriers }: CourierMapProps) {
 
   // Sadece aktif ve koordinatı olan kuryeler
   const activeCouriersWithCoords = couriers.filter(courier => {
+    // Aktif değilse gösterme
     if (!courier.is_active) return false
+    
+    // Koordinat kontrolü - null, undefined veya 0 olanları gösterme
+    if (courier.last_lat == null || courier.last_lng == null) return false
     
     const lat = Number(courier.last_lat)
     const lng = Number(courier.last_lng)
-    return !isNaN(lat) && lat !== 0 && !isNaN(lng) && lng !== 0
+    
+    // NaN veya 0 kontrolü
+    if (isNaN(lat) || isNaN(lng)) return false
+    if (lat === 0 || lng === 0) return false
+    
+    // Geçerli koordinat aralığı kontrolü (Samsun civarı)
+    if (lat < 40 || lat > 42 || lng < 35 || lng > 37) return false
+    
+    return true
   })
 
   // Motor ikonu rengini belirle
@@ -132,7 +151,7 @@ export default function CourierMap({ couriers }: CourierMapProps) {
     return '#22c55e' // Green-500
   }
 
-  const mapPosition = mapPositionRef.current!
+  const mapPosition = mapPositionRef.current
 
   return (
     <div className="w-full h-96 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-lg">
