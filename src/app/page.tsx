@@ -59,6 +59,12 @@ export default function Home() {
   const [lastPackageIds, setLastPackageIds] = useState<Set<number>>(new Set())
   const [showNotificationPopup, setShowNotificationPopup] = useState(false)
   const [newOrderDetails, setNewOrderDetails] = useState<Package | null>(null)
+  
+  // Context menu states
+  const [contextMenuCourier, setContextMenuCourier] = useState<Courier | null>(null)
+  const [contextMenuPosition, setContextMenuPosition] = useState<{ x: number; y: number } | null>(null)
+  const [showTransferModal, setShowTransferModal] = useState(false)
+  const [transferTargetCourierId, setTransferTargetCourierId] = useState<string>('')
 
   // Bildirim sesi çal
   const playNotificationSound = () => {
@@ -369,6 +375,15 @@ export default function Home() {
     return () => clearInterval(interval)
   }, [restaurantFilter, activeTab])
 
+  // Context menüyü kapatmak için click listener
+  useEffect(() => {
+    const handleClick = () => closeContextMenu()
+    if (contextMenuPosition) {
+      document.addEventListener('click', handleClick)
+      return () => document.removeEventListener('click', handleClick)
+    }
+  }, [contextMenuPosition])
+
   const fetchRestaurants = async () => {
     const { data } = await supabase.from('restaurants').select('id, name').order('name', { ascending: true })
     setRestaurants(data || [])
@@ -376,6 +391,85 @@ export default function Home() {
 
   const handleCourierChange = (packageId: number, courierId: string) => {
     setSelectedCouriers(prev => ({ ...prev, [packageId]: courierId }))
+  }
+
+  // Sağ tık menüsü handler
+  const handleCourierRightClick = (e: React.MouseEvent, courier: Courier) => {
+    e.preventDefault()
+    
+    // Bu kuryenin paketleri var mı kontrol et
+    const courierPackages = packages.filter(pkg => pkg.courier_id === courier.id)
+    if (courierPackages.length === 0) {
+      setErrorMessage('Bu kuryenin aktif paketi yok!')
+      setTimeout(() => setErrorMessage(''), 3000)
+      return
+    }
+    
+    setContextMenuCourier(courier)
+    setContextMenuPosition({ x: e.clientX, y: e.clientY })
+  }
+
+  // Context menüyü kapat
+  const closeContextMenu = () => {
+    setContextMenuCourier(null)
+    setContextMenuPosition(null)
+  }
+
+  // Transfer modalını aç
+  const openTransferModal = () => {
+    setShowTransferModal(true)
+    closeContextMenu()
+  }
+
+  // Paketleri başka kuryeye aktar
+  const handleTransferPackages = async () => {
+    if (!contextMenuCourier || !transferTargetCourierId) {
+      setErrorMessage('Lütfen hedef kurye seçin!')
+      return
+    }
+
+    if (transferTargetCourierId === contextMenuCourier.id) {
+      setErrorMessage('Aynı kuryeye aktarım yapılamaz!')
+      return
+    }
+
+    try {
+      // Bu kuryenin tüm paketlerini bul
+      const courierPackages = packages.filter(pkg => pkg.courier_id === contextMenuCourier.id)
+      
+      if (courierPackages.length === 0) {
+        setErrorMessage('Aktarılacak paket bulunamadı!')
+        return
+      }
+
+      // Tüm paketleri yeni kuryeye aktar
+      const packageIds = courierPackages.map(pkg => pkg.id)
+      
+      const { error } = await supabase
+        .from('packages')
+        .update({ 
+          courier_id: transferTargetCourierId,
+          assigned_at: new Date().toISOString()
+        })
+        .in('id', packageIds)
+
+      if (error) throw error
+
+      const targetCourier = couriers.find(c => c.id === transferTargetCourierId)
+      setSuccessMessage(`${courierPackages.length} paket ${contextMenuCourier.full_name}'dan ${targetCourier?.full_name}'a aktarıldı!`)
+      
+      // Modalı kapat ve verileri yenile
+      setShowTransferModal(false)
+      setContextMenuCourier(null)
+      setTransferTargetCourierId('')
+      fetchPackages()
+      fetchCouriers()
+      
+      setTimeout(() => setSuccessMessage(''), 3000)
+    } catch (error: any) {
+      setErrorMessage('Paket aktarımı sırasında hata: ' + error.message)
+      setTimeout(() => setErrorMessage(''), 3000)
+    }
   }
 
   // Türkiye saatine dönüştürme fonksiyonu
@@ -807,7 +901,11 @@ export default function Home() {
                 const courierPackages = packages.filter(pkg => pkg.courier_id === c.id)
                 
                 return (
-                  <div key={c.id} className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl border dark:border-slate-600">
+                  <div 
+                    key={c.id} 
+                    className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl border dark:border-slate-600 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                    onContextMenu={(e) => handleCourierRightClick(e, c)}
+                  >
                     <div className="flex justify-between items-center mb-2">
                       <span className="font-bold text-sm">{c.full_name}</span>
                       <div className="text-right">
@@ -1208,6 +1306,119 @@ export default function Home() {
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Context Menu - Sağ Tık Menüsü */}
+        {contextMenuPosition && contextMenuCourier && (
+          <div 
+            className="fixed z-[60] bg-white dark:bg-slate-800 shadow-2xl rounded-lg border-2 border-slate-200 dark:border-slate-600 py-2 min-w-[200px]"
+            style={{ 
+              top: `${contextMenuPosition.y}px`, 
+              left: `${contextMenuPosition.x}px` 
+            }}
+          >
+            <button
+              onClick={openTransferModal}
+              className="w-full px-4 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex items-center gap-2 text-sm font-medium"
+            >
+              <span>🔄</span>
+              <span>Paketi Başkasına Ata</span>
+            </button>
+          </div>
+        )}
+
+        {/* Transfer Modal - Paket Aktarma */}
+        {showTransferModal && contextMenuCourier && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full shadow-2xl">
+              {/* Modal Header */}
+              <div className="flex justify-between items-center p-6 border-b border-slate-200 dark:border-slate-700">
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white">
+                  🔄 Paket Aktarma
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowTransferModal(false)
+                    setTransferTargetCourierId('')
+                  }}
+                  className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-6">
+                <div className="mb-4">
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                    <span className="font-bold text-slate-900 dark:text-white">{contextMenuCourier.full_name}</span> adlı kuryenin 
+                    <span className="font-bold text-blue-600 dark:text-blue-400"> {packages.filter(p => p.courier_id === contextMenuCourier.id).length} adet </span>
+                    paketini başka bir kuryeye aktarmak üzeresiniz.
+                  </p>
+                </div>
+
+                {/* Kurye Seçimi */}
+                <div className="mb-6">
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                    Hedef Kurye Seçin:
+                  </label>
+                  <select
+                    value={transferTargetCourierId}
+                    onChange={(e) => setTransferTargetCourierId(e.target.value)}
+                    className="w-full px-4 py-3 border-2 border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">-- Kurye Seçin --</option>
+                    {couriers
+                      .filter(c => c.id !== contextMenuCourier.id && c.isActive)
+                      .map(c => (
+                        <option key={c.id} value={c.id}>
+                          {c.full_name} ({c.activePackageCount || 0} aktif paket)
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                {/* Paket Listesi */}
+                <div className="mb-6 max-h-48 overflow-y-auto bg-slate-50 dark:bg-slate-700/50 rounded-lg p-3">
+                  <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">
+                    Aktarılacak Paketler:
+                  </p>
+                  <div className="space-y-1">
+                    {packages
+                      .filter(p => p.courier_id === contextMenuCourier.id)
+                      .map(pkg => (
+                        <div key={pkg.id} className="text-xs bg-white dark:bg-slate-800 p-2 rounded border dark:border-slate-600">
+                          <div className="font-medium">{pkg.customer_name}</div>
+                          <div className="text-slate-500 dark:text-slate-400">
+                            {pkg.restaurant?.name} - {pkg.amount}₺
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setShowTransferModal(false)
+                      setTransferTargetCourierId('')
+                    }}
+                    className="flex-1 px-4 py-3 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-semibold hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
+                  >
+                    İptal
+                  </button>
+                  <button
+                    onClick={handleTransferPackages}
+                    disabled={!transferTargetCourierId}
+                    className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Aktar
+                  </button>
+                </div>
               </div>
             </div>
           </div>
