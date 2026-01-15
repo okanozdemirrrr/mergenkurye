@@ -374,6 +374,12 @@ export default function Home() {
       setIsLoading(false)
     })
 
+    // Context menu veya modal açıksa Realtime'ı başlatma
+    if (contextMenu || showTransferModal) {
+      console.log('⏸️ Context menu açık, Realtime başlatılmadı')
+      return
+    }
+
     // Supabase Realtime - Paketler için
     const packagesChannel = supabase
       .channel('packages-changes')
@@ -406,7 +412,7 @@ export default function Home() {
       supabase.removeChannel(packagesChannel)
       supabase.removeChannel(couriersChannel)
     }
-  }, [restaurantFilter, activeTab])
+  }, [restaurantFilter, activeTab, contextMenu, showTransferModal])
 
   const fetchRestaurants = async () => {
     const { data } = await supabase.from('restaurants').select('id, name').order('name', { ascending: true })
