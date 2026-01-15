@@ -87,8 +87,11 @@ export default function Home() {
         restaurants: undefined
       }))
 
-      // Yeni sipariş kontrolü (sadece ilk yükleme değilse)
-      if (!isInitialLoad && previousPackageCount > 0 && transformedData.length > previousPackageCount) {
+      const currentCount = transformedData.length
+      console.log(`📊 Paket sayısı: Önceki=${previousPackageCount}, Şimdi=${currentCount}, İlkYükleme=${isInitialLoad}`)
+
+      // Yeni sipariş kontrolü (sadece ilk yükleme değilse VE paket sayısı arttıysa)
+      if (!isInitialLoad && previousPackageCount >= 0 && currentCount > previousPackageCount) {
         const newOrder = transformedData[0] // En yeni sipariş
         console.log('🔔 YENİ SİPARİŞ ALGILANDI:', newOrder)
         playNotificationSound()
@@ -98,6 +101,13 @@ export default function Home() {
         setTimeout(() => {
           setNotificationMessage('')
           setShowNotificationPopup(false)
+        }, 8000)
+      }
+      
+      setPreviousPackageCount(currentCount)
+      setPackages(transformedData)
+    } catch (error: any) {
+      setErrorMessage('Siparişler yüklenirken hata: ' + error.message)
         }, 8000) // 8 saniye göster
       }
       
@@ -349,73 +359,32 @@ export default function Home() {
   }
 
   useEffect(() => {
-    // İlk yükleme - loading göstermesin
+    // İlk yükleme
     setIsLoading(true)
-    Promise.all([
-      fetchPackages(true), // İlk yükleme flag'i
-      fetchCouriers(), 
-      fetchRestaurants(),
-      activeTab === 'history' ? fetchDeliveredPackages() : Promise.resolve()
-    ]).finally(() => setIsLoading(false))
+    fetchPackages(true).then(() => {
+      fetchCouriers()
+      fetchRestaurants()
+      if (activeTab === 'history') fetchDeliveredPackages()
+      setIsLoading(false)
+    })
 
-    // 20 saniyede bir arka planda güncelle (loading göstermeden)
-    const interval = setInterval(async () => { 
-      await fetchPackages(false); // İlk yükleme değil
-      await fetchCouriers();
+    // HER 5 SANİYEDE BİR KONTROL ET - YENİ SİPARİŞ VAR MI?
+    const notificationInterval = setInterval(async () => {
+      console.log('🔍 Yeni sipariş kontrolü...')
+      await fetchPackages(false)
+    }, 5000) // 5 saniye
+
+    // 20 saniyede bir tam güncelleme
+    const fullUpdateInterval = setInterval(async () => { 
+      await fetchCouriers()
       if (activeTab === 'history') {
-        await fetchDeliveredPackages();
+        await fetchDeliveredPackages()
       }
-    }, 20000) // 20 saniye
-
-    // REALTIME SUBSCRIPTION - Yeni paket geldiğinde anında bildirim
-    const channel = supabase
-      .channel('packages-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'packages'
-        },
-        async (payload) => {
-          console.log('🔔 REALTIME: Yeni paket eklendi!', payload)
-          
-          // Yeni paketin detaylarını çek
-          const { data: newPackage } = await supabase
-            .from('packages')
-            .select('*, restaurants(name)')
-            .eq('id', payload.new.id)
-            .single()
-          
-          if (newPackage) {
-            const transformedPackage = {
-              ...newPackage,
-              restaurant: newPackage.restaurants
-            }
-            
-            console.log('📦 Yeni paket detayları:', transformedPackage)
-            
-            // Ses çal ve popup göster
-            playNotificationSound()
-            setNewOrderDetails(transformedPackage)
-            setShowNotificationPopup(true)
-            setNotificationMessage('🔔 Yeni sipariş geldi!')
-            
-            setTimeout(() => {
-              setNotificationMessage('')
-              setShowNotificationPopup(false)
-            }, 8000)
-            
-            // Paket listesini güncelle
-            fetchPackages(false)
-          }
-        }
-      )
-      .subscribe()
+    }, 20000)
 
     return () => {
-      clearInterval(interval)
-      supabase.removeChannel(channel)
+      clearInterval(notificationInterval)
+      clearInterval(fullUpdateInterval)
     }
   }, [restaurantFilter, activeTab])
 
