@@ -375,15 +375,20 @@ export default function Home() {
       setIsLoading(false)
     })
 
-    // 3 saniyede bir kontrol
+    // 3 saniyede bir kontrol (context menü açıkken durduruluyor)
     const interval = setInterval(() => {
+      // Context menü veya transfer modal açıksa yenileme yapma
+      if (contextMenuPosition || showTransferModal) {
+        console.log('⏸️ Context menü açık, yenileme atlandı')
+        return
+      }
       console.log('🔍 Paket kontrolü yapılıyor...')
       fetchPackages()
       fetchCouriers()
     }, 3000)
 
     return () => clearInterval(interval)
-  }, [restaurantFilter, activeTab])
+  }, [restaurantFilter, activeTab, contextMenuPosition, showTransferModal])
 
   // Context menüyü kapatmak için click listener
   useEffect(() => {
