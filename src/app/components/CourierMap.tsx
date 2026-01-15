@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, memo } from 'react'
 import 'leaflet/dist/leaflet.css'
 
 // LocalStorage helpers
@@ -32,9 +32,32 @@ const saveMapPosition = (lat: number, lng: number, zoom: number) => {
   }
 }
 
-export default function CourierMap({ couriers }: any) {
+// Kurye verilerini karşılaştır (memo için)
+const areCouriersEqual = (prevCouriers: any[], nextCouriers: any[]) => {
+  if (!prevCouriers || !nextCouriers) return false
+  if (prevCouriers.length !== nextCouriers.length) return false
+  
+  // Her kuryenin id, lat, lng, status ve is_active değerlerini kontrol et
+  return prevCouriers.every((prev, index) => {
+    const next = nextCouriers[index]
+    return (
+      prev.id === next.id &&
+      prev.last_lat === next.last_lat &&
+      prev.last_lng === next.last_lng &&
+      prev.status === next.status &&
+      prev.is_active === next.is_active &&
+      prev.activePackageCount === next.activePackageCount
+    )
+  })
+}
+
+function CourierMap({ couriers }: any) {
   const [MapBridge, setMapBridge] = useState<any>(null)
-  const mapPositionRef = useRef(getStoredMapPosition())
+  const [isMapReady, setIsMapReady] = useState(false)
+  
+  // Initial pozisyon - sadece bir kez okunur, sonra değişmez
+  const initialPositionRef = useRef(getStoredMapPosition())
+  const mapInstanceRef = useRef<any>(null)
 
   useEffect(() => {
     // Leaflet'i dinamik olarak yükle (Hata almamak için şart)
@@ -51,12 +74,13 @@ export default function CourierMap({ couriers }: any) {
       })
 
       setMapBridge({ ...ReactLeaflet, L })
+      setIsMapReady(true)
     }
 
     initMap()
   }, [])
 
-  if (!MapBridge) {
+  if (!MapBridge || !isMapReady) {
     return (
       <div className="h-[400px] w-full bg-slate-900 animate-pulse flex items-center justify-center text-white font-bold">
         🗺️ Harita Yükleniyor...
@@ -125,18 +149,24 @@ export default function CourierMap({ couriers }: any) {
       }
     })
     
+    // Map instance'ı sakla (ilk render'da)
+    if (!mapInstanceRef.current) {
+      mapInstanceRef.current = map
+    }
+    
     return null
   }
 
-  const mapPosition = mapPositionRef.current
+  const initialPosition = initialPositionRef.current
 
   return (
     <div className="h-[400px] w-full rounded-2xl overflow-hidden border-2 border-slate-700 shadow-2xl">
       <MapContainer 
-        center={mapPosition.center} 
-        zoom={mapPosition.zoom} 
+        center={initialPosition.center} 
+        zoom={initialPosition.zoom} 
         style={{ height: '100%', width: '100%' }} 
         scrollWheelZoom={true}
+        zoomControl={true}
       >
         <TileLayer 
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -146,13 +176,13 @@ export default function CourierMap({ couriers }: any) {
         {/* Harita olaylarını dinle */}
         <MapEventHandler />
         
-        {/* Aktif kurye markerları */}
+        {/* Aktif kurye markerları - key ile React'e "bu aynı kurye" diyoruz */}
         {activeCouriers && activeCouriers.map((c: any) => {
           const color = getMotorcycleColor(c.status || 'idle')
           
           return (
             <Marker 
-              key={c.id} 
+              key={c.id}
               position={[Number(c.last_lat), Number(c.last_lng)]}
               icon={createMotorcycleIcon(color)}
             >
@@ -184,3 +214,8 @@ export default function CourierMap({ couriers }: any) {
     </div>
   )
 }
+
+// React.memo ile sarmala - sadece couriers değiştiğinde render et
+export default memo(CourierMap, (prevProps, nextProps) => {
+  return areCouriersEqual(prevProps.couriers, nextProps.couriers)
+})
