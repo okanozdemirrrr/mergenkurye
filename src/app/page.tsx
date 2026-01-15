@@ -413,7 +413,7 @@ export default function Home() {
   }
 
   // SAĞ TIK MENÜSÜ FONKSİYONLARI
-  const handleCourierRightClick = (e: React.MouseEvent, courier: Courier) => {
+  const handleCourierClick = (e: React.MouseEvent, courier: Courier) => {
     e.preventDefault()
     e.stopPropagation()
     
@@ -944,7 +944,7 @@ export default function Home() {
                   <div 
                     key={c.id} 
                     className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl border dark:border-slate-600 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                    onContextMenu={(e) => handleCourierRightClick(e, c)}
+                    onClick={(e) => handleCourierClick(e, c)}
                   >
                     <div className="flex justify-between items-center mb-2">
                       <span className="font-bold text-sm">{c.full_name}</span>
