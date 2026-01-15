@@ -70,10 +70,12 @@ export default function Home() {
   const [selectedTransferCourier, setSelectedTransferCourier] = useState<Courier | null>(null)
   const [targetCourierId, setTargetCourierId] = useState<string>('')
 
-  // Debug: Context menu state değişikliğini izle
+  // Debug: Modal state değişikliğini izle
   useEffect(() => {
     console.log('🎯 Context Menu State:', contextMenu)
-  }, [contextMenu])
+    console.log('🎯 Transfer Modal State:', showTransferModal)
+    console.log('🎯 Selected Transfer Courier:', selectedTransferCourier?.full_name)
+  }, [contextMenu, showTransferModal, selectedTransferCourier])
 
   // Bildirim sesi çal
   const playNotificationSound = () => {
@@ -443,9 +445,12 @@ export default function Home() {
     }
     
     console.log('✅ Modal açılıyor direkt')
-    // Direkt modalı aç (context menü atlandı)
+    // ÖNCE courier'i set et, SONRA modalı aç
     setSelectedTransferCourier(courier)
-    setShowTransferModal(true)
+    setTimeout(() => {
+      setShowTransferModal(true)
+      console.log('🎯 Modal state true yapıldı')
+    }, 10)
   }
 
   // Context menüyü kapat
