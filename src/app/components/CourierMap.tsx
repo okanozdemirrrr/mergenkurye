@@ -17,7 +17,7 @@ interface CourierMapProps {
   couriers: Courier[]
 }
 
-// LocalStorage'dan harita pozisyonunu oku
+// LocalStorage helpers
 const getStoredMapPosition = () => {
   if (typeof window === 'undefined') {
     return { center: [41.3500, 36.2200] as [number, number], zoom: 13 }
@@ -36,7 +36,6 @@ const getStoredMapPosition = () => {
   return { center: [41.3500, 36.2200] as [number, number], zoom: 13 }
 }
 
-// LocalStorage'a harita pozisyonunu kaydet
 const saveMapPosition = (lat: number, lng: number, zoom: number) => {
   if (typeof window === 'undefined') return
   
@@ -48,49 +47,40 @@ const saveMapPosition = (lat: number, lng: number, zoom: number) => {
 }
 
 export default function CourierMap({ couriers }: CourierMapProps) {
-  const [MapComponents, setMapComponents] = useState<any>(null)
+  const [MapBridge, setMapBridge] = useState<any>(null)
   const mapPositionRef = useRef(getStoredMapPosition())
 
   useEffect(() => {
-    // Leaflet'i sadece tarayıcıda yükle
-    const loadLeaflet = async () => {
-      try {
-        const L = await import('leaflet')
-        const { MapContainer, TileLayer, Marker, Popup, useMapEvents } = await import('react-leaflet')
-
-        // İkon hatasını çöz
-        // @ts-ignore
-        delete L.Icon.Default.prototype._getIconUrl
-        L.Icon.Default.mergeOptions({
-          iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
-          iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
-          shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
-        })
-
-        setMapComponents({ MapContainer, TileLayer, Marker, Popup, useMapEvents, L })
-      } catch (error) {
-        console.error('Leaflet yükleme hatası:', error)
-      }
-    }
-
-    loadLeaflet()
+    // Leaflet'i sadece TARAYICIDA (useEffect içinde) yükle
+    import('react-leaflet').then((mod) => {
+      const L = require('leaflet')
+      
+      // İkon hatasını burada fixle
+      delete L.Icon.Default.prototype._getIconUrl
+      L.Icon.Default.mergeOptions({
+        iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
+        iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+        shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+      })
+      
+      setMapBridge({ ...mod, L })
+    })
   }, [])
 
-  if (!MapComponents) {
+  if (!MapBridge || !couriers) {
     return (
-      <div className="h-[400px] w-full bg-slate-800 animate-pulse rounded-2xl flex items-center justify-center text-white font-bold">
-        🗺️ Harita Motoru Hazırlanıyor...
+      <div className="h-[400px] w-full bg-slate-800 rounded-2xl flex items-center justify-center text-white font-bold">
+        🗺️ Harita Yükleniyor...
       </div>
     )
   }
 
-  const { MapContainer, TileLayer, Marker, Popup, useMapEvents, L } = MapComponents
+  const { MapContainer, TileLayer, Marker, Popup, useMapEvents, L } = MapBridge
 
   // Sadece aktif ve koordinatı olan kuryeler
-  const activeCouriersWithCoords = couriers.filter(courier => {
+  const activeCouriersWithCoords = couriers.filter((courier: Courier) => {
     if (!courier.is_active) return false
-    if (courier.last_lat == null || courier.last_lng == null) return false
-    if (courier.last_lat === undefined || courier.last_lng === undefined) return false
+    if (!courier.last_lat || !courier.last_lng) return false
     
     const lat = Number(courier.last_lat)
     const lng = Number(courier.last_lng)
@@ -122,9 +112,9 @@ export default function CourierMap({ couriers }: CourierMapProps) {
   // Motor ikonu rengini belirle
   const getMotorcycleColor = (courier: Courier) => {
     if (courier.status === 'on_the_way' || courier.status === 'picking_up') {
-      return '#f97316' // Orange-500
+      return '#f97316' // Orange-500 (Paket taşıyor)
     }
-    return '#22c55e' // Green-500
+    return '#22c55e' // Green-500 (Boşta)
   }
 
   // Harita olaylarını dinleyen component
@@ -164,14 +154,9 @@ export default function CourierMap({ couriers }: CourierMapProps) {
         <MapEventHandler />
         
         {/* Aktif kurye markerları */}
-        {activeCouriersWithCoords.map((courier) => {
-          if (!courier.last_lat || !courier.last_lng) return null
-          
+        {activeCouriersWithCoords.map((courier: Courier) => {
           const lat = Number(courier.last_lat)
           const lng = Number(courier.last_lng)
-          
-          if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) return null
-          
           const color = getMotorcycleColor(courier)
           
           return (
