@@ -66,6 +66,16 @@ export default function Home() {
   const [showTransferModal, setShowTransferModal] = useState(false)
   const [transferTargetCourierId, setTransferTargetCourierId] = useState<string>('')
 
+  // Debug için context menu state değişikliklerini logla
+  useEffect(() => {
+    if (contextMenuPosition) {
+      console.log('🎯 Context Menu State Değişti:', {
+        courier: contextMenuCourier?.full_name,
+        position: contextMenuPosition
+      })
+    }
+  }, [contextMenuPosition, contextMenuCourier])
+
   // Bildirim sesi çal
   const playNotificationSound = () => {
     try {
@@ -396,15 +406,22 @@ export default function Home() {
   // Sağ tık menüsü handler
   const handleCourierRightClick = (e: React.MouseEvent, courier: Courier) => {
     e.preventDefault()
+    e.stopPropagation()
+    
+    console.log('🖱️ Sağ tık yapıldı:', courier.full_name)
     
     // Bu kuryenin paketleri var mı kontrol et
     const courierPackages = packages.filter(pkg => pkg.courier_id === courier.id)
+    console.log('📦 Kurye paketleri:', courierPackages.length)
+    
     if (courierPackages.length === 0) {
+      console.log('⚠️ Paket yok, hata mesajı gösteriliyor')
       setErrorMessage('Bu kuryenin aktif paketi yok!')
       setTimeout(() => setErrorMessage(''), 3000)
       return
     }
     
+    console.log('✅ Context menü açılıyor:', { x: e.clientX, y: e.clientY })
     setContextMenuCourier(courier)
     setContextMenuPosition({ x: e.clientX, y: e.clientY })
   }
@@ -1314,15 +1331,16 @@ export default function Home() {
         {/* Context Menu - Sağ Tık Menüsü */}
         {contextMenuPosition && contextMenuCourier && (
           <div 
-            className="fixed z-[60] bg-white dark:bg-slate-800 shadow-2xl rounded-lg border-2 border-slate-200 dark:border-slate-600 py-2 min-w-[200px]"
+            className="fixed z-[100] bg-white dark:bg-slate-800 shadow-2xl rounded-lg border-2 border-slate-200 dark:border-slate-600 py-2 min-w-[200px]"
             style={{ 
               top: `${contextMenuPosition.y}px`, 
               left: `${contextMenuPosition.x}px` 
             }}
+            onClick={(e) => e.stopPropagation()}
           >
             <button
               onClick={openTransferModal}
-              className="w-full px-4 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex items-center gap-2 text-sm font-medium"
+              className="w-full px-4 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-white"
             >
               <span>🔄</span>
               <span>Paketi Başkasına Ata</span>
