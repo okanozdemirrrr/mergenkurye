@@ -375,20 +375,39 @@ export default function Home() {
       setIsLoading(false)
     })
 
-    // 3 saniyede bir kontrol (context menü açıkken durduruluyor)
-    const interval = setInterval(() => {
-      // Context menü veya transfer modal açıksa yenileme yapma
-      if (contextMenuPosition || showTransferModal) {
-        console.log('⏸️ Context menü açık, yenileme atlandı')
-        return
-      }
-      console.log('🔍 Paket kontrolü yapılıyor...')
-      fetchPackages()
-      fetchCouriers()
-    }, 3000)
+    // Supabase Realtime - Paketler için
+    const packagesChannel = supabase
+      .channel('packages-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'packages' },
+        (payload) => {
+          console.log('📦 Paket değişikliği algılandı:', payload)
+          fetchPackages()
+          fetchCouriers()
+        }
+      )
+      .subscribe()
 
-    return () => clearInterval(interval)
-  }, [restaurantFilter, activeTab, contextMenuPosition, showTransferModal])
+    // Supabase Realtime - Kuryeler için
+    const couriersChannel = supabase
+      .channel('couriers-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'couriers' },
+        (payload) => {
+          console.log('🚴 Kurye değişikliği algılandı:', payload)
+          fetchCouriers()
+        }
+      )
+      .subscribe()
+
+    // Cleanup
+    return () => {
+      supabase.removeChannel(packagesChannel)
+      supabase.removeChannel(couriersChannel)
+    }
+  }, [restaurantFilter, activeTab])
 
   // Context menüyü kapatmak için click listener
   useEffect(() => {
