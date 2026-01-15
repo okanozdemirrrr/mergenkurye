@@ -56,26 +56,29 @@ export default function Home() {
   const [selectedCouriers, setSelectedCouriers] = useState<{ [key: number]: string }>({})
   const [assigningIds, setAssigningIds] = useState<Set<number>>(new Set())
   const [restaurantFilter, setRestaurantFilter] = useState<number | null>(null)
-  const [previousPackageCount, setPreviousPackageCount] = useState(0)
+  const [lastPackageIds, setLastPackageIds] = useState<Set<number>>(new Set())
   const [showNotificationPopup, setShowNotificationPopup] = useState(false)
   const [newOrderDetails, setNewOrderDetails] = useState<Package | null>(null)
 
   // Bildirim sesi çal
   const playNotificationSound = () => {
-    if (typeof window !== 'undefined') {
+    try {
       const audio = new Audio('/notification.mp3')
-      audio.volume = 0.5 // Ses seviyesi (0.0 - 1.0)
-      audio.play().catch(err => console.log('Ses çalınamadı:', err))
+      audio.volume = 0.7
+      audio.play()
+      console.log('✅ Ses çalıyor')
+    } catch (err) {
+      console.error('❌ Ses hatası:', err)
     }
   }
 
-  const fetchPackages = async (isInitialLoad = false) => {
+  const fetchPackages = async () => {
     try {
       const { data, error } = await supabase
         .from('packages')
         .select('*, restaurants!inner(name)')
         .in('status', ['waiting', 'assigned', 'picking_up', 'on_the_way'])
-        .order('created_at', { ascending: false }) // En yeni en üstte
+        .order('created_at', { ascending: false })
 
       if (error) throw error
 
@@ -87,24 +90,19 @@ export default function Home() {
         restaurants: undefined
       }))
 
-      const currentCount = transformedData.length
-      console.log(`📊 Paket sayısı: Önceki=${previousPackageCount}, Şimdi=${currentCount}, İlkYükleme=${isInitialLoad}`)
-
-      // Yeni sipariş kontrolü (sadece ilk yükleme değilse VE paket sayısı arttıysa)
-      if (!isInitialLoad && previousPackageCount >= 0 && currentCount > previousPackageCount) {
-        const newOrder = transformedData[0] // En yeni sipariş
-        console.log('🔔 YENİ SİPARİŞ ALGILANDI:', newOrder)
+      // Yeni paket kontrolü - ID bazlı
+      const currentIds = new Set(transformedData.map(p => p.id))
+      const newPackages = transformedData.filter(p => !lastPackageIds.has(p.id))
+      
+      if (newPackages.length > 0 && lastPackageIds.size > 0) {
+        console.log('🔔 YENİ PAKET BULUNDU:', newPackages[0])
         playNotificationSound()
-        setNewOrderDetails(newOrder)
+        setNewOrderDetails(newPackages[0])
         setShowNotificationPopup(true)
-        setNotificationMessage('🔔 Yeni sipariş geldi!')
-        setTimeout(() => {
-          setNotificationMessage('')
-          setShowNotificationPopup(false)
-        }, 8000)
+        setTimeout(() => setShowNotificationPopup(false), 8000)
       }
       
-      setPreviousPackageCount(currentCount)
+      setLastPackageIds(currentIds)
       setPackages(transformedData)
     } catch (error: any) {
       setErrorMessage('Siparişler yüklenirken hata: ' + error.message)
@@ -354,31 +352,21 @@ export default function Home() {
   useEffect(() => {
     // İlk yükleme
     setIsLoading(true)
-    fetchPackages(true).then(() => {
+    fetchPackages().then(() => {
       fetchCouriers()
       fetchRestaurants()
       if (activeTab === 'history') fetchDeliveredPackages()
       setIsLoading(false)
     })
 
-    // HER 5 SANİYEDE BİR KONTROL ET - YENİ SİPARİŞ VAR MI?
-    const notificationInterval = setInterval(async () => {
-      console.log('🔍 Yeni sipariş kontrolü...')
-      await fetchPackages(false)
-    }, 5000) // 5 saniye
+    // 3 saniyede bir kontrol
+    const interval = setInterval(() => {
+      console.log('🔍 Paket kontrolü yapılıyor...')
+      fetchPackages()
+      fetchCouriers()
+    }, 3000)
 
-    // 20 saniyede bir tam güncelleme
-    const fullUpdateInterval = setInterval(async () => { 
-      await fetchCouriers()
-      if (activeTab === 'history') {
-        await fetchDeliveredPackages()
-      }
-    }, 20000)
-
-    return () => {
-      clearInterval(notificationInterval)
-      clearInterval(fullUpdateInterval)
-    }
+    return () => clearInterval(interval)
   }, [restaurantFilter, activeTab])
 
   const fetchRestaurants = async () => {
