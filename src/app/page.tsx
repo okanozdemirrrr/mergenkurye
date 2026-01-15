@@ -31,8 +31,7 @@ interface Courier {
   full_name?: string
   deliveryCount?: number
   todayDeliveryCount?: number
-  isActive?: boolean
-  is_active?: boolean // Veritabanından gelen ham veri
+  is_active?: boolean
   activePackageCount?: number
   last_lat?: number | null
   last_lng?: number | null
@@ -167,12 +166,12 @@ export default function Home() {
         console.log(`   - last_lng: ${courier.last_lng} (type: ${typeof courier.last_lng})`)
       })
       
-      // is_active -> isActive mapping ve koordinat dönüşümü
+      // Koordinat dönüşümü
       const couriersData = data.map(courier => ({
         ...courier,
         id: courier.id,
         full_name: courier.full_name || 'İsimsiz Kurye',
-        isActive: Boolean(courier.is_active), // Veritabanındaki is_active'i buraya bağla
+        is_active: Boolean(courier.is_active),
         last_lat: courier.last_lat ? Number(courier.last_lat) : null,
         last_lng: courier.last_lng ? Number(courier.last_lng) : null,
         deliveryCount: 0,
@@ -181,7 +180,7 @@ export default function Home() {
       }))
       
       console.log('✅ [fetchCouriers] Dönüştürülmüş kurye verileri:', couriersData)
-      console.log('📊 [fetchCouriers] İsActive durumları:', couriersData.map(c => ({ name: c.full_name, isActive: c.isActive })))
+      console.log('📊 [fetchCouriers] İsActive durumları:', couriersData.map(c => ({ name: c.full_name, is_active: c.is_active })))
       setCouriers(couriersData)
       
       // Paket sayılarını ayrı olarak çek
@@ -770,11 +769,11 @@ export default function Home() {
                         {couriers.length === 0 && (
                           <option disabled>Kurye bulunamadı</option>
                         )}
-                        {couriers.filter(c => c.isActive).length === 0 && couriers.length > 0 && (
+                        {couriers.filter(c => c.is_active).length === 0 && couriers.length > 0 && (
                           <option disabled>Aktif kurye yok (Toplam: {couriers.length})</option>
                         )}
                         {couriers
-                          .filter(c => c.isActive) // Sadece aktif kuryeler
+                          .filter(c => c.is_active) // Sadece aktif kuryeler
                           .map(c => (
                             <option key={c.id} value={c.id}>
                               {c.full_name} ({c.deliveryCount || 0} teslim, {c.activePackageCount || 0} aktif)
@@ -851,8 +850,8 @@ export default function Home() {
                     
                     {/* Aktiflik Durumu */}
                     <div className="mb-2">
-                      {!c.isActive && <span className="text-[10px] bg-gray-100 text-gray-700 px-2 py-1 rounded-md font-bold">⚫ AKTİF DEĞİL</span>}
-                      {c.isActive && <span className="text-[10px] bg-green-100 text-green-700 px-2 py-1 rounded-md font-bold">🟢 AKTİF</span>}
+                      {!c.is_active && <span className="text-[10px] bg-gray-100 text-gray-700 px-2 py-1 rounded-md font-bold">⚫ AKTİF DEĞİL</span>}
+                      {c.is_active && <span className="text-[10px] bg-green-100 text-green-700 px-2 py-1 rounded-md font-bold">🟢 AKTİF</span>}
                     </div>
                     
                     {/* Paket Durumları */}
@@ -950,11 +949,11 @@ export default function Home() {
                 <div className="text-xs text-slate-600 dark:text-slate-400">Toplam Kurye</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">{couriers.filter(c => c.isActive).length}</div>
+                <div className="text-2xl font-bold text-green-600">{couriers.filter(c => c.is_active).length}</div>
                 <div className="text-xs text-slate-600 dark:text-slate-400">Aktif Kurye</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-red-600">{couriers.filter(c => !c.isActive).length}</div>
+                <div className="text-2xl font-bold text-red-600">{couriers.filter(c => !c.is_active).length}</div>
                 <div className="text-xs text-slate-600 dark:text-slate-400">Pasif Kurye</div>
               </div>
               <div className="text-center">
@@ -987,7 +986,7 @@ export default function Home() {
                       {c.full_name}
                     </button>
                     <div className="flex items-center gap-2">
-                      <div className={`w-3 h-3 rounded-full ${c.isActive ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                      <div className={`w-3 h-3 rounded-full ${c.is_active ? 'bg-green-500' : 'bg-red-500'}`}></div>
                       <div className="text-xs text-slate-500">
                         {c.last_lat && c.last_lng ? '📍' : '❌'}
                       </div>
@@ -998,9 +997,9 @@ export default function Home() {
                     <div className="flex justify-between">
                       <span className="text-slate-600 dark:text-slate-400">Durum:</span>
                       <span className={`font-medium ${
-                        c.isActive ? 'text-green-600' : 'text-red-600'
+                        c.is_active ? 'text-green-600' : 'text-red-600'
                       }`}>
-                        {c.isActive ? 'Aktif' : 'Aktif Değil'}
+                        {c.is_active ? 'Aktif' : 'Aktif Değil'}
                       </span>
                     </div>
                     

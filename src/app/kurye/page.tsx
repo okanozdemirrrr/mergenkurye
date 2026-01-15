@@ -36,7 +36,7 @@ export default function KuryePage() {
   const [cardTotal, setCardTotal] = useState(0)
   const [showSummary, setShowSummary] = useState(false)
   const [courierStatus, setCourierStatus] = useState<'idle' | 'busy' | null>(null)
-  const [isActive, setIsActive] = useState(false)
+  const [is_active, setIs_active] = useState(false)
   const [statusUpdating, setStatusUpdating] = useState(false)
   const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null)
   const [locationError, setLocationError] = useState<string | null>(null)
@@ -140,8 +140,8 @@ export default function KuryePage() {
 
       if (data) {
         setCourierStatus(data.status)
-        setIsActive(data.is_active || false)
-        console.log('✅ Kurye durumu yüklendi:', data) // Debug için
+        setIs_active(data.is_active || false)
+        console.log('✅ Kurye durumu yüklendi:', data)
       }
     } catch (error: any) {
       console.error('❌ Kurye durumu alınamadı:', error)
