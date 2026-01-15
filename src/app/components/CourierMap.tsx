@@ -5,7 +5,6 @@ import { MapContainer, TileLayer, Marker, Popup, Tooltip } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
-// Leaflet marker ikonlarını düzelt (Next.js için gerekli)
 delete (L.Icon.Default.prototype as any)._getIconUrl
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
@@ -19,9 +18,7 @@ interface Courier {
   last_lat?: number | null
   last_lng?: number | null
   is_active?: boolean
-  isActive?: boolean // Vercel'in istediği her iki versiyonu da ekliyoruz
   status?: string
-  last_update?: string
 }
 
 interface CourierMapProps {
@@ -35,55 +32,13 @@ export default function CourierMap({ couriers }: CourierMapProps) {
     setMounted(true)
   }, [])
 
-  // Samsun/Merkez koordinatları
   const samsunCenter: [number, number] = [41.2867, 36.3300]
 
-  // SADECE KOORDİNAT KONTROLÜ - is_active'e bakma!
-  const allCouriers = couriers || []
-  
-  console.log('🗺️ [CourierMap] Gelen tüm kuryeler:', allCouriers.length)
-  console.log('🗺️ [CourierMap] Kurye listesi:', allCouriers.map(c => ({
-    name: c.full_name,
-    lat: c.last_lat,
-    lng: c.last_lng,
-    is_active: c.is_active,
-    status: c.status
-  })))
-  
-  // Koordinatları kontrol et - Zaman kontrolü devre dışı (hayalet olmasınlar)
-  const couriersWithCoords = allCouriers.filter(courier => {
-    // Önce Number()'a çevir
+  const couriersWithCoords = couriers.filter(courier => {
     const lat = Number(courier.last_lat)
     const lng = Number(courier.last_lng)
-    
-    // Koordinat kontrolü
-    const hasValidLat = !isNaN(lat) && lat !== 0
-    const hasValidLng = !isNaN(lng) && lng !== 0
-    
-    // Zaman kontrolü - DEVRE DIŞI (her zaman true)
-    const isRecent = true // Kuryeler hayalet olmasın
-    
-    console.log(`🔍 [CourierMap] ${courier.full_name}:`)
-    console.log(`   - RAW last_lat: ${courier.last_lat} (type: ${typeof courier.last_lat})`)
-    console.log(`   - RAW last_lng: ${courier.last_lng} (type: ${typeof courier.last_lng})`)
-    console.log(`   - Number last_lat: ${lat} -> Valid: ${hasValidLat}`)
-    console.log(`   - Number last_lng: ${lng} -> Valid: ${hasValidLng}`)
-    console.log(`   - is_active: ${courier.is_active}`)
-    console.log(`   - status: ${courier.status}`)
-    console.log(`   - isRecent: ${isRecent} (ZAMAN KONTROLÜ DEVRE DIŞI)`)
-    console.log(`   - SONUÇ: ${hasValidLat && hasValidLng && isRecent ? 'HARITADA GÖSTER ✅' : 'HARITADA GÖSTERME ❌'}`)
-    
-    return hasValidLat && hasValidLng && isRecent
+    return !isNaN(lat) && lat !== 0 && !isNaN(lng) && lng !== 0
   })
-
-  console.log('🗺️ [CourierMap] Koordinatlı kuryeler:', couriersWithCoords.length)
-  console.log('🗺️ [CourierMap] Koordinatlı kurye detayları:', couriersWithCoords.map(c => ({
-    name: c.full_name,
-    lat: c.last_lat,
-    lng: c.last_lng,
-    is_active: c.is_active,
-    status: c.status
-  })))
 
   if (!mounted) {
     return (
@@ -93,23 +48,21 @@ export default function CourierMap({ couriers }: CourierMapProps) {
     )
   }
 
-  // Kurye durumuna göre marker rengi
   const getMarkerIcon = (courier: Courier) => {
-    let color = '#6b7280' // Varsayılan gri
+    let color = '#6b7280'
     
     if (!courier.is_active) {
-      color = '#9ca3af' // Pasif kuryeler için açık gri
+      color = '#9ca3af'
     } else if (courier.status === 'idle') {
-      color = '#10b981' // Yeşil - Boşta
+      color = '#10b981'
     } else if (courier.status === 'assigned') {
-      color = '#3b82f6' // Mavi - Atanmış
+      color = '#3b82f6'
     } else if (courier.status === 'picking_up') {
-      color = '#f59e0b' // Sarı - Alıyor
+      color = '#f59e0b'
     } else if (courier.status === 'on_the_way') {
-      color = '#ef4444' // Kırmızı - Yolda
+      color = '#ef4444'
     }
 
-    // Kurye isminin ilk harfini marker içinde göster
     const initial = courier.full_name?.charAt(0) || '?'
 
     return new L.Icon({
@@ -139,26 +92,9 @@ export default function CourierMap({ couriers }: CourierMapProps) {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         
-        <style jsx global>{`
-          .courier-tooltip {
-            background: rgba(0, 0, 0, 0.8) !important;
-            border: none !important;
-            border-radius: 4px !important;
-            color: white !important;
-            font-size: 12px !important;
-            padding: 4px 8px !important;
-          }
-          .courier-tooltip::before {
-            border-top-color: rgba(0, 0, 0, 0.8) !important;
-          }
-        `}</style>
-        
-        {/* KOORDİNATI OLAN KURYELERİ GÖSTER */}
         {couriersWithCoords.map((courier) => {
           const lat = Number(courier.last_lat)
           const lng = Number(courier.last_lng)
-          
-          console.log(`📍 [CourierMap] Marker çiziliyor: ${courier.full_name} -> [${lat}, ${lng}]`)
           
           return (
             <Marker
@@ -166,7 +102,7 @@ export default function CourierMap({ couriers }: CourierMapProps) {
               position={[lat, lng]}
               icon={getMarkerIcon(courier)}
             >
-              <Tooltip permanent direction="top" offset={[0, -45]} className="courier-tooltip">
+              <Tooltip permanent direction="top" offset={[0, -45]}>
                 <span className="font-bold text-sm">{courier.full_name}</span>
               </Tooltip>
               <Popup>
@@ -186,88 +122,12 @@ export default function CourierMap({ couriers }: CourierMapProps) {
                      courier.status === 'picking_up' ? '🟡 Alıyor' :
                      courier.status === 'on_the_way' ? '🔴 Teslimatta' : '⚫ Bilinmiyor'}
                   </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    {lat.toFixed(6)}, {lng.toFixed(6)}
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    Aktif: {courier.is_active ? 'Evet' : 'Hayır'}
-                  </div>
-                  <div className="text-xs text-blue-500 mt-1 font-bold">
-                    ✅ Gerçek konum
-                  </div>
-                </div>
-              </Popup>
-            </Marker>
-          )
-        })}
-        
-        {/* KOORDİNATI OLMAYAN KURYELERİ VARSAYILAN KONUMDA GÖSTER */}
-        {allCouriers.filter(courier => !couriersWithCoords.includes(courier)).map((courier, index) => {
-          // Samsun merkezi + küçük offset
-          const defaultLat = 41.2867 + (index * 0.001)
-          const defaultLng = 36.3300 + (index * 0.001)
-          
-          console.log(`📍 [CourierMap] Varsayılan marker: ${courier.full_name} -> [${defaultLat}, ${defaultLng}]`)
-          
-          return (
-            <Marker
-              key={`default-${courier.id}`}
-              position={[defaultLat, defaultLng]}
-              icon={getMarkerIcon(courier)}
-            >
-              <Tooltip permanent direction="top" offset={[0, -45]} className="courier-tooltip">
-                <span className="font-bold text-sm">{courier.full_name} (Varsayılan)</span>
-              </Tooltip>
-              <Popup>
-                <div className="text-center p-2">
-                  <div className="font-bold text-lg mb-1">🚴 {courier.full_name}</div>
-                  <div className={`text-sm px-2 py-1 rounded-full ${
-                    !courier.is_active ? 'bg-gray-100 text-gray-700' :
-                    courier.status === 'idle' ? 'bg-green-100 text-green-700' :
-                    'bg-gray-100 text-gray-700'
-                  }`}>
-                    {!courier.is_active ? '⚫ Pasif' :
-                     courier.status === 'idle' ? '🟢 Boşta' : '⚫ Bilinmiyor'}
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    {defaultLat.toFixed(6)}, {defaultLng.toFixed(6)}
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    Aktif: {courier.is_active ? 'Evet' : 'Hayır'}
-                  </div>
-                  <div className="text-xs text-orange-500 mt-1 font-bold">
-                    ⚠️ Varsayılan konum (Gerçek konum yok)
-                  </div>
                 </div>
               </Popup>
             </Marker>
           )
         })}
       </MapContainer>
-      
-      {/* Harita altında kurye bilgisi */}
-      <div className="mt-2 text-center text-sm text-slate-600 dark:text-slate-400">
-        📍 Haritada {couriersWithCoords.length} canlı kurye gösteriliyor 
-        (Toplam: {allCouriers.length}, Hayalet: {allCouriers.length - couriersWithCoords.length})
-        {allCouriers.length === 0 && (
-          <div className="text-xs text-red-600 mt-1">
-            ❌ Couriers tablosunda veri yok! SQL'i çalıştırın.
-          </div>
-        )}
-        {allCouriers.length > 0 && couriersWithCoords.length === 0 && (
-          <div className="text-xs text-orange-600 mt-1">
-            ⚠️ Hiçbir kurye canlı değil! 1 dakikadır sinyal yok veya konum paylaşımı kapalı.
-          </div>
-        )}
-        <div className="text-xs text-slate-500 mt-1">
-          Aktif kuryeler: {allCouriers.filter(c => c.is_active).length} • 
-          Canlı kuryeler: {couriersWithCoords.length} • 
-          Son güncelleme: {new Date().toLocaleTimeString('tr-TR')}
-        </div>
-        <div className="text-xs text-orange-600 mt-1">
-          ℹ️ Zaman kontrolü devre dışı - Tüm kuryeler haritada görünür
-        </div>
-      </div>
     </div>
   )
 }
