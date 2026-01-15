@@ -80,15 +80,20 @@ export default function CourierMap({ couriers }: any) {
 
   // Motor ikonu oluştur
   const createMotorcycleIcon = (color: string) => {
+    // SVG'yi base64 yerine direkt URL encode ile kullan (emoji sorunu yok)
     const svgIcon = `
       <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="20" cy="20" r="18" fill="${color}" stroke="white" stroke-width="2"/>
-        <text x="20" y="28" text-anchor="middle" font-size="20" fill="white">🏍️</text>
+        <circle cx="20" cy="20" r="18" fill="${color}" stroke="white" stroke-width="3"/>
+        <circle cx="20" cy="20" r="12" fill="white" opacity="0.3"/>
+        <path d="M20 10 L25 20 L20 30 L15 20 Z" fill="white"/>
       </svg>
     `
     
+    // URL encode kullan (btoa yerine)
+    const encodedSvg = encodeURIComponent(svgIcon)
+    
     return new L.Icon({
-      iconUrl: `data:image/svg+xml;base64,${btoa(svgIcon)}`,
+      iconUrl: `data:image/svg+xml,${encodedSvg}`,
       iconSize: [40, 40],
       iconAnchor: [20, 20],
       popupAnchor: [0, -20],
