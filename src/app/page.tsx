@@ -8,8 +8,8 @@ import dynamic from 'next/dynamic'
 const CourierMap = dynamic(() => import('./components/CourierMap'), { 
   ssr: false,
   loading: () => (
-    <div className="h-[400px] bg-slate-100 dark:bg-slate-700 animate-pulse rounded-2xl flex items-center justify-center">
-      <span className="text-slate-500">🗺️ Harita Yükleniyor...</span>
+    <div className="h-[400px] w-full bg-slate-800 animate-pulse rounded-2xl flex items-center justify-center text-white">
+      Harita Yükleniyor...
     </div>
   )
 })

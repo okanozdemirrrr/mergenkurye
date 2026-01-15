@@ -127,6 +127,7 @@ export default function CourierMap({ couriers }: CourierMapProps) {
     
     // Koordinat kontrolü - null, undefined veya 0 olanları gösterme
     if (courier.last_lat == null || courier.last_lng == null) return false
+    if (courier.last_lat === undefined || courier.last_lng === undefined) return false
     
     const lat = Number(courier.last_lat)
     const lng = Number(courier.last_lng)
@@ -135,8 +136,8 @@ export default function CourierMap({ couriers }: CourierMapProps) {
     if (isNaN(lat) || isNaN(lng)) return false
     if (lat === 0 || lng === 0) return false
     
-    // Geçerli koordinat aralığı kontrolü (Samsun civarı)
-    if (lat < 40 || lat > 42 || lng < 35 || lng > 37) return false
+    // Geçerli koordinat aralığı kontrolü (Samsun civarı: geniş alan)
+    if (lat < 35 || lat > 45 || lng < 30 || lng > 40) return false
     
     return true
   })
@@ -152,6 +153,26 @@ export default function CourierMap({ couriers }: CourierMapProps) {
   }
 
   const mapPosition = mapPositionRef.current
+
+  // Eğer hiç kurye yoksa boş harita göster
+  if (activeCouriersWithCoords.length === 0) {
+    return (
+      <div className="w-full h-96 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-lg">
+        <MapContainer
+          center={mapPosition.center}
+          zoom={mapPosition.zoom}
+          style={{ height: '100%', width: '100%' }}
+          className="z-0"
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          <MapEventHandler />
+        </MapContainer>
+      </div>
+    )
+  }
 
   return (
     <div className="w-full h-96 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-lg">
@@ -171,8 +192,15 @@ export default function CourierMap({ couriers }: CourierMapProps) {
         
         {/* Aktif kurye markerları */}
         {activeCouriersWithCoords.map((courier) => {
+          // Ekstra güvenlik kontrolü
+          if (!courier.last_lat || !courier.last_lng) return null
+          
           const lat = Number(courier.last_lat)
           const lng = Number(courier.last_lng)
+          
+          // Son kontrol
+          if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) return null
+          
           const color = getMotorcycleColor(courier)
           
           return (
