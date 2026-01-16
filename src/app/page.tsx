@@ -85,8 +85,7 @@ export default function Home() {
     try {
       const { data, error } = await supabase
         .from('packages')
-        .select('*, restaurants!inner(name)')
-        .in('status', ['waiting', 'assigned', 'picking_up', 'on_the_way'])
+        .select('*, restaurants(*)')
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -95,7 +94,7 @@ export default function Home() {
         ...pkg,
         restaurant: Array.isArray(pkg.restaurants) && pkg.restaurants.length > 0 
           ? pkg.restaurants[0] 
-          : null,
+          : pkg.restaurants || null,
         restaurants: undefined
       }))
 
@@ -113,6 +112,7 @@ export default function Home() {
       setLastPackageIds(currentIds)
       setPackages(transformedData)
     } catch (error: any) {
+      console.error('Siparişler yüklenirken hata:', error)
       setErrorMessage('Siparişler yüklenirken hata: ' + error.message)
     }
   }
@@ -121,10 +121,10 @@ export default function Home() {
     try {
       const { data, error } = await supabase
         .from('packages')
-        .select('*, restaurants(name), couriers(full_name)')
+        .select('*, restaurants(*), couriers(*)')
         .eq('status', 'delivered')
         .order('delivered_at', { ascending: false })
-        .limit(50) // Son 50 teslimat
+        .limit(50)
 
       if (error) throw error
 
@@ -378,15 +378,11 @@ export default function Home() {
     }
   }
 
-  // Kurye siparişlerini getir
   const fetchCourierOrders = async (courierId: string) => {
     try {
       const { data, error } = await supabase
         .from('packages')
-        .select(`
-          *,
-          restaurants!inner(name)
-        `)
+        .select('*, restaurants(*)')
         .eq('courier_id', courierId)
         .eq('status', 'delivered')
         .order('delivered_at', { ascending: false })
