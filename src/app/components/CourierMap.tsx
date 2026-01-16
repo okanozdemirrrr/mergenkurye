@@ -32,40 +32,18 @@ const saveMapPosition = (lat: number, lng: number, zoom: number) => {
   }
 }
 
-// Kurye verilerini karşılaştır (memo için)
-const areCouriersEqual = (prevCouriers: any[], nextCouriers: any[]) => {
-  if (!prevCouriers || !nextCouriers) return false
-  if (prevCouriers.length !== nextCouriers.length) return false
-  
-  // Her kuryenin id, lat, lng, status ve is_active değerlerini kontrol et
-  return prevCouriers.every((prev, index) => {
-    const next = nextCouriers[index]
-    return (
-      prev.id === next.id &&
-      prev.last_lat === next.last_lat &&
-      prev.last_lng === next.last_lng &&
-      prev.status === next.status &&
-      prev.is_active === next.is_active &&
-      prev.activePackageCount === next.activePackageCount
-    )
-  })
-}
-
-function CourierMap({ couriers }: any) {
+// Yanıp sönmeyi engellemek için memo kullanıyoruz
+const CourierMap = memo(({ couriers }: any) => {
   const [MapBridge, setMapBridge] = useState<any>(null)
-  const [isMapReady, setIsMapReady] = useState(false)
-  
-  // Initial pozisyon - sadece bir kez okunur, sonra değişmez
   const initialPositionRef = useRef(getStoredMapPosition())
-  const mapInstanceRef = useRef<any>(null)
 
   useEffect(() => {
-    // Leaflet'i dinamik olarak yükle (Hata almamak için şart)
-    const initMap = async () => {
+    // Leaflet'i sadece TARAYICIDA yükleyerek SSR hatalarını ve 'export' çakışmalarını bitiriyoruz
+    const init = async () => {
       const L = (await import('leaflet')).default
-      const ReactLeaflet = await import('react-leaflet')
+      const { MapContainer, TileLayer, Marker, Popup, useMapEvents } = await import('react-leaflet')
 
-      // İkon fixlemesi (Karakter hatası almamak için doğrudan URL veriyoruz)
+      // İkon fixlemesi
       delete (L.Icon.Default.prototype as any)._getIconUrl
       L.Icon.Default.mergeOptions({
         iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
@@ -73,23 +51,21 @@ function CourierMap({ couriers }: any) {
         shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
       })
 
-      setMapBridge({ ...ReactLeaflet, L })
-      setIsMapReady(true)
+      setMapBridge({ MapContainer, TileLayer, Marker, Popup, useMapEvents, L })
     }
 
-    initMap()
+    init()
   }, [])
 
-  if (!MapBridge || !isMapReady) {
+  if (!MapBridge) {
     return (
-      <div className="h-[400px] w-full bg-slate-900 animate-pulse flex items-center justify-center text-white font-bold">
+      <div className="h-[400px] w-full bg-slate-900 rounded-2xl animate-pulse flex items-center justify-center text-white font-bold">
         🗺️ Harita Yükleniyor...
       </div>
     )
   }
 
-  const { MapContainer, TileLayer, Marker, Popup, useMapEvents } = MapBridge
-  const L = MapBridge.L
+  const { MapContainer, TileLayer, Marker, Popup, useMapEvents, L } = MapBridge
 
   // Sadece aktif ve koordinatı olan kuryeler
   const activeCouriers = couriers && couriers.filter((c: any) => 
@@ -104,7 +80,6 @@ function CourierMap({ couriers }: any) {
 
   // Motor ikonu oluştur
   const createMotorcycleIcon = (color: string) => {
-    // SVG'yi base64 yerine direkt URL encode ile kullan (emoji sorunu yok)
     const svgIcon = `
       <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
         <circle cx="20" cy="20" r="18" fill="${color}" stroke="white" stroke-width="3"/>
@@ -113,7 +88,6 @@ function CourierMap({ couriers }: any) {
       </svg>
     `
     
-    // URL encode kullan (btoa yerine)
     const encodedSvg = encodeURIComponent(svgIcon)
     
     return new L.Icon({
@@ -126,12 +100,10 @@ function CourierMap({ couriers }: any) {
 
   // Motor ikonu rengini belirle
   const getMotorcycleColor = (status: string) => {
-    // Paket taşıyorsa (on_the_way veya picking_up) → Turuncu
     if (status === 'on_the_way' || status === 'picking_up') {
-      return '#f97316' // Orange-500
+      return '#f97316' // Orange-500 (Paket taşıyor)
     }
-    // Boşta (idle) → Yeşil
-    return '#22c55e' // Green-500
+    return '#22c55e' // Green-500 (Boşta)
   }
 
   // Harita olaylarını dinleyen component
@@ -149,40 +121,31 @@ function CourierMap({ couriers }: any) {
       }
     })
     
-    // Map instance'ı sakla (ilk render'da)
-    if (!mapInstanceRef.current) {
-      mapInstanceRef.current = map
-    }
-    
     return null
   }
 
   const initialPosition = initialPositionRef.current
 
   return (
-    <div className="h-[400px] w-full rounded-2xl overflow-hidden border-2 border-slate-700 shadow-2xl">
+    <div className="h-[400px] w-full rounded-2xl overflow-hidden border-2 border-slate-800 shadow-2xl">
       <MapContainer 
         center={initialPosition.center} 
         zoom={initialPosition.zoom} 
-        style={{ height: '100%', width: '100%' }} 
+        style={{ height: '100%', width: '100%' }}
         scrollWheelZoom={true}
-        zoomControl={true}
       >
-        <TileLayer 
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        />
+        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         
         {/* Harita olaylarını dinle */}
         <MapEventHandler />
         
-        {/* Aktif kurye markerları - key ile React'e "bu aynı kurye" diyoruz */}
+        {/* Aktif kurye markerları */}
         {activeCouriers && activeCouriers.map((c: any) => {
           const color = getMotorcycleColor(c.status || 'idle')
           
           return (
             <Marker 
-              key={c.id}
+              key={c.id} 
               position={[Number(c.last_lat), Number(c.last_lng)]}
               icon={createMotorcycleIcon(color)}
             >
@@ -213,9 +176,8 @@ function CourierMap({ couriers }: any) {
       </MapContainer>
     </div>
   )
-}
-
-// React.memo ile sarmala - sadece couriers değiştiğinde render et
-export default memo(CourierMap, (prevProps, nextProps) => {
-  return areCouriersEqual(prevProps.couriers, nextProps.couriers)
 })
+
+CourierMap.displayName = 'CourierMap'
+
+export default CourierMap
