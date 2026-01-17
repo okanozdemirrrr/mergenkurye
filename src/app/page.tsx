@@ -70,6 +70,7 @@ export default function Home() {
   const [showNotificationPopup, setShowNotificationPopup] = useState(false)
   const [newOrderDetails, setNewOrderDetails] = useState<Package | null>(null)
   const [dateFilter, setDateFilter] = useState<'today' | 'week' | 'month' | 'all'>('all')
+  const [courierDateFilter, setCourierDateFilter] = useState<'today' | 'week' | 'month' | 'all'>('all')
 
   // Bildirim sesi çal
   const playNotificationSound = () => {
@@ -380,6 +381,13 @@ export default function Home() {
     }
   }, [dateFilter])
 
+  // Kurye modal tarih filtresi değiştiğinde yeniden çek
+  useEffect(() => {
+    if (showCourierModal && selectedCourierId) {
+      fetchCourierOrders(selectedCourierId)
+    }
+  }, [courierDateFilter])
+
   const fetchRestaurants = async () => {
     const { data } = await supabase.from('restaurants').select('id, name').order('name', { ascending: true })
     setRestaurants(data || [])
@@ -410,12 +418,30 @@ export default function Home() {
 
   const fetchCourierOrders = async (courierId: string) => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('packages')
         .select('*, restaurants(*)')
         .eq('courier_id', courierId)
         .eq('status', 'delivered')
         .order('delivered_at', { ascending: false })
+
+      // Tarih filtresine göre sorgu ekle
+      if (courierDateFilter !== 'all') {
+        const now = new Date()
+        let startDate = new Date()
+
+        if (courierDateFilter === 'today') {
+          startDate.setHours(now.getHours() - 24)
+        } else if (courierDateFilter === 'week') {
+          startDate.setDate(now.getDate() - 7)
+        } else if (courierDateFilter === 'month') {
+          startDate.setDate(now.getDate() - 30)
+        }
+
+        query = query.gte('delivered_at', startDate.toISOString())
+      }
+
+      const { data, error } = await query
 
       if (error) throw error
 
@@ -847,48 +873,21 @@ export default function Home() {
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">📋 Geçmiş Siparişler</h2>
           
-          {/* Tarih Filtresi */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => setDateFilter('today')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                dateFilter === 'today'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
-              }`}
+          {/* Tarih Filtresi Dropdown */}
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+              Filtrele:
+            </label>
+            <select
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value as any)}
+              className="px-4 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              📅 Bugün (24 Saat)
-            </button>
-            <button
-              onClick={() => setDateFilter('week')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                dateFilter === 'week'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
-              }`}
-            >
-              📅 Son 7 Gün
-            </button>
-            <button
-              onClick={() => setDateFilter('month')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                dateFilter === 'month'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
-              }`}
-            >
-              📅 Son 30 Gün
-            </button>
-            <button
-              onClick={() => setDateFilter('all')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                dateFilter === 'all'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
-              }`}
-            >
-              📅 Tümü
-            </button>
+              <option value="today">📅 Son 24 Saat</option>
+              <option value="week">📅 Son 7 Gün</option>
+              <option value="month">📅 Son 30 Gün</option>
+              <option value="all">📅 Tümü</option>
+            </select>
           </div>
         </div>
 
@@ -1083,9 +1082,21 @@ export default function Home() {
             <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
               {/* Modal Header */}
               <div className="flex justify-between items-center p-6 border-b border-slate-200 dark:border-slate-700">
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
-                  🚴 {couriers.find(c => c.id === selectedCourierId)?.full_name} - Detaylı Rapor
-                </h3>
+                <div className="flex items-center gap-4">
+                  <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
+                    🚴 {couriers.find(c => c.id === selectedCourierId)?.full_name} - Detaylı Rapor
+                  </h3>
+                  <select
+                    value={courierDateFilter}
+                    onChange={(e) => setCourierDateFilter(e.target.value as 'today' | 'week' | 'month' | 'all')}
+                    className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-600 font-medium text-sm"
+                  >
+                    <option value="today">📅 Bugün</option>
+                    <option value="week">📅 Son 7 Gün</option>
+                    <option value="month">📅 Son 30 Gün</option>
+                    <option value="all">📅 Tüm Zamanlar</option>
+                  </select>
+                </div>
                 <button
                   onClick={() => setShowCourierModal(false)}
                   className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 text-2xl"
