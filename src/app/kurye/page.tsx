@@ -56,7 +56,12 @@ export default function KuryePage() {
 
     try {
       if (isInitialLoad) setIsLoading(true)
-      console.log('📦 Paketler çekiliyor, courierID:', courierId)
+      
+      // Heartbeat: Kurye aktiflik sinyali gönder
+      await supabase
+        .from('couriers')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', courierId)
       
       const { data, error } = await supabase
         .from('packages')
@@ -65,17 +70,13 @@ export default function KuryePage() {
         .neq('status', 'delivered')
         .order('created_at', { ascending: false })
 
-      if (error) {
-        console.error('❌ Paket çekme hatası:', error)
-        throw error
-      }
+      if (error) throw error
       
       const transformed = (data || []).map((pkg: any) => ({
         ...pkg,
         restaurant: pkg.restaurants
       }))
       
-      console.log('✅ Paketler yüklendi:', transformed)
       setPackages(transformed)
     } catch (error: any) {
       console.error('❌ Paketler yüklenemedi:', error)
@@ -90,8 +91,6 @@ export default function KuryePage() {
     if (!courierId) return
 
     try {
-      console.log('📊 Günlük istatistikler çekiliyor, courierID:', courierId)
-      
       const todayStart = new Date(); todayStart.setHours(0,0,0,0)
       
       const { data, error } = await supabase
@@ -101,13 +100,9 @@ export default function KuryePage() {
         .eq('status', 'delivered')
         .gte('created_at', todayStart.toISOString())
 
-      if (error) {
-        console.error('❌ İstatistik hatası:', error)
-        throw error
-      }
+      if (error) throw error
 
       if (data) {
-        console.log('✅ İstatistikler yüklendi:', data)
         setDeliveredCount(data.length)
         setCashTotal(data.filter(p => p.payment_method === 'cash').reduce((sum, p) => sum + (p.amount || 0), 0))
         setCardTotal(data.filter(p => p.payment_method === 'card').reduce((sum, p) => sum + (p.amount || 0), 0))
@@ -123,22 +118,17 @@ export default function KuryePage() {
     if (!courierId) return
 
     try {
-      // Couriers tablosundan kurye bilgilerini çek
       const { data, error } = await supabase
         .from('couriers')
         .select('status, is_active')
         .eq('id', courierId)
         .maybeSingle()
 
-      if (error) {
-        console.error('Kurye durumu hatası:', error)
-        throw error
-      }
+      if (error) throw error
 
       if (data) {
         setCourierStatus(data.status)
         setIs_active(data.is_active || false)
-        console.log('✅ Kurye durumu yüklendi:', data)
       }
     } catch (error: any) {
       console.error('❌ Kurye durumu alınamadı:', error)
@@ -148,7 +138,6 @@ export default function KuryePage() {
 
   const updateCourierStatus = async (newStatus: 'idle' | 'busy', newIsActive: boolean) => {
     const courierId = sessionStorage.getItem(LOGIN_COURIER_ID_KEY)
-    console.log('🔄 [updateCourierStatus] Başlıyor:', { courierId, newStatus, newIsActive })
     
     if (!courierId) {
       setErrorMessage('Kurye ID bulunamadı')
@@ -158,65 +147,23 @@ export default function KuryePage() {
     try {
       setStatusUpdating(true)
       
-      // Önce mevcut durumu kontrol et
-      console.log('🔍 [updateCourierStatus] Güncelleme öncesi mevcut durum kontrol ediliyor...')
-      const { data: beforeData, error: beforeError } = await supabase
-        .from('couriers')
-        .select('id, full_name, is_active, status')
-        .eq('id', courierId)
-        .single()
-      
-      if (beforeError) {
-        console.error('❌ [updateCourierStatus] Mevcut durum okunamadı:', beforeError)
-      } else {
-        console.log('📊 [updateCourierStatus] Güncelleme öncesi durum:', beforeData)
-      }
-      
-      // Güncelleme yap
-      console.log('🔄 [updateCourierStatus] Güncelleme yapılıyor...', { 
-        table: 'couriers',
-        update: { status: newStatus, is_active: newIsActive },
-        where: { id: courierId }
-      })
-      
-      const { error, data } = await supabase
+      const { error } = await supabase
         .from('couriers')
         .update({ 
           status: newStatus,
           is_active: newIsActive
         })
         .eq('id', courierId)
-        .select() // Güncellenen veriyi geri al
 
-      if (error) {
-        console.error('❌ [updateCourierStatus] Güncelleme hatası:', error)
-        throw error
-      }
+      if (error) throw error
 
-      console.log('✅ [updateCourierStatus] Güncelleme başarılı, dönen veri:', data)
-
-      // Güncelleme sonrası kontrol et
-      console.log('🔍 [updateCourierStatus] Güncelleme sonrası kontrol ediliyor...')
-      const { data: afterData, error: afterError } = await supabase
-        .from('couriers')
-        .select('id, full_name, is_active, status')
-        .eq('id', courierId)
-        .single()
-      
-      if (afterError) {
-        console.error('❌ [updateCourierStatus] Güncelleme sonrası durum okunamadı:', afterError)
-      } else {
-        console.log('📊 [updateCourierStatus] Güncelleme sonrası durum:', afterData)
-      }
-
-      // Başarılı güncelleme sonrası state'i güncelle
       setCourierStatus(newStatus)
       setIs_active(newIsActive)
       setSuccessMessage(newIsActive ? '✅ Aktif duruma geçildi!' : '❌ Pasif duruma geçildi!')
       setTimeout(() => setSuccessMessage(''), 2000)
       
     } catch (error: any) {
-      console.error('❌ [updateCourierStatus] Genel hata:', error)
+      console.error('❌ Durum güncellenemedi:', error)
       setErrorMessage('Durum güncellenemedi: ' + error.message)
       setTimeout(() => setErrorMessage(''), 3000)
     } finally {
@@ -246,7 +193,6 @@ export default function KuryePage() {
             filter: `courier_id=eq.${courierId}`
           },
           (payload) => {
-            console.log('📦 Realtime: Paket değişikliği algılandı!', payload)
             // Anında güncelle
             fetchPackages(false)
             fetchDailyStats()
@@ -254,12 +200,12 @@ export default function KuryePage() {
         )
         .subscribe()
       
-      // Yedek kontrol - 20 saniyede bir (Realtime çalışmazsa)
+      // Fallback polling - 30 saniyede bir zorunlu güncelleme
       const interval = setInterval(() => {
-        fetchPackages(false) // Silent refresh
+        fetchPackages(false)
         fetchDailyStats()
         fetchCourierStatus()
-      }, 20000)
+      }, 30000)
       
       return () => {
         clearInterval(interval)

@@ -356,12 +356,20 @@ export default function Home() {
       )
       .subscribe()
 
+    // Fallback polling - 30 saniyede bir zorunlu güncelleme
+    const interval = setInterval(() => {
+      fetchPackages()
+      fetchCouriers()
+      if (activeTab === 'history') fetchDeliveredPackages()
+    }, 30000)
+
     // Cleanup
     return () => {
+      clearInterval(interval)
       supabase.removeChannel(packagesChannel)
       supabase.removeChannel(couriersChannel)
     }
-  }, [])
+  }, [activeTab])
 
   // Tarih filtresi değiştiğinde geçmiş siparişleri yeniden çek
   useEffect(() => {
