@@ -476,7 +476,7 @@ export default function KuryePage() {
           </button>
         </div>
 
-        {/* KURYE DURUM KONTROL BUTONLARI */}
+        {/* KURYE DURUM KONTROL TOGGLE */}
         <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 mb-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold">Kurye Durumu</h3>
@@ -514,22 +514,33 @@ export default function KuryePage() {
             </div>
           </div>
           
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => updateCourierStatus('idle', true)}
-              disabled={statusUpdating}
-              className="py-3 px-4 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold rounded-xl transition-all"
-            >
-              {statusUpdating ? '⏳' : '✅'} Pakete Hazırım
-            </button>
+          {/* Toggle Switch */}
+          <div className="flex items-center justify-center gap-4 py-4">
+            <span className={`text-sm font-bold transition-all ${!is_active ? 'text-red-400 scale-110' : 'text-slate-500'}`}>
+              ❌ Aktif Değilim
+            </span>
             
             <button
-              onClick={() => updateCourierStatus('idle', false)}
+              onClick={() => updateCourierStatus('idle', !is_active)}
               disabled={statusUpdating}
-              className="py-3 px-4 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold rounded-xl transition-all"
+              className={`relative w-20 h-10 rounded-full transition-all duration-300 disabled:opacity-50 ${
+                is_active ? 'bg-green-600' : 'bg-red-600'
+              }`}
             >
-              {statusUpdating ? '⏳' : '❌'} Aktif Değilim
+              <div className={`absolute top-1 w-8 h-8 bg-white rounded-full shadow-lg transition-all duration-300 ${
+                is_active ? 'left-11' : 'left-1'
+              }`}>
+                {statusUpdating && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-5 h-5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                )}
+              </div>
             </button>
+            
+            <span className={`text-sm font-bold transition-all ${is_active ? 'text-green-400 scale-110' : 'text-slate-500'}`}>
+              ✅ Aktifim
+            </span>
           </div>
         </div>
 
