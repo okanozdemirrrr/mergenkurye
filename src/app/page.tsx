@@ -69,6 +69,7 @@ export default function Home() {
   const [lastPackageIds, setLastPackageIds] = useState<Set<number>>(new Set())
   const [showNotificationPopup, setShowNotificationPopup] = useState(false)
   const [newOrderDetails, setNewOrderDetails] = useState<Package | null>(null)
+  const [dateFilter, setDateFilter] = useState<'today' | 'week' | 'month' | 'all'>('all')
 
   // Bildirim sesi çal
   const playNotificationSound = () => {
@@ -120,12 +121,32 @@ export default function Home() {
 
   const fetchDeliveredPackages = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('packages')
         .select('*, restaurants(*), couriers(*)')
         .eq('status', 'delivered')
         .order('delivered_at', { ascending: false })
-        .limit(50)
+
+      // Tarih filtresine göre sorgu ekle
+      if (dateFilter !== 'all') {
+        const now = new Date()
+        let startDate = new Date()
+
+        if (dateFilter === 'today') {
+          // Son 24 saat
+          startDate.setHours(now.getHours() - 24)
+        } else if (dateFilter === 'week') {
+          // Son 7 gün
+          startDate.setDate(now.getDate() - 7)
+        } else if (dateFilter === 'month') {
+          // Son 30 gün
+          startDate.setDate(now.getDate() - 30)
+        }
+
+        query = query.gte('delivered_at', startDate.toISOString())
+      }
+
+      const { data, error } = await query
 
       if (error) throw error
 
@@ -328,6 +349,7 @@ export default function Home() {
         (payload) => {
           fetchPackages()
           fetchCouriers()
+          if (activeTab === 'history') fetchDeliveredPackages()
         }
       )
       .subscribe()
@@ -350,6 +372,13 @@ export default function Home() {
       supabase.removeChannel(couriersChannel)
     }
   }, [])
+
+  // Tarih filtresi değiştiğinde geçmiş siparişleri yeniden çek
+  useEffect(() => {
+    if (activeTab === 'history') {
+      fetchDeliveredPackages()
+    }
+  }, [dateFilter])
 
   const fetchRestaurants = async () => {
     const { data } = await supabase.from('restaurants').select('id, name').order('name', { ascending: true })
@@ -808,9 +837,81 @@ export default function Home() {
   }
 
   function HistoryTab() {
+    // Toplam tutar hesapla
+    const totalAmount = deliveredPackages.reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
+    const cashAmount = deliveredPackages.filter(p => p.payment_method === 'cash').reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
+    const cardAmount = deliveredPackages.filter(p => p.payment_method === 'card').reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
+
     return (
       <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
-        <h2 className="text-2xl font-bold mb-6">📋 Geçmiş Siparişler</h2>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold">📋 Geçmiş Siparişler</h2>
+          
+          {/* Tarih Filtresi */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setDateFilter('today')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                dateFilter === 'today'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+              }`}
+            >
+              📅 Bugün (24 Saat)
+            </button>
+            <button
+              onClick={() => setDateFilter('week')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                dateFilter === 'week'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+              }`}
+            >
+              📅 Son 7 Gün
+            </button>
+            <button
+              onClick={() => setDateFilter('month')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                dateFilter === 'month'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+              }`}
+            >
+              📅 Son 30 Gün
+            </button>
+            <button
+              onClick={() => setDateFilter('all')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                dateFilter === 'all'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+              }`}
+            >
+              📅 Tümü
+            </button>
+          </div>
+        </div>
+
+        {/* İstatistikler */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl">
+            <div className="text-sm text-blue-600 dark:text-blue-400 font-medium">Toplam Sipariş</div>
+            <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">{deliveredPackages.length}</div>
+          </div>
+          <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl">
+            <div className="text-sm text-green-600 dark:text-green-400 font-medium">Toplam Tutar</div>
+            <div className="text-2xl font-bold text-green-700 dark:text-green-300">{totalAmount.toFixed(2)} ₺</div>
+          </div>
+          <div className="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-xl">
+            <div className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Nakit</div>
+            <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">{cashAmount.toFixed(2)} ₺</div>
+          </div>
+          <div className="bg-sky-50 dark:bg-sky-900/20 p-4 rounded-xl">
+            <div className="text-sm text-sky-600 dark:text-sky-400 font-medium">Kart</div>
+            <div className="text-2xl font-bold text-sky-700 dark:text-sky-300">{cardAmount.toFixed(2)} ₺</div>
+          </div>
+        </div>
+
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -824,31 +925,39 @@ export default function Home() {
               </tr>
             </thead>
             <tbody>
-              {deliveredPackages.map(pkg => (
-                <tr key={pkg.id} className="border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                  <td className="py-3 px-4">
-                    <div className="text-sm">
-                      <div className="font-medium">{formatTurkishTime(pkg.delivered_at)}</div>
-                      <div className="text-slate-500 text-xs">
-                        {pkg.delivered_at ? new Date(pkg.delivered_at).toLocaleDateString('tr-TR') : '-'}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="py-3 px-4 font-medium">{pkg.customer_name}</td>
-                  <td className="py-3 px-4">{pkg.restaurant?.name}</td>
-                  <td className="py-3 px-4">{pkg.courier_name || 'Bilinmeyen'}</td>
-                  <td className="py-3 px-4 font-bold text-green-600">{pkg.amount}₺</td>
-                  <td className="py-3 px-4">
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      pkg.payment_method === 'cash' 
-                        ? 'bg-green-100 text-green-700' 
-                        : 'bg-blue-100 text-blue-700'
-                    }`}>
-                      {pkg.payment_method === 'cash' ? '💵 Nakit' : '💳 Kart'}
-                    </span>
+              {deliveredPackages.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="text-center py-8 text-slate-500">
+                    Bu tarih aralığında sipariş bulunamadı.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                deliveredPackages.map(pkg => (
+                  <tr key={pkg.id} className="border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                    <td className="py-3 px-4">
+                      <div className="text-sm">
+                        <div className="font-medium">{formatTurkishTime(pkg.delivered_at)}</div>
+                        <div className="text-slate-500 text-xs">
+                          {pkg.delivered_at ? new Date(pkg.delivered_at).toLocaleDateString('tr-TR') : '-'}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 font-medium">{pkg.customer_name}</td>
+                    <td className="py-3 px-4">{pkg.restaurant?.name}</td>
+                    <td className="py-3 px-4">{pkg.courier_name || 'Bilinmeyen'}</td>
+                    <td className="py-3 px-4 font-bold text-green-600">{pkg.amount}₺</td>
+                    <td className="py-3 px-4">
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        pkg.payment_method === 'cash' 
+                          ? 'bg-green-100 text-green-700' 
+                          : 'bg-blue-100 text-blue-700'
+                      }`}>
+                        {pkg.payment_method === 'cash' ? '💵 Nakit' : '💳 Kart'}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
