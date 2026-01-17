@@ -338,8 +338,8 @@ export default function KuryePage() {
       fetchDailyStats()
       fetchCourierStatus()
       
-      // Konum takibini başlat
-      const cleanupLocation = startLocationTracking()
+      // Konum takibini başlatma - sadece is_active true ise başlat
+      // useEffect [is_active] dependency'si bunu hallediyor, burada başlatmaya gerek yok
       
       // Supabase Realtime - Kuryeye özel paket değişikliklerini dinle
       const packagesChannel = supabase
@@ -372,7 +372,6 @@ export default function KuryePage() {
         clearInterval(interval)
         supabase.removeChannel(packagesChannel)
         stopLocationTracking()
-        if (cleanupLocation) cleanupLocation()
       }
     }
   }, [isLoggedIn])
@@ -381,8 +380,10 @@ export default function KuryePage() {
   useEffect(() => {
     if (isLoggedIn) {
       if (is_active) {
+        console.log('✅ Kurye aktif - Konum takibi başlatılıyor')
         startLocationTracking()
       } else {
+        console.log('❌ Kurye pasif - Konum takibi durduruluyor')
         stopLocationTracking()
       }
     }

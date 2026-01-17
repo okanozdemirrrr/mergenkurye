@@ -85,10 +85,15 @@ export default function Home() {
 
   const fetchPackages = async () => {
     try {
+      // Bugün (gece 00:00'dan itibaren)
+      const todayStart = new Date()
+      todayStart.setHours(0, 0, 0, 0)
+
       const { data, error } = await supabase
         .from('packages')
         .select('*, restaurants(*)')
         .in('status', ['waiting', 'assigned', 'picking_up', 'on_the_way'])
+        .gte('created_at', todayStart.toISOString())
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -262,6 +267,7 @@ export default function Home() {
 
   const fetchCourierTodayDeliveryCounts = async (courierIds: string[]) => {
     try {
+      // Bugün (gece 00:00'dan itibaren)
       const todayStart = new Date()
       todayStart.setHours(0, 0, 0, 0)
       
@@ -815,12 +821,11 @@ export default function Home() {
                     <div className="flex justify-between items-center mb-2">
                       <span className="font-bold text-sm">{c.full_name}</span>
                       <div className="text-right">
-                        <span className="text-[10px] text-slate-500">{c.todayDeliveryCount || 0} bugün</span>
                         <span className="text-[10px] text-green-600 dark:text-green-400 block font-semibold">
-                          {c.deliveryCount || 0} toplam teslim
+                          📦 {c.todayDeliveryCount || 0} bugün
                         </span>
                         <span className="text-[10px] text-blue-600 dark:text-blue-400 block font-semibold">
-                          {c.activePackageCount || 0} aktif paket
+                          🚚 {c.activePackageCount || 0} üzerinde
                         </span>
                       </div>
                     </div>
