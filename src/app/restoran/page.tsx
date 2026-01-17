@@ -49,8 +49,8 @@ export default function RestoranPage() {
   // Session kontrolü
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const loggedIn = sessionStorage.getItem(LOGIN_STORAGE_KEY)
-      const loggedRestaurantId = sessionStorage.getItem(LOGIN_RESTAURANT_ID_KEY)
+      const loggedIn = localStorage.getItem(LOGIN_STORAGE_KEY)
+      const loggedRestaurantId = localStorage.getItem(LOGIN_RESTAURANT_ID_KEY)
       if (loggedIn === 'true' && loggedRestaurantId) {
         setIsLoggedIn(true)
         setSelectedRestaurantId(loggedRestaurantId)
@@ -118,8 +118,8 @@ export default function RestoranPage() {
       
       // Şifre kontrolü
       if (data && data.password === loginForm.password) {
-        sessionStorage.setItem(LOGIN_STORAGE_KEY, 'true')
-        sessionStorage.setItem(LOGIN_RESTAURANT_ID_KEY, data.id)
+        localStorage.setItem(LOGIN_STORAGE_KEY, 'true')
+        localStorage.setItem(LOGIN_RESTAURANT_ID_KEY, data.id)
         setIsLoggedIn(true)
         setSelectedRestaurantId(data.id)
       } else {
@@ -146,7 +146,7 @@ export default function RestoranPage() {
     const id = restaurantId || null
     setSelectedRestaurantId(id)
     if (id && typeof window !== 'undefined') {
-      sessionStorage.setItem(LOGIN_RESTAURANT_ID_KEY, id)
+      localStorage.setItem(LOGIN_RESTAURANT_ID_KEY, id)
     }
   }
 
@@ -313,6 +313,14 @@ export default function RestoranPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 dark:from-slate-900 dark:to-slate-800 py-8 px-4 sm:px-6 lg:px-8">
+      {/* Fixed Çıkış Butonu - Sol Üst */}
+      <button 
+        onClick={() => { localStorage.clear(); window.location.reload(); }} 
+        className="fixed top-4 left-4 z-50 bg-red-600/90 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-lg backdrop-blur-sm transition-all hover:scale-105 active:scale-95"
+      >
+        ← Çıkış
+      </button>
+
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* SOL PANEL - YENİ SİPARİŞ FORMU */}
@@ -335,15 +343,6 @@ export default function RestoranPage() {
                   Yeni sipariş bilgilerini girin
                 </p>
               </div>
-              <button 
-                onClick={() => { 
-                  sessionStorage.clear(); 
-                  window.location.reload(); 
-                }} 
-                className="bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 px-4 py-2 rounded-lg text-sm font-medium transition-all"
-              >
-                Çıkış
-              </button>
             </div>
 
             {/* Başarı Mesajı */}

@@ -63,8 +63,8 @@ export default function Home() {
   // Session kontrolü ve yönlendirme - Kurye odaklı
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const kuryeLoggedIn = sessionStorage.getItem('kurye_logged_in')
-      const restoranLoggedIn = sessionStorage.getItem('restoran_logged_in')
+      const kuryeLoggedIn = localStorage.getItem('kurye_logged_in')
+      const restoranLoggedIn = localStorage.getItem('restoran_logged_in')
       
       // Kurye giriş yapmışsa kurye paneline yönlendir
       if (kuryeLoggedIn === 'true') {

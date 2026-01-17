@@ -41,8 +41,8 @@ export default function KuryePage() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const loggedIn = sessionStorage.getItem(LOGIN_STORAGE_KEY)
-      const loggedCourierId = sessionStorage.getItem(LOGIN_COURIER_ID_KEY)
+      const loggedIn = localStorage.getItem(LOGIN_STORAGE_KEY)
+      const loggedCourierId = localStorage.getItem(LOGIN_COURIER_ID_KEY)
       if (loggedIn === 'true' && loggedCourierId) {
         setIsLoggedIn(true)
         setSelectedCourierId(loggedCourierId)
@@ -51,7 +51,7 @@ export default function KuryePage() {
   }, [])
 
   const fetchPackages = async (isInitialLoad = false) => {
-    const courierId = sessionStorage.getItem(LOGIN_COURIER_ID_KEY)
+    const courierId = localStorage.getItem(LOGIN_COURIER_ID_KEY)
     if (!courierId) return
 
     try {
@@ -87,7 +87,7 @@ export default function KuryePage() {
   }
 
   const fetchDailyStats = async () => {
-    const courierId = sessionStorage.getItem(LOGIN_COURIER_ID_KEY)
+    const courierId = localStorage.getItem(LOGIN_COURIER_ID_KEY)
     if (!courierId) return
 
     try {
@@ -114,7 +114,7 @@ export default function KuryePage() {
   }
 
   const fetchCourierStatus = async () => {
-    const courierId = sessionStorage.getItem(LOGIN_COURIER_ID_KEY)
+    const courierId = localStorage.getItem(LOGIN_COURIER_ID_KEY)
     if (!courierId) return
 
     try {
@@ -137,7 +137,7 @@ export default function KuryePage() {
   }
 
   const updateCourierStatus = async (newStatus: 'idle' | 'busy', newIsActive: boolean) => {
-    const courierId = sessionStorage.getItem(LOGIN_COURIER_ID_KEY)
+    const courierId = localStorage.getItem(LOGIN_COURIER_ID_KEY)
     
     if (!courierId) {
       setErrorMessage('Kurye ID bulunamadı')
@@ -173,7 +173,7 @@ export default function KuryePage() {
 
   useEffect(() => {
     if (isLoggedIn) {
-      const courierId = sessionStorage.getItem(LOGIN_COURIER_ID_KEY)
+      const courierId = localStorage.getItem(LOGIN_COURIER_ID_KEY)
       if (!courierId) return
 
       // İlk yükleme
@@ -273,6 +273,16 @@ export default function KuryePage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-white p-4">
+      {/* Fixed Çıkış Butonu - Sol Üst */}
+      {isLoggedIn && (
+        <button 
+          onClick={() => { localStorage.clear(); window.location.reload(); }} 
+          className="fixed top-4 left-4 z-50 bg-red-600/90 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-lg backdrop-blur-sm transition-all hover:scale-105 active:scale-95"
+        >
+          ← Çıkış
+        </button>
+      )}
+
       <div className="max-w-2xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center">
@@ -285,7 +295,6 @@ export default function KuryePage() {
               KURYE PANELİ
             </h1>
           </div>
-          <button onClick={() => { sessionStorage.clear(); window.location.reload(); }} className="bg-red-900/50 text-red-400 px-4 py-2 rounded-lg text-sm">Çıkış</button>
         </div>
 
         <div className="grid grid-cols-2 gap-4 mb-6">
@@ -519,8 +528,8 @@ export default function KuryePage() {
           .update({ is_active: true, status: 'idle' })
           .eq('id', data.id)
         
-        sessionStorage.setItem(LOGIN_STORAGE_KEY, 'true');
-        sessionStorage.setItem(LOGIN_COURIER_ID_KEY, data.id);
+        localStorage.setItem(LOGIN_STORAGE_KEY, 'true');
+        localStorage.setItem(LOGIN_COURIER_ID_KEY, data.id);
         setIsLoggedIn(true);
         setSelectedCourierId(data.id);
       } else {
