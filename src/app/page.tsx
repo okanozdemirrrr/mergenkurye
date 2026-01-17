@@ -60,21 +60,25 @@ export default function Home() {
   const [dateFilter, setDateFilter] = useState<'today' | 'week' | 'month' | 'all'>('all')
   const [courierDateFilter, setCourierDateFilter] = useState<'today' | 'week' | 'month' | 'all'>('all')
 
-  // Session kontrolü ve yönlendirme
+  // Session kontrolü ve yönlendirme - Kurye odaklı
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const kuryeLoggedIn = sessionStorage.getItem('kurye_logged_in')
       const restoranLoggedIn = sessionStorage.getItem('restoran_logged_in')
       
+      // Kurye giriş yapmışsa kurye paneline yönlendir
       if (kuryeLoggedIn === 'true') {
         router.push('/kurye')
         return
       }
       
+      // Restoran giriş yapmışsa restoran paneline yönlendir
       if (restoranLoggedIn === 'true') {
         router.push('/restoran')
         return
       }
+      
+      // Kimse giriş yapmamışsa admin panelinde kal (default)
     }
   }, [router])
 
