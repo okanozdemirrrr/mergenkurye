@@ -2,17 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from './lib/supabase'
-import dynamic from 'next/dynamic'
-
-// Leaflet haritasını SSR olmadan yükle
-const CourierMap = dynamic(() => import('./components/CourierMap'), { 
-  ssr: false,
-  loading: () => (
-    <div className="h-[400px] w-full bg-slate-800 animate-pulse rounded-2xl flex items-center justify-center text-white">
-      Harita Yükleniyor...
-    </div>
-  )
-})
 
 interface Restaurant {
   id: number
@@ -44,9 +33,6 @@ interface Courier {
   todayDeliveryCount?: number
   is_active?: boolean
   activePackageCount?: number
-  last_lat?: number | null
-  last_lng?: number | null
-  last_update?: string
   status?: 'idle' | 'picking_up' | 'on_the_way' | 'assigned' | 'inactive'
 }
 
@@ -184,14 +170,11 @@ export default function Home() {
         return
       }
       
-      // Koordinat dönüşümü
       const couriersData = data.map(courier => ({
         ...courier,
         id: courier.id,
         full_name: courier.full_name || 'İsimsiz Kurye',
         is_active: Boolean(courier.is_active),
-        last_lat: courier.last_lat ? Number(courier.last_lat) : null,
-        last_lng: courier.last_lng ? Number(courier.last_lng) : null,
         deliveryCount: 0,
         todayDeliveryCount: 0,
         activePackageCount: 0
@@ -663,15 +646,9 @@ export default function Home() {
       <div className="space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <div className="lg:col-span-3 space-y-6">
-            {/* HARİTA */}
-            <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
-              <h2 className="text-2xl font-bold mb-4">🗺️ Kurye Konumları</h2>
-              <CourierMap couriers={couriers} />
-            </div>
-
             {/* SİPARİŞ KARTLARI */}
             <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
-              <h2 className="text-2xl font-bold mb-6">📦 Canlı Sipariş Takibi</h2>
+              <h2 className="text-2xl font-bold mb-6">� Canlı Sipariş Takibi</h2>
           
           {/* Sipariş Kartları */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1022,9 +999,6 @@ export default function Home() {
                     </button>
                     <div className="flex items-center gap-2">
                       <div className={`w-3 h-3 rounded-full ${c.is_active ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                      <div className="text-xs text-slate-500">
-                        {c.last_lat && c.last_lng ? '📍' : '❌'}
-                      </div>
                     </div>
                   </div>
                   
@@ -1051,19 +1025,6 @@ export default function Home() {
                     <div className="flex justify-between">
                       <span className="text-slate-600 dark:text-slate-400">Toplam Teslim:</span>
                       <span className="font-bold text-purple-600">{c.deliveryCount || 0}</span>
-                    </div>
-
-                    {/* Konum Bilgisi */}
-                    <div className="flex justify-between">
-                      <span className="text-slate-600 dark:text-slate-400">Konum:</span>
-                      <span className={`text-xs font-medium ${
-                        c.last_lat && c.last_lng ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        {c.last_lat && c.last_lng ? 
-                          `${Number(c.last_lat).toFixed(4)}, ${Number(c.last_lng).toFixed(4)}` : 
-                          'Konum yok'
-                        }
-                      </span>
                     </div>
 
                     <div className="mt-3 pt-2 border-t border-slate-200 dark:border-slate-600">
