@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from './lib/supabase'
 
 interface Restaurant {
@@ -37,6 +38,7 @@ interface Courier {
 }
 
 export default function Home() {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState<'live' | 'history' | 'couriers' | 'restaurants'>('live')
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
@@ -57,6 +59,24 @@ export default function Home() {
   const [newOrderDetails, setNewOrderDetails] = useState<Package | null>(null)
   const [dateFilter, setDateFilter] = useState<'today' | 'week' | 'month' | 'all'>('all')
   const [courierDateFilter, setCourierDateFilter] = useState<'today' | 'week' | 'month' | 'all'>('all')
+
+  // Session kontrolü ve yönlendirme
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const kuryeLoggedIn = sessionStorage.getItem('kurye_logged_in')
+      const restoranLoggedIn = sessionStorage.getItem('restoran_logged_in')
+      
+      if (kuryeLoggedIn === 'true') {
+        router.push('/kurye')
+        return
+      }
+      
+      if (restoranLoggedIn === 'true') {
+        router.push('/restoran')
+        return
+      }
+    }
+  }, [router])
 
   // Bildirim sesi çal
   const playNotificationSound = () => {
