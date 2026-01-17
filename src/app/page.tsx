@@ -86,6 +86,7 @@ export default function Home() {
       const { data, error } = await supabase
         .from('packages')
         .select('*, restaurants(*)')
+        .in('status', ['waiting', 'assigned', 'picking_up', 'on_the_way'])
         .order('created_at', { ascending: false })
 
       if (error) throw error
