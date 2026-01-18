@@ -45,6 +45,7 @@ export default function RestoranPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
+  const [dateFilter, setDateFilter] = useState<'today' | 'week' | 'month' | 'all'>('all')
 
   // Session kontrolü
   useEffect(() => {
@@ -80,11 +81,31 @@ export default function RestoranPage() {
     if (!selectedRestaurantId) return
     
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('packages')
         .select('*, restaurants(name)')
         .eq('restaurant_id', selectedRestaurantId)
-        .order('created_at', { ascending: false })
+
+      // Tarih filtresine göre sorgu ekle
+      if (dateFilter !== 'all') {
+        const now = new Date()
+        let startDate = new Date()
+
+        if (dateFilter === 'today') {
+          // Bugün (gece 00:00'dan itibaren)
+          startDate.setHours(0, 0, 0, 0)
+        } else if (dateFilter === 'week') {
+          // Son 7 gün
+          startDate.setDate(now.getDate() - 7)
+        } else if (dateFilter === 'month') {
+          // Son 30 gün
+          startDate.setDate(now.getDate() - 30)
+        }
+
+        query = query.gte('created_at', startDate.toISOString())
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false })
 
       if (error) throw error
       
@@ -135,11 +156,18 @@ export default function RestoranPage() {
     fetchRestaurants()
     if (isLoggedIn) {
       fetchPackages()
-      // Silent refresh - 20 saniyede bir
-      const interval = setInterval(fetchPackages, 20000)
+      // Silent refresh - 30 saniyede bir
+      const interval = setInterval(fetchPackages, 30000)
       return () => clearInterval(interval)
     }
   }, [isLoggedIn, selectedRestaurantId])
+
+  // Tarih filtresi değiştiğinde paketleri yeniden çek
+  useEffect(() => {
+    if (isLoggedIn && selectedRestaurantId) {
+      fetchPackages()
+    }
+  }, [dateFilter])
 
   // Restoran seçimini değiştir ve LocalStorage'a kaydet
   const handleRestaurantChange = (restaurantId: string) => {
@@ -318,60 +346,113 @@ export default function RestoranPage() {
         
         {/* SOL PANEL - YENİ SİPARİŞ FORMU */}
         <div className="lg:col-span-2">
-          <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-8 border border-orange-200 dark:border-slate-700">
+          <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
             {/* Başlık */}
-            <div className="flex justify-between items-center mb-8">
-              <div>
-                <div className="flex items-center mb-2">
-                  <img 
-                    src="/logo.png" 
-                    alt="Logo" 
-                    className="w-56 h-56 mr-3"
-                  />
-                  <h1 className="text-3xl font-black tracking-wider bg-gradient-to-r from-gray-200 to-gray-500 bg-clip-text text-transparent" style={{fontFamily: 'Orbitron, sans-serif'}}>
-                    {selectedRestaurant?.name.toUpperCase()}
-                  </h1>
-                </div>
-                <p className="text-slate-600 dark:text-slate-400">
-                  Yeni sipariş bilgilerini girin
+            <div className="flex justify-center items-center mb-6">
+              <div className="text-center">
+                <img 
+                  src="/logo.png" 
+                  alt="Logo" 
+                  className="w-32 h-32 mx-auto mb-2"
+                />
+                <h1 className="text-xl font-bold text-white">
+                  {selectedRestaurant?.name}
+                </h1>
+                <p className="text-sm text-slate-400 mt-1">
+                  Yeni Sipariş
                 </p>
               </div>
             </div>
 
             {/* Başarı Mesajı */}
             {successMessage && (
-              <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-                <p className="text-green-800 dark:text-green-300 font-medium flex items-center">
-                  <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  {successMessage}
-                </p>
+              <div className="mb-4 p-3 bg-green-500/20 border border-green-500/50 rounded-lg">
+                <p className="text-green-400 text-sm">{successMessage}</p>
               </div>
             )}
 
             {/* Hata Mesajı */}
             {errorMessage && (
-              <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                <p className="text-red-800 dark:text-red-300 font-medium flex items-center">
-                  <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                  </svg>
-                  {errorMessage}
-                </p>
+              <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg">
+                <p className="text-red-400 text-sm">{errorMessage}</p>
               </div>
             )}
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-4">
               {/* Müşteri Adı */}
               <div>
-                <label htmlFor="customerName" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Müşteri Adı <span className="text-red-500">*</span>
+                <label htmlFor="customerName" className="block text-sm font-medium text-slate-300 mb-1">
+                  Müşteri Adı <span className="text-red-400">*</span>
                 </label>
                 <input
                   type="text"
                   id="customerName"
+                  name="customerName"
+                  value={formData.customerName}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors"
+                  placeholder="Ahmet Yılmaz"
+                  disabled={isSubmitting}
+                />
+              </div>
+
+              {/* Paket İçeriği */}
+              <div>
+                <label htmlFor="content" className="block text-sm font-medium text-slate-300 mb-1">
+                  Paket İçeriği <span className="text-red-400">*</span>
+                </label>
+                <textarea
+                  id="content"
+                  name="content"
+                  value={formData.content}
+                  onChange={handleChange}
+                  required
+                  rows={2}
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors resize-none"
+                  placeholder="2x Döner, 1x Ayran"
+                  disabled={isSubmitting}
+                />
+              </div>
+
+              {/* Teslimat Adresi */}
+              <div>
+                <label htmlFor="deliveryAddress" className="block text-sm font-medium text-slate-300 mb-1">
+                  Teslimat Adresi <span className="text-red-400">*</span>
+                </label>
+                <textarea
+                  id="deliveryAddress"
+                  name="deliveryAddress"
+                  value={formData.deliveryAddress}
+                  onChange={handleChange}
+                  required
+                  rows={3}
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors resize-none"
+                  placeholder="Atatürk Mah. İnönü Cad. No:123"
+                  disabled={isSubmitting}
+                />
+              </div>
+
+              {/* Paket Tutarı */}
+              <div>
+                <label htmlFor="packageAmount" className="block text-sm font-medium text-slate-300 mb-1">
+                  Tutar (₺) <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="number"
+                  id="packageAmount"
+                  name="packageAmount"
+                  value={formData.packageAmount}
+                  onChange={handleChange}
+                  required
+                  min="0"
+                  step="0.01"
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors"
+                  placeholder="0.00"
+                  disabled={isSubmitting}
+                />
+              </div>
                   name="customerName"
                   value={formData.customerName}
                   onChange={handleChange}
@@ -500,31 +581,44 @@ export default function RestoranPage() {
 
         {/* SAĞ PANEL - SİPARİŞ LİSTESİ */}
         <div className="lg:col-span-1">
-          <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6 border border-orange-200 dark:border-slate-700">
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6 flex items-center">
-              📋 Siparişlerim
-              <span className="ml-2 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 text-sm px-2 py-1 rounded-full">
-                {packages.length}
-              </span>
-            </h2>
+          <div className="bg-slate-900 rounded-xl p-4 border border-slate-800">
+            {/* Başlık ve Filtre */}
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-white">Siparişlerim</h2>
+                <span className="bg-orange-500/20 text-orange-400 text-xs px-2 py-0.5 rounded">
+                  {packages.length}
+                </span>
+              </div>
+              <select
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value as any)}
+                className="px-2 py-1 bg-slate-800 border border-slate-700 rounded text-xs text-slate-300 focus:border-orange-500 outline-none"
+              >
+                <option value="today">Bugün</option>
+                <option value="week">7 Gün</option>
+                <option value="month">30 Gün</option>
+                <option value="all">Tümü</option>
+              </select>
+            </div>
             
-            <div className="space-y-4 max-h-96 overflow-y-auto">
+            <div className="space-y-2 max-h-96 overflow-y-auto">
               {packages.length === 0 ? (
-                <div className="text-center py-8 text-slate-500 dark:text-slate-400">
-                  <div className="text-4xl mb-2">📦</div>
-                  <p>Henüz sipariş yok</p>
+                <div className="text-center py-8 text-slate-500">
+                  <div className="text-3xl mb-2">📦</div>
+                  <p className="text-sm">Sipariş yok</p>
                 </div>
               ) : (
                 packages.map(pkg => (
-                  <div key={pkg.id} className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border border-slate-200 dark:border-slate-600">
+                  <div key={pkg.id} className="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
                     <div className="flex justify-between items-start mb-2">
-                      <h3 className="font-semibold text-slate-900 dark:text-white">{pkg.customer_name}</h3>
-                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                        pkg.status === 'waiting' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                        pkg.status === 'assigned' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                        pkg.status === 'picking_up' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
-                        pkg.status === 'on_the_way' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
-                        'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                      <h3 className="font-medium text-sm text-white">{pkg.customer_name}</h3>
+                      <span className={`text-xs px-2 py-0.5 rounded font-medium ${
+                        pkg.status === 'waiting' ? 'bg-yellow-500/20 text-yellow-400' :
+                        pkg.status === 'assigned' ? 'bg-blue-500/20 text-blue-400' :
+                        pkg.status === 'picking_up' ? 'bg-orange-500/20 text-orange-400' :
+                        pkg.status === 'on_the_way' ? 'bg-purple-500/20 text-purple-400' :
+                        'bg-green-500/20 text-green-400'
                       }`}>
                         {pkg.status === 'waiting' ? 'Bekliyor' :
                          pkg.status === 'assigned' ? 'Atandı' :
@@ -534,21 +628,21 @@ export default function RestoranPage() {
                     </div>
                     
                     {pkg.content && (
-                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
-                        📝 {pkg.content}
+                      <p className="text-xs text-slate-400 mb-2">
+                        {pkg.content}
                       </p>
                     )}
                     
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
-                      📍 {pkg.delivery_address}
+                    <p className="text-xs text-slate-400 mb-2 line-clamp-2">
+                      {pkg.delivery_address}
                     </p>
                     
                     <div className="flex justify-between items-center">
-                      <span className="font-bold text-green-600 dark:text-green-400">
-                        {pkg.amount} ₺
+                      <span className="font-bold text-green-400 text-sm">
+                        {pkg.amount}₺
                       </span>
-                      <span className="text-xs text-slate-500 dark:text-slate-400">
-                        {pkg.payment_method === 'cash' ? '💵 Nakit' : '💳 Kart'}
+                      <span className="text-xs text-slate-500">
+                        {pkg.payment_method === 'cash' ? 'Nakit' : 'Kart'}
                       </span>
                     </div>
                   </div>
