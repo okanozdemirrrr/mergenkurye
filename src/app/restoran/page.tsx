@@ -250,29 +250,25 @@ export default function RestoranPage() {
   // Giriş ekranı
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-4">
-        <div className="bg-white dark:bg-slate-800 shadow-2xl rounded-3xl p-8 w-full max-w-md border border-orange-200 dark:border-slate-700">
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+        <div className="bg-slate-900 p-8 rounded-2xl border border-slate-800 w-full max-w-md">
           <div className="text-center mb-8">
             <img 
               src="/logo.png" 
               alt="Logo" 
-              className="w-56 h-56 mx-auto mb-4"
+              className="w-48 h-48 mx-auto mb-4"
             />
-            <h1 className="text-4xl font-black tracking-wider bg-gradient-to-r from-gray-200 to-gray-500 bg-clip-text text-transparent mb-2" style={{fontFamily: 'Orbitron, sans-serif'}}>
-              RESTORAN GİRİŞİ
+            <h1 className="text-2xl font-bold text-white mb-2">
+              Restoran Girişi
             </h1>
-            <p className="text-slate-600 dark:text-slate-400">Hesabınıza giriş yapın</p>
           </div>
           
-          <form onSubmit={handleLogin} className="space-y-6">
+          <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Restoran Adı
-              </label>
               <input 
                 type="text" 
-                placeholder="Restoran adınızı girin" 
-                className="w-full p-4 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-slate-900 dark:text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                placeholder="Restoran Adı" 
+                className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors"
                 value={loginForm.username}
                 onChange={e => setLoginForm({...loginForm, username: e.target.value})}
                 required
@@ -280,13 +276,10 @@ export default function RestoranPage() {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Şifre
-              </label>
               <input 
                 type="password" 
-                placeholder="Şifrenizi girin" 
-                className="w-full p-4 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-slate-900 dark:text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                placeholder="Şifre" 
+                className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors"
                 value={loginForm.password}
                 onChange={e => setLoginForm({...loginForm, password: e.target.value})}
                 required
@@ -295,14 +288,14 @@ export default function RestoranPage() {
             
             <button 
               type="submit"
-              className="w-full py-4 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02]"
+              className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-lg transition-colors"
             >
-              GİRİŞ YAP
+              Giriş Yap
             </button>
             
             {errorMessage && (
-              <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
-                <p className="text-red-800 dark:text-red-300 text-sm text-center">{errorMessage}</p>
+              <div className="p-3 bg-red-500/20 border border-red-500/50 rounded-lg">
+                <p className="text-red-400 text-sm text-center">{errorMessage}</p>
               </div>
             )}
           </form>
@@ -312,16 +305,16 @@ export default function RestoranPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 dark:from-slate-900 dark:to-slate-800 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-slate-950 py-6 px-4">
       {/* Fixed Çıkış Butonu - Sol Üst */}
       <button 
         onClick={() => { localStorage.clear(); window.location.reload(); }} 
-        className="fixed top-4 left-4 z-50 bg-red-600/90 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-lg backdrop-blur-sm transition-all hover:scale-105 active:scale-95"
+        className="fixed top-4 left-4 z-50 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm font-medium shadow-lg transition-colors"
       >
         ← Çıkış
       </button>
 
-      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-4">
         
         {/* SOL PANEL - YENİ SİPARİŞ FORMU */}
         <div className="lg:col-span-2">
@@ -452,33 +445,33 @@ export default function RestoranPage() {
 
               {/* Müşteri Ödeme Tercihi */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
-                  Müşteri Ödeme Tercihi <span className="text-red-500">*</span>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Ödeme Tercihi <span className="text-red-400">*</span>
                 </label>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('cash')}
                     disabled={isSubmitting}
-                    className={`py-4 px-6 rounded-xl border-2 font-semibold text-lg transition-all duration-200 ${
+                    className={`py-2.5 rounded-lg border font-medium transition-colors ${
                       paymentMethod === 'cash'
-                        ? 'bg-green-600 border-green-700 text-white shadow-lg scale-105'
-                        : 'bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600'
+                        ? 'bg-green-600 border-green-600 text-white'
+                        : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600'
                     } disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
-                    💵 Nakit
+                    Nakit
                   </button>
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('card')}
                     disabled={isSubmitting}
-                    className={`py-4 px-6 rounded-xl border-2 font-semibold text-lg transition-all duration-200 ${
+                    className={`py-2.5 rounded-lg border font-medium transition-colors ${
                       paymentMethod === 'card'
-                        ? 'bg-blue-600 border-blue-700 text-white shadow-lg scale-105'
-                        : 'bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600'
+                        ? 'bg-blue-600 border-blue-600 text-white'
+                        : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600'
                     } disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
-                    💳 Kredi Kartı
+                    Kart
                   </button>
                 </div>
               </div>
@@ -487,18 +480,18 @@ export default function RestoranPage() {
               <button
                 type="submit"
                 disabled={isSubmitting || !paymentMethod}
-                className="w-full py-4 px-6 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:cursor-not-allowed flex items-center justify-center"
+                className="w-full py-3 bg-orange-600 hover:bg-orange-700 disabled:bg-slate-700 text-white font-medium rounded-lg transition-colors disabled:cursor-not-allowed flex items-center justify-center"
               >
                 {isSubmitting ? (
                   <>
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                     Kaydediliyor...
                   </>
                 ) : (
-                  'Siparişi Kaydet'
+                  'Sipariş Kaydet'
                 )}
               </button>
             </form>

@@ -243,29 +243,31 @@ export default function KuryePage() {
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-        <form onSubmit={handleLogin} className="bg-slate-900 p-8 rounded-3xl border border-slate-800 w-full max-w-md">
+        <form onSubmit={handleLogin} className="bg-slate-900 p-8 rounded-2xl border border-slate-800 w-full max-w-md">
           <div className="text-center mb-8">
             <img 
               src="/logo.png" 
               alt="Logo" 
-              className="w-64 h-64 mx-auto mb-4"
+              className="w-48 h-48 mx-auto mb-4"
             />
-            <h1 className="text-4xl font-black tracking-wider bg-gradient-to-r from-gray-200 to-gray-500 bg-clip-text text-transparent" style={{fontFamily: 'Orbitron, sans-serif'}}>
-              KURYE GİRİŞİ
+            <h1 className="text-2xl font-bold text-white mb-2">
+              Kurye Girişi
             </h1>
           </div>
           <input 
             type="text" placeholder="Kullanıcı Adı" 
-            className="w-full p-4 mb-4 bg-slate-800 rounded-xl text-white outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full p-3 mb-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-blue-500 transition-colors"
             onChange={e => setLoginForm({...loginForm, username: e.target.value})}
           />
           <input 
             type="password" placeholder="Şifre" 
-            className="w-full p-4 mb-6 bg-slate-800 rounded-xl text-white outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full p-3 mb-4 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-blue-500 transition-colors"
             onChange={e => setLoginForm({...loginForm, password: e.target.value})}
           />
-          <button className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl">GİRİŞ YAP</button>
-          {errorMessage && <p className="text-red-500 mt-4 text-center">{errorMessage}</p>}
+          <button className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+            Giriş Yap
+          </button>
+          {errorMessage && <p className="text-red-400 text-sm mt-3 text-center">{errorMessage}</p>}
         </form>
       </div>
     )
@@ -277,161 +279,155 @@ export default function KuryePage() {
       {isLoggedIn && (
         <button 
           onClick={() => { localStorage.clear(); window.location.reload(); }} 
-          className="fixed top-4 left-4 z-50 bg-red-600/90 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-lg backdrop-blur-sm transition-all hover:scale-105 active:scale-95"
+          className="fixed top-4 left-4 z-50 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm font-medium shadow-lg transition-colors"
         >
           ← Çıkış
         </button>
       )}
 
       <div className="max-w-2xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center">
-            <img 
-              src="/logo.png" 
-              alt="Logo" 
-              className="w-48 h-48 mr-3"
-            />
-            <h1 className="text-3xl font-black tracking-wider bg-gradient-to-r from-gray-200 to-gray-500 bg-clip-text text-transparent" style={{fontFamily: 'Orbitron, sans-serif'}}>
-              KURYE PANELİ
-            </h1>
-          </div>
+        <div className="flex justify-center items-center mb-6 pt-2">
+          <img 
+            src="/logo.png" 
+            alt="Logo" 
+            className="w-32 h-32"
+          />
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 text-center">
-            <p className="text-slate-400 text-sm">Bugün Paket</p>
-            <p className="text-3xl font-bold text-green-500">{deliveredCount}</p>
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
+            <p className="text-slate-400 text-xs mb-1">Bugün Teslim</p>
+            <p className="text-2xl font-bold text-green-400">{deliveredCount}</p>
           </div>
           <button 
             onClick={() => setShowSummary(true)}
-            className="bg-blue-900/30 p-4 rounded-2xl border border-blue-800 text-center hover:bg-blue-800/40 transition-all"
+            className="bg-slate-900 p-4 rounded-xl border border-slate-800 hover:border-blue-600 transition-colors text-left"
           >
-            <p className="text-blue-400 text-sm">Hesap Özeti</p>
-            <p className="text-xl font-bold text-white">{(cashTotal + cardTotal).toFixed(2)} ₺</p>
+            <p className="text-slate-400 text-xs mb-1">Toplam Kazanç</p>
+            <p className="text-2xl font-bold text-blue-400">{(cashTotal + cardTotal).toFixed(2)} ₺</p>
           </button>
         </div>
 
         {/* KURYE DURUM KONTROL TOGGLE */}
-        <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold">Kurye Durumu</h3>
+        <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-medium text-slate-300">Durum</span>
             <div className="flex items-center gap-2">
-              <div className={`w-3 h-3 rounded-full ${is_active ? 'bg-green-500' : 'bg-red-500'}`}></div>
-              <span className="text-sm text-slate-400">
-                {is_active ? 'Aktif' : 'Pasif'} - {courierStatus === 'idle' ? 'Boşta' : courierStatus === 'busy' ? 'Meşgul' : 'Bilinmiyor'}
+              <div className={`w-2 h-2 rounded-full ${is_active ? 'bg-green-500' : 'bg-red-500'}`}></div>
+              <span className="text-xs text-slate-400">
+                {is_active ? 'Aktif' : 'Pasif'}
               </span>
             </div>
           </div>
           
           {/* Toggle Switch */}
-          <div className="flex items-center justify-center gap-4 py-4">
-            <span className={`text-sm font-bold transition-all ${!is_active ? 'text-red-400 scale-110' : 'text-slate-500'}`}>
-              ❌ Aktif Değilim
+          <div className="flex items-center justify-center gap-3 py-2">
+            <span className={`text-xs font-medium transition-all ${!is_active ? 'text-red-400' : 'text-slate-500'}`}>
+              Pasif
             </span>
             
             <button
               onClick={() => updateCourierStatus('idle', !is_active)}
               disabled={statusUpdating}
-              className={`relative w-20 h-10 rounded-full transition-all duration-300 disabled:opacity-50 ${
-                is_active ? 'bg-green-600' : 'bg-red-600'
+              className={`relative w-14 h-7 rounded-full transition-all duration-300 disabled:opacity-50 ${
+                is_active ? 'bg-green-600' : 'bg-slate-700'
               }`}
             >
-              <div className={`absolute top-1 w-8 h-8 bg-white rounded-full shadow-lg transition-all duration-300 ${
-                is_active ? 'left-11' : 'left-1'
+              <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300 ${
+                is_active ? 'left-7' : 'left-0.5'
               }`}>
                 {statusUpdating && (
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-5 h-5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
+                    <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
                   </div>
                 )}
               </div>
             </button>
             
-            <span className={`text-sm font-bold transition-all ${is_active ? 'text-green-400 scale-110' : 'text-slate-500'}`}>
-              ✅ Aktifim
+            <span className={`text-xs font-medium transition-all ${is_active ? 'text-green-400' : 'text-slate-500'}`}>
+              Aktif
             </span>
           </div>
         </div>
 
         {successMessage && (
-          <div className="mb-4 p-3 bg-green-900/50 border border-green-700 rounded-xl text-green-400 text-center">
+          <div className="mb-3 p-3 bg-green-500/20 border border-green-500/50 rounded-lg text-green-400 text-sm text-center">
             {successMessage}
           </div>
         )}
         
         {errorMessage && (
-          <div className="mb-4 p-3 bg-red-900/50 border border-red-700 rounded-xl text-red-400 text-center">
+          <div className="mb-3 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400 text-sm text-center">
             {errorMessage}
           </div>
         )}
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {packages.length === 0 ? (
-            <div className="text-center py-20 text-slate-500">Atanmış paket bulunmuyor.</div>
+            <div className="text-center py-12 text-slate-500">
+              <div className="text-4xl mb-2">📦</div>
+              <p className="text-sm">Atanmış paket bulunmuyor</p>
+            </div>
           ) : (
             <>
               {/* Paket Sayısı Göstergesi */}
-              <div className="bg-slate-800 p-4 rounded-2xl border border-slate-700 text-center">
-                <h3 className="text-lg font-bold text-white mb-1">📦 Aktif Paketlerim</h3>
-                <p className="text-slate-400 text-sm">
-                  Toplam {packages.length} paket • 
-                  {packages.filter(p => p.status === 'assigned').length} bekliyor • 
-                  {packages.filter(p => p.status === 'picking_up').length} alınacak • 
-                  {packages.filter(p => p.status === 'on_the_way').length} teslimatta
+              <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
+                <p className="text-sm text-slate-400">
+                  <span className="font-bold text-white">{packages.length}</span> aktif paket
                 </p>
               </div>
 
               {/* Paket Listesi */}
               {packages.map((pkg, index) => (
-                <div key={pkg.id} className="bg-slate-900 p-6 rounded-3xl border-2 border-slate-800 shadow-xl relative">
-                  {/* Paket Numarası */}
-                  <div className="absolute top-4 right-4 bg-slate-700 text-slate-300 px-2 py-1 rounded-full text-xs font-bold">
-                    #{index + 1}
-                  </div>
-
-                  <div className="flex justify-between items-start mb-4 pr-12">
-                    <div>
-                      <span className="bg-blue-600 text-[10px] px-2 py-1 rounded-md uppercase font-bold tracking-widest">Restoran</span>
-                      <h2 className="text-xl font-bold mt-1 text-blue-400">{pkg.restaurant?.name || 'Bilinmiyor'}</h2>
-                      <p className="text-slate-400 text-sm mt-1">👤 {pkg.customer_name}</p>
+                <div key={pkg.id} className="bg-slate-900 p-4 rounded-xl border border-slate-800">
+                  {/* Üst Kısım */}
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs text-slate-500">#{index + 1}</span>
+                        <span className="text-xs px-2 py-0.5 bg-orange-500/20 text-orange-400 rounded">
+                          {pkg.restaurant?.name || 'Restoran'}
+                        </span>
+                      </div>
+                      <p className="font-medium text-white">{pkg.customer_name}</p>
                       {pkg.content && (
-                        <p className="text-slate-400 text-sm">📝 {pkg.content}</p>
+                        <p className="text-xs text-slate-400 mt-1">{pkg.content}</p>
                       )}
                     </div>
                     <div className="text-right">
-                      <p className="text-2xl font-black text-green-500">{pkg.amount} ₺</p>
+                      <p className="text-xl font-bold text-green-400">{pkg.amount}₺</p>
                       <p className="text-xs text-slate-500">
-                        {pkg.payment_method === 'cash' ? '💵 Nakit' : '💳 Kart'}
+                        {pkg.payment_method === 'cash' ? 'Nakit' : 'Kart'}
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex gap-3 mb-6">
-                    <span className="text-2xl">📍</span>
-                    <p className="text-slate-300 font-medium">{pkg.delivery_address}</p>
+                  {/* Adres */}
+                  <div className="mb-3 p-2 bg-slate-800/50 rounded-lg">
+                    <p className="text-xs text-slate-300">{pkg.delivery_address}</p>
                   </div>
 
-                  {/* Durum Göstergesi */}
-                  <div className="mb-4">
-                    <span className={`px-3 py-1 rounded-full text-sm font-bold ${
-                      pkg.status === 'assigned' ? 'bg-orange-600 text-white' :
-                      pkg.status === 'picking_up' ? 'bg-yellow-500 text-slate-900' :
-                      'bg-red-600 text-white'
+                  {/* Durum Badge */}
+                  <div className="mb-3">
+                    <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                      pkg.status === 'assigned' ? 'bg-blue-500/20 text-blue-400' :
+                      pkg.status === 'picking_up' ? 'bg-yellow-500/20 text-yellow-400' :
+                      'bg-red-500/20 text-red-400'
                     }`}>
-                      {pkg.status === 'assigned' ? '🔔 YENİ PAKET' :
-                       pkg.status === 'picking_up' ? '🏃 ALMAYA GİT' :
-                       '🚗 TESLİMAT'}
+                      {pkg.status === 'assigned' ? 'Yeni Paket' :
+                       pkg.status === 'picking_up' ? 'Almaya Git' :
+                       'Teslimatta'}
                     </span>
                   </div>
 
-                  {/* KADEMELİ BUTONLAR */}
+                  {/* Aksiyon Butonları */}
                   {pkg.status === 'assigned' && (
                     <button 
                       disabled={isUpdating.has(pkg.id)}
                       onClick={() => handleUpdateStatus(pkg.id, 'picking_up')}
-                      className="w-full py-4 bg-orange-600 hover:bg-orange-700 font-bold rounded-2xl shadow-lg active:scale-95 transition-all disabled:opacity-50"
+                      className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {isUpdating.has(pkg.id) ? '⏳ İŞLENİYOR...' : 'PAKETİ KABUL ET'}
+                      {isUpdating.has(pkg.id) ? 'İşleniyor...' : 'Kabul Et'}
                     </button>
                   )}
 
@@ -439,23 +435,35 @@ export default function KuryePage() {
                     <button 
                       disabled={isUpdating.has(pkg.id)}
                       onClick={() => handleUpdateStatus(pkg.id, 'on_the_way', { picked_up_at: new Date().toISOString() })}
-                      className="w-full py-4 bg-yellow-500 hover:bg-yellow-600 text-slate-950 font-black rounded-2xl shadow-lg active:scale-95 transition-all disabled:opacity-50"
+                      className="w-full py-2.5 bg-yellow-600 hover:bg-yellow-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {isUpdating.has(pkg.id) ? '⏳ İŞLENİYOR...' : 'PAKETİ ALDIM (YOLA ÇIK)'}
+                      {isUpdating.has(pkg.id) ? 'İşleniyor...' : 'Paketi Aldım'}
                     </button>
                   )}
 
                   {pkg.status === 'on_the_way' && (
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
                         <button 
                           onClick={() => setSelectedPaymentMethods({...selectedPaymentMethods, [pkg.id]: 'cash'})}
-                          className={`py-4 rounded-xl border-2 font-bold transition-all ${selectedPaymentMethods[pkg.id] === 'cash' ? 'bg-green-600 border-green-400 scale-105' : 'bg-slate-800 border-slate-700 hover:border-slate-600'}`}
-                        >💵 NAKİT</button>
+                          className={`py-2 rounded-lg border font-medium text-sm transition-colors ${
+                            selectedPaymentMethods[pkg.id] === 'cash' 
+                              ? 'bg-green-600 border-green-600 text-white' 
+                              : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600'
+                          }`}
+                        >
+                          Nakit
+                        </button>
                         <button 
                           onClick={() => setSelectedPaymentMethods({...selectedPaymentMethods, [pkg.id]: 'card'})}
-                          className={`py-4 rounded-xl border-2 font-bold transition-all ${selectedPaymentMethods[pkg.id] === 'card' ? 'bg-blue-600 border-blue-400 scale-105' : 'bg-slate-800 border-slate-700 hover:border-slate-600'}`}
-                        >💳 KART</button>
+                          className={`py-2 rounded-lg border font-medium text-sm transition-colors ${
+                            selectedPaymentMethods[pkg.id] === 'card' 
+                              ? 'bg-blue-600 border-blue-600 text-white' 
+                              : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600'
+                          }`}
+                        >
+                          Kart
+                        </button>
                       </div>
                       <button 
                         disabled={!selectedPaymentMethods[pkg.id] || isUpdating.has(pkg.id)}
@@ -463,9 +471,9 @@ export default function KuryePage() {
                           payment_method: selectedPaymentMethods[pkg.id],
                           delivered_at: new Date().toISOString() 
                         })}
-                        className="w-full py-5 bg-green-500 text-slate-950 font-black text-xl rounded-2xl shadow-lg active:scale-95 transition-all disabled:opacity-50"
+                        className="w-full py-2.5 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {isUpdating.has(pkg.id) ? '⏳ TESLİM EDİLİYOR...' : 'TESLİM ET'}
+                        {isUpdating.has(pkg.id) ? 'Teslim Ediliyor...' : 'Teslim Et'}
                       </button>
                     </div>
                   )}
@@ -476,23 +484,28 @@ export default function KuryePage() {
         </div>
       </div>
 
-      {/* HESAP ÖZETİ MODAL (TESLİMAT SÜRESİ DAHİL) */}
+      {/* HESAP ÖZETİ MODAL */}
       {showSummary && (
-        <div className="fixed inset-0 bg-black/90 z-50 p-4 overflow-y-auto">
-          <div className="max-w-md mx-auto bg-slate-900 rounded-3xl p-6 border border-slate-800">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold">Günlük Rapor</h2>
-              <button onClick={() => setShowSummary(false)} className="text-2xl">×</button>
+        <div className="fixed inset-0 bg-black/80 z-50 p-4 overflow-y-auto flex items-center justify-center">
+          <div className="max-w-md w-full bg-slate-900 rounded-xl p-4 border border-slate-800">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold text-white">Günlük Rapor</h2>
+              <button onClick={() => setShowSummary(false)} className="text-slate-400 hover:text-white text-2xl">×</button>
             </div>
             
             <SummaryList courierId={selectedCourierId!} calculateDuration={calculateDuration} />
 
-            <div className="mt-6 pt-6 border-t border-slate-800">
-              <div className="flex justify-between text-lg font-bold">
-                <span>Toplam Kazanç:</span>
-                <span className="text-green-500">{(cashTotal + cardTotal).toFixed(2)} ₺</span>
+            <div className="mt-4 pt-4 border-t border-slate-800">
+              <div className="flex justify-between text-base font-bold mb-3">
+                <span className="text-slate-300">Toplam Kazanç:</span>
+                <span className="text-green-400">{(cashTotal + cardTotal).toFixed(2)} ₺</span>
               </div>
-              <button onClick={() => setShowSummary(false)} className="w-full mt-4 py-3 bg-slate-800 rounded-xl font-bold">Kapat</button>
+              <button 
+                onClick={() => setShowSummary(false)} 
+                className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-medium transition-colors"
+              >
+                Kapat
+              </button>
             </div>
           </div>
         </div>
@@ -560,16 +573,16 @@ function SummaryList({ courierId, calculateDuration }: { courierId: string, calc
   }, []);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2 max-h-64 overflow-y-auto">
       {history.map(p => (
-        <div key={p.id} className="bg-slate-850 p-3 rounded-xl border border-slate-800 flex justify-between items-center">
+        <div key={p.id} className="bg-slate-800/50 p-3 rounded-lg flex justify-between items-center">
           <div>
-            <p className="font-bold text-sm">{p.customer_name}</p>
-            <p className="text-[10px] text-slate-500">{p.payment_method === 'cash' ? 'Nakit' : 'Kart'}</p>
+            <p className="font-medium text-sm text-white">{p.customer_name}</p>
+            <p className="text-xs text-slate-400">{p.payment_method === 'cash' ? 'Nakit' : 'Kart'}</p>
           </div>
           <div className="text-right">
-            <p className="text-blue-400 text-xs font-bold">⏱ {calculateDuration(p.picked_up_at, p.delivered_at)}</p>
-            <p className="text-white font-bold">{p.amount} ₺</p>
+            <p className="text-xs text-blue-400 font-medium">{calculateDuration(p.picked_up_at, p.delivered_at)}</p>
+            <p className="text-white font-bold text-sm">{p.amount} ₺</p>
           </div>
         </div>
       ))}
