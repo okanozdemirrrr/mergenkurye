@@ -113,31 +113,28 @@ export default function RestoranPage() {
 
       if (error) throw error
 
-      if (!data || data.length === 0) {
-        setStatisticsData([])
-        return
-      }
+      // Tüm tarih aralığını oluştur (veri olmasa bile)
+      const start = new Date(startDate)
+      const end = new Date(endDate)
+      const allPeriods: string[] = []
 
-      // Filtreye göre grupla
-      const grouped: { [key: string]: { count: number; revenue: number } } = {}
-
-      data.forEach((pkg) => {
-        if (!pkg.created_at) return
-
-        const date = new Date(pkg.created_at)
-        let key = ''
-
-        if (statisticsFilter === 'daily') {
-          // Günlük: 21.01.2026
-          const day = date.getDate().toString().padStart(2, '0')
-          const month = (date.getMonth() + 1).toString().padStart(2, '0')
-          const year = date.getFullYear()
-          key = `${day}.${month}.${year}`
-        } else if (statisticsFilter === 'weekly') {
-          // Haftalık: Haftanın başlangıç tarihini bul
-          const dayOfWeek = date.getDay()
-          const diff = date.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1)
-          const weekStart = new Date(date.getFullYear(), date.getMonth(), diff)
+      if (statisticsFilter === 'daily') {
+        // Günlük: Her günü ekle
+        const current = new Date(start)
+        while (current <= end) {
+          const day = current.getDate().toString().padStart(2, '0')
+          const month = (current.getMonth() + 1).toString().padStart(2, '0')
+          const year = current.getFullYear()
+          allPeriods.push(`${day}.${month}.${year}`)
+          current.setDate(current.getDate() + 1)
+        }
+      } else if (statisticsFilter === 'weekly') {
+        // Haftalık: Her haftayı ekle
+        const current = new Date(start)
+        while (current <= end) {
+          const dayOfWeek = current.getDay()
+          const diff = current.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1)
+          const weekStart = new Date(current.getFullYear(), current.getMonth(), diff)
           const weekEnd = new Date(weekStart)
           weekEnd.setDate(weekStart.getDate() + 6)
 
@@ -148,29 +145,84 @@ export default function RestoranPage() {
           const endMonth = (weekEnd.getMonth() + 1).toString().padStart(2, '0')
           const endYear = weekEnd.getFullYear()
 
-          key = `${startDay}.${startMonth}.${startYear}-${endDay}.${endMonth}.${endYear}`
-        } else {
-          // Aylık: 2026 Ocak
-          const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 
-                             'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık']
-          const month = monthNames[date.getMonth()]
-          const year = date.getFullYear()
-          key = `${year} ${month}`
+          const key = `${startDay}.${startMonth}.${startYear}-${endDay}.${endMonth}.${endYear}`
+          if (!allPeriods.includes(key)) {
+            allPeriods.push(key)
+          }
+          
+          current.setDate(current.getDate() + 7)
         }
-
-        if (!grouped[key]) {
-          grouped[key] = { count: 0, revenue: 0 }
+      } else {
+        // Aylık: Her ayı ekle
+        const current = new Date(start)
+        const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 
+                           'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık']
+        
+        while (current <= end) {
+          const month = monthNames[current.getMonth()]
+          const year = current.getFullYear()
+          const key = `${year} ${month}`
+          if (!allPeriods.includes(key)) {
+            allPeriods.push(key)
+          }
+          current.setMonth(current.getMonth() + 1)
         }
+      }
 
-        grouped[key].count++
-        grouped[key].revenue += pkg.amount || 0
+      // Tüm periyotlar için başlangıç değerleri
+      const grouped: { [key: string]: { count: number; revenue: number } } = {}
+      allPeriods.forEach(period => {
+        grouped[period] = { count: 0, revenue: 0 }
       })
 
-      // Array'e çevir
-      const chartData = Object.entries(grouped).map(([name, data]) => ({
+      // Verileri grupla
+      if (data && data.length > 0) {
+        data.forEach((pkg) => {
+          if (!pkg.created_at) return
+
+          const date = new Date(pkg.created_at)
+          let key = ''
+
+          if (statisticsFilter === 'daily') {
+            const day = date.getDate().toString().padStart(2, '0')
+            const month = (date.getMonth() + 1).toString().padStart(2, '0')
+            const year = date.getFullYear()
+            key = `${day}.${month}.${year}`
+          } else if (statisticsFilter === 'weekly') {
+            const dayOfWeek = date.getDay()
+            const diff = date.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1)
+            const weekStart = new Date(date.getFullYear(), date.getMonth(), diff)
+            const weekEnd = new Date(weekStart)
+            weekEnd.setDate(weekStart.getDate() + 6)
+
+            const startDay = weekStart.getDate().toString().padStart(2, '0')
+            const startMonth = (weekStart.getMonth() + 1).toString().padStart(2, '0')
+            const startYear = weekStart.getFullYear()
+            const endDay = weekEnd.getDate().toString().padStart(2, '0')
+            const endMonth = (weekEnd.getMonth() + 1).toString().padStart(2, '0')
+            const endYear = weekEnd.getFullYear()
+
+            key = `${startDay}.${startMonth}.${startYear}-${endDay}.${endMonth}.${endYear}`
+          } else {
+            const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 
+                               'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık']
+            const month = monthNames[date.getMonth()]
+            const year = date.getFullYear()
+            key = `${year} ${month}`
+          }
+
+          if (grouped[key]) {
+            grouped[key].count++
+            grouped[key].revenue += pkg.amount || 0
+          }
+        })
+      }
+
+      // Array'e çevir (sıralı)
+      const chartData = allPeriods.map(name => ({
         name,
-        count: data.count,
-        revenue: data.revenue
+        count: grouped[name].count,
+        revenue: grouped[name].revenue
       }))
 
       setStatisticsData(chartData)
