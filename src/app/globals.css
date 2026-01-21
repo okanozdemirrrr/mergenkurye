@@ -6,19 +6,16 @@
   --foreground: #0f172a;
   --brand-primary: #3b82f6;
   --brand-secondary: #8b5cf6;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: 'Inter', var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: #f8fafc;
+  --color-foreground: #0f172a;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0f172a;
     --foreground: #f1f5f9;
+    --color-background: #0f172a;
+    --color-foreground: #f1f5f9;
   }
 }
 
