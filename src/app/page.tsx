@@ -1674,33 +1674,46 @@ export default function Home() {
       let startDate = new Date()
       
       if (restaurantChartFilter === 'today') {
+        // Bugün gece 00:00'dan itibaren
         startDate.setHours(0, 0, 0, 0)
       } else if (restaurantChartFilter === 'week') {
+        // Son 7 gün
         startDate.setDate(now.getDate() - 7)
+        startDate.setHours(0, 0, 0, 0)
       } else if (restaurantChartFilter === 'month') {
+        // Son 30 gün
         startDate.setDate(now.getDate() - 30)
+        startDate.setHours(0, 0, 0, 0)
       }
       
-      return deliveredPackages.filter(pkg => 
+      // delivered_at üzerinden filtrele
+      const filtered = deliveredPackages.filter(pkg => 
         pkg.delivered_at && new Date(pkg.delivered_at) >= startDate
       )
+      
+      console.log('🔍 Filtre:', restaurantChartFilter)
+      console.log('📅 Başlangıç Tarihi:', startDate.toISOString())
+      console.log('📦 Toplam Delivered Paketler:', deliveredPackages.length)
+      console.log('✅ Filtrelenmiş Paketler:', filtered.length)
+      
+      return filtered
     }
     
     const filteredPackages = getFilteredPackages()
     
-    // Restoran bazlı paket sayıları
-    const restaurantPacketCounts: { [key: string]: number } = {}
-    filteredPackages.forEach(pkg => {
+    // Reduce ile restoran bazlı paket sayıları
+    const restaurantPacketCounts = filteredPackages.reduce((acc, pkg) => {
       const name = pkg.restaurant?.name || 'Bilinmeyen'
-      restaurantPacketCounts[name] = (restaurantPacketCounts[name] || 0) + 1
-    })
+      acc[name] = (acc[name] || 0) + 1
+      return acc
+    }, {} as { [key: string]: number })
     
-    // Restoran bazlı cirolar
-    const restaurantRevenues: { [key: string]: number } = {}
-    filteredPackages.forEach(pkg => {
+    // Reduce ile restoran bazlı cirolar
+    const restaurantRevenues = filteredPackages.reduce((acc, pkg) => {
       const name = pkg.restaurant?.name || 'Bilinmeyen'
-      restaurantRevenues[name] = (restaurantRevenues[name] || 0) + (pkg.amount || 0)
-    })
+      acc[name] = (acc[name] || 0) + (pkg.amount || 0)
+      return acc
+    }, {} as { [key: string]: number })
     
     // Recharts için veri formatı - Pie Chart
     const pieChartData = Object.entries(restaurantPacketCounts)
@@ -1718,10 +1731,14 @@ export default function Home() {
         ciro: revenue
       }))
     
+    // Debugging
+    console.log('📊 Pasta Verisi:', pieChartData)
+    console.log('💰 Sütun Verisi:', barChartData)
+    
     // Mergen Teknoloji teması renkleri
     const COLORS = ['#3B82F6', '#06B6D4', '#475569', '#0EA5E9', '#64748B', '#0284C7', '#334155']
     
-    const hasData = filteredPackages.length > 0
+    const hasData = pieChartData.length > 0
     
     return (
       <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
@@ -1743,40 +1760,42 @@ export default function Home() {
           <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border dark:border-slate-600">
             <h3 className="text-lg font-bold mb-4">📦 Restoran Paket Dağılımı</h3>
             {!hasData ? (
-              <div className="flex items-center justify-center h-64 text-slate-500">
+              <div className="flex items-center justify-center h-[300px] text-slate-500">
                 <div className="text-center">
                   <div className="text-4xl mb-2">📊</div>
                   <p className="text-sm">Veri bulunamadı</p>
                 </div>
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={pieChartData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name}: ${percent ? (percent * 100).toFixed(0) : 0}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {pieChartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: darkMode ? '#1e293b' : '#fff',
-                      border: '1px solid #475569',
-                      borderRadius: '8px'
-                    }}
-                    formatter={(value: any) => [`${value} paket`, 'Paket Sayısı']}
-                  />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
+              <div style={{ width: '100%', height: 300 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={pieChartData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name}: ${percent ? (percent * 100).toFixed(0) : 0}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {pieChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: darkMode ? '#1e293b' : '#fff',
+                        border: '1px solid #475569',
+                        borderRadius: '8px'
+                      }}
+                      formatter={(value: any) => [`${value} paket`, 'Paket Sayısı']}
+                    />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
             )}
           </div>
           
@@ -1784,48 +1803,50 @@ export default function Home() {
           <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border dark:border-slate-600">
             <h3 className="text-lg font-bold mb-4">💰 Restoran Ciroları</h3>
             {!hasData ? (
-              <div className="flex items-center justify-center h-64 text-slate-500">
+              <div className="flex items-center justify-center h-[300px] text-slate-500">
                 <div className="text-center">
                   <div className="text-4xl mb-2">📊</div>
                   <p className="text-sm">Veri bulunamadı</p>
                 </div>
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={barChartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#475569' : '#e2e8f0'} />
-                  <XAxis 
-                    dataKey="name" 
-                    angle={-45}
-                    textAnchor="end"
-                    height={80}
-                    tick={{ fill: darkMode ? '#94a3b8' : '#475569', fontSize: 12 }}
-                  />
-                  <YAxis 
-                    tick={{ fill: darkMode ? '#94a3b8' : '#475569' }}
-                    label={{ value: 'Ciro (₺)', angle: -90, position: 'insideLeft', fill: darkMode ? '#94a3b8' : '#475569' }}
-                  />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: darkMode ? '#1e293b' : '#fff',
-                      border: '1px solid #475569',
-                      borderRadius: '8px'
-                    }}
-                    formatter={(value: any) => [`${value.toFixed(2)} ₺`, 'Ciro']}
-                  />
-                  <Legend />
-                  <Bar 
-                    dataKey="ciro" 
-                    fill="#10b981" 
-                    name="Ciro (₺)"
-                    label={{ 
-                      position: 'top', 
-                      fill: darkMode ? '#10b981' : '#059669',
-                      formatter: (value: any) => `${value.toFixed(0)}₺`
-                    }}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+              <div style={{ width: '100%', height: 300 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={barChartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#475569' : '#e2e8f0'} />
+                    <XAxis 
+                      dataKey="name" 
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                      tick={{ fill: darkMode ? '#94a3b8' : '#475569', fontSize: 12 }}
+                    />
+                    <YAxis 
+                      tick={{ fill: darkMode ? '#94a3b8' : '#475569' }}
+                      label={{ value: 'Ciro (₺)', angle: -90, position: 'insideLeft', fill: darkMode ? '#94a3b8' : '#475569' }}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: darkMode ? '#1e293b' : '#fff',
+                        border: '1px solid #475569',
+                        borderRadius: '8px'
+                      }}
+                      formatter={(value: any) => [`${value.toFixed(2)} ₺`, 'Ciro']}
+                    />
+                    <Legend />
+                    <Bar 
+                      dataKey="ciro" 
+                      fill="#10b981" 
+                      name="Ciro (₺)"
+                      label={{ 
+                        position: 'top', 
+                        fill: darkMode ? '#10b981' : '#059669',
+                        formatter: (value: any) => `${value.toFixed(0)}₺`
+                      }}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             )}
           </div>
         </div>
