@@ -52,6 +52,38 @@ export default function RestoranPage() {
   const [dateFilter, setDateFilter] = useState<'today' | 'week' | 'month' | 'all'>('all')
   const [darkMode, setDarkMode] = useState(true) // Varsayılan dark mode
 
+  // Tarih ve saat formatı
+  const formatDateTime = (dateString?: string) => {
+    if (!dateString) return '-'
+    
+    try {
+      const date = new Date(dateString)
+      const day = date.getDate().toString().padStart(2, '0')
+      const month = (date.getMonth() + 1).toString().padStart(2, '0')
+      const year = date.getFullYear()
+      const hours = date.getHours().toString().padStart(2, '0')
+      const minutes = date.getMinutes().toString().padStart(2, '0')
+      
+      return `${day}.${month}.${year} ${hours}:${minutes}`
+    } catch (error) {
+      return '-'
+    }
+  }
+
+  const formatTime = (dateString?: string) => {
+    if (!dateString) return '-'
+    
+    try {
+      const date = new Date(dateString)
+      const hours = date.getHours().toString().padStart(2, '0')
+      const minutes = date.getMinutes().toString().padStart(2, '0')
+      
+      return `${hours}:${minutes}`
+    } catch (error) {
+      return '-'
+    }
+  }
+
   // Build-safe mount kontrolü
   useEffect(() => {
     setIsMounted(true)
@@ -631,14 +663,32 @@ export default function RestoranPage() {
                       </span>
                     </div>
                     
+                    {/* Tarih ve Saat Bilgileri */}
+                    <div className="bg-slate-900/50 p-2 rounded mb-2 space-y-1">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-slate-400">📅 Sipariş Tarihi:</span>
+                        <span className="text-slate-300 font-medium">{formatDateTime(pkg.created_at)}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-slate-400">🕐 Sisteme Giriş:</span>
+                        <span className="text-blue-400 font-medium">{formatTime(pkg.created_at)}</span>
+                      </div>
+                      {pkg.delivered_at && (
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-slate-400">✅ Teslim Saati:</span>
+                          <span className="text-green-400 font-medium">{formatTime(pkg.delivered_at)}</span>
+                        </div>
+                      )}
+                    </div>
+                    
                     {pkg.content && (
                       <p className="text-xs text-slate-400 mb-2">
-                        {pkg.content}
+                        📦 {pkg.content}
                       </p>
                     )}
                     
                     <p className="text-xs text-slate-400 mb-2 line-clamp-2">
-                      {pkg.delivery_address}
+                      📍 {pkg.delivery_address}
                     </p>
                     
                     <div className="flex justify-between items-center">
@@ -646,7 +696,7 @@ export default function RestoranPage() {
                         {pkg.amount}₺
                       </span>
                       <span className="text-xs text-slate-500">
-                        {pkg.payment_method === 'cash' ? 'Nakit' : 'Kart'}
+                        {pkg.payment_method === 'cash' ? '💵 Nakit' : '💳 Kart'}
                       </span>
                     </div>
                   </div>
