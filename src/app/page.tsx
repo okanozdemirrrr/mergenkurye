@@ -63,6 +63,8 @@ export default function Home() {
   const [dateFilter, setDateFilter] = useState<'today' | 'week' | 'month' | 'all'>('all')
   const [courierDateFilter, setCourierDateFilter] = useState<'today' | 'week' | 'month' | 'all'>('all')
   const [showMenu, setShowMenu] = useState(false)
+  const [showRestaurantSubmenu, setShowRestaurantSubmenu] = useState(false)
+  const [restaurantSubTab, setRestaurantSubTab] = useState<'list' | 'details'>('list')
 
   // Session kontrolü ve yönlendirme
   useEffect(() => {
@@ -651,14 +653,14 @@ export default function Home() {
                 {[
                   { id: 'live', label: 'Canlı Takip', icon: '📦' },
                   { id: 'history', label: 'Geçmiş Siparişler', icon: '📋' },
-                  { id: 'couriers', label: 'Kuryeler', icon: '🚴' },
-                  { id: 'restaurants', label: 'Restoranlar', icon: '🍽️' }
+                  { id: 'couriers', label: 'Kuryeler', icon: '🚴' }
                 ].map((tab) => (
                   <button
                     key={tab.id}
                     onClick={() => {
                       setActiveTab(tab.id as any)
                       setShowMenu(false)
+                      setShowRestaurantSubmenu(false)
                     }}
                     className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${
                       activeTab === tab.id
@@ -670,6 +672,56 @@ export default function Home() {
                     {tab.label}
                   </button>
                 ))}
+                
+                {/* Restoranlar - Alt Menülü */}
+                <div>
+                  <button
+                    onClick={() => setShowRestaurantSubmenu(!showRestaurantSubmenu)}
+                    className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${
+                      activeTab === 'restaurants'
+                        ? 'bg-blue-600 text-white'
+                        : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                    }`}
+                  >
+                    <span className="mr-3">🍽️</span>
+                    Restoranlar
+                    <span className="float-right">{showRestaurantSubmenu ? '▼' : '▶'}</span>
+                  </button>
+                  
+                  {/* Alt Menü */}
+                  {showRestaurantSubmenu && (
+                    <div className="ml-4 mt-2 space-y-1">
+                      <button
+                        onClick={() => {
+                          setActiveTab('restaurants')
+                          setRestaurantSubTab('list')
+                          setShowMenu(false)
+                        }}
+                        className={`w-full text-left px-4 py-2 rounded-lg text-sm transition-all ${
+                          activeTab === 'restaurants' && restaurantSubTab === 'list'
+                            ? 'bg-blue-500 text-white'
+                            : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                        }`}
+                      >
+                        📋 Restoranlar Listesi
+                      </button>
+                      <button
+                        onClick={() => {
+                          setActiveTab('restaurants')
+                          setRestaurantSubTab('details')
+                          setShowMenu(false)
+                        }}
+                        className={`w-full text-left px-4 py-2 rounded-lg text-sm transition-all ${
+                          activeTab === 'restaurants' && restaurantSubTab === 'details'
+                            ? 'bg-blue-500 text-white'
+                            : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                        }`}
+                      >
+                        📊 Restoran Sipariş Detayları
+                      </button>
+                    </div>
+                  )}
+                </div>
               </nav>
 
               {/* Çıkış Butonu */}
@@ -1413,49 +1465,53 @@ export default function Home() {
   }
 
   function RestaurantsTab() {
+    // Liste görünümü
+    if (restaurantSubTab === 'list') {
+      return (
+        <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
+          <h2 className="text-2xl font-bold mb-6">📋 Restoranlar Listesi</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {restaurants.map(r => {
+              const activeOrders = packages.filter(p => p.restaurant_id === r.id || p.restaurant?.name === r.name)
+              const deliveredOrders = deliveredPackages.filter(p => p.restaurant_id === r.id || p.restaurant?.name === r.name)
+              const totalOrders = activeOrders.length + deliveredOrders.length
+              
+              return (
+                <div key={r.id} className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border dark:border-slate-600">
+                  <div className="flex items-center mb-3">
+                    <span className="text-2xl mr-3">🍽️</span>
+                    <h3 className="font-bold text-lg">{r.name}</h3>
+                  </div>
+                  
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-slate-600 dark:text-slate-400">Toplam Sipariş:</span>
+                      <span className="font-bold text-blue-600">{totalOrders}</span>
+                    </div>
+                    
+                    <div className="flex justify-between">
+                      <span className="text-slate-600 dark:text-slate-400">Aktif Sipariş:</span>
+                      <span className="font-bold text-orange-600">{activeOrders.length}</span>
+                    </div>
+                    
+                    <div className="flex justify-between">
+                      <span className="text-slate-600 dark:text-slate-400">Teslim Edilen:</span>
+                      <span className="font-bold text-green-600">{deliveredOrders.length}</span>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )
+    }
+    
+    // Detay görünümü
     return (
       <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
-        <h2 className="text-2xl font-bold mb-6">🍽️ Restoran Yönetimi</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {restaurants.map(r => {
-            // Restoran ID'si ile eşleştir (daha güvenilir)
-            const activeOrders = packages.filter(p => p.restaurant_id === r.id || p.restaurant?.name === r.name)
-            const deliveredOrders = deliveredPackages.filter(p => p.restaurant_id === r.id || p.restaurant?.name === r.name)
-            const totalOrders = activeOrders.length + deliveredOrders.length
-            
-            return (
-              <div key={r.id} className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border dark:border-slate-600">
-                <div className="flex items-center mb-3">
-                  <span className="text-2xl mr-3">🍽️</span>
-                  <h3 className="font-bold text-lg">{r.name}</h3>
-                </div>
-                
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-slate-600 dark:text-slate-400">Toplam Sipariş:</span>
-                    <span className="font-bold text-blue-600">
-                      {totalOrders}
-                    </span>
-                  </div>
-                  
-                  <div className="flex justify-between">
-                    <span className="text-slate-600 dark:text-slate-400">Aktif Sipariş:</span>
-                    <span className="font-bold text-orange-600">
-                      {activeOrders.length}
-                    </span>
-                  </div>
-                  
-                  <div className="flex justify-between">
-                    <span className="text-slate-600 dark:text-slate-400">Teslim Edilen:</span>
-                    <span className="font-bold text-green-600">
-                      {deliveredOrders.length}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
+        <h2 className="text-2xl font-bold mb-6">📊 Restoran Sipariş Detayları</h2>
+        <p className="text-slate-500">Buraya detaylı grafik ve analizler gelecek...</p>
       </div>
     )
   }

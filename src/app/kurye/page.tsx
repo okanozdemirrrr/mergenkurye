@@ -413,7 +413,7 @@ export default function KuryePage() {
                           <p className="text-xs text-slate-400 mb-1">🍽️ Restoran: {pkg.restaurant.phone}</p>
                           <a 
                             href={`tel:${pkg.restaurant.phone}`}
-                            className="inline-block py-1 px-2 bg-orange-600 hover:bg-orange-700 text-white text-xs font-medium rounded transition-colors text-center"
+                            className="inline-block py-1.5 px-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded transition-colors text-center"
                           >
                             📞 Restoranı Ara
                           </a>
@@ -427,7 +427,7 @@ export default function KuryePage() {
                           <div className="flex gap-2">
                             <a 
                               href={`tel:${pkg.customer_phone}`}
-                              className="py-1 px-2 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded transition-colors text-center"
+                              className="py-1.5 px-3 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded transition-colors text-center"
                             >
                               📞 Ara
                             </a>
@@ -435,7 +435,7 @@ export default function KuryePage() {
                               href={`https://wa.me/${pkg.customer_phone.replace(/[^0-9]/g, '')}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="py-1 px-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded transition-colors text-center"
+                              className="py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded transition-colors text-center"
                             >
                               💬 WhatsApp
                             </a>
