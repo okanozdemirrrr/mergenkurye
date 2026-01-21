@@ -636,7 +636,7 @@ export default function KuryePage() {
                           className={`py-2 rounded-lg border font-medium text-sm transition-colors ${
                             selectedPaymentMethods[pkg.id] === 'cash' 
                               ? 'bg-green-600 border-green-600 text-white' 
-                              : 'bg-slate-700 border-slate-700 text-slate-300 hover:border-slate-600'
+                              : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600'
                           }`}
                         >
                           Nakit
