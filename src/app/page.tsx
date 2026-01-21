@@ -69,6 +69,7 @@ export default function Home() {
   const [restaurantSubTab, setRestaurantSubTab] = useState<'list' | 'details'>('list')
   const [showCourierSubmenu, setShowCourierSubmenu] = useState(false)
   const [courierSubTab, setCourierSubTab] = useState<'accounts' | 'performance'>('accounts')
+  const [darkMode, setDarkMode] = useState(true) // Varsayılan dark mode
 
   // Session kontrolü ve yönlendirme
   useEffect(() => {
@@ -610,7 +611,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+    <div className={`min-h-screen ${darkMode ? 'bg-slate-50 dark:bg-slate-900' : 'bg-white'}`}>
       {/* Hamburger Menü Butonu - Sol Üst */}
       <button 
         onClick={() => setShowMenu(!showMenu)} 
@@ -623,12 +624,21 @@ export default function Home() {
         </div>
       </button>
 
-      {/* Logo - Sağ Üst */}
-      <img 
-        src="/logo.png" 
-        alt="Logo" 
-        className="fixed -top-10 right-4 z-50 w-36 h-36"
-      />
+      {/* Logo ve Dark Mode Toggle - Sağ Üst */}
+      <div className="fixed -top-10 right-4 z-50 flex items-center gap-3">
+        <button
+          onClick={() => setDarkMode(!darkMode)}
+          className="bg-slate-800 hover:bg-slate-700 text-white p-2 rounded-lg shadow-lg transition-colors"
+          title={darkMode ? 'Gündüz Modu' : 'Gece Modu'}
+        >
+          {darkMode ? '☀️' : '🌙'}
+        </button>
+        <img 
+          src="/logo.png" 
+          alt="Logo" 
+          className="w-36 h-36"
+        />
+      </div>
 
       {/* Açılır Menü */}
       {showMenu && (

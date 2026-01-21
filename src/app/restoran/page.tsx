@@ -48,6 +48,7 @@ export default function RestoranPage() {
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [dateFilter, setDateFilter] = useState<'today' | 'week' | 'month' | 'all'>('all')
+  const [darkMode, setDarkMode] = useState(true) // Varsayılan dark mode
 
   // Session kontrolü
   useEffect(() => {
@@ -336,7 +337,18 @@ export default function RestoranPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 py-6 px-4">
+    <div className={`min-h-screen py-6 px-4 ${darkMode ? 'bg-slate-950' : 'bg-gray-100'}`}>
+      {/* Dark Mode Toggle - Sağ Üst */}
+      <button
+        onClick={() => setDarkMode(!darkMode)}
+        className={`fixed top-4 right-4 z-50 p-2 rounded-lg shadow-lg transition-colors ${
+          darkMode ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-white hover:bg-gray-100 text-gray-900 border border-gray-300'
+        }`}
+        title={darkMode ? 'Gündüz Modu' : 'Gece Modu'}
+      >
+        {darkMode ? '☀️' : '🌙'}
+      </button>
+
       {/* Fixed Çıkış Butonu - Sol Üst */}
       <button 
         onClick={() => { localStorage.clear(); window.location.reload(); }} 

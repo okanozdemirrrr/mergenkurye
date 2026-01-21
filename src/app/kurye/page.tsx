@@ -42,6 +42,7 @@ export default function KuryePage() {
   const [courierStatus, setCourierStatus] = useState<'idle' | 'busy' | null>(null)
   const [is_active, setIs_active] = useState(false)
   const [statusUpdating, setStatusUpdating] = useState(false)
+  const [darkMode, setDarkMode] = useState(true) // Varsayılan dark mode
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -290,7 +291,20 @@ export default function KuryePage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-4">
+    <div className={`min-h-screen p-4 ${darkMode ? 'bg-slate-950 text-white' : 'bg-gray-100 text-gray-900'}`}>
+      {/* Dark Mode Toggle - Sağ Üst */}
+      {isLoggedIn && (
+        <button
+          onClick={() => setDarkMode(!darkMode)}
+          className={`fixed top-4 right-4 z-50 p-2 rounded-lg shadow-lg transition-colors ${
+            darkMode ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-white hover:bg-gray-100 text-gray-900 border border-gray-300'
+          }`}
+          title={darkMode ? 'Gündüz Modu' : 'Gece Modu'}
+        >
+          {darkMode ? '☀️' : '🌙'}
+        </button>
+      )}
+
       {/* Fixed Çıkış Butonu - Sol Üst */}
       {isLoggedIn && (
         <button 
