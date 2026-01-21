@@ -16,7 +16,10 @@ interface Package {
   created_at?: string
   picked_up_at?: string
   delivered_at?: string
-  restaurant?: { name: string }
+  restaurant?: { 
+    name: string
+    phone?: string
+  }
 }
 
 const LOGIN_STORAGE_KEY = 'kurye_logged_in'
@@ -78,7 +81,7 @@ export default function KuryePage() {
       
       const { data, error } = await supabase
         .from('packages')
-        .select('*, restaurants(name)')
+        .select('*, restaurants(name, phone)')
         .eq('courier_id', courierId)
         .neq('status', 'delivered')
         .order('created_at', { ascending: false })
@@ -403,24 +406,43 @@ export default function KuryePage() {
                         </span>
                       </div>
                       <p className="font-medium text-white">{pkg.customer_name}</p>
-                      {pkg.customer_phone && (
-                        <div className="flex gap-2 mt-2">
+                      
+                      {/* Paket alınmadan önce (assigned veya picking_up) - Restoran numarası göster */}
+                      {(pkg.status === 'assigned' || pkg.status === 'picking_up') && pkg.restaurant?.phone && (
+                        <div className="mt-2">
+                          <p className="text-xs text-slate-400 mb-1">🍽️ Restoran: {pkg.restaurant.phone}</p>
                           <a 
-                            href={`tel:${pkg.customer_phone}`}
-                            className="flex-1 py-1.5 px-3 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-lg transition-colors text-center"
+                            href={`tel:${pkg.restaurant.phone}`}
+                            className="inline-block py-1 px-2 bg-orange-600 hover:bg-orange-700 text-white text-xs font-medium rounded transition-colors text-center"
                           >
                             📞 Ara
                           </a>
-                          <a 
-                            href={`https://wa.me/${pkg.customer_phone.replace(/[^0-9]/g, '')}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex-1 py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded-lg transition-colors text-center"
-                          >
-                            💬 WhatsApp
-                          </a>
                         </div>
                       )}
+                      
+                      {/* Paket alındıktan sonra (on_the_way) - Müşteri numarası göster */}
+                      {pkg.status === 'on_the_way' && pkg.customer_phone && (
+                        <div className="mt-2">
+                          <p className="text-xs text-slate-400 mb-1">👤 Müşteri: {pkg.customer_phone}</p>
+                          <div className="flex gap-2">
+                            <a 
+                              href={`tel:${pkg.customer_phone}`}
+                              className="py-1 px-2 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded transition-colors text-center"
+                            >
+                              📞 Ara
+                            </a>
+                            <a 
+                              href={`https://wa.me/${pkg.customer_phone.replace(/[^0-9]/g, '')}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="py-1 px-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded transition-colors text-center"
+                            >
+                              💬 WhatsApp
+                            </a>
+                          </div>
+                        </div>
+                      )}
+                      
                       {pkg.content && (
                         <p className="text-xs text-slate-400 mt-1">{pkg.content}</p>
                       )}
