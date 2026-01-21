@@ -407,20 +407,20 @@ export default function KuryePage() {
                       </div>
                       <p className="font-medium text-white">{pkg.customer_name}</p>
                       
-                      {/* Paket alınmadan önce (assigned veya picking_up) - Restoran numarası göster */}
-                      {(pkg.status === 'assigned' || pkg.status === 'picking_up') && pkg.restaurant?.phone && (
+                      {/* Restoran numarası - assigned, picking_up, on_the_way durumlarında göster */}
+                      {(pkg.status === 'assigned' || pkg.status === 'picking_up' || pkg.status === 'on_the_way') && pkg.restaurant?.phone && (
                         <div className="mt-2">
                           <p className="text-xs text-slate-400 mb-1">🍽️ Restoran: {pkg.restaurant.phone}</p>
                           <a 
                             href={`tel:${pkg.restaurant.phone}`}
                             className="inline-block py-1 px-2 bg-orange-600 hover:bg-orange-700 text-white text-xs font-medium rounded transition-colors text-center"
                           >
-                            📞 Ara
+                            📞 Restoranı Ara
                           </a>
                         </div>
                       )}
                       
-                      {/* Paket alındıktan sonra (on_the_way) - Müşteri numarası göster */}
+                      {/* Müşteri numarası - sadece on_the_way durumunda göster */}
                       {pkg.status === 'on_the_way' && pkg.customer_phone && (
                         <div className="mt-2">
                           <p className="text-xs text-slate-400 mb-1">👤 Müşteri: {pkg.customer_phone}</p>
