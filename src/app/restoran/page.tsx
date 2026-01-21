@@ -142,10 +142,18 @@ export default function RestoranPage() {
       
       // Şifre kontrolü
       if (data && data.password === loginForm.password) {
+        // Diğer oturumları temizle (çakışma önleme)
+        localStorage.removeItem('admin_logged_in')
+        localStorage.removeItem('kurye_logged_in')
+        localStorage.removeItem('kurye_logged_courier_id')
+        
+        // Restoran oturumunu başlat
         localStorage.setItem(LOGIN_STORAGE_KEY, 'true')
         localStorage.setItem(LOGIN_RESTAURANT_ID_KEY, data.id)
         setIsLoggedIn(true)
         setSelectedRestaurantId(data.id)
+        
+        console.log('✅ Restoran girişi başarılı')
       } else {
         setErrorMessage('Hatalı şifre!')
       }

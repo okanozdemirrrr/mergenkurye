@@ -44,6 +44,7 @@ interface Courier {
 export default function Home() {
   const router = useRouter()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true) // Loading durumu
   const [loginForm, setLoginForm] = useState({ username: '', password: '' })
   const [activeTab, setActiveTab] = useState<'live' | 'history' | 'couriers' | 'restaurants'>('live')
   const [successMessage, setSuccessMessage] = useState('')
@@ -73,35 +74,88 @@ export default function Home() {
   const [darkMode, setDarkMode] = useState(true) // Varsayılan dark mode
   const [restaurantChartFilter, setRestaurantChartFilter] = useState<'today' | 'week' | 'month'>('today')
 
-  // Session kontrolü ve yönlendirme
+  // KATKI HİYERARŞİ İLE SESSION KONTROLÜ VE YÖNLENDİRME
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const kuryeLoggedIn = localStorage.getItem('kurye_logged_in')
-      const restoranLoggedIn = localStorage.getItem('restoran_logged_in')
-      const adminLoggedIn = localStorage.getItem('admin_logged_in')
-      
-      // ÖNCELİK ADMİNİNDİR
-      // Admin giriş yapmışsa, hiçbir yere yönlendirme yapma
-      if (adminLoggedIn === 'true') {
-        setIsLoggedIn(true)
-        return
+    const checkAuthAndRedirect = async () => {
+      if (typeof window === 'undefined') return
+
+      try {
+        setIsCheckingAuth(true)
+
+        // Tüm oturum anahtarlarını oku
+        const adminLoggedIn = localStorage.getItem('admin_logged_in')
+        const kuryeLoggedIn = localStorage.getItem('kurye_logged_in')
+        const restoranLoggedIn = localStorage.getItem('restoran_logged_in')
+
+        console.log('🔍 Oturum Kontrolü:', { adminLoggedIn, kuryeLoggedIn, restoranLoggedIn })
+
+        // KATKI HİYERARŞİ: Admin > Kurye > Restoran
+        
+        // 1. ÖNCELİK: ADMIN
+        if (adminLoggedIn === 'true') {
+          console.log('✅ Admin oturumu bulundu - Admin panelinde kalınıyor')
+          // Diğer oturumları temizle (çakışma önleme)
+          if (kuryeLoggedIn) {
+            localStorage.removeItem('kurye_logged_in')
+            localStorage.removeItem('kurye_logged_courier_id')
+            console.log('🧹 Kurye oturumu temizlendi')
+          }
+          if (restoranLoggedIn) {
+            localStorage.removeItem('restoran_logged_in')
+            localStorage.removeItem('restoran_logged_restaurant_id')
+            console.log('🧹 Restoran oturumu temizlendi')
+          }
+          setIsLoggedIn(true)
+          setIsCheckingAuth(false)
+          return
+        }
+
+        // 2. ÖNCELİK: KURYE
+        if (kuryeLoggedIn === 'true') {
+          console.log('✅ Kurye oturumu bulundu - Kurye paneline yönlendiriliyor')
+          // Diğer oturumları temizle (çakışma önleme)
+          if (adminLoggedIn) {
+            localStorage.removeItem('admin_logged_in')
+            console.log('🧹 Admin oturumu temizlendi')
+          }
+          if (restoranLoggedIn) {
+            localStorage.removeItem('restoran_logged_in')
+            localStorage.removeItem('restoran_logged_restaurant_id')
+            console.log('🧹 Restoran oturumu temizlendi')
+          }
+          router.push('/kurye')
+          return
+        }
+
+        // 3. ÖNCELİK: RESTORAN
+        if (restoranLoggedIn === 'true') {
+          console.log('✅ Restoran oturumu bulundu - Restoran paneline yönlendiriliyor')
+          // Diğer oturumları temizle (çakışma önleme)
+          if (adminLoggedIn) {
+            localStorage.removeItem('admin_logged_in')
+            console.log('🧹 Admin oturumu temizlendi')
+          }
+          if (kuryeLoggedIn) {
+            localStorage.removeItem('kurye_logged_in')
+            localStorage.removeItem('kurye_logged_courier_id')
+            console.log('🧹 Kurye oturumu temizlendi')
+          }
+          router.push('/restoran')
+          return
+        }
+
+        // 4. HİÇBİR OTURUM YOK: Admin giriş ekranını göster
+        console.log('ℹ️ Hiçbir oturum bulunamadı - Giriş ekranı gösteriliyor')
+        setIsLoggedIn(false)
+        setIsCheckingAuth(false)
+
+      } catch (error) {
+        console.error('❌ Oturum kontrolü hatası:', error)
+        setIsCheckingAuth(false)
       }
-      
-      // Admin girişi yoksa, diğer girişleri kontrol et
-      // Kurye giriş yapmışsa kurye paneline yönlendir
-      if (kuryeLoggedIn === 'true') {
-        router.push('/kurye')
-        return
-      }
-      
-      // Restoran giriş yapmışsa restoran paneline yönlendir
-      if (restoranLoggedIn === 'true') {
-        router.push('/restoran')
-        return
-      }
-      
-      // Kimse giriş yapmamışsa admin panelinde kal (default)
     }
+
+    checkAuthAndRedirect()
   }, [router])
 
   // Bildirim sesi çal
@@ -540,12 +594,33 @@ export default function Home() {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()
     if (loginForm.username === 'okanadmin' && loginForm.password === 'okanbaba44') {
+      // Diğer oturumları temizle (çakışma önleme)
+      localStorage.removeItem('kurye_logged_in')
+      localStorage.removeItem('kurye_logged_courier_id')
+      localStorage.removeItem('restoran_logged_in')
+      localStorage.removeItem('restoran_logged_restaurant_id')
+      
+      // Admin oturumunu başlat
       localStorage.setItem('admin_logged_in', 'true')
       setIsLoggedIn(true)
       setErrorMessage('')
+      
+      console.log('✅ Admin girişi başarılı')
     } else {
       setErrorMessage('Hatalı kullanıcı adı veya şifre!')
     }
+  }
+
+  // Loading ekranı - Oturum kontrolü yapılırken
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-white text-sm">Yükleniyor...</p>
+        </div>
+      </div>
+    )
   }
 
   // Giriş ekranı

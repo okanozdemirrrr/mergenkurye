@@ -831,16 +831,24 @@ export default function KuryePage() {
       if (data) {
         console.log('✅ Kurye bulundu:', data)
         
+        // Diğer oturumları temizle (çakışma önleme)
+        localStorage.removeItem('admin_logged_in')
+        localStorage.removeItem('restoran_logged_in')
+        localStorage.removeItem('restoran_logged_restaurant_id')
+        
         // Kurye aktif yap
         await supabase
           .from('couriers')
           .update({ is_active: true, status: 'idle' })
           .eq('id', data.id)
         
+        // Kurye oturumunu başlat
         localStorage.setItem(LOGIN_STORAGE_KEY, 'true');
         localStorage.setItem(LOGIN_COURIER_ID_KEY, data.id);
         setIsLoggedIn(true);
         setSelectedCourierId(data.id);
+        
+        console.log('✅ Kurye girişi başarılı')
       } else {
         console.error('❌ Hatalı giriş')
         setErrorMessage("Hatalı kullanıcı adı veya şifre!");
