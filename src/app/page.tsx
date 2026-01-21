@@ -594,17 +594,24 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-      {/* Hamburger Menü Butonu - Sol Üst */}
-      <button 
-        onClick={() => setShowMenu(!showMenu)} 
-        className="fixed top-4 left-4 z-50 bg-slate-800 hover:bg-slate-700 text-white p-3 rounded-lg shadow-lg transition-colors"
-      >
-        <div className="space-y-1.5">
-          <div className="w-6 h-0.5 bg-white"></div>
-          <div className="w-6 h-0.5 bg-white"></div>
-          <div className="w-6 h-0.5 bg-white"></div>
-        </div>
-      </button>
+      {/* Hamburger Menü Butonu + Logo - Sol Üst */}
+      <div className="fixed top-4 left-4 z-50 flex items-center gap-3">
+        <button 
+          onClick={() => setShowMenu(!showMenu)} 
+          className="bg-slate-800 hover:bg-slate-700 text-white p-3 rounded-lg shadow-lg transition-colors"
+        >
+          <div className="space-y-1.5">
+            <div className="w-6 h-0.5 bg-white"></div>
+            <div className="w-6 h-0.5 bg-white"></div>
+            <div className="w-6 h-0.5 bg-white"></div>
+          </div>
+        </button>
+        <img 
+          src="/logo.png" 
+          alt="Logo" 
+          className="w-12 h-12"
+        />
+      </div>
 
       {/* Açılır Menü */}
       {showMenu && (
@@ -739,17 +746,10 @@ export default function Home() {
       <div className="sticky top-0 z-30 bg-white dark:bg-slate-800 shadow-lg border-b border-slate-200 dark:border-slate-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-center items-center h-16">
-            {/* Logo/Title - Ortada */}
-            <div className="flex items-center">
-              <img 
-                src="/logo.png" 
-                alt="Logo" 
-                className="w-48 h-48 mr-3"
-              />
-              <h1 className="text-3xl font-black tracking-wider bg-gradient-to-r from-gray-200 to-gray-500 bg-clip-text text-transparent" style={{fontFamily: 'Orbitron, sans-serif'}}>
-                ADMIN PANEL
-              </h1>
-            </div>
+            {/* Title - Ortada */}
+            <h1 className="text-3xl font-black tracking-wider bg-gradient-to-r from-gray-200 to-gray-500 bg-clip-text text-transparent" style={{fontFamily: 'Orbitron, sans-serif'}}>
+              ADMIN PANEL
+            </h1>
           </div>
         </div>
       </div>
