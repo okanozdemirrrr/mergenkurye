@@ -802,7 +802,7 @@ export default function KuryePage() {
             )}
 
             <div className="mt-4 pt-4 border-t border-purple-700">
-              <div className="text-xs text-purple-300 text-center mb-3">
+              <div className="text-xs text-purple-400 text-center mb-3">
                 Son güncelleme: {new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
               </div>
               <button 
