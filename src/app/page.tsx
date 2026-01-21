@@ -77,28 +77,31 @@ export default function Home() {
   // KATKI HİYERARŞİ İLE SESSION KONTROLÜ VE YÖNLENDİRME
   useEffect(() => {
     const checkAuthAndRedirect = () => {
+      // Build sırasında çalışmasın
       if (typeof window === 'undefined') return
 
-      try {
-        setIsCheckingAuth(true)
+      console.log('🔄 Auth kontrolü başlatılıyor...')
+      setIsCheckingAuth(true)
 
+      try {
         // Tüm oturum anahtarlarını oku
         const adminLoggedIn = localStorage.getItem('admin_logged_in')
         const kuryeLoggedIn = localStorage.getItem('kurye_logged_in')
         const restoranLoggedIn = localStorage.getItem('restoran_logged_in')
 
-        console.log('🔍 Oturum Kontrolü:', { adminLoggedIn, kuryeLoggedIn, restoranLoggedIn })
+        console.log('🔍 Oturum Durumu:', { 
+          admin: adminLoggedIn, 
+          kurye: kuryeLoggedIn, 
+          restoran: restoranLoggedIn 
+        })
 
-        // KATKI HİYERARŞİ: Admin > Kurye > Restoran
-        // ÖNEMLI: Admin oturumu varsa, diğer oturumları temizle ve admin panelinde kal
-        
-        // 1. ÖNCELİK: ADMIN
+        // ✅ 1. ÖNCELİK: ADMIN (EN YÜKSEK ÖNCELİK)
         if (adminLoggedIn === 'true') {
-          console.log('✅ Admin oturumu bulundu - Admin panelinde kalınıyor')
+          console.log('✅ Admin oturumu aktif - Admin panelinde kalınıyor')
           
-          // Diğer oturumları temizle (admin her zaman öncelikli)
-          if (kuryeLoggedIn === 'true' || restoranLoggedIn === 'true') {
-            console.log('⚠️ Admin oturumu varken diğer oturumlar temizleniyor')
+          // Diğer oturumları temizle (çakışma önleme)
+          if (kuryeLoggedIn || restoranLoggedIn) {
+            console.log('🧹 Diğer oturumlar temizleniyor...')
             localStorage.removeItem('kurye_logged_in')
             localStorage.removeItem('kurye_logged_courier_id')
             localStorage.removeItem('restoran_logged_in')
@@ -107,36 +110,42 @@ export default function Home() {
           
           setIsLoggedIn(true)
           setIsCheckingAuth(false)
-          return
+          return // ÖNEMLİ: Burada fonksiyonu bitir, alt satırlara gitme!
         }
+
+        // ⚠️ Admin oturumu yoksa diğer kontrollere geç
 
         // 2. ÖNCELİK: KURYE
         if (kuryeLoggedIn === 'true') {
-          console.log('✅ Kurye oturumu bulundu - Kurye paneline yönlendiriliyor')
+          console.log('➡️ Kurye oturumu bulundu - Kurye paneline yönlendiriliyor')
+          setIsCheckingAuth(false)
           router.push('/kurye')
           return
         }
 
         // 3. ÖNCELİK: RESTORAN
         if (restoranLoggedIn === 'true') {
-          console.log('✅ Restoran oturumu bulundu - Restoran paneline yönlendiriliyor')
+          console.log('➡️ Restoran oturumu bulundu - Restoran paneline yönlendiriliyor')
+          setIsCheckingAuth(false)
           router.push('/restoran')
           return
         }
 
-        // 4. HİÇBİR OTURUM YOK: Admin giriş ekranını göster
+        // 4. HİÇBİR OTURUM YOK: Giriş ekranını göster
         console.log('ℹ️ Hiçbir oturum bulunamadı - Giriş ekranı gösteriliyor')
         setIsLoggedIn(false)
         setIsCheckingAuth(false)
 
       } catch (error) {
-        console.error('❌ Oturum kontrolü hatası:', error)
+        console.error('❌ Auth kontrolü hatası:', error)
+        setIsLoggedIn(false)
         setIsCheckingAuth(false)
       }
     }
 
+    // Fonksiyonu çalıştır
     checkAuthAndRedirect()
-  }, [])
+  }, []) // Boş dependency array - sadece mount'ta bir kez çalışır
 
   // Bildirim sesi çal
   const playNotificationSound = () => {
