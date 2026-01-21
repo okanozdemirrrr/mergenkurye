@@ -154,20 +154,16 @@ export default function RestoranPage() {
   // Sayfa yüklendiğinde restoranları çek
   useEffect(() => {
     fetchRestaurants()
-    if (isLoggedIn) {
+  }, [])
+
+  useEffect(() => {
+    if (isLoggedIn && selectedRestaurantId) {
       fetchPackages()
       // Silent refresh - 30 saniyede bir
       const interval = setInterval(fetchPackages, 30000)
       return () => clearInterval(interval)
     }
-  }, [isLoggedIn, selectedRestaurantId])
-
-  // Tarih filtresi değiştiğinde paketleri yeniden çek
-  useEffect(() => {
-    if (isLoggedIn && selectedRestaurantId) {
-      fetchPackages()
-    }
-  }, [dateFilter])
+  }, [isLoggedIn, selectedRestaurantId, dateFilter])
 
   // Restoran seçimini değiştir ve LocalStorage'a kaydet
   const handleRestaurantChange = (restaurantId: string) => {
@@ -452,76 +448,6 @@ export default function RestoranPage() {
                   placeholder="0.00"
                   disabled={isSubmitting}
                 />
-              </div>
-                  name="customerName"
-                  value={formData.customerName}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent dark:bg-slate-700 dark:text-white transition-all outline-none"
-                  placeholder="Örn: Ahmet Yılmaz"
-                  disabled={isSubmitting}
-                />
-              </div>
-
-              {/* Paket İçeriği */}
-              <div>
-                <label htmlFor="content" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Paket İçeriği <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  id="content"
-                  name="content"
-                  value={formData.content}
-                  onChange={handleChange}
-                  required
-                  rows={3}
-                  className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent dark:bg-slate-700 dark:text-white transition-all outline-none resize-none"
-                  placeholder="Örn: 2x Döner, 1x Ayran, 1x Patates"
-                  disabled={isSubmitting}
-                />
-              </div>
-
-              {/* Teslimat Adresi */}
-              <div>
-                <label htmlFor="deliveryAddress" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Teslimat Adresi <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  id="deliveryAddress"
-                  name="deliveryAddress"
-                  value={formData.deliveryAddress}
-                  onChange={handleChange}
-                  required
-                  rows={4}
-                  className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent dark:bg-slate-700 dark:text-white transition-all outline-none resize-none"
-                  placeholder="Örn: Atatürk Mah. İnönü Cad. No:123 Daire:5 Kadıköy/İstanbul"
-                  disabled={isSubmitting}
-                />
-              </div>
-
-              {/* Paket Tutarı */}
-              <div>
-                <label htmlFor="packageAmount" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Paket Tutarı (TL) <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    id="packageAmount"
-                    name="packageAmount"
-                    value={formData.packageAmount}
-                    onChange={handleChange}
-                    required
-                    min="0"
-                    step="0.01"
-                    className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent dark:bg-slate-700 dark:text-white transition-all outline-none"
-                    placeholder="0.00"
-                    disabled={isSubmitting}
-                  />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 font-medium">
-                    ₺
-                  </span>
-                </div>
               </div>
 
               {/* Müşteri Ödeme Tercihi */}
