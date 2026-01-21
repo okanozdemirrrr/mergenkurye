@@ -71,6 +71,14 @@ export default function Home() {
       const restoranLoggedIn = localStorage.getItem('restoran_logged_in')
       const adminLoggedIn = localStorage.getItem('admin_logged_in')
       
+      // ÖNCELİK ADMİNİNDİR
+      // Admin giriş yapmışsa, hiçbir yere yönlendirme yapma
+      if (adminLoggedIn === 'true') {
+        setIsLoggedIn(true)
+        return
+      }
+      
+      // Admin girişi yoksa, diğer girişleri kontrol et
       // Kurye giriş yapmışsa kurye paneline yönlendir
       if (kuryeLoggedIn === 'true') {
         router.push('/kurye')
@@ -82,11 +90,7 @@ export default function Home() {
         router.push('/restoran')
         return
       }
-
-      // Admin giriş kontrolü
-      if (adminLoggedIn === 'true') {
-        setIsLoggedIn(true)
-      }
+      
       // Kimse giriş yapmamışsa admin panelinde kal (default)
     }
   }, [router])
