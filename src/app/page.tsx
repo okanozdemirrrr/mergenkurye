@@ -200,11 +200,19 @@ export default function Home() {
 
       // Yeni paket kontrolü - ID bazlı
       const currentIds = new Set(transformedData.map(p => p.id))
+      
+      // Sadece gerçekten yeni eklenen paketleri bul (ID'si daha önce hiç görülmemiş)
       const newPackages = transformedData.filter(p => !lastPackageIds.has(p.id))
       
-      // Bildirim: Sadece lastPackageIds dolu ise (ilk yükleme değilse) ve yeni paket varsa
-      if (newPackages.length > 0 && lastPackageIds.size > 0) {
+      // Bildirim: Sadece lastPackageIds dolu ise (ilk yükleme değilse) ve gerçekten yeni paket varsa
+      // VE paket sayısı artmışsa (durum değişikliği değil, yeni paket)
+      const isReallyNewPackage = newPackages.length > 0 && 
+                                  lastPackageIds.size > 0 && 
+                                  transformedData.length > packages.length
+      
+      if (isReallyNewPackage) {
         console.log('🔔 Yeni paket bildirimi:', newPackages.length, 'adet')
+        console.log('📊 Önceki paket sayısı:', packages.length, '→ Yeni:', transformedData.length)
         playNotificationSound()
         setNewOrderDetails(newPackages[0])
         setShowNotificationPopup(true)
