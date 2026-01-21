@@ -10,6 +10,6 @@ if (!supabaseUrl || !supabaseAnonKey) {
 // Supabase client'ı yenile
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    persistSession: false // Session'ı persist etme, her seferinde yenile
+    persistSession: true // Session'ı persist et
   }
 })

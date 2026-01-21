@@ -51,6 +51,21 @@ export default function KuryePage() {
     }
   }, [])
 
+  // Heartbeat fonksiyonu - Kurye aktiflik sinyali
+  const sendHeartbeat = async () => {
+    const courierId = localStorage.getItem(LOGIN_COURIER_ID_KEY)
+    if (!courierId) return
+
+    try {
+      await supabase
+        .from('couriers')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', courierId)
+    } catch (error: any) {
+      console.error('❌ Heartbeat hatası:', error)
+    }
+  }
+
   const fetchPackages = async (isInitialLoad = false) => {
     const courierId = localStorage.getItem(LOGIN_COURIER_ID_KEY)
     if (!courierId) return
@@ -58,11 +73,8 @@ export default function KuryePage() {
     try {
       if (isInitialLoad) setIsLoading(true)
       
-      // Heartbeat: Kurye aktiflik sinyali gönder
-      await supabase
-        .from('couriers')
-        .update({ updated_at: new Date().toISOString() })
-        .eq('id', courierId)
+      // Heartbeat gönder
+      await sendHeartbeat()
       
       const { data, error } = await supabase
         .from('packages')
@@ -392,7 +404,22 @@ export default function KuryePage() {
                       </div>
                       <p className="font-medium text-white">{pkg.customer_name}</p>
                       {pkg.customer_phone && (
-                        <p className="text-xs text-slate-400 mt-1">📞 {pkg.customer_phone}</p>
+                        <div className="flex gap-2 mt-2">
+                          <a 
+                            href={`tel:${pkg.customer_phone}`}
+                            className="flex-1 py-1.5 px-3 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-lg transition-colors text-center"
+                          >
+                            📞 Ara
+                          </a>
+                          <a 
+                            href={`https://wa.me/${pkg.customer_phone.replace(/[^0-9]/g, '')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-1 py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded-lg transition-colors text-center"
+                          >
+                            💬 WhatsApp
+                          </a>
+                        </div>
                       )}
                       {pkg.content && (
                         <p className="text-xs text-slate-400 mt-1">{pkg.content}</p>
