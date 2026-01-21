@@ -31,7 +31,8 @@ interface Package {
 }
 
 export default function RestoranPage() {
-  const [isMounted, setIsMounted] = useState(false) // Build-safe guard
+  const [isMounted, setIsMounted] = useState(false)
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [loginForm, setLoginForm] = useState({ username: '', password: '' })
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string | null>(null)
@@ -56,17 +57,31 @@ export default function RestoranPage() {
     setIsMounted(true)
   }, [])
 
-  // Session kontrolü
+  // ÇELİK GİBİ OTURUM KONTROLÜ - SAYFA YENİLENDİĞİNDE DIŞARI ATMA!
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window === 'undefined') return
+    if (!isMounted) return
+
+    setIsCheckingAuth(true)
+
+    try {
       const loggedIn = localStorage.getItem(LOGIN_STORAGE_KEY)
       const loggedRestaurantId = localStorage.getItem(LOGIN_RESTAURANT_ID_KEY)
+      
+      // Restoran oturumu varsa BURADA KAL!
       if (loggedIn === 'true' && loggedRestaurantId) {
         setIsLoggedIn(true)
         setSelectedRestaurantId(loggedRestaurantId)
+      } else {
+        setIsLoggedIn(false)
       }
+    } catch (error) {
+      console.error('Oturum kontrolü hatası:', error)
+      setIsLoggedIn(false)
+    } finally {
+      setIsCheckingAuth(false)
     }
-  }, [])
+  }, [isMounted])
 
   // Restoranları çek
   const fetchRestaurants = async () => {
@@ -289,6 +304,18 @@ export default function RestoranPage() {
   }
 
   const selectedRestaurant = restaurants.find(r => r.id === selectedRestaurantId)
+
+  // RENDER BLOKLAMA - Oturum kontrolü tamamlanmadan hiçbir şey gösterme!
+  if (!isMounted || isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-white text-sm">Yükleniyor...</p>
+        </div>
+      </div>
+    )
+  }
 
   // Giriş ekranı
   if (!isLoggedIn) {

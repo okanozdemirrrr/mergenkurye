@@ -33,7 +33,8 @@ const LOGIN_STORAGE_KEY = 'kurye_logged_in'
 const LOGIN_COURIER_ID_KEY = 'kurye_logged_courier_id'
 
 export default function KuryePage() {
-  const [isMounted, setIsMounted] = useState(false) // Build-safe guard
+  const [isMounted, setIsMounted] = useState(false)
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [loginForm, setLoginForm] = useState({ username: '', password: '' })
   const [selectedCourierId, setSelectedCourierId] = useState<string | null>(null)
@@ -60,16 +61,31 @@ export default function KuryePage() {
     setIsMounted(true)
   }, [])
 
+  // ÇELİK GİBİ OTURUM KONTROLÜ - SAYFA YENİLENDİĞİNDE DIŞARI ATMA!
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window === 'undefined') return
+    if (!isMounted) return
+
+    setIsCheckingAuth(true)
+
+    try {
       const loggedIn = localStorage.getItem(LOGIN_STORAGE_KEY)
       const loggedCourierId = localStorage.getItem(LOGIN_COURIER_ID_KEY)
+      
+      // Kurye oturumu varsa BURADA KAL!
       if (loggedIn === 'true' && loggedCourierId) {
         setIsLoggedIn(true)
         setSelectedCourierId(loggedCourierId)
+      } else {
+        setIsLoggedIn(false)
       }
+    } catch (error) {
+      console.error('Oturum kontrolü hatası:', error)
+      setIsLoggedIn(false)
+    } finally {
+      setIsCheckingAuth(false)
     }
-  }, [])
+  }, [isMounted])
 
   // Heartbeat fonksiyonu - Kurye aktiflik sinyali
   const sendHeartbeat = async () => {
@@ -363,6 +379,18 @@ export default function KuryePage() {
     if (!start || !end) return "-";
     const diff = Math.floor((new Date(end).getTime() - new Date(start).getTime()) / 60000);
     return `${diff} dk`;
+  }
+
+  // RENDER BLOKLAMA - Oturum kontrolü tamamlanmadan hiçbir şey gösterme!
+  if (!isMounted || isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-white text-sm">Yükleniyor...</p>
+        </div>
+      </div>
+    )
   }
 
   if (!isLoggedIn) {

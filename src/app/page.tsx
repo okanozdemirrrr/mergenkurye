@@ -43,9 +43,9 @@ interface Courier {
 
 export default function Home() {
   const router = useRouter()
-  const [isMounted, setIsMounted] = useState(false) // Build-safe guard
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [loginForm, setLoginForm] = useState({ username: '', password: '' })
   const [activeTab, setActiveTab] = useState<'live' | 'history' | 'couriers' | 'restaurants'>('live')
   const [successMessage, setSuccessMessage] = useState('')
@@ -80,23 +80,27 @@ export default function Home() {
     setIsMounted(true)
   }, [])
 
-  // KATKI HİYERARŞİ İLE SESSION KONTROLÜ VE YÖNLENDİRME
+  // ÇELİK GİBİ OTURUM KONTROLÜ - SAYFA YENİLENDİĞİNDE DIŞARI ATMA!
   useEffect(() => {
     const checkAuthAndRedirect = () => {
       // Build sırasında çalışmasın
       if (typeof window === 'undefined') return
+      
+      // Mount olmadan kontrol yapma
+      if (!isMounted) return
 
       setIsCheckingAuth(true)
 
       try {
-        // Tüm oturum anahtarlarını oku
+        // localStorage'dan oturum anahtarlarını oku
         const adminLoggedIn = localStorage.getItem('admin_logged_in')
         const kuryeLoggedIn = localStorage.getItem('kurye_logged_in')
         const restoranLoggedIn = localStorage.getItem('restoran_logged_in')
 
         // ✅ 1. ÖNCELİK: ADMIN (EN YÜKSEK ÖNCELİK)
+        // Admin oturumu varsa BURADA KAL, başka yere gitme!
         if (adminLoggedIn === 'true') {
-          // Diğer oturumları temizle (çakışma önleme)
+          // Diğer oturumları sessizce temizle
           if (kuryeLoggedIn || restoranLoggedIn) {
             localStorage.removeItem('kurye_logged_in')
             localStorage.removeItem('kurye_logged_courier_id')
@@ -106,8 +110,10 @@ export default function Home() {
           
           setIsLoggedIn(true)
           setIsCheckingAuth(false)
-          return // ÖNEMLİ: Burada fonksiyonu bitir!
+          return // ÖNEMLİ: Burada dur, alt satırlara gitme!
         }
+
+        // ⚠️ Admin oturumu yoksa diğer kontrollere geç
 
         // 2. ÖNCELİK: KURYE
         if (kuryeLoggedIn === 'true') {
@@ -123,7 +129,7 @@ export default function Home() {
           return
         }
 
-        // 4. HİÇBİR OTURUM YOK
+        // 4. HİÇBİR OTURUM YOK: Giriş ekranını göster
         setIsLoggedIn(false)
         setIsCheckingAuth(false)
 
@@ -135,7 +141,7 @@ export default function Home() {
     }
 
     checkAuthAndRedirect()
-  }, [])
+  }, [isMounted, router])
 
   // Bildirim sesi çal - Sadece yeni paket INSERT'inde
   const playNotificationSound = () => {
@@ -594,8 +600,8 @@ export default function Home() {
     }
   }
 
-  // Loading ekranı - Oturum kontrolü yapılırken
-  if (isCheckingAuth) {
+  // RENDER BLOKLAMA - Oturum kontrolü tamamlanmadan hiçbir şey gösterme!
+  if (!isMounted || isCheckingAuth) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <div className="text-center">
