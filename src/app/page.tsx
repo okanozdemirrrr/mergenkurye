@@ -43,8 +43,9 @@ interface Courier {
 
 export default function Home() {
   const router = useRouter()
+  const [isMounted, setIsMounted] = useState(false) // Build-safe guard
   const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true) // Loading durumu
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [loginForm, setLoginForm] = useState({ username: '', password: '' })
   const [activeTab, setActiveTab] = useState<'live' | 'history' | 'couriers' | 'restaurants'>('live')
   const [successMessage, setSuccessMessage] = useState('')
@@ -74,13 +75,17 @@ export default function Home() {
   const [darkMode, setDarkMode] = useState(true) // Varsayılan dark mode
   const [restaurantChartFilter, setRestaurantChartFilter] = useState<'today' | 'week' | 'month'>('today')
 
+  // Build-safe mount kontrolü
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
   // KATKI HİYERARŞİ İLE SESSION KONTROLÜ VE YÖNLENDİRME
   useEffect(() => {
     const checkAuthAndRedirect = () => {
       // Build sırasında çalışmasın
       if (typeof window === 'undefined') return
 
-      console.log('🔄 Auth kontrolü başlatılıyor...')
       setIsCheckingAuth(true)
 
       try {
@@ -89,19 +94,10 @@ export default function Home() {
         const kuryeLoggedIn = localStorage.getItem('kurye_logged_in')
         const restoranLoggedIn = localStorage.getItem('restoran_logged_in')
 
-        console.log('🔍 Oturum Durumu:', { 
-          admin: adminLoggedIn, 
-          kurye: kuryeLoggedIn, 
-          restoran: restoranLoggedIn 
-        })
-
         // ✅ 1. ÖNCELİK: ADMIN (EN YÜKSEK ÖNCELİK)
         if (adminLoggedIn === 'true') {
-          console.log('✅ Admin oturumu aktif - Admin panelinde kalınıyor')
-          
           // Diğer oturumları temizle (çakışma önleme)
           if (kuryeLoggedIn || restoranLoggedIn) {
-            console.log('🧹 Diğer oturumlar temizleniyor...')
             localStorage.removeItem('kurye_logged_in')
             localStorage.removeItem('kurye_logged_courier_id')
             localStorage.removeItem('restoran_logged_in')
@@ -110,14 +106,11 @@ export default function Home() {
           
           setIsLoggedIn(true)
           setIsCheckingAuth(false)
-          return // ÖNEMLİ: Burada fonksiyonu bitir, alt satırlara gitme!
+          return // ÖNEMLİ: Burada fonksiyonu bitir!
         }
-
-        // ⚠️ Admin oturumu yoksa diğer kontrollere geç
 
         // 2. ÖNCELİK: KURYE
         if (kuryeLoggedIn === 'true') {
-          console.log('➡️ Kurye oturumu bulundu - Kurye paneline yönlendiriliyor')
           setIsCheckingAuth(false)
           router.push('/kurye')
           return
@@ -125,42 +118,35 @@ export default function Home() {
 
         // 3. ÖNCELİK: RESTORAN
         if (restoranLoggedIn === 'true') {
-          console.log('➡️ Restoran oturumu bulundu - Restoran paneline yönlendiriliyor')
           setIsCheckingAuth(false)
           router.push('/restoran')
           return
         }
 
-        // 4. HİÇBİR OTURUM YOK: Giriş ekranını göster
-        console.log('ℹ️ Hiçbir oturum bulunamadı - Giriş ekranı gösteriliyor')
+        // 4. HİÇBİR OTURUM YOK
         setIsLoggedIn(false)
         setIsCheckingAuth(false)
 
       } catch (error) {
-        console.error('❌ Auth kontrolü hatası:', error)
+        console.error('Auth kontrolü hatası:', error)
         setIsLoggedIn(false)
         setIsCheckingAuth(false)
       }
     }
 
-    // Fonksiyonu çalıştır
     checkAuthAndRedirect()
-  }, []) // Boş dependency array - sadece mount'ta bir kez çalışır
+  }, [])
 
-  // Bildirim sesi çal
+  // Bildirim sesi çal - Sadece yeni paket INSERT'inde
   const playNotificationSound = () => {
+    if (typeof window === 'undefined') return
+    
     try {
-      console.log('🔊 Bildirim sesi çalınıyor...')
-      // Cache bypass için timestamp ekle
       const audio = new Audio(`/notification.mp3?t=${Date.now()}`)
       audio.volume = 0.7
-      audio.play().then(() => {
-        console.log('✅ Ses başarıyla çalındı')
-      }).catch((err) => {
-        console.error('❌ Ses çalma hatası:', err)
-      })
+      audio.play().catch((err) => console.error('Ses çalma hatası:', err))
     } catch (err) {
-      console.error('❌ Ses hatası:', err)
+      console.error('Ses hatası:', err)
     }
   }
 
@@ -200,8 +186,6 @@ export default function Home() {
                                   transformedData.length > packages.length
       
       if (isReallyNewPackage) {
-        console.log('🔔 Yeni paket bildirimi:', newPackages.length, 'adet')
-        console.log('📊 Önceki paket sayısı:', packages.length, '→ Yeni:', transformedData.length)
         playNotificationSound()
         setNewOrderDetails(newPackages[0])
         setShowNotificationPopup(true)
@@ -235,10 +219,9 @@ export default function Home() {
         couriers: undefined
       }))
 
-      console.log('✅ Tüm Delivered Paketler Yüklendi:', transformedData.length)
       setDeliveredPackages(transformedData)
     } catch (error: any) {
-      console.error('❌ Geçmiş siparişler yüklenirken hata:', error.message)
+      console.error('Geçmiş siparişler yüklenirken hata:', error.message)
     }
   }
 
@@ -416,56 +399,51 @@ export default function Home() {
     }
   }, [isLoggedIn])
 
-  // Realtime için ayrı useEffect
+  // Realtime için ayrı useEffect - Sadece INSERT'lerde bildirim
   useEffect(() => {
-    if (!isLoggedIn) return
+    if (!isLoggedIn || !isMounted) return
 
-    // Tek kanal üzerinden hem packages hem couriers'ı dinle
     const channel = supabase
       .channel('admin-realtime-monitor')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'packages' },
-        (payload) => {
-          console.log('📦 Paket değişikliği yakalandı!', payload)
-          fetchPackages() // Değişiklik geldiği an veriyi tazele
-          fetchCouriers() // Kurye istatistiklerini de güncelle
-          fetchDeliveredPackages() // Teslim edilen paketleri de güncelle
+        { event: 'INSERT', schema: 'public', table: 'packages' },
+        () => {
+          fetchPackages() // Yeni paket geldi, ses çalacak
+          fetchCouriers()
+          fetchDeliveredPackages()
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'packages' },
+        () => {
+          fetchPackages() // Güncelleme, ses çalmayacak (lastPackageIds değişmedi)
+          fetchCouriers()
+          fetchDeliveredPackages()
         }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'couriers' },
-        (payload) => {
-          console.log('🚴 Kurye hareketi yakalandı!', payload)
-          fetchCouriers() // Kurye aktif/pasif olduğunda tazele
+        () => {
+          fetchCouriers()
         }
       )
-      .subscribe((status) => {
-        console.log('📡 Realtime Bağlantı Durumu:', status)
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ Admin Realtime bağlantısı AKTIF!')
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ Realtime bağlantı hatası!')
-        } else if (status === 'TIMED_OUT') {
-          console.error('⏱️ Realtime zaman aşımı!')
-        }
-      })
+      .subscribe()
 
-    // Fallback polling - 30 saniyede bir zorunlu güncelleme
+    // Fallback polling - 30 saniyede bir
     const interval = setInterval(() => {
       fetchPackages()
       fetchCouriers()
-      fetchDeliveredPackages() // Her zaman güncelle
+      fetchDeliveredPackages()
     }, 30000)
 
-    // Cleanup
     return () => {
       clearInterval(interval)
       supabase.removeChannel(channel)
-      console.log('🔌 Realtime bağlantısı kapatıldı')
     }
-  }, [isLoggedIn, activeTab])
+  }, [isLoggedIn, isMounted])
 
   // Kurye modal tarih filtresi değiştiğinde yeniden çek
   useEffect(() => {
@@ -598,8 +576,10 @@ export default function Home() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()
+    if (typeof window === 'undefined') return
+    
     if (loginForm.username === 'okanadmin' && loginForm.password === 'okanbaba44') {
-      // Diğer oturumları temizle (çakışma önleme)
+      // Diğer oturumları temizle
       localStorage.removeItem('kurye_logged_in')
       localStorage.removeItem('kurye_logged_courier_id')
       localStorage.removeItem('restoran_logged_in')
@@ -609,8 +589,6 @@ export default function Home() {
       localStorage.setItem('admin_logged_in', 'true')
       setIsLoggedIn(true)
       setErrorMessage('')
-      
-      console.log('✅ Admin girişi başarılı')
     } else {
       setErrorMessage('Hatalı kullanıcı adı veya şifre!')
     }

@@ -31,6 +31,7 @@ interface Package {
 }
 
 export default function RestoranPage() {
+  const [isMounted, setIsMounted] = useState(false) // Build-safe guard
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [loginForm, setLoginForm] = useState({ username: '', password: '' })
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string | null>(null)
@@ -49,6 +50,11 @@ export default function RestoranPage() {
   const [errorMessage, setErrorMessage] = useState('')
   const [dateFilter, setDateFilter] = useState<'today' | 'week' | 'month' | 'all'>('all')
   const [darkMode, setDarkMode] = useState(true) // Varsayılan dark mode
+
+  // Build-safe mount kontrolü
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   // Session kontrolü
   useEffect(() => {
@@ -125,10 +131,11 @@ export default function RestoranPage() {
   // Login işlemi - Veritabanı sorgusu
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (typeof window === 'undefined') return
+    
     setErrorMessage('')
     
     try {
-      // Restaurants tablosundan name ve password ile eşleşen restoranı bul
       const { data, error } = await supabase
         .from('restaurants')
         .select('id, name, password')
@@ -140,7 +147,6 @@ export default function RestoranPage() {
         return
       }
       
-      // Şifre kontrolü
       if (data && data.password === loginForm.password) {
         // Sadece kurye oturumunu temizle (admin oturumuna DOKUNMA!)
         localStorage.removeItem('kurye_logged_in')
@@ -151,8 +157,6 @@ export default function RestoranPage() {
         localStorage.setItem(LOGIN_RESTAURANT_ID_KEY, data.id)
         setIsLoggedIn(true)
         setSelectedRestaurantId(data.id)
-        
-        console.log('✅ Restoran girişi başarılı')
       } else {
         setErrorMessage('Hatalı şifre!')
       }

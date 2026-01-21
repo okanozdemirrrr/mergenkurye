@@ -33,6 +33,7 @@ const LOGIN_STORAGE_KEY = 'kurye_logged_in'
 const LOGIN_COURIER_ID_KEY = 'kurye_logged_courier_id'
 
 export default function KuryePage() {
+  const [isMounted, setIsMounted] = useState(false) // Build-safe guard
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [loginForm, setLoginForm] = useState({ username: '', password: '' })
   const [selectedCourierId, setSelectedCourierId] = useState<string | null>(null)
@@ -54,6 +55,11 @@ export default function KuryePage() {
   const [myRank, setMyRank] = useState<number | null>(null)
   const [showLeaderboard, setShowLeaderboard] = useState(false) // Leaderboard modal
 
+  // Build-safe mount kontrolü
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const loggedIn = localStorage.getItem(LOGIN_STORAGE_KEY)
@@ -67,6 +73,8 @@ export default function KuryePage() {
 
   // Heartbeat fonksiyonu - Kurye aktiflik sinyali
   const sendHeartbeat = async () => {
+    if (typeof window === 'undefined') return
+    
     const courierId = localStorage.getItem(LOGIN_COURIER_ID_KEY)
     if (!courierId) return
 
@@ -76,18 +84,19 @@ export default function KuryePage() {
         .update({ updated_at: new Date().toISOString() })
         .eq('id', courierId)
     } catch (error: any) {
-      console.error('❌ Heartbeat hatası:', error)
+      console.error('Heartbeat hatası:', error)
     }
   }
 
   const fetchPackages = async (isInitialLoad = false) => {
+    if (typeof window === 'undefined') return
+    
     const courierId = localStorage.getItem(LOGIN_COURIER_ID_KEY)
     if (!courierId) return
 
     try {
       if (isInitialLoad) setIsLoading(true)
       
-      // Heartbeat gönder
       await sendHeartbeat()
       
       const { data, error } = await supabase
@@ -810,27 +819,24 @@ export default function KuryePage() {
   )
 
   async function handleLogin(e: any) {
-    e.preventDefault();
-    console.log('🔐 Giriş denemesi:', loginForm.username)
+    e.preventDefault()
+    if (typeof window === 'undefined') return
     
     try {
-      // Couriers tablosundan username ve password ile kurye bilgilerini çek
       const { data, error } = await supabase
         .from('couriers')
         .select('id, full_name, username, password')
         .eq('username', loginForm.username)
         .eq('password', loginForm.password)
-        .maybeSingle();
+        .maybeSingle()
         
       if (error) {
-        console.error('❌ Veritabanı hatası:', error)
-        setErrorMessage("Veritabanı hatası!");
+        console.error('Veritabanı hatası:', error)
+        setErrorMessage("Veritabanı hatası!")
         return
       }
       
       if (data) {
-        console.log('✅ Kurye bulundu:', data)
-        
         // Sadece restoran oturumunu temizle (admin oturumuna DOKUNMA!)
         localStorage.removeItem('restoran_logged_in')
         localStorage.removeItem('restoran_logged_restaurant_id')
@@ -842,19 +848,16 @@ export default function KuryePage() {
           .eq('id', data.id)
         
         // Kurye oturumunu başlat
-        localStorage.setItem(LOGIN_STORAGE_KEY, 'true');
-        localStorage.setItem(LOGIN_COURIER_ID_KEY, data.id);
-        setIsLoggedIn(true);
-        setSelectedCourierId(data.id);
-        
-        console.log('✅ Kurye girişi başarılı')
+        localStorage.setItem(LOGIN_STORAGE_KEY, 'true')
+        localStorage.setItem(LOGIN_COURIER_ID_KEY, data.id)
+        setIsLoggedIn(true)
+        setSelectedCourierId(data.id)
       } else {
-        console.error('❌ Hatalı giriş')
-        setErrorMessage("Hatalı kullanıcı adı veya şifre!");
+        setErrorMessage("Hatalı kullanıcı adı veya şifre!")
       }
     } catch (error: any) {
-      console.error('❌ Giriş hatası:', error)
-      setErrorMessage("Giriş hatası: " + error.message);
+      console.error('Giriş hatası:', error)
+      setErrorMessage("Giriş hatası: " + error.message)
     }
   }
 }
