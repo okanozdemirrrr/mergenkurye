@@ -142,8 +142,7 @@ export default function RestoranPage() {
       
       // Şifre kontrolü
       if (data && data.password === loginForm.password) {
-        // Diğer oturumları temizle (çakışma önleme)
-        localStorage.removeItem('admin_logged_in')
+        // Sadece kurye oturumunu temizle (admin oturumuna DOKUNMA!)
         localStorage.removeItem('kurye_logged_in')
         localStorage.removeItem('kurye_logged_courier_id')
         

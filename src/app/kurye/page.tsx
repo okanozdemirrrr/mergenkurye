@@ -831,8 +831,7 @@ export default function KuryePage() {
       if (data) {
         console.log('✅ Kurye bulundu:', data)
         
-        // Diğer oturumları temizle (çakışma önleme)
-        localStorage.removeItem('admin_logged_in')
+        // Sadece restoran oturumunu temizle (admin oturumuna DOKUNMA!)
         localStorage.removeItem('restoran_logged_in')
         localStorage.removeItem('restoran_logged_restaurant_id')
         
