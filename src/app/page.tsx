@@ -1835,7 +1835,7 @@ export default function Home() {
                       fill="#10b981" 
                       name="Ciro (₺)"
                       label={{ 
-                        position: 'top', 
+                        position: 'bottom', 
                         fill: darkMode ? '#10b981' : '#059669',
                         formatter: (value: any) => `${value.toFixed(0)}₺`
                       }}
