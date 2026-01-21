@@ -7,6 +7,8 @@ import { supabase } from './lib/supabase'
 interface Restaurant {
   id: number
   name: string
+  phone?: string
+  address?: string
 }
 
 interface Package {
@@ -65,6 +67,8 @@ export default function Home() {
   const [showMenu, setShowMenu] = useState(false)
   const [showRestaurantSubmenu, setShowRestaurantSubmenu] = useState(false)
   const [restaurantSubTab, setRestaurantSubTab] = useState<'list' | 'details'>('list')
+  const [showCourierSubmenu, setShowCourierSubmenu] = useState(false)
+  const [courierSubTab, setCourierSubTab] = useState<'accounts' | 'performance'>('accounts')
 
   // Session kontrolü ve yönlendirme
   useEffect(() => {
@@ -435,7 +439,7 @@ export default function Home() {
   }, [courierDateFilter])
 
   const fetchRestaurants = async () => {
-    const { data } = await supabase.from('restaurants').select('id, name').order('name', { ascending: true })
+    const { data } = await supabase.from('restaurants').select('id, name, phone, address').order('name', { ascending: true })
     setRestaurants(data || [])
   }
 
@@ -652,8 +656,7 @@ export default function Home() {
               <nav className="space-y-2">
                 {[
                   { id: 'live', label: 'Canlı Takip', icon: '📦' },
-                  { id: 'history', label: 'Geçmiş Siparişler', icon: '📋' },
-                  { id: 'couriers', label: 'Kuryeler', icon: '🚴' }
+                  { id: 'history', label: 'Geçmiş Siparişler', icon: '📋' }
                 ].map((tab) => (
                   <button
                     key={tab.id}
@@ -661,6 +664,7 @@ export default function Home() {
                       setActiveTab(tab.id as any)
                       setShowMenu(false)
                       setShowRestaurantSubmenu(false)
+                      setShowCourierSubmenu(false)
                     }}
                     className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${
                       activeTab === tab.id
@@ -672,6 +676,56 @@ export default function Home() {
                     {tab.label}
                   </button>
                 ))}
+                
+                {/* Kuryeler - Alt Menülü */}
+                <div>
+                  <button
+                    onClick={() => setShowCourierSubmenu(!showCourierSubmenu)}
+                    className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${
+                      activeTab === 'couriers'
+                        ? 'bg-blue-600 text-white'
+                        : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                    }`}
+                  >
+                    <span className="mr-3">🚴</span>
+                    Kuryeler
+                    <span className="float-right">{showCourierSubmenu ? '▼' : '▶'}</span>
+                  </button>
+                  
+                  {/* Alt Menü */}
+                  {showCourierSubmenu && (
+                    <div className="ml-4 mt-2 space-y-1">
+                      <button
+                        onClick={() => {
+                          setActiveTab('couriers')
+                          setCourierSubTab('accounts')
+                          setShowMenu(false)
+                        }}
+                        className={`w-full text-left px-4 py-2 rounded-lg text-sm transition-all ${
+                          activeTab === 'couriers' && courierSubTab === 'accounts'
+                            ? 'bg-blue-500 text-white'
+                            : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                        }`}
+                      >
+                        👤 Kurye Hesapları
+                      </button>
+                      <button
+                        onClick={() => {
+                          setActiveTab('couriers')
+                          setCourierSubTab('performance')
+                          setShowMenu(false)
+                        }}
+                        className={`w-full text-left px-4 py-2 rounded-lg text-sm transition-all ${
+                          activeTab === 'couriers' && courierSubTab === 'performance'
+                            ? 'bg-blue-500 text-white'
+                            : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                        }`}
+                      >
+                        📊 Kurye Performansları
+                      </button>
+                    </div>
+                  )}
+                </div>
                 
                 {/* Restoranlar - Alt Menülü */}
                 <div>
@@ -1160,10 +1214,12 @@ export default function Home() {
   }
 
   function CouriersTab() {
-    return (
-      <>
-        <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
-          <h2 className="text-2xl font-bold mb-6">🚴 Kurye Yönetimi</h2>
+    // Kurye Hesapları görünümü
+    if (courierSubTab === 'accounts') {
+      return (
+        <>
+          <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
+            <h2 className="text-2xl font-bold mb-6">👤 Kurye Hesapları</h2>
           
           {/* Kurye Durumu Özeti */}
           <div className="mb-6 p-4 bg-slate-100 dark:bg-slate-700 rounded-lg">
@@ -1461,7 +1517,17 @@ export default function Home() {
           </div>
         )}
       </>
+      )
+    }
+    
+    // Kurye Performansları görünümü
+    return (
+      <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
+        <h2 className="text-2xl font-bold mb-6">📊 Kurye Performansları</h2>
+        <p className="text-slate-500">Buraya kurye performans grafikleri ve analizleri gelecek...</p>
+      </div>
     )
+  }
   }
 
   function RestaurantsTab() {
@@ -1483,7 +1549,28 @@ export default function Home() {
                     <h3 className="font-bold text-lg">{r.name}</h3>
                   </div>
                   
-                  <div className="space-y-2 text-sm">
+                  {/* İletişim Bilgileri */}
+                  <div className="mb-3 space-y-1">
+                    {r.phone && (
+                      <div className="flex items-start gap-2">
+                        <span className="text-xs text-slate-500">📞</span>
+                        <a href={`tel:${r.phone}`} className="text-xs text-blue-600 hover:underline">
+                          {r.phone}
+                        </a>
+                      </div>
+                    )}
+                    {r.address && (
+                      <div className="flex items-start gap-2">
+                        <span className="text-xs text-slate-500">📍</span>
+                        <p className="text-xs text-slate-600 dark:text-slate-400">
+                          {r.address}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* İstatistikler */}
+                  <div className="space-y-2 text-sm pt-3 border-t dark:border-slate-600">
                     <div className="flex justify-between">
                       <span className="text-slate-600 dark:text-slate-400">Toplam Sipariş:</span>
                       <span className="font-bold text-blue-600">{totalOrders}</span>
