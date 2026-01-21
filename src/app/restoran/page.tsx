@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 const LOGIN_STORAGE_KEY = 'restoran_logged_in'
 const LOGIN_RESTAURANT_ID_KEY = 'restoran_logged_restaurant_id'
@@ -50,7 +51,12 @@ export default function RestoranPage() {
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [dateFilter, setDateFilter] = useState<'today' | 'week' | 'month' | 'all'>('all')
-  const [darkMode, setDarkMode] = useState(true) // Varsayılan dark mode
+  const [darkMode, setDarkMode] = useState(true)
+  const [showMenu, setShowMenu] = useState(false)
+  const [showStatistics, setShowStatistics] = useState(false)
+  const [statisticsTab, setStatisticsTab] = useState<'packages' | 'revenue'>('packages')
+  const [statisticsFilter, setStatisticsFilter] = useState<'daily' | 'weekly' | 'monthly'>('daily')
+  const [statisticsData, setStatisticsData] = useState<any[]>([])
 
   // Tarih ve saat formatı
   const formatDateTime = (dateString?: string) => {
@@ -88,6 +94,95 @@ export default function RestoranPage() {
   useEffect(() => {
     setIsMounted(true)
   }, [])
+
+  // İstatistik verilerini çek
+  const fetchStatisticsData = async () => {
+    if (!selectedRestaurantId) return
+
+    try {
+      // Tüm paketleri çek (created_at'e göre)
+      const { data, error } = await supabase
+        .from('packages')
+        .select('created_at, amount, status')
+        .eq('restaurant_id', selectedRestaurantId)
+        .order('created_at', { ascending: true })
+
+      if (error) throw error
+
+      if (!data || data.length === 0) {
+        setStatisticsData([])
+        return
+      }
+
+      // Filtreye göre grupla
+      const grouped: { [key: string]: { count: number; revenue: number } } = {}
+
+      data.forEach((pkg) => {
+        if (!pkg.created_at) return
+
+        const date = new Date(pkg.created_at)
+        let key = ''
+
+        if (statisticsFilter === 'daily') {
+          // Günlük: 21.01.2026
+          const day = date.getDate().toString().padStart(2, '0')
+          const month = (date.getMonth() + 1).toString().padStart(2, '0')
+          const year = date.getFullYear()
+          key = `${day}.${month}.${year}`
+        } else if (statisticsFilter === 'weekly') {
+          // Haftalık: Haftanın başlangıç tarihini bul
+          const dayOfWeek = date.getDay()
+          const diff = date.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1)
+          const weekStart = new Date(date.setDate(diff))
+          const weekEnd = new Date(weekStart)
+          weekEnd.setDate(weekStart.getDate() + 6)
+
+          const startDay = weekStart.getDate().toString().padStart(2, '0')
+          const startMonth = (weekStart.getMonth() + 1).toString().padStart(2, '0')
+          const startYear = weekStart.getFullYear()
+          const endDay = weekEnd.getDate().toString().padStart(2, '0')
+          const endMonth = (weekEnd.getMonth() + 1).toString().padStart(2, '0')
+          const endYear = weekEnd.getFullYear()
+
+          key = `${startDay}.${startMonth}.${startYear}-${endDay}.${endMonth}.${endYear}`
+        } else {
+          // Aylık: 2026 Ocak
+          const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 
+                             'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık']
+          const month = monthNames[date.getMonth()]
+          const year = date.getFullYear()
+          key = `${year} ${month}`
+        }
+
+        if (!grouped[key]) {
+          grouped[key] = { count: 0, revenue: 0 }
+        }
+
+        grouped[key].count++
+        grouped[key].revenue += pkg.amount || 0
+      })
+
+      // Array'e çevir
+      const chartData = Object.entries(grouped).map(([name, data]) => ({
+        name,
+        count: data.count,
+        revenue: data.revenue
+      }))
+
+      setStatisticsData(chartData)
+    } catch (error: any) {
+      console.error('İstatistik verileri yüklenirken hata:', error)
+    }
+  }
+
+  // İstatistikler açıldığında veya filtre değiştiğinde veri çek
+  useEffect(() => {
+    if (showStatistics && selectedRestaurantId) {
+      fetchStatisticsData()
+    }
+  }, [showStatistics, statisticsFilter, selectedRestaurantId])
+
+  // Build-safe mount kontrolü
 
   // ÇELİK GİBİ OTURUM KONTROLÜ - SAYFA YENİLENDİĞİNDE DIŞARI ATMA!
   useEffect(() => {
@@ -404,6 +499,65 @@ export default function RestoranPage() {
 
   return (
     <div className={`min-h-screen py-6 px-4 ${darkMode ? 'bg-slate-950' : 'bg-gray-100'}`}>
+      {/* Hamburger Menü - Sol Üst */}
+      <button 
+        onClick={() => setShowMenu(!showMenu)} 
+        className="fixed top-4 left-4 z-50 bg-slate-800 hover:bg-slate-700 text-white p-3 rounded-lg shadow-lg transition-colors"
+      >
+        <div className="space-y-1.5">
+          <div className="w-6 h-0.5 bg-white"></div>
+          <div className="w-6 h-0.5 bg-white"></div>
+          <div className="w-6 h-0.5 bg-white"></div>
+        </div>
+      </button>
+
+      {/* Açılır Menü */}
+      {showMenu && (
+        <>
+          <div 
+            className="fixed inset-0 bg-black/50 z-40"
+            onClick={() => setShowMenu(false)}
+          ></div>
+          
+          <div className="fixed top-0 left-0 h-full w-64 bg-slate-900 shadow-2xl z-50">
+            <div className="p-6">
+              <div className="mb-8 text-center">
+                <img 
+                  src="/logo.png" 
+                  alt="Logo" 
+                  className="w-24 h-24 mx-auto mb-3"
+                />
+                <h2 className="text-xl font-bold text-white">Restoran Panel</h2>
+              </div>
+
+              <nav className="space-y-2">
+                <button
+                  onClick={() => {
+                    setShowStatistics(true)
+                    setShowMenu(false)
+                  }}
+                  className="w-full text-left px-4 py-3 rounded-lg font-medium transition-all text-slate-300 hover:bg-slate-800 hover:text-white"
+                >
+                  <span className="mr-3">📊</span>
+                  İstatistiklerim
+                </button>
+              </nav>
+
+              <button 
+                onClick={() => { 
+                  localStorage.removeItem(LOGIN_STORAGE_KEY);
+                  localStorage.removeItem(LOGIN_RESTAURANT_ID_KEY);
+                  window.location.href = '/restoran';
+                }} 
+                className="w-full mt-8 bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-lg font-medium transition-colors"
+              >
+                ← Çıkış
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Dark Mode Toggle - Sağ Üst */}
       <button
         onClick={() => setDarkMode(!darkMode)}
@@ -415,17 +569,127 @@ export default function RestoranPage() {
         {darkMode ? '☀️' : '🌙'}
       </button>
 
-      {/* Fixed Çıkış Butonu - Sol Üst */}
-      <button 
-        onClick={() => { 
-          localStorage.removeItem(LOGIN_STORAGE_KEY);
-          localStorage.removeItem(LOGIN_RESTAURANT_ID_KEY);
-          window.location.href = '/restoran';
-        }} 
-        className="fixed top-4 left-4 z-50 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm font-medium shadow-lg transition-colors"
-      >
-        ← Çıkış
-      </button>
+      {/* İSTATİSTİKLER MODAL */}
+      {showStatistics && (
+        <div className="fixed inset-0 bg-black/80 z-50 p-4 overflow-y-auto flex items-center justify-center">
+          <div className="max-w-4xl w-full bg-slate-900 rounded-xl p-6 border border-slate-800">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-white">📊 İstatistiklerim</h2>
+              <button 
+                onClick={() => setShowStatistics(false)} 
+                className="text-slate-400 hover:text-white text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Sekmeler */}
+            <div className="flex gap-2 mb-6">
+              <button
+                onClick={() => setStatisticsTab('packages')}
+                className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors ${
+                  statisticsTab === 'packages'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                }`}
+              >
+                📦 Paket Sayıları
+              </button>
+              <button
+                onClick={() => setStatisticsTab('revenue')}
+                className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors ${
+                  statisticsTab === 'revenue'
+                    ? 'bg-green-600 text-white'
+                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                }`}
+              >
+                💰 Ciro Analizi
+              </button>
+            </div>
+
+            {/* Filtre Butonları */}
+            <div className="flex gap-2 mb-6">
+              <button
+                onClick={() => setStatisticsFilter('daily')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  statisticsFilter === 'daily'
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                }`}
+              >
+                Günlük
+              </button>
+              <button
+                onClick={() => setStatisticsFilter('weekly')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  statisticsFilter === 'weekly'
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                }`}
+              >
+                Haftalık
+              </button>
+              <button
+                onClick={() => setStatisticsFilter('monthly')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  statisticsFilter === 'monthly'
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                }`}
+              >
+                Aylık
+              </button>
+            </div>
+
+            {/* Grafik */}
+            <div className="bg-slate-800/50 rounded-lg p-4" style={{ height: '400px' }}>
+              {statisticsData.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-slate-400">
+                  Veri bulunamadı
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={statisticsData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                    <XAxis 
+                      dataKey="name" 
+                      stroke="#94a3b8"
+                      angle={-45}
+                      textAnchor="end"
+                      height={100}
+                      style={{ fontSize: '12px' }}
+                    />
+                    <YAxis stroke="#94a3b8" />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: '#1e293b', 
+                        border: '1px solid #334155',
+                        borderRadius: '8px'
+                      }}
+                    />
+                    <Legend />
+                    {statisticsTab === 'packages' ? (
+                      <Bar 
+                        dataKey="count" 
+                        fill="#3b82f6" 
+                        name="Paket Sayısı"
+                        radius={[8, 8, 0, 0]}
+                      />
+                    ) : (
+                      <Bar 
+                        dataKey="revenue" 
+                        fill="#10b981" 
+                        name="Ciro (₺)"
+                        radius={[8, 8, 0, 0]}
+                      />
+                    )}
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-4">
         
