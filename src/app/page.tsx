@@ -595,24 +595,24 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-      {/* Hamburger Menü Butonu + Logo - Sol Üst */}
-      <div className="fixed top-4 left-4 z-50 flex items-center gap-3">
-        <button 
-          onClick={() => setShowMenu(!showMenu)} 
-          className="bg-slate-800 hover:bg-slate-700 text-white p-3 rounded-lg shadow-lg transition-colors"
-        >
-          <div className="space-y-1.5">
-            <div className="w-6 h-0.5 bg-white"></div>
-            <div className="w-6 h-0.5 bg-white"></div>
-            <div className="w-6 h-0.5 bg-white"></div>
-          </div>
-        </button>
-        <img 
-          src="/logo.png" 
-          alt="Logo" 
-          className="w-36 h-36"
-        />
-      </div>
+      {/* Hamburger Menü Butonu - Sol Üst */}
+      <button 
+        onClick={() => setShowMenu(!showMenu)} 
+        className="fixed top-4 left-4 z-50 bg-slate-800 hover:bg-slate-700 text-white p-3 rounded-lg shadow-lg transition-colors"
+      >
+        <div className="space-y-1.5">
+          <div className="w-6 h-0.5 bg-white"></div>
+          <div className="w-6 h-0.5 bg-white"></div>
+          <div className="w-6 h-0.5 bg-white"></div>
+        </div>
+      </button>
+
+      {/* Logo - Sağ Üst */}
+      <img 
+        src="/logo.png" 
+        alt="Logo" 
+        className="fixed top-4 right-4 z-50 w-16 h-16"
+      />
 
       {/* Açılır Menü */}
       {showMenu && (
