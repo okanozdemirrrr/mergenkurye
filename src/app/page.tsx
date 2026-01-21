@@ -1528,7 +1528,6 @@ export default function Home() {
       </div>
     )
   }
-  }
 
   function RestaurantsTab() {
     // Liste görünümü
