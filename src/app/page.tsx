@@ -39,6 +39,8 @@ interface Courier {
 
 export default function Home() {
   const router = useRouter()
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [loginForm, setLoginForm] = useState({ username: '', password: '' })
   const [activeTab, setActiveTab] = useState<'live' | 'history' | 'couriers' | 'restaurants'>('live')
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
@@ -60,11 +62,12 @@ export default function Home() {
   const [dateFilter, setDateFilter] = useState<'today' | 'week' | 'month' | 'all'>('all')
   const [courierDateFilter, setCourierDateFilter] = useState<'today' | 'week' | 'month' | 'all'>('all')
 
-  // Session kontrolü ve yönlendirme - Kurye odaklı
+  // Session kontrolü ve yönlendirme
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const kuryeLoggedIn = localStorage.getItem('kurye_logged_in')
       const restoranLoggedIn = localStorage.getItem('restoran_logged_in')
+      const adminLoggedIn = localStorage.getItem('admin_logged_in')
       
       // Kurye giriş yapmışsa kurye paneline yönlendir
       if (kuryeLoggedIn === 'true') {
@@ -77,7 +80,11 @@ export default function Home() {
         router.push('/restoran')
         return
       }
-      
+
+      // Admin giriş kontrolü
+      if (adminLoggedIn === 'true') {
+        setIsLoggedIn(true)
+      }
       // Kimse giriş yapmamışsa admin panelinde kal (default)
     }
   }, [router])
@@ -342,18 +349,22 @@ export default function Home() {
   }
 
   useEffect(() => {
-    // İlk yükleme
-    setIsLoading(true)
-    fetchPackages().then(() => {
-      fetchCouriers()
-      fetchRestaurants()
-      if (activeTab === 'history') fetchDeliveredPackages()
-      setIsLoading(false)
-    })
-  }, [])
+    if (isLoggedIn) {
+      // İlk yükleme
+      setIsLoading(true)
+      fetchPackages().then(() => {
+        fetchCouriers()
+        fetchRestaurants()
+        if (activeTab === 'history') fetchDeliveredPackages()
+        setIsLoading(false)
+      })
+    }
+  }, [isLoggedIn])
 
   // Realtime için ayrı useEffect
   useEffect(() => {
+    if (!isLoggedIn) return
+
     // Supabase Realtime - Paketler için
     const packagesChannel = supabase
       .channel('packages-changes')
@@ -531,8 +542,65 @@ export default function Home() {
       .map(([name, count]) => ({ name, count }))
   }
 
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (loginForm.username === 'okanadmin' && loginForm.password === 'okanbaba44') {
+      localStorage.setItem('admin_logged_in', 'true')
+      setIsLoggedIn(true)
+      setErrorMessage('')
+    } else {
+      setErrorMessage('Hatalı kullanıcı adı veya şifre!')
+    }
+  }
+
+  // Giriş ekranı
+  if (!isLoggedIn) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+        <form onSubmit={handleLogin} className="bg-slate-900 p-8 rounded-2xl border border-slate-800 w-full max-w-md">
+          <div className="text-center mb-8">
+            <img 
+              src="/logo.png" 
+              alt="Logo" 
+              className="w-48 h-48 mx-auto mb-4"
+            />
+            <h1 className="text-2xl font-bold text-white mb-2">
+              Admin Girişi
+            </h1>
+          </div>
+          <input 
+            type="text" 
+            placeholder="Kullanıcı Adı" 
+            className="w-full p-3 mb-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-blue-500 transition-colors"
+            value={loginForm.username}
+            onChange={e => setLoginForm({...loginForm, username: e.target.value})}
+          />
+          <input 
+            type="password" 
+            placeholder="Şifre" 
+            className="w-full p-3 mb-4 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-blue-500 transition-colors"
+            value={loginForm.password}
+            onChange={e => setLoginForm({...loginForm, password: e.target.value})}
+          />
+          <button className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+            Giriş Yap
+          </button>
+          {errorMessage && <p className="text-red-400 text-sm mt-3 text-center">{errorMessage}</p>}
+        </form>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+      {/* Fixed Çıkış Butonu - Sol Üst */}
+      <button 
+        onClick={() => { localStorage.clear(); window.location.reload(); }} 
+        className="fixed top-4 left-4 z-50 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm font-medium shadow-lg transition-colors"
+      >
+        ← Çıkış
+      </button>
+
       {/* YENİ SİPARİŞ POPUP BİLDİRİMİ */}
       {showNotificationPopup && newOrderDetails && (
         <div className="fixed top-4 right-4 z-[100] animate-bounce">
