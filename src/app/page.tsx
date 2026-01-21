@@ -70,6 +70,7 @@ export default function Home() {
   const [showCourierSubmenu, setShowCourierSubmenu] = useState(false)
   const [courierSubTab, setCourierSubTab] = useState<'accounts' | 'performance'>('accounts')
   const [darkMode, setDarkMode] = useState(true) // Varsayılan dark mode
+  const [restaurantChartFilter, setRestaurantChartFilter] = useState<'today' | 'week' | 'month'>('today')
 
   // Session kontrolü ve yönlendirme
   useEffect(() => {
@@ -1200,7 +1201,12 @@ export default function Home() {
                         </div>
                       </div>
                     </td>
-                    <td className="py-3 px-4 font-medium">{pkg.customer_name}</td>
+                    <td className="py-3 px-4 font-medium">
+                      <div>{pkg.customer_name}</div>
+                      {pkg.customer_phone && (
+                        <div className="text-xs text-slate-500 mt-1">📞 {pkg.customer_phone}</div>
+                      )}
+                    </td>
                     <td className="py-3 px-4">{pkg.restaurant?.name}</td>
                     <td className="py-3 px-4">{pkg.courier_name || 'Bilinmeyen'}</td>
                     <td className="py-3 px-4 font-bold text-green-600">{pkg.amount}₺</td>
@@ -1531,10 +1537,67 @@ export default function Home() {
     }
     
     // Kurye Performansları görünümü
+    const activeCouriers = couriers.filter(c => c.is_active)
+    const sortedByPerformance = [...activeCouriers].sort((a, b) => 
+      (b.todayDeliveryCount || 0) - (a.todayDeliveryCount || 0)
+    )
+    
     return (
       <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
         <h2 className="text-2xl font-bold mb-6">📊 Kurye Performansları</h2>
-        <p className="text-slate-500">Buraya kurye performans grafikleri ve analizleri gelecek...</p>
+        
+        {/* Günün En Hızlısı */}
+        <div className="mb-6">
+          <h3 className="text-xl font-bold mb-4 text-orange-600 dark:text-orange-400">🏆 Günün En Hızlısı</h3>
+          
+          {sortedByPerformance.length === 0 ? (
+            <div className="text-center py-8 text-slate-500">
+              <div className="text-4xl mb-2">😴</div>
+              <p>Aktif kurye yok</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {sortedByPerformance.map((courier, index) => (
+                <div 
+                  key={courier.id} 
+                  className={`p-4 rounded-xl border transition-all ${
+                    index === 0 
+                      ? 'bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-orange-300 dark:border-orange-700' 
+                      : 'bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`text-2xl font-bold ${
+                        index === 0 ? 'text-orange-600' : 
+                        index === 1 ? 'text-gray-500' : 
+                        index === 2 ? 'text-amber-700' : 'text-slate-400'
+                      }`}>
+                        {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-lg text-slate-900 dark:text-white">
+                          {courier.full_name}
+                        </h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          {courier.activePackageCount || 0} aktif paket
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className={`text-3xl font-black ${
+                        index === 0 ? 'text-orange-600' : 'text-blue-600'
+                      }`}>
+                        {courier.todayDeliveryCount || 0}
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">bugün teslim</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     )
   }
@@ -1604,10 +1667,105 @@ export default function Home() {
     }
     
     // Detay görünümü
+    // Tarih filtresine göre paketleri filtrele
+    const getFilteredPackages = () => {
+      const now = new Date()
+      let startDate = new Date()
+      
+      if (restaurantChartFilter === 'today') {
+        startDate.setHours(0, 0, 0, 0)
+      } else if (restaurantChartFilter === 'week') {
+        startDate.setDate(now.getDate() - 7)
+      } else if (restaurantChartFilter === 'month') {
+        startDate.setDate(now.getDate() - 30)
+      }
+      
+      return deliveredPackages.filter(pkg => 
+        pkg.delivered_at && new Date(pkg.delivered_at) >= startDate
+      )
+    }
+    
+    const filteredPackages = getFilteredPackages()
+    
+    // Restoran bazlı paket sayıları
+    const restaurantPacketCounts: { [key: string]: number } = {}
+    filteredPackages.forEach(pkg => {
+      const name = pkg.restaurant?.name || 'Bilinmeyen'
+      restaurantPacketCounts[name] = (restaurantPacketCounts[name] || 0) + 1
+    })
+    
+    // Restoran bazlı cirolar
+    const restaurantRevenues: { [key: string]: number } = {}
+    filteredPackages.forEach(pkg => {
+      const name = pkg.restaurant?.name || 'Bilinmeyen'
+      restaurantRevenues[name] = (restaurantRevenues[name] || 0) + (pkg.amount || 0)
+    })
+    
+    const maxPackets = Math.max(...Object.values(restaurantPacketCounts), 1)
+    const maxRevenue = Math.max(...Object.values(restaurantRevenues), 1)
+    
     return (
       <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
-        <h2 className="text-2xl font-bold mb-6">📊 Restoran Sipariş Detayları</h2>
-        <p className="text-slate-500">Buraya detaylı grafik ve analizler gelecek...</p>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold">📊 Restoran Sipariş Detayları</h2>
+          <select
+            value={restaurantChartFilter}
+            onChange={(e) => setRestaurantChartFilter(e.target.value as any)}
+            className="px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-sm"
+          >
+            <option value="today">Bugün</option>
+            <option value="week">Bu Hafta</option>
+            <option value="month">Bu Ay</option>
+          </select>
+        </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Restoran Paket Dağılımı */}
+          <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border dark:border-slate-600">
+            <h3 className="text-lg font-bold mb-4">📦 Restoran Paket Dağılımı</h3>
+            <div className="space-y-3">
+              {Object.entries(restaurantPacketCounts)
+                .sort(([,a], [,b]) => b - a)
+                .map(([name, count]) => (
+                  <div key={name}>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="font-medium">{name}</span>
+                      <span className="font-bold text-blue-600">{count} paket</span>
+                    </div>
+                    <div className="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-3">
+                      <div 
+                        className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all"
+                        style={{ width: `${(count / maxPackets) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+          
+          {/* Restoran Ciroları */}
+          <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border dark:border-slate-600">
+            <h3 className="text-lg font-bold mb-4">💰 Restoran Ciroları</h3>
+            <div className="flex items-end justify-around h-64 gap-2">
+              {Object.entries(restaurantRevenues)
+                .sort(([,a], [,b]) => b - a)
+                .map(([name, revenue]) => (
+                  <div key={name} className="flex flex-col items-center flex-1">
+                    <div className="text-xs font-bold text-green-600 mb-1">
+                      {revenue.toFixed(0)}₺
+                    </div>
+                    <div 
+                      className="w-full bg-gradient-to-t from-green-500 to-green-400 rounded-t-lg transition-all hover:from-green-600 hover:to-green-500"
+                      style={{ height: `${(revenue / maxRevenue) * 100}%`, minHeight: '20px' }}
+                    ></div>
+                    <div className="text-xs font-medium mt-2 text-center break-words w-full">
+                      {name}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+        </div>
       </div>
     )
   }

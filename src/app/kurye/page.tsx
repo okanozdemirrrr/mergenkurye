@@ -19,7 +19,14 @@ interface Package {
   restaurant?: { 
     name: string
     phone?: string
+    address?: string
   }
+}
+
+interface CourierLeaderboard {
+  id: string
+  full_name: string
+  todayDeliveryCount: number
 }
 
 const LOGIN_STORAGE_KEY = 'kurye_logged_in'
@@ -43,6 +50,8 @@ export default function KuryePage() {
   const [is_active, setIs_active] = useState(false)
   const [statusUpdating, setStatusUpdating] = useState(false)
   const [darkMode, setDarkMode] = useState(true) // Varsayılan dark mode
+  const [leaderboard, setLeaderboard] = useState<CourierLeaderboard[]>([])
+  const [myRank, setMyRank] = useState<number | null>(null)
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -82,7 +91,7 @@ export default function KuryePage() {
       
       const { data, error } = await supabase
         .from('packages')
-        .select('*, restaurants(name, phone)')
+        .select('*, restaurants(name, phone, address)')
         .eq('courier_id', courierId)
         .neq('status', 'delivered')
         .order('created_at', { ascending: false })
@@ -153,6 +162,69 @@ export default function KuryePage() {
     }
   }
 
+  // Günün En Hızlıları Leaderboard'unu çek
+  const fetchLeaderboard = async () => {
+    const courierId = localStorage.getItem(LOGIN_COURIER_ID_KEY)
+    if (!courierId) return
+
+    try {
+      const todayStart = new Date()
+      todayStart.setHours(0, 0, 0, 0)
+
+      // Tüm aktif kuryeleri çek
+      const { data: couriersData, error: couriersError } = await supabase
+        .from('couriers')
+        .select('id, full_name, is_active')
+        .eq('is_active', true)
+
+      if (couriersError) throw couriersError
+
+      if (!couriersData || couriersData.length === 0) {
+        setLeaderboard([])
+        setMyRank(null)
+        return
+      }
+
+      // Her kurye için bugünkü teslimat sayısını çek
+      const courierIds = couriersData.map(c => c.id)
+      const { data: packagesData, error: packagesError } = await supabase
+        .from('packages')
+        .select('courier_id')
+        .eq('status', 'delivered')
+        .in('courier_id', courierIds)
+        .gte('delivered_at', todayStart.toISOString())
+
+      if (packagesError) throw packagesError
+
+      // Kurye bazlı paket sayılarını hesapla
+      const counts: { [key: string]: number } = {}
+      packagesData?.forEach((pkg) => {
+        if (pkg.courier_id) {
+          counts[pkg.courier_id] = (counts[pkg.courier_id] || 0) + 1
+        }
+      })
+
+      // Leaderboard oluştur - sadece bugün en az 1 paket teslim etmiş kuryeler
+      const leaderboardData = couriersData
+        .map(courier => ({
+          id: courier.id,
+          full_name: courier.full_name || 'İsimsiz Kurye',
+          todayDeliveryCount: counts[courier.id] || 0
+        }))
+        .filter(courier => courier.todayDeliveryCount > 0) // Sadece bugün teslimat yapanlar
+        .sort((a, b) => b.todayDeliveryCount - a.todayDeliveryCount) // Çoktan aza sırala
+
+      setLeaderboard(leaderboardData)
+
+      // Kendi sıramı bul
+      const myIndex = leaderboardData.findIndex(c => c.id === courierId)
+      setMyRank(myIndex >= 0 ? myIndex + 1 : null)
+
+    } catch (error: any) {
+      console.error('❌ Leaderboard yüklenemedi:', error)
+    }
+  }
+
   const updateCourierStatus = async (newStatus: 'idle' | 'busy', newIsActive: boolean) => {
     const courierId = localStorage.getItem(LOGIN_COURIER_ID_KEY)
     
@@ -197,6 +269,7 @@ export default function KuryePage() {
       fetchPackages(true)
       fetchDailyStats()
       fetchCourierStatus()
+      fetchLeaderboard()
       
       // Supabase Realtime - Kuryeye özel paket değişikliklerini dinle
       const packagesChannel = supabase
@@ -213,6 +286,7 @@ export default function KuryePage() {
             // Anında güncelle
             fetchPackages(false)
             fetchDailyStats()
+            fetchLeaderboard()
           }
         )
         .subscribe()
@@ -222,6 +296,7 @@ export default function KuryePage() {
         fetchPackages(false)
         fetchDailyStats()
         fetchCourierStatus()
+        fetchLeaderboard()
       }, 30000)
       
       return () => {
@@ -316,7 +391,7 @@ export default function KuryePage() {
       )}
 
       <div className="max-w-2xl mx-auto">
-        <div className="flex justify-center items-center mb-6 pt-2">
+        <div className="flex justify-center items-center mb-4 pt-2">
           <img 
             src="/logo.png" 
             alt="Logo" 
@@ -324,21 +399,7 @@ export default function KuryePage() {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
-            <p className="text-slate-400 text-xs mb-1">Bugün Teslim</p>
-            <p className="text-2xl font-bold text-green-400">{deliveredCount}</p>
-          </div>
-          <button 
-            onClick={() => setShowSummary(true)}
-            className="bg-slate-900 p-4 rounded-xl border border-slate-800 hover:border-blue-600 transition-colors text-left"
-          >
-            <p className="text-slate-400 text-xs mb-1">Toplam Kazanç</p>
-            <p className="text-2xl font-bold text-blue-400">{(cashTotal + cardTotal).toFixed(2)} ₺</p>
-          </button>
-        </div>
-
-        {/* KURYE DURUM KONTROL TOGGLE */}
+        {/* KURYE DURUM KONTROL TOGGLE - EN ÜSTTE */}
         <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 mb-4">
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm font-medium text-slate-300">Durum</span>
@@ -377,6 +438,116 @@ export default function KuryePage() {
             <span className={`text-xs font-medium transition-all ${is_active ? 'text-green-400' : 'text-slate-500'}`}>
               Aktif
             </span>
+          </div>
+        </div>
+
+        {/* İSTATİSTİKLER */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
+            <p className="text-slate-400 text-xs mb-1">Bugün Teslim</p>
+            <p className="text-2xl font-bold text-green-400">{deliveredCount}</p>
+          </div>
+          <button 
+            onClick={() => setShowSummary(true)}
+            className="bg-slate-900 p-4 rounded-xl border border-slate-800 hover:border-blue-600 transition-colors text-left"
+          >
+            <p className="text-slate-400 text-xs mb-1">Toplam Hesap</p>
+            <p className="text-2xl font-bold text-blue-400">{(cashTotal + cardTotal).toFixed(2)} ₺</p>
+          </button>
+        </div>
+
+        {/* TOPLAM KAZANÇ */}
+        <div className="bg-gradient-to-r from-green-900 to-emerald-900 p-4 rounded-xl border border-green-700 mb-4">
+          <p className="text-green-300 text-xs mb-1">💰 Toplam Kazanç</p>
+          <p className="text-3xl font-bold text-green-100">{deliveredCount * 80} ₺</p>
+          <p className="text-xs text-green-400 mt-1">{deliveredCount} paket × 80₺</p>
+        </div>
+
+        {/* GÜNÜN EN HIZLILARI WIDGET */}
+        <div className="bg-gradient-to-br from-purple-900 to-indigo-900 p-4 rounded-xl border border-purple-700 mb-4">
+          <h3 className="text-lg font-bold text-purple-100 mb-3 flex items-center gap-2">
+            🚀 Günün En Hızlıları
+          </h3>
+          
+          {/* Kendi Sıralaman */}
+          {myRank !== null && (
+            <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-3 mb-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-yellow-200">🏆 Güncel Sıralaman:</span>
+                <span className="text-xl font-bold text-yellow-100">
+                  {myRank}. / {leaderboard.length} Kurye
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Leaderboard Listesi */}
+          {leaderboard.length === 0 ? (
+            <div className="text-center py-4 text-purple-300 text-sm">
+              <p>Henüz bugün teslimat yapan kurye yok</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {leaderboard.slice(0, 10).map((courier, index) => {
+                const isMe = courier.id === selectedCourierId
+                const rank = index + 1
+                
+                // Madalya veya sıra numarası
+                let badge = ''
+                let badgeColor = ''
+                if (rank === 1) {
+                  badge = '🥇'
+                  badgeColor = 'from-yellow-600 to-yellow-500'
+                } else if (rank === 2) {
+                  badge = '🥈'
+                  badgeColor = 'from-gray-400 to-gray-300'
+                } else if (rank === 3) {
+                  badge = '🥉'
+                  badgeColor = 'from-orange-600 to-orange-500'
+                } else {
+                  badge = `#${rank}`
+                  badgeColor = 'from-slate-700 to-slate-600'
+                }
+
+                return (
+                  <div 
+                    key={courier.id}
+                    className={`flex items-center justify-between p-2 rounded-lg transition-all ${
+                      isMe 
+                        ? 'bg-purple-500/30 border border-purple-400' 
+                        : rank <= 3
+                        ? `bg-gradient-to-r ${badgeColor} bg-opacity-20`
+                        : 'bg-purple-800/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                        rank <= 3 ? 'text-white' : 'text-purple-300'
+                      }`}>
+                        {badge}
+                      </div>
+                      <div>
+                        <p className={`text-sm font-medium ${
+                          isMe ? 'text-purple-100 font-bold' : 'text-purple-200'
+                        }`}>
+                          {courier.full_name} {isMe && '(Sen)'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-purple-100">
+                        {courier.todayDeliveryCount}
+                      </p>
+                      <p className="text-xs text-purple-300">paket</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          <div className="mt-3 text-xs text-purple-300 text-center">
+            Son güncelleme: {new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
           </div>
         </div>
 
@@ -421,13 +592,28 @@ export default function KuryePage() {
                       </div>
                       <p className="font-medium text-white">{pkg.customer_name}</p>
                       
-                      {/* Restoran numarası - assigned, picking_up, on_the_way durumlarında göster */}
+                      {/* Restoran bilgileri - assigned, picking_up, on_the_way durumlarında göster */}
                       {(pkg.status === 'assigned' || pkg.status === 'picking_up' || pkg.status === 'on_the_way') && pkg.restaurant?.phone && (
-                        <div className="mt-2">
-                          <p className="text-xs text-slate-400 mb-1">🍽️ Restoran: {pkg.restaurant.phone}</p>
+                        <div className="mt-2 p-2 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+                          <div className="flex items-start gap-2 mb-1">
+                            <span className="text-xs">🍽️</span>
+                            <div className="flex-1">
+                              <p className="text-xs font-medium text-orange-900 dark:text-orange-300">
+                                {pkg.restaurant.name}
+                              </p>
+                              <p className="text-xs text-orange-700 dark:text-orange-400">
+                                📞 {pkg.restaurant.phone}
+                              </p>
+                              {pkg.restaurant.address && (
+                                <p className="text-xs text-orange-700 dark:text-orange-400 mt-1">
+                                  📍 {pkg.restaurant.address}
+                                </p>
+                              )}
+                            </div>
+                          </div>
                           <a 
                             href={`tel:${pkg.restaurant.phone}`}
-                            className="inline-block py-1.5 px-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded transition-colors text-center"
+                            className="block w-full py-1.5 px-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded transition-colors text-center mt-2"
                           >
                             📞 Restoranı Ara
                           </a>
