@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase'
 interface Package {
   id: number
   customer_name: string
+  customer_phone?: string
   delivery_address: string
   amount: number
   status: string
@@ -390,6 +391,9 @@ export default function KuryePage() {
                         </span>
                       </div>
                       <p className="font-medium text-white">{pkg.customer_name}</p>
+                      {pkg.customer_phone && (
+                        <p className="text-xs text-slate-400 mt-1">📞 {pkg.customer_phone}</p>
+                      )}
                       {pkg.content && (
                         <p className="text-xs text-slate-400 mt-1">{pkg.content}</p>
                       )}

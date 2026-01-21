@@ -15,6 +15,7 @@ interface Restaurant {
 interface Package {
   id: number
   customer_name: string
+  customer_phone?: string
   delivery_address: string
   amount: number
   status: string
@@ -35,6 +36,7 @@ export default function RestoranPage() {
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     customerName: '',
+    customerPhone: '',
     deliveryAddress: '',
     packageAmount: '',
     content: ''
@@ -196,6 +198,9 @@ export default function RestoranPage() {
       if (!formData.customerName.trim()) {
         throw new Error('Müşteri adı gereklidir')
       }
+      if (!formData.customerPhone.trim()) {
+        throw new Error('Müşteri numarası gereklidir')
+      }
       if (!formData.content.trim()) {
         throw new Error('Paket içeriği gereklidir')
       }
@@ -224,6 +229,7 @@ export default function RestoranPage() {
         .insert([
           {
             customer_name: formData.customerName.trim(),
+            customer_phone: formData.customerPhone.trim(),
             content: formData.content.trim(),
             delivery_address: formData.deliveryAddress.trim(),
             amount: parseFloat(formData.packageAmount),
@@ -247,6 +253,7 @@ export default function RestoranPage() {
       // Formu temizle
       setFormData({
         customerName: '',
+        customerPhone: '',
         deliveryAddress: '',
         packageAmount: '',
         content: ''
@@ -392,6 +399,27 @@ export default function RestoranPage() {
                   placeholder="Ahmet Yılmaz"
                   disabled={isSubmitting}
                 />
+              </div>
+
+              {/* Müşteri Numarası */}
+              <div>
+                <label htmlFor="customerPhone" className="block text-sm font-medium text-slate-300 mb-1">
+                  Müşteri Numarası <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="tel"
+                  id="customerPhone"
+                  name="customerPhone"
+                  value={formData.customerPhone}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors"
+                  placeholder="05XX-XXX-XX-XX"
+                  disabled={isSubmitting}
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  Lütfen numarayı 05XX-XXX-XX-XX şeklinde giriniz
+                </p>
               </div>
 
               {/* Paket İçeriği */}

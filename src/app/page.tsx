@@ -12,6 +12,7 @@ interface Restaurant {
 interface Package {
   id: number
   customer_name: string
+  customer_phone?: string
   delivery_address: string
   amount: number
   status: string
@@ -609,7 +610,7 @@ export default function Home() {
         <img 
           src="/logo.png" 
           alt="Logo" 
-          className="w-12 h-12"
+          className="w-36 h-36"
         />
       </div>
 
@@ -845,6 +846,12 @@ export default function Home() {
                     <h3 className="font-semibold text-sm text-slate-900 dark:text-white">
                       👤 {pkg.customer_name}
                     </h3>
+                    
+                    {pkg.customer_phone && (
+                      <p className="text-xs text-slate-600 dark:text-slate-400">
+                        📞 {pkg.customer_phone}
+                      </p>
+                    )}
                     
                     {pkg.content && (
                       <div>
