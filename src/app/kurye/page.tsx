@@ -889,11 +889,7 @@ export default function KuryePage() {
       }
       
       if (data) {
-        // Sadece restoran oturumunu temizle (admin oturumuna DOKUNMA!)
-        localStorage.removeItem('restoran_logged_in')
-        localStorage.removeItem('restoran_logged_restaurant_id')
-        
-        // Kurye aktif yap
+        // Sadece kurye oturumunu başlat, diğerlerine dokunma
         await supabase
           .from('couriers')
           .update({ is_active: true, status: 'idle' })

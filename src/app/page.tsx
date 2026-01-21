@@ -80,7 +80,7 @@ export default function Home() {
     setIsMounted(true)
   }, [])
 
-  // ÇELİK GİBİ OTURUM KONTROLÜ - SAYFA YENİLENDİĞİNDE DIŞARI ATMA!
+  // ÇELİK GİBİ OTURUM KONTROLÜ - SADECE KENDİ OTURUMUNA BAK!
   useEffect(() => {
     const checkAuthAndRedirect = () => {
       // Build sırasında çalışmasın
@@ -92,56 +92,26 @@ export default function Home() {
       setIsCheckingAuth(true)
 
       try {
-        // localStorage'dan oturum anahtarlarını oku
+        // SADECE admin oturumunu kontrol et
         const adminLoggedIn = localStorage.getItem('admin_logged_in')
-        const kuryeLoggedIn = localStorage.getItem('kurye_logged_in')
-        const restoranLoggedIn = localStorage.getItem('restoran_logged_in')
 
-        // ✅ 1. ÖNCELİK: ADMIN (EN YÜKSEK ÖNCELİK)
-        // Admin oturumu varsa BURADA KAL, başka yere gitme!
         if (adminLoggedIn === 'true') {
-          // Diğer oturumları sessizce temizle
-          if (kuryeLoggedIn || restoranLoggedIn) {
-            localStorage.removeItem('kurye_logged_in')
-            localStorage.removeItem('kurye_logged_courier_id')
-            localStorage.removeItem('restoran_logged_in')
-            localStorage.removeItem('restoran_logged_restaurant_id')
-          }
-          
+          // Admin oturumu var, BURADA KAL!
           setIsLoggedIn(true)
-          setIsCheckingAuth(false)
-          return // ÖNEMLİ: Burada dur, alt satırlara gitme!
+        } else {
+          // Admin oturumu yok, giriş ekranını göster
+          setIsLoggedIn(false)
         }
-
-        // ⚠️ Admin oturumu yoksa diğer kontrollere geç
-
-        // 2. ÖNCELİK: KURYE
-        if (kuryeLoggedIn === 'true') {
-          setIsCheckingAuth(false)
-          router.push('/kurye')
-          return
-        }
-
-        // 3. ÖNCELİK: RESTORAN
-        if (restoranLoggedIn === 'true') {
-          setIsCheckingAuth(false)
-          router.push('/restoran')
-          return
-        }
-
-        // 4. HİÇBİR OTURUM YOK: Giriş ekranını göster
-        setIsLoggedIn(false)
-        setIsCheckingAuth(false)
-
       } catch (error) {
         console.error('Auth kontrolü hatası:', error)
         setIsLoggedIn(false)
+      } finally {
         setIsCheckingAuth(false)
       }
     }
 
     checkAuthAndRedirect()
-  }, [isMounted, router])
+  }, [isMounted])
 
   // Bildirim sesi çal - Sadece yeni paket INSERT'inde
   const playNotificationSound = () => {
@@ -585,13 +555,7 @@ export default function Home() {
     if (typeof window === 'undefined') return
     
     if (loginForm.username === 'okanadmin' && loginForm.password === 'okanbaba44') {
-      // Diğer oturumları temizle
-      localStorage.removeItem('kurye_logged_in')
-      localStorage.removeItem('kurye_logged_courier_id')
-      localStorage.removeItem('restoran_logged_in')
-      localStorage.removeItem('restoran_logged_restaurant_id')
-      
-      // Admin oturumunu başlat
+      // Sadece admin oturumunu başlat, diğerlerine dokunma
       localStorage.setItem('admin_logged_in', 'true')
       setIsLoggedIn(true)
       setErrorMessage('')

@@ -163,11 +163,7 @@ export default function RestoranPage() {
       }
       
       if (data && data.password === loginForm.password) {
-        // Sadece kurye oturumunu temizle (admin oturumuna DOKUNMA!)
-        localStorage.removeItem('kurye_logged_in')
-        localStorage.removeItem('kurye_logged_courier_id')
-        
-        // Restoran oturumunu başlat
+        // Sadece restoran oturumunu başlat, diğerlerine dokunma
         localStorage.setItem(LOGIN_STORAGE_KEY, 'true')
         localStorage.setItem(LOGIN_RESTAURANT_ID_KEY, data.id)
         setIsLoggedIn(true)
