@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from './lib/supabase'
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 interface Restaurant {
   id: number
@@ -1701,8 +1702,26 @@ export default function Home() {
       restaurantRevenues[name] = (restaurantRevenues[name] || 0) + (pkg.amount || 0)
     })
     
-    const maxPackets = Math.max(...Object.values(restaurantPacketCounts), 1)
-    const maxRevenue = Math.max(...Object.values(restaurantRevenues), 1)
+    // Recharts için veri formatı - Pie Chart
+    const pieChartData = Object.entries(restaurantPacketCounts)
+      .sort(([,a], [,b]) => b - a)
+      .map(([name, count]) => ({
+        name,
+        value: count
+      }))
+    
+    // Recharts için veri formatı - Bar Chart
+    const barChartData = Object.entries(restaurantRevenues)
+      .sort(([,a], [,b]) => b - a)
+      .map(([name, revenue]) => ({
+        name,
+        ciro: revenue
+      }))
+    
+    // Mergen Teknoloji teması renkleri
+    const COLORS = ['#3B82F6', '#06B6D4', '#475569', '#0EA5E9', '#64748B', '#0284C7', '#334155']
+    
+    const hasData = filteredPackages.length > 0
     
     return (
       <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
@@ -1720,50 +1739,94 @@ export default function Home() {
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Restoran Paket Dağılımı */}
+          {/* Restoran Paket Dağılımı - Pie Chart */}
           <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border dark:border-slate-600">
             <h3 className="text-lg font-bold mb-4">📦 Restoran Paket Dağılımı</h3>
-            <div className="space-y-3">
-              {Object.entries(restaurantPacketCounts)
-                .sort(([,a], [,b]) => b - a)
-                .map(([name, count]) => (
-                  <div key={name}>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="font-medium">{name}</span>
-                      <span className="font-bold text-blue-600">{count} paket</span>
-                    </div>
-                    <div className="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-3">
-                      <div 
-                        className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all"
-                        style={{ width: `${(count / maxPackets) * 100}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                ))}
-            </div>
+            {!hasData ? (
+              <div className="flex items-center justify-center h-64 text-slate-500">
+                <div className="text-center">
+                  <div className="text-4xl mb-2">📊</div>
+                  <p className="text-sm">Veri bulunamadı</p>
+                </div>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={pieChartData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name}: ${percent ? (percent * 100).toFixed(0) : 0}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {pieChartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: darkMode ? '#1e293b' : '#fff',
+                      border: '1px solid #475569',
+                      borderRadius: '8px'
+                    }}
+                    formatter={(value: any) => [`${value} paket`, 'Paket Sayısı']}
+                  />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </div>
           
-          {/* Restoran Ciroları */}
+          {/* Restoran Ciroları - Bar Chart */}
           <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border dark:border-slate-600">
             <h3 className="text-lg font-bold mb-4">💰 Restoran Ciroları</h3>
-            <div className="flex items-end justify-around h-64 gap-2">
-              {Object.entries(restaurantRevenues)
-                .sort(([,a], [,b]) => b - a)
-                .map(([name, revenue]) => (
-                  <div key={name} className="flex flex-col items-center flex-1">
-                    <div className="text-xs font-bold text-green-600 mb-1">
-                      {revenue.toFixed(0)}₺
-                    </div>
-                    <div 
-                      className="w-full bg-gradient-to-t from-green-500 to-green-400 rounded-t-lg transition-all hover:from-green-600 hover:to-green-500"
-                      style={{ height: `${(revenue / maxRevenue) * 100}%`, minHeight: '20px' }}
-                    ></div>
-                    <div className="text-xs font-medium mt-2 text-center break-words w-full">
-                      {name}
-                    </div>
-                  </div>
-                ))}
-            </div>
+            {!hasData ? (
+              <div className="flex items-center justify-center h-64 text-slate-500">
+                <div className="text-center">
+                  <div className="text-4xl mb-2">📊</div>
+                  <p className="text-sm">Veri bulunamadı</p>
+                </div>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={barChartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#475569' : '#e2e8f0'} />
+                  <XAxis 
+                    dataKey="name" 
+                    angle={-45}
+                    textAnchor="end"
+                    height={80}
+                    tick={{ fill: darkMode ? '#94a3b8' : '#475569', fontSize: 12 }}
+                  />
+                  <YAxis 
+                    tick={{ fill: darkMode ? '#94a3b8' : '#475569' }}
+                    label={{ value: 'Ciro (₺)', angle: -90, position: 'insideLeft', fill: darkMode ? '#94a3b8' : '#475569' }}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: darkMode ? '#1e293b' : '#fff',
+                      border: '1px solid #475569',
+                      borderRadius: '8px'
+                    }}
+                    formatter={(value: any) => [`${value.toFixed(2)} ₺`, 'Ciro']}
+                  />
+                  <Legend />
+                  <Bar 
+                    dataKey="ciro" 
+                    fill="#10b981" 
+                    name="Ciro (₺)"
+                    label={{ 
+                      position: 'top', 
+                      fill: darkMode ? '#10b981' : '#059669',
+                      formatter: (value: any) => `${value.toFixed(0)}₺`
+                    }}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
       </div>
