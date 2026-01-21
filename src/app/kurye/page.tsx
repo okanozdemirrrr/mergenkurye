@@ -319,34 +319,43 @@ export default function KuryePage() {
   const handleUpdateStatus = async (packageId: number, nextStatus: string, additionalData = {}) => {
     if (typeof window === 'undefined') return
     
+    console.log('🔄 handleUpdateStatus çağrıldı:', { packageId, nextStatus, additionalData })
+    
     try {
       setIsUpdating(prev => new Set(prev).add(packageId))
       setErrorMessage('') // Önceki hataları temizle
       
-      const { error } = await supabase
+      console.log('📤 Supabase update başlatılıyor...')
+      const { error, data } = await supabase
         .from('packages')
         .update({ status: nextStatus, ...additionalData })
         .eq('id', packageId)
 
+      console.log('📥 Supabase response:', { error, data })
+
       if (error) {
-        console.error('Durum güncelleme hatası:', error)
+        console.error('❌ Durum güncelleme hatası:', error)
         throw error
       }
       
+      console.log('✅ Durum başarıyla güncellendi')
       setSuccessMessage('Durum güncellendi!')
       setTimeout(() => setSuccessMessage(''), 2000)
       
       // Verileri yenile
+      console.log('🔄 Veriler yenileniyor...')
       await Promise.all([
         fetchPackages(false),
         fetchDailyStats()
       ])
+      console.log('✅ Veriler yenilendi')
     } catch (error: any) {
-      console.error('handleUpdateStatus hatası:', error)
+      console.error('❌ handleUpdateStatus hatası:', error)
       setErrorMessage('Hata: ' + (error.message || 'Bilinmeyen hata'))
       setTimeout(() => setErrorMessage(''), 3000)
     } finally {
       setIsUpdating(prev => { const n = new Set(prev); n.delete(packageId); return n })
+      console.log('✅ handleUpdateStatus tamamlandı')
     }
   }
 
