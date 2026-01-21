@@ -371,31 +371,60 @@ export default function Home() {
   useEffect(() => {
     if (!isLoggedIn) return
 
-    // Supabase Realtime - Paketler için
+    // Supabase Realtime - Paketler için (tüm event'leri dinle)
     const packagesChannel = supabase
-      .channel('packages-changes')
+      .channel('admin-packages-realtime')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'packages' },
+        { 
+          event: '*', // INSERT, UPDATE, DELETE hepsini dinle
+          schema: 'public', 
+          table: 'packages' 
+        },
         (payload) => {
+          console.log('📦 Paket değişikliği:', payload.eventType, payload.new)
+          // Anında güncelle
           fetchPackages()
           fetchCouriers()
           if (activeTab === 'history') fetchDeliveredPackages()
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Paketler realtime bağlantısı kuruldu')
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ Paketler realtime bağlantı hatası, yeniden bağlanılıyor...')
+          // Otomatik yeniden bağlanma Supabase tarafından yapılır
+        } else if (status === 'TIMED_OUT') {
+          console.error('⏱️ Paketler realtime zaman aşımı')
+        }
+      })
 
-    // Supabase Realtime - Kuryeler için
+    // Supabase Realtime - Kuryeler için (tüm event'leri dinle)
     const couriersChannel = supabase
-      .channel('couriers-changes')
+      .channel('admin-couriers-realtime')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'couriers' },
+        { 
+          event: '*', // INSERT, UPDATE, DELETE hepsini dinle
+          schema: 'public', 
+          table: 'couriers' 
+        },
         (payload) => {
+          console.log('🚴 Kurye değişikliği:', payload.eventType, payload.new)
+          // Anında güncelle
           fetchCouriers()
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Kuryeler realtime bağlantısı kuruldu')
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ Kuryeler realtime bağlantı hatası, yeniden bağlanılıyor...')
+        } else if (status === 'TIMED_OUT') {
+          console.error('⏱️ Kuryeler realtime zaman aşımı')
+        }
+      })
 
     // Fallback polling - 30 saniyede bir zorunlu güncelleme
     const interval = setInterval(() => {
@@ -410,7 +439,7 @@ export default function Home() {
       supabase.removeChannel(packagesChannel)
       supabase.removeChannel(couriersChannel)
     }
-  }, [activeTab])
+  }, [activeTab, isLoggedIn])
 
   // Tarih filtresi değiştiğinde geçmiş siparişleri yeniden çek
   useEffect(() => {
