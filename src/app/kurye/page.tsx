@@ -376,38 +376,38 @@ export default function KuryePage() {
   }
 
   return (
-    <div className={`min-h-screen p-4 ${darkMode ? 'bg-slate-950 text-white' : 'bg-gray-100 text-gray-900'}`}>
-      {/* Sağ Üst Butonlar */}
+    <div className={`min-h-screen p-2 sm:p-4 pb-20 ${darkMode ? 'bg-slate-950 text-white' : 'bg-gray-100 text-gray-900'}`}>
+      {/* Sağ Üst Butonlar - Mobil Responsive */}
       {isLoggedIn && (
-        <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
+        <div className="fixed top-2 right-2 sm:top-4 sm:right-4 z-50 flex items-center gap-1 sm:gap-2">
           {/* Hız Simgesi - Leaderboard */}
           <button
             onClick={() => setShowLeaderboard(true)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg shadow-lg transition-all hover:scale-105 ${
+            className={`flex items-center gap-1 sm:gap-2 px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm rounded-lg shadow-lg transition-all active:scale-95 ${
               darkMode ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-purple-500 hover:bg-purple-600 text-white'
             }`}
             title="Günün En Hızlıları"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
-            <span className="text-sm font-medium whitespace-nowrap">Günün En Hızlıları</span>
+            <span className="hidden xs:inline font-medium whitespace-nowrap">Sıralama</span>
           </button>
           
           {/* Dark Mode Toggle */}
           <button
             onClick={() => setDarkMode(!darkMode)}
-            className={`p-2 rounded-lg shadow-lg transition-colors ${
+            className={`p-1.5 sm:p-2 rounded-lg shadow-lg transition-colors ${
               darkMode ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-white hover:bg-gray-100 text-gray-900 border border-gray-300'
             }`}
             title={darkMode ? 'Gündüz Modu' : 'Gece Modu'}
           >
-            {darkMode ? '☀️' : '🌙'}
+            <span className="text-sm sm:text-base">{darkMode ? '☀️' : '🌙'}</span>
           </button>
         </div>
       )}
 
-      {/* Fixed Çıkış Butonu - Sol Üst */}
+      {/* Fixed Çıkış Butonu - Sol Üst - Mobil Responsive */}
       {isLoggedIn && (
         <button 
           onClick={() => { 
@@ -415,25 +415,26 @@ export default function KuryePage() {
             localStorage.removeItem(LOGIN_COURIER_ID_KEY);
             window.location.href = '/kurye';
           }} 
-          className="fixed top-4 left-4 z-50 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm font-medium shadow-lg transition-colors"
+          className="fixed top-2 left-2 sm:top-4 sm:left-4 z-50 bg-red-600 hover:bg-red-700 text-white px-2 py-1.5 sm:px-3 sm:py-2 rounded-lg text-xs sm:text-sm font-medium shadow-lg transition-colors active:scale-95"
         >
-          ← Çıkış
+          <span className="hidden sm:inline">← Çıkış</span>
+          <span className="sm:hidden">←</span>
         </button>
       )}
 
-      <div className="max-w-2xl mx-auto">
-        <div className="flex justify-center items-center mb-4 pt-2">
+      <div className="max-w-2xl mx-auto px-2 sm:px-0">
+        <div className="flex justify-center items-center mb-3 sm:mb-4 pt-12 sm:pt-2">
           <img 
             src="/logo.png" 
             alt="Logo" 
-            className="w-32 h-32"
+            className="w-24 h-24 sm:w-32 sm:h-32"
           />
         </div>
 
-        {/* KURYE DURUM KONTROL TOGGLE - EN ÜSTTE */}
-        <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 mb-4">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-medium text-slate-300">Durum</span>
+        {/* KURYE DURUM KONTROL TOGGLE - Mobil Responsive */}
+        <div className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-800 mb-3 sm:mb-4">
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <span className="text-xs sm:text-sm font-medium text-slate-300">Durum</span>
             <div className="flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full ${is_active ? 'bg-green-500' : 'bg-red-500'}`}></div>
               <span className="text-xs text-slate-400">
@@ -443,7 +444,7 @@ export default function KuryePage() {
           </div>
           
           {/* Toggle Switch */}
-          <div className="flex items-center justify-center gap-3 py-2">
+          <div className="flex items-center justify-center gap-2 sm:gap-3 py-2">
             <span className={`text-xs font-medium transition-all ${!is_active ? 'text-red-400' : 'text-slate-500'}`}>
               Pasif
             </span>
@@ -472,25 +473,25 @@ export default function KuryePage() {
           </div>
         </div>
 
-        {/* İSTATİSTİKLER */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
+        {/* İSTATİSTİKLER - Mobil Responsive */}
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-3 sm:mb-4">
+          <div className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-800">
             <p className="text-slate-400 text-xs mb-1">Bugün Teslim</p>
-            <p className="text-2xl font-bold text-green-400">{deliveredCount}</p>
+            <p className="text-xl sm:text-2xl font-bold text-green-400">{deliveredCount}</p>
           </div>
           <button 
             onClick={() => setShowSummary(true)}
-            className="bg-slate-900 p-4 rounded-xl border border-slate-800 hover:border-blue-600 transition-colors text-left"
+            className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-800 hover:border-blue-600 transition-colors text-left active:scale-95"
           >
             <p className="text-slate-400 text-xs mb-1">Toplam Hesap</p>
-            <p className="text-2xl font-bold text-blue-400">{(cashTotal + cardTotal).toFixed(2)} ₺</p>
+            <p className="text-xl sm:text-2xl font-bold text-blue-400">{(cashTotal + cardTotal).toFixed(2)} ₺</p>
           </button>
         </div>
 
-        {/* TOPLAM KAZANÇ */}
-        <div className="bg-gradient-to-r from-green-900 to-emerald-900 p-4 rounded-xl border border-green-700 mb-4">
+        {/* TOPLAM KAZANÇ - Mobil Responsive */}
+        <div className="bg-gradient-to-r from-green-900 to-emerald-900 p-3 sm:p-4 rounded-xl border border-green-700 mb-3 sm:mb-4">
           <p className="text-green-300 text-xs mb-1">💰 Toplam Kazanç</p>
-          <p className="text-3xl font-bold text-green-100">{deliveredCount * 80} ₺</p>
+          <p className="text-2xl sm:text-3xl font-bold text-green-100">{deliveredCount * 80} ₺</p>
           <p className="text-xs text-green-400 mt-1">{deliveredCount} paket × 80₺</p>
         </div>
 
@@ -506,26 +507,26 @@ export default function KuryePage() {
           </div>
         )}
 
-        <div className="space-y-3">
+        <div className="space-y-2 sm:space-y-3">
           {packages.length === 0 ? (
-            <div className="text-center py-12 text-slate-500">
-              <div className="text-4xl mb-2">📦</div>
-              <p className="text-sm">Atanmış paket bulunmuyor</p>
+            <div className="text-center py-8 sm:py-12 text-slate-500">
+              <div className="text-3xl sm:text-4xl mb-2">📦</div>
+              <p className="text-xs sm:text-sm">Atanmış paket bulunmuyor</p>
             </div>
           ) : (
             <>
-              {/* Paket Sayısı Göstergesi */}
-              <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
-                <p className="text-sm text-slate-400">
+              {/* Paket Sayısı Göstergesi - Mobil Responsive */}
+              <div className="bg-slate-900 p-2 sm:p-3 rounded-xl border border-slate-800">
+                <p className="text-xs sm:text-sm text-slate-400">
                   <span className="font-bold text-white">{packages.length}</span> aktif paket
                 </p>
               </div>
 
-              {/* Paket Listesi */}
+              {/* Paket Listesi - Mobil Responsive */}
               {packages.map((pkg, index) => (
-                <div key={pkg.id} className="bg-slate-900 p-4 rounded-xl border border-slate-800">
+                <div key={pkg.id} className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-800">
                   {/* Üst Kısım */}
-                  <div className="flex justify-between items-start mb-3">
+                  <div className="flex justify-between items-start mb-2 sm:mb-3">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-xs text-slate-500">#{index + 1}</span>
@@ -533,9 +534,9 @@ export default function KuryePage() {
                           {pkg.restaurant?.name || 'Restoran'}
                         </span>
                       </div>
-                      <p className="font-medium text-white">{pkg.customer_name}</p>
+                      <p className="font-medium text-sm sm:text-base text-white">{pkg.customer_name}</p>
                       
-                      {/* Restoran bilgileri - assigned, picking_up, on_the_way durumlarında göster */}
+                      {/* Restoran bilgileri - Mobil Responsive */}
                       {(pkg.status === 'assigned' || pkg.status === 'picking_up' || pkg.status === 'on_the_way') && pkg.restaurant?.phone && (
                         <div className="mt-2 p-2 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
                           <div className="flex items-start gap-2 mb-1">
@@ -544,7 +545,7 @@ export default function KuryePage() {
                               <p className="text-xs font-medium text-orange-900 dark:text-orange-300">
                                 {pkg.restaurant.name}
                               </p>
-                              <p className="text-xs text-orange-700 dark:text-orange-400">
+                              <p className="text-xs text-orange-700 dark:text-orange-400 break-all">
                                 📞 {pkg.restaurant.phone}
                               </p>
                               {pkg.restaurant.address && (
@@ -556,7 +557,7 @@ export default function KuryePage() {
                           </div>
                           <a 
                             href={`tel:${pkg.restaurant.phone}`}
-                            className="block w-full py-1.5 px-3 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded transition-colors text-center mt-2"
+                            className="block w-full py-1.5 px-3 bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white text-xs sm:text-sm font-medium rounded transition-colors text-center mt-2"
                           >
                             📞 Restoranı Ara
                           </a>
@@ -680,13 +681,13 @@ export default function KuryePage() {
         </div>
       </div>
 
-      {/* HESAP ÖZETİ MODAL */}
+      {/* HESAP ÖZETİ MODAL - Mobil Responsive */}
       {showSummary && (
-        <div className="fixed inset-0 bg-black/80 z-50 p-4 overflow-y-auto flex items-center justify-center">
-          <div className="max-w-md w-full bg-slate-900 rounded-xl p-4 border border-slate-800">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-bold text-white">Günlük Rapor</h2>
-              <button onClick={() => setShowSummary(false)} className="text-slate-400 hover:text-white text-2xl">×</button>
+        <div className="fixed inset-0 bg-black/80 z-50 p-2 sm:p-4 overflow-y-auto flex items-center justify-center">
+          <div className="max-w-md w-full bg-slate-900 rounded-xl p-3 sm:p-4 border border-slate-800">
+            <div className="flex justify-between items-center mb-3 sm:mb-4">
+              <h2 className="text-base sm:text-lg font-bold text-white">Günlük Rapor</h2>
+              <button onClick={() => setShowSummary(false)} className="text-slate-400 hover:text-white text-2xl active:scale-90">×</button>
             </div>
             
             <SummaryList courierId={selectedCourierId!} calculateDuration={calculateDuration} />
@@ -707,25 +708,25 @@ export default function KuryePage() {
         </div>
       )}
 
-      {/* GÜNÜN EN HIZLILARI MODAL */}
+      {/* GÜNÜN EN HIZLILARI MODAL - Mobil Responsive */}
       {showLeaderboard && (
-        <div className="fixed inset-0 bg-black/80 z-50 p-4 overflow-y-auto flex items-center justify-center">
-          <div className="max-w-md w-full bg-gradient-to-br from-purple-900 to-indigo-900 rounded-xl p-6 border border-purple-700">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-purple-100 flex items-center gap-2">
-                🚀 Günün En Hızlıları
+        <div className="fixed inset-0 bg-black/80 z-50 p-2 sm:p-4 overflow-y-auto flex items-center justify-center">
+          <div className="max-w-md w-full bg-gradient-to-br from-purple-900 to-indigo-900 rounded-xl p-4 sm:p-6 border border-purple-700">
+            <div className="flex justify-between items-center mb-3 sm:mb-4">
+              <h2 className="text-lg sm:text-xl font-bold text-purple-100 flex items-center gap-2">
+                🚀 <span className="hidden xs:inline">Günün En Hızlıları</span><span className="xs:hidden">Sıralama</span>
               </h2>
               <button 
                 onClick={() => setShowLeaderboard(false)} 
-                className="text-purple-300 hover:text-white text-2xl"
+                className="text-purple-300 hover:text-white text-2xl active:scale-90"
               >
                 ×
               </button>
             </div>
             
-            {/* Kendi Sıralaman */}
+            {/* Kendi Sıralaman - Mobil Responsive */}
             {myRank !== null && (
-              <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-3 mb-4">
+              <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-2 sm:p-3 mb-3 sm:mb-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-yellow-200">🏆 Güncel Sıralaman:</span>
                   <span className="text-xl font-bold text-yellow-100">
