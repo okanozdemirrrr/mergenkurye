@@ -611,7 +611,7 @@ export default function Home() {
       <img 
         src="/logo.png" 
         alt="Logo" 
-        className="fixed top-2 right-4 z-50 w-36 h-36"
+        className="fixed -top-10 right-4 z-50 w-36 h-36"
       />
 
       {/* Açılır Menü */}
