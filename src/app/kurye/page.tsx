@@ -317,20 +317,34 @@ export default function KuryePage() {
   }, [isLoggedIn])
 
   const handleUpdateStatus = async (packageId: number, nextStatus: string, additionalData = {}) => {
+    if (typeof window === 'undefined') return
+    
     try {
       setIsUpdating(prev => new Set(prev).add(packageId))
+      setErrorMessage('') // Önceki hataları temizle
+      
       const { error } = await supabase
         .from('packages')
         .update({ status: nextStatus, ...additionalData })
         .eq('id', packageId)
 
-      if (error) throw error
+      if (error) {
+        console.error('Durum güncelleme hatası:', error)
+        throw error
+      }
+      
       setSuccessMessage('Durum güncellendi!')
       setTimeout(() => setSuccessMessage(''), 2000)
-      await fetchPackages()
-      await fetchDailyStats()
+      
+      // Verileri yenile
+      await Promise.all([
+        fetchPackages(false),
+        fetchDailyStats()
+      ])
     } catch (error: any) {
-      setErrorMessage('Hata: ' + error.message)
+      console.error('handleUpdateStatus hatası:', error)
+      setErrorMessage('Hata: ' + (error.message || 'Bilinmeyen hata'))
+      setTimeout(() => setErrorMessage(''), 3000)
     } finally {
       setIsUpdating(prev => { const n = new Set(prev); n.delete(packageId); return n })
     }
@@ -617,12 +631,12 @@ export default function KuryePage() {
                     </span>
                   </div>
 
-                  {/* Aksiyon Butonları */}
+                  {/* Aksiyon Butonları - Mobil Responsive */}
                   {pkg.status === 'assigned' && (
                     <button 
                       disabled={isUpdating.has(pkg.id)}
                       onClick={() => handleUpdateStatus(pkg.id, 'picking_up')}
-                      className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full py-2 sm:py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm sm:text-base font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isUpdating.has(pkg.id) ? 'İşleniyor...' : 'Kabul Et'}
                     </button>
@@ -632,7 +646,7 @@ export default function KuryePage() {
                     <button 
                       disabled={isUpdating.has(pkg.id)}
                       onClick={() => handleUpdateStatus(pkg.id, 'on_the_way', { picked_up_at: new Date().toISOString() })}
-                      className="w-full py-2.5 bg-yellow-600 hover:bg-yellow-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full py-2 sm:py-2.5 bg-yellow-600 hover:bg-yellow-700 active:bg-yellow-800 text-white text-sm sm:text-base font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isUpdating.has(pkg.id) ? 'İşleniyor...' : 'Paketi Aldım'}
                     </button>
