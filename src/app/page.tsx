@@ -806,7 +806,7 @@ export default function Home() {
 
       {/* YENİ SİPARİŞ POPUP BİLDİRİMİ */}
       {showNotificationPopup && newOrderDetails && (
-        <div className="fixed top-4 right-4 z-[100] animate-bounce">
+        <div className="fixed top-4 right-4 z-[100]">
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border-4 border-red-500 p-6 max-w-md relative">
             {/* Kırmızı Alarm İkonu */}
             <div className="absolute -top-3 -right-3 w-12 h-12 bg-red-500 rounded-full flex items-center justify-center animate-pulse">
