@@ -161,9 +161,15 @@ export default function Home() {
   // Bildirim sesi çal
   const playNotificationSound = () => {
     try {
-      const audio = new Audio('/notification.mp3')
+      console.log('🔊 Bildirim sesi çalınıyor...')
+      // Cache bypass için timestamp ekle
+      const audio = new Audio(`/notification.mp3?t=${Date.now()}`)
       audio.volume = 0.7
-      audio.play()
+      audio.play().then(() => {
+        console.log('✅ Ses başarıyla çalındı')
+      }).catch((err) => {
+        console.error('❌ Ses çalma hatası:', err)
+      })
     } catch (err) {
       console.error('❌ Ses hatası:', err)
     }
@@ -196,7 +202,9 @@ export default function Home() {
       const currentIds = new Set(transformedData.map(p => p.id))
       const newPackages = transformedData.filter(p => !lastPackageIds.has(p.id))
       
+      // Bildirim: Sadece lastPackageIds dolu ise (ilk yükleme değilse) ve yeni paket varsa
       if (newPackages.length > 0 && lastPackageIds.size > 0) {
+        console.log('🔔 Yeni paket bildirimi:', newPackages.length, 'adet')
         playNotificationSound()
         setNewOrderDetails(newPackages[0])
         setShowNotificationPopup(true)
