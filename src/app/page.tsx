@@ -76,7 +76,7 @@ export default function Home() {
 
   // KATKI HİYERARŞİ İLE SESSION KONTROLÜ VE YÖNLENDİRME
   useEffect(() => {
-    const checkAuthAndRedirect = async () => {
+    const checkAuthAndRedirect = () => {
       if (typeof window === 'undefined') return
 
       try {
@@ -90,21 +90,21 @@ export default function Home() {
         console.log('🔍 Oturum Kontrolü:', { adminLoggedIn, kuryeLoggedIn, restoranLoggedIn })
 
         // KATKI HİYERARŞİ: Admin > Kurye > Restoran
+        // ÖNEMLI: Admin oturumu varsa, diğer oturumları temizle ve admin panelinde kal
         
         // 1. ÖNCELİK: ADMIN
         if (adminLoggedIn === 'true') {
           console.log('✅ Admin oturumu bulundu - Admin panelinde kalınıyor')
-          // Diğer oturumları temizle (çakışma önleme)
-          if (kuryeLoggedIn) {
+          
+          // Diğer oturumları temizle (admin her zaman öncelikli)
+          if (kuryeLoggedIn === 'true' || restoranLoggedIn === 'true') {
+            console.log('⚠️ Admin oturumu varken diğer oturumlar temizleniyor')
             localStorage.removeItem('kurye_logged_in')
             localStorage.removeItem('kurye_logged_courier_id')
-            console.log('🧹 Kurye oturumu temizlendi')
-          }
-          if (restoranLoggedIn) {
             localStorage.removeItem('restoran_logged_in')
             localStorage.removeItem('restoran_logged_restaurant_id')
-            console.log('🧹 Restoran oturumu temizlendi')
           }
+          
           setIsLoggedIn(true)
           setIsCheckingAuth(false)
           return
@@ -113,16 +113,6 @@ export default function Home() {
         // 2. ÖNCELİK: KURYE
         if (kuryeLoggedIn === 'true') {
           console.log('✅ Kurye oturumu bulundu - Kurye paneline yönlendiriliyor')
-          // Diğer oturumları temizle (çakışma önleme)
-          if (adminLoggedIn) {
-            localStorage.removeItem('admin_logged_in')
-            console.log('🧹 Admin oturumu temizlendi')
-          }
-          if (restoranLoggedIn) {
-            localStorage.removeItem('restoran_logged_in')
-            localStorage.removeItem('restoran_logged_restaurant_id')
-            console.log('🧹 Restoran oturumu temizlendi')
-          }
           router.push('/kurye')
           return
         }
@@ -130,16 +120,6 @@ export default function Home() {
         // 3. ÖNCELİK: RESTORAN
         if (restoranLoggedIn === 'true') {
           console.log('✅ Restoran oturumu bulundu - Restoran paneline yönlendiriliyor')
-          // Diğer oturumları temizle (çakışma önleme)
-          if (adminLoggedIn) {
-            localStorage.removeItem('admin_logged_in')
-            console.log('🧹 Admin oturumu temizlendi')
-          }
-          if (kuryeLoggedIn) {
-            localStorage.removeItem('kurye_logged_in')
-            localStorage.removeItem('kurye_logged_courier_id')
-            console.log('🧹 Kurye oturumu temizlendi')
-          }
           router.push('/restoran')
           return
         }
@@ -156,7 +136,7 @@ export default function Home() {
     }
 
     checkAuthAndRedirect()
-  }, [router])
+  }, [])
 
   // Bildirim sesi çal
   const playNotificationSound = () => {
