@@ -57,6 +57,8 @@ export default function RestoranPage() {
   const [statisticsTab, setStatisticsTab] = useState<'packages' | 'revenue'>('packages')
   const [statisticsFilter, setStatisticsFilter] = useState<'daily' | 'weekly' | 'monthly'>('daily')
   const [statisticsData, setStatisticsData] = useState<any[]>([])
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
 
   // Tarih ve saat formatı
   const formatDateTime = (dateString?: string) => {
@@ -97,14 +99,16 @@ export default function RestoranPage() {
 
   // İstatistik verilerini çek
   const fetchStatisticsData = async () => {
-    if (!selectedRestaurantId) return
+    if (!selectedRestaurantId || !startDate || !endDate) return
 
     try {
-      // Tüm paketleri çek (created_at'e göre)
+      // Seçilen tarih aralığındaki paketleri çek
       const { data, error } = await supabase
         .from('packages')
         .select('created_at, amount, status')
         .eq('restaurant_id', selectedRestaurantId)
+        .gte('created_at', new Date(startDate).toISOString())
+        .lte('created_at', new Date(endDate + 'T23:59:59').toISOString())
         .order('created_at', { ascending: true })
 
       if (error) throw error
@@ -133,7 +137,7 @@ export default function RestoranPage() {
           // Haftalık: Haftanın başlangıç tarihini bul
           const dayOfWeek = date.getDay()
           const diff = date.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1)
-          const weekStart = new Date(date.setDate(diff))
+          const weekStart = new Date(date.getFullYear(), date.getMonth(), diff)
           const weekEnd = new Date(weekStart)
           weekEnd.setDate(weekStart.getDate() + 6)
 
@@ -175,12 +179,12 @@ export default function RestoranPage() {
     }
   }
 
-  // İstatistikler açıldığında veya filtre değiştiğinde veri çek
+  // İstatistikler açıldığında veya filtre/tarih değiştiğinde veri çek
   useEffect(() => {
-    if (showStatistics && selectedRestaurantId) {
+    if (showStatistics && selectedRestaurantId && startDate && endDate) {
       fetchStatisticsData()
     }
-  }, [showStatistics, statisticsFilter, selectedRestaurantId])
+  }, [showStatistics, statisticsFilter, selectedRestaurantId, startDate, endDate])
 
   // Build-safe mount kontrolü
 
@@ -607,11 +611,34 @@ export default function RestoranPage() {
               </button>
             </div>
 
-            {/* Filtre Butonları */}
+            {/* Tarih Aralığı Seçimi */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div>
+                <label className="block text-sm text-slate-400 mb-2">Başlangıç Tarihi</label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-blue-500 outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-slate-400 mb-2">Bitiş Tarihi</label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-blue-500 outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Görünüm Butonları */}
             <div className="flex gap-2 mb-6">
               <button
                 onClick={() => setStatisticsFilter('daily')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                disabled={!startDate || !endDate}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                   statisticsFilter === 'daily'
                     ? 'bg-purple-600 text-white'
                     : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
@@ -621,7 +648,8 @@ export default function RestoranPage() {
               </button>
               <button
                 onClick={() => setStatisticsFilter('weekly')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                disabled={!startDate || !endDate}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                   statisticsFilter === 'weekly'
                     ? 'bg-purple-600 text-white'
                     : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
@@ -631,7 +659,8 @@ export default function RestoranPage() {
               </button>
               <button
                 onClick={() => setStatisticsFilter('monthly')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                disabled={!startDate || !endDate}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                   statisticsFilter === 'monthly'
                     ? 'bg-purple-600 text-white'
                     : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
@@ -643,9 +672,13 @@ export default function RestoranPage() {
 
             {/* Grafik */}
             <div className="bg-slate-800/50 rounded-lg p-4" style={{ height: '400px' }}>
-              {statisticsData.length === 0 ? (
+              {!startDate || !endDate ? (
                 <div className="flex items-center justify-center h-full text-slate-400">
-                  Veri bulunamadı
+                  Lütfen tarih aralığı seçin
+                </div>
+              ) : statisticsData.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-slate-400">
+                  Seçilen tarih aralığında veri bulunamadı
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
