@@ -562,7 +562,7 @@ export default function Home() {
             <img 
               src="/logo.png" 
               alt="Logo" 
-              className="w-48 h-48 mx-auto mb-4"
+              className="w-64 h-64 mx-auto mb-4"
             />
             <h1 className="text-2xl font-bold text-white mb-2">
               Admin Girişi
