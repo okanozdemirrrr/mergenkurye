@@ -351,7 +351,11 @@ export default function RestoranPage() {
 
       {/* Fixed Çıkış Butonu - Sol Üst */}
       <button 
-        onClick={() => { localStorage.clear(); window.location.reload(); }} 
+        onClick={() => { 
+          localStorage.removeItem(LOGIN_STORAGE_KEY);
+          localStorage.removeItem(LOGIN_RESTAURANT_ID_KEY);
+          window.location.href = '/restoran';
+        }} 
         className="fixed top-4 left-4 z-50 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm font-medium shadow-lg transition-colors"
       >
         ← Çıkış

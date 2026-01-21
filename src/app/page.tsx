@@ -766,7 +766,10 @@ export default function Home() {
 
               {/* Çıkış Butonu */}
               <button 
-                onClick={() => { localStorage.clear(); window.location.reload(); }} 
+                onClick={() => { 
+                  localStorage.removeItem('admin_logged_in');
+                  window.location.href = '/';
+                }} 
                 className="w-full mt-8 bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-lg font-medium transition-colors"
               >
                 ← Çıkış Yap
