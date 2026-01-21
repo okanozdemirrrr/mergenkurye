@@ -159,32 +159,12 @@ export default function Home() {
 
   const fetchDeliveredPackages = async () => {
     try {
-      let query = supabase
+      // TÜM delivered paketleri çek (filtresiz)
+      const { data, error } = await supabase
         .from('packages')
         .select('*, restaurants(*), couriers(*)')
         .eq('status', 'delivered')
         .order('delivered_at', { ascending: false })
-
-      // Tarih filtresine göre sorgu ekle
-      if (dateFilter !== 'all') {
-        const now = new Date()
-        let startDate = new Date()
-
-        if (dateFilter === 'today') {
-          // Son 24 saat
-          startDate.setHours(now.getHours() - 24)
-        } else if (dateFilter === 'week') {
-          // Son 7 gün
-          startDate.setDate(now.getDate() - 7)
-        } else if (dateFilter === 'month') {
-          // Son 30 gün
-          startDate.setDate(now.getDate() - 30)
-        }
-
-        query = query.gte('delivered_at', startDate.toISOString())
-      }
-
-      const { data, error } = await query
 
       if (error) throw error
 
@@ -196,9 +176,10 @@ export default function Home() {
         couriers: undefined
       }))
 
+      console.log('✅ Tüm Delivered Paketler Yüklendi:', transformedData.length)
       setDeliveredPackages(transformedData)
     } catch (error: any) {
-      console.error('Geçmiş siparişler yüklenirken hata:', error.message)
+      console.error('❌ Geçmiş siparişler yüklenirken hata:', error.message)
     }
   }
 
@@ -370,7 +351,7 @@ export default function Home() {
       fetchPackages().then(() => {
         fetchCouriers()
         fetchRestaurants()
-        if (activeTab === 'history') fetchDeliveredPackages()
+        fetchDeliveredPackages() // Her zaman çek, tüm sekmeler için gerekli
         setIsLoading(false)
       })
     }
@@ -390,7 +371,7 @@ export default function Home() {
           console.log('📦 Paket değişikliği yakalandı!', payload)
           fetchPackages() // Değişiklik geldiği an veriyi tazele
           fetchCouriers() // Kurye istatistiklerini de güncelle
-          if (activeTab === 'history') fetchDeliveredPackages()
+          fetchDeliveredPackages() // Teslim edilen paketleri de güncelle
         }
       )
       .on(
@@ -416,7 +397,7 @@ export default function Home() {
     const interval = setInterval(() => {
       fetchPackages()
       fetchCouriers()
-      if (activeTab === 'history') fetchDeliveredPackages()
+      fetchDeliveredPackages() // Her zaman güncelle
     }, 30000)
 
     // Cleanup
@@ -426,13 +407,6 @@ export default function Home() {
       console.log('🔌 Realtime bağlantısı kapatıldı')
     }
   }, [isLoggedIn, activeTab])
-
-  // Tarih filtresi değiştiğinde geçmiş siparişleri yeniden çek
-  useEffect(() => {
-    if (activeTab === 'history') {
-      fetchDeliveredPackages()
-    }
-  }, [dateFilter])
 
   // Kurye modal tarih filtresi değiştiğinde yeniden çek
   useEffect(() => {
@@ -1124,10 +1098,32 @@ export default function Home() {
   }
 
   function HistoryTab() {
-    // Toplam tutar hesapla
-    const totalAmount = deliveredPackages.reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
-    const cashAmount = deliveredPackages.filter(p => p.payment_method === 'cash').reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
-    const cardAmount = deliveredPackages.filter(p => p.payment_method === 'card').reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
+    // Client-side filtreleme
+    const getFilteredHistory = () => {
+      if (dateFilter === 'all') return deliveredPackages
+      
+      const now = new Date()
+      let startDate = new Date()
+      
+      if (dateFilter === 'today') {
+        startDate.setHours(now.getHours() - 24)
+      } else if (dateFilter === 'week') {
+        startDate.setDate(now.getDate() - 7)
+      } else if (dateFilter === 'month') {
+        startDate.setDate(now.getDate() - 30)
+      }
+      
+      return deliveredPackages.filter(pkg => 
+        pkg.delivered_at && new Date(pkg.delivered_at) >= startDate
+      )
+    }
+    
+    const filteredHistory = getFilteredHistory()
+    
+    // Toplam tutar hesapla (filtrelenmiş veriden)
+    const totalAmount = filteredHistory.reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
+    const cashAmount = filteredHistory.filter(p => p.payment_method === 'cash').reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
+    const cardAmount = filteredHistory.filter(p => p.payment_method === 'card').reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
 
     return (
       <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
@@ -1156,7 +1152,7 @@ export default function Home() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl">
             <div className="text-sm text-blue-600 dark:text-blue-400 font-medium">Toplam Sipariş</div>
-            <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">{deliveredPackages.length}</div>
+            <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">{filteredHistory.length}</div>
           </div>
           <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl">
             <div className="text-sm text-green-600 dark:text-green-400 font-medium">Toplam Tutar</div>
@@ -1185,14 +1181,14 @@ export default function Home() {
               </tr>
             </thead>
             <tbody>
-              {deliveredPackages.length === 0 ? (
+              {filteredHistory.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-center py-8 text-slate-500">
                     Bu tarih aralığında sipariş bulunamadı.
                   </td>
                 </tr>
               ) : (
-                deliveredPackages.map(pkg => (
+                filteredHistory.map(pkg => (
                   <tr key={pkg.id} className="border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50">
                     <td className="py-3 px-4">
                       <div className="text-sm">
