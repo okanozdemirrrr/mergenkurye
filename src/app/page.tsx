@@ -76,7 +76,6 @@ export default function Home() {
   const [showNotificationPopup, setShowNotificationPopup] = useState(false)
   const [newOrderDetails, setNewOrderDetails] = useState<Package | null>(null)
   const [dateFilter, setDateFilter] = useState<'today' | 'week' | 'month' | 'all'>('all')
-  const [courierDateFilter, setCourierDateFilter] = useState<'today' | 'week' | 'month' | 'all'>('all')
   const [courierStartDate, setCourierStartDate] = useState('')
   const [courierEndDate, setCourierEndDate] = useState('')
   const [showMenu, setShowMenu] = useState(false)
@@ -907,7 +906,7 @@ export default function Home() {
     if (showCourierModal && selectedCourierId) {
       fetchCourierOrders(selectedCourierId)
     }
-  }, [courierDateFilter])
+  }, [showCourierModal, selectedCourierId])
 
   const fetchRestaurants = async () => {
     const { data } = await supabase.from('restaurants').select('id, name, phone, address').order('name', { ascending: true })
@@ -1018,7 +1017,7 @@ export default function Home() {
     if (selectedCourierId && courierStartDate && courierEndDate) {
       fetchCourierOrders(selectedCourierId)
     }
-  }, [courierStartDate, courierEndDate])
+  }, [selectedCourierId, courierStartDate, courierEndDate])
 
   // Teslimat süresini hesapla (dakika)
   const calculateDeliveryDuration = (pickedUpAt?: string, deliveredAt?: string) => {
@@ -1753,7 +1752,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto admin-scrollbar">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b dark:border-slate-700">
@@ -1975,7 +1974,7 @@ export default function Home() {
               </div>
 
               {/* Modal Content */}
-              <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+              <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)] admin-scrollbar">
                 {/* Kasa Özeti */}
                 {selectedCourierOrders.length > 0 && (
                   <div className="mb-6">
@@ -2041,7 +2040,7 @@ export default function Home() {
                       Bu kurye henüz sipariş teslim etmemiş.
                     </div>
                   ) : (
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto admin-scrollbar">
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
@@ -2154,7 +2153,7 @@ export default function Home() {
         {/* GÜN SONU MODAL */}
         {showEndOfDayModal && selectedCourierId && (
           <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto admin-scrollbar">
               {/* Modal Header */}
               <div className="p-6 border-b border-slate-200 dark:border-slate-700">
                 <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
@@ -2363,7 +2362,7 @@ export default function Home() {
         {/* BORÇ ÖDE MODAL */}
         {showPayDebtModal && selectedCourierId && (
           <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto admin-scrollbar">
               {/* Modal Header */}
               <div className="p-6 border-b border-slate-200 dark:border-slate-700">
                 <h3 className="text-2xl font-bold text-slate-900 dark:text-white">

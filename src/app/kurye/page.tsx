@@ -929,13 +929,18 @@ export default function KuryePage() {
                       </div>
                     )}
 
-                    {/* Teslimat Zamanı */}
-                    {pkg.delivered_at && (
-                      <div className="mt-2 text-xs text-slate-500 text-center">
-                        🕐 {new Date(pkg.delivered_at).toLocaleTimeString('tr-TR', { 
-                          hour: '2-digit', 
-                          minute: '2-digit' 
-                        })}
+                    {/* Teslimat Zamanı Mesajı */}
+                    {pkg.picked_up_at && pkg.delivered_at && (
+                      <div className="mt-2 p-2 bg-blue-900/20 rounded-lg border border-blue-800">
+                        <p className="text-xs text-blue-300 text-center">
+                          ⏰ {new Date(pkg.picked_up_at).toLocaleTimeString('tr-TR', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })} saatinde kabul ettiğiniz bu paketi {new Date(pkg.delivered_at).toLocaleTimeString('tr-TR', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })} saatinde müşteriye ulaştırdınız
+                        </p>
                       </div>
                     )}
                   </div>
