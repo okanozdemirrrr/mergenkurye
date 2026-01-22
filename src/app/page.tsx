@@ -27,6 +27,7 @@ interface Package {
   assigned_at?: string
   picked_up_at?: string
   delivered_at?: string
+  settled_at?: string | null
   courier_name?: string
 }
 
@@ -513,6 +514,7 @@ export default function Home() {
       
       // 5. İşlem kaydet
       const transactionDate = courierEndDate // Bitiş tarihini işlem tarihi olarak kullan
+      const settledTimestamp = new Date().toISOString() // Şu anki zaman damgası
       
       if (difference < 0) {
         // AÇIK VAR - Yeni borç oluştur
@@ -561,6 +563,16 @@ export default function Home() {
         
         if (debtError) throw debtError
         
+        // Seçilen tarih aralığındaki paketleri "kapatıldı" olarak işaretle
+        await supabase
+          .from('packages')
+          .update({ settled_at: settledTimestamp })
+          .eq('courier_id', selectedCourierId)
+          .eq('status', 'delivered')
+          .gte('delivered_at', start.toISOString())
+          .lte('delivered_at', end.toISOString())
+          .is('settled_at', null) // Sadece henüz kapatılmamış olanları
+        
         // Transaction kaydı
         await supabase
           .from('debt_transactions')
@@ -605,6 +617,16 @@ export default function Home() {
             remainingPayment = 0
           }
         }
+        
+        // Seçilen tarih aralığındaki paketleri "kapatıldı" olarak işaretle
+        await supabase
+          .from('packages')
+          .update({ settled_at: settledTimestamp })
+          .eq('courier_id', selectedCourierId)
+          .eq('status', 'delivered')
+          .gte('delivered_at', start.toISOString())
+          .lte('delivered_at', end.toISOString())
+          .is('settled_at', null) // Sadece henüz kapatılmamış olanları
         
         // Transaction kaydı
         await supabase
@@ -886,6 +908,7 @@ export default function Home() {
 
   // Kasa özetini hesapla
   const calculateCashSummary = (orders: Package[]) => {
+    // Nakit ve Kart Toplam: Tüm paketler (settled olsun olmasın)
     const cashTotal = orders
       .filter(order => order.payment_method === 'cash')
       .reduce((sum, order) => sum + (order.amount || 0), 0)
@@ -894,10 +917,19 @@ export default function Home() {
       .filter(order => order.payment_method === 'card')
       .reduce((sum, order) => sum + (order.amount || 0), 0)
     
+    // Genel Toplam: Sadece henüz kapatılmamış paketler (settled_at NULL)
+    const unsettledCashTotal = orders
+      .filter(order => order.payment_method === 'cash' && !order.settled_at)
+      .reduce((sum, order) => sum + (order.amount || 0), 0)
+    
+    const unsettledCardTotal = orders
+      .filter(order => order.payment_method === 'card' && !order.settled_at)
+      .reduce((sum, order) => sum + (order.amount || 0), 0)
+    
     return {
-      cashTotal,
-      cardTotal,
-      grandTotal: cashTotal + cardTotal
+      cashTotal, // Tüm nakit (bilgi amaçlı)
+      cardTotal, // Tüm kart (bilgi amaçlı)
+      grandTotal: unsettledCashTotal + unsettledCardTotal // Sadece kapatılmamış paketler
     }
   }
 
@@ -2028,6 +2060,9 @@ export default function Home() {
                         <p className="text-xs text-green-600 dark:text-green-500 mt-1">
                           {selectedCourierOrders.filter(o => o.payment_method === 'cash').length} nakit sipariş ({courierStartDate} - {courierEndDate})
                         </p>
+                        <p className="text-xs text-green-700 dark:text-green-600 mt-2 font-medium">
+                          ℹ️ Bu değer değişmez (bilgi amaçlı)
+                        </p>
                       </div>
 
                       {/* Geçmiş Borçlar */}
@@ -2068,6 +2103,9 @@ export default function Home() {
                         </div>
                         <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
                           Seçilen tarih aralığı nakit + Geçmiş borçlar
+                        </p>
+                        <p className="text-xs text-purple-700 dark:text-purple-500 mt-2 font-medium">
+                          ⚡ Gün sonu alındığında bu değer sıfırlanır
                         </p>
                       </div>
                     </div>
