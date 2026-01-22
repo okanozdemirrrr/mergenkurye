@@ -131,6 +131,13 @@ export default function KuryePage() {
       
       setPackages(transformed)
     } catch (error: any) {
+      // İnternet hatalarını sessizce geç
+      const errorMsg = error.message?.toLowerCase() || ''
+      if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
+        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
+        return // Eski veriler ekranda kalsın
+      }
+      
       console.error('❌ Paketler yüklenemedi:', error)
       setErrorMessage('Paketler yüklenemedi: ' + error.message)
     } finally {
@@ -160,6 +167,13 @@ export default function KuryePage() {
         setCardTotal(data.filter(p => p.payment_method === 'card').reduce((sum, p) => sum + (p.amount || 0), 0))
       }
     } catch (error: any) {
+      // İnternet hatalarını sessizce geç
+      const errorMsg = error.message?.toLowerCase() || ''
+      if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
+        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
+        return
+      }
+      
       console.error('❌ İstatistik yüklenemedi:', error)
       setErrorMessage('İstatistikler yüklenemedi: ' + error.message)
     }
@@ -183,6 +197,13 @@ export default function KuryePage() {
         setIs_active(data.is_active || false)
       }
     } catch (error: any) {
+      // İnternet hatalarını sessizce geç
+      const errorMsg = error.message?.toLowerCase() || ''
+      if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
+        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
+        return
+      }
+      
       console.error('❌ Kurye durumu alınamadı:', error)
       setErrorMessage('Kurye durumu alınamadı: ' + error.message)
     }
@@ -247,6 +268,13 @@ export default function KuryePage() {
       setMyRank(myIndex >= 0 ? myIndex + 1 : null)
 
     } catch (error: any) {
+      // İnternet hatalarını sessizce geç
+      const errorMsg = error.message?.toLowerCase() || ''
+      if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
+        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
+        return
+      }
+      
       console.error('❌ Leaderboard yüklenemedi:', error)
     }
   }

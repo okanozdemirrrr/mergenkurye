@@ -125,6 +125,8 @@ export default function Home() {
   }
 
   const fetchPackages = async () => {
+    setErrorMessage('') // Önceki hataları temizle
+    
     try {
       // Bugün (gece 00:00'dan itibaren)
       const todayStart = new Date()
@@ -169,6 +171,13 @@ export default function Home() {
       setLastPackageIds(currentIds)
       setPackages(transformedData)
     } catch (error: any) {
+      // İnternet hatalarını sessizce geç
+      const errorMsg = error.message?.toLowerCase() || ''
+      if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
+        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
+        return // Eski veriler ekranda kalsın
+      }
+      
       console.error('Siparişler yüklenirken hata:', error)
       setErrorMessage('Siparişler yüklenirken hata: ' + error.message)
     }
@@ -195,11 +204,20 @@ export default function Home() {
 
       setDeliveredPackages(transformedData)
     } catch (error: any) {
+      // İnternet hatalarını sessizce geç
+      const errorMsg = error.message?.toLowerCase() || ''
+      if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
+        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
+        return
+      }
+      
       console.error('Geçmiş siparişler yüklenirken hata:', error.message)
     }
   }
 
   const fetchCouriers = async () => {
+    setErrorMessage('') // Önceki hataları temizle
+    
     try {
       const { data, error } = await supabase
         .from('couriers')
@@ -235,6 +253,13 @@ export default function Home() {
         ])
       }
     } catch (error: any) {
+      // İnternet hatalarını sessizce geç
+      const errorMsg = error.message?.toLowerCase() || ''
+      if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
+        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
+        return
+      }
+      
       setErrorMessage('Kuryeler yüklenemedi: ' + error.message)
     }
   }
@@ -261,6 +286,13 @@ export default function Home() {
         activePackageCount: counts[c.id] || 0 
       })))
     } catch (error: any) {
+      // İnternet hatalarını sessizce geç
+      const errorMsg = error.message?.toLowerCase() || ''
+      if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
+        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
+        return
+      }
+      
       console.error('Aktif paket sayıları alınırken hata:', error)
     }
   }
@@ -287,6 +319,13 @@ export default function Home() {
         deliveryCount: counts[c.id] || 0 
       })))
     } catch (error: any) {
+      // İnternet hatalarını sessizce geç
+      const errorMsg = error.message?.toLowerCase() || ''
+      if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
+        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
+        return
+      }
+      
       console.error('Kurye teslimat sayıları alınırken hata:', error)
     }
   }
@@ -318,6 +357,13 @@ export default function Home() {
         todayDeliveryCount: counts[c.id] || 0 
       })))
     } catch (error: any) {
+      // İnternet hatalarını sessizce geç
+      const errorMsg = error.message?.toLowerCase() || ''
+      if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
+        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
+        return
+      }
+      
       console.error('Kurye bugünkü teslimat sayıları alınırken hata:', error)
     }
   }
@@ -491,6 +537,13 @@ export default function Home() {
 
       setSelectedCourierOrders(transformedData)
     } catch (error: any) {
+      // İnternet hatalarını sessizce geç
+      const errorMsg = error.message?.toLowerCase() || ''
+      if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
+        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
+        return
+      }
+      
       console.error('Kurye siparişleri yüklenirken hata:', error.message)
     }
   }

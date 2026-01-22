@@ -227,6 +227,13 @@ export default function RestoranPage() {
 
       setStatisticsData(chartData)
     } catch (error: any) {
+      // İnternet hatalarını sessizce geç
+      const errorMsg = error.message?.toLowerCase() || ''
+      if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
+        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
+        return
+      }
+      
       console.error('İstatistik verileri yüklenirken hata:', error)
     }
   }
@@ -268,6 +275,8 @@ export default function RestoranPage() {
 
   // Restoranları çek
   const fetchRestaurants = async () => {
+    setErrorMessage('') // Önceki hataları temizle
+    
     try {
       const { data, error } = await supabase
         .from('restaurants')
@@ -277,6 +286,13 @@ export default function RestoranPage() {
       if (error) throw error
       setRestaurants(data || [])
     } catch (error: any) {
+      // İnternet hatalarını sessizce geç
+      const errorMsg = error.message?.toLowerCase() || ''
+      if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
+        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
+        return
+      }
+      
       console.error('Restoranlar yüklenirken hata:', error.message)
       setErrorMessage('Restoranlar yüklenirken bir hata oluştu')
       setTimeout(() => setErrorMessage(''), 3000)
@@ -322,6 +338,13 @@ export default function RestoranPage() {
       }))
       setPackages(transformed)
     } catch (error: any) {
+      // İnternet hatalarını sessizce geç
+      const errorMsg = error.message?.toLowerCase() || ''
+      if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
+        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
+        return // Eski veriler ekranda kalsın
+      }
+      
       console.error('Paketler yüklenirken hata:', error.message)
     }
   }
