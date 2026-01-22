@@ -505,19 +505,19 @@ export default function Home() {
         .select('amount, payment_method')
         .eq('courier_id', selectedCourierId)
         .eq('status', 'delivered')
-        .eq('payment_method', 'cash')
         .gte('delivered_at', start.toISOString())
         .lte('delivered_at', end.toISOString())
 
       if (packagesError) throw packagesError
 
-      const rangeCashTotal = rangePackages?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0
+      const rangeCashTotal = rangePackages?.filter(p => p.payment_method === 'cash').reduce((sum, p) => sum + (p.amount || 0), 0) || 0
+      const rangeCardTotal = rangePackages?.filter(p => p.payment_method === 'card').reduce((sum, p) => sum + (p.amount || 0), 0) || 0
       
       // 2. Geçmiş borçları çek
       const totalOldDebt = courierDebts.reduce((sum, d) => sum + d.remaining_amount, 0)
       
-      // 3. Genel toplam = Seçilen tarih aralığındaki nakit + Eski borçlar
-      const grandTotal = rangeCashTotal + totalOldDebt
+      // 3. Genel toplam = Seçilen tarih aralığındaki nakit + Kart + Eski borçlar
+      const grandTotal = rangeCashTotal + rangeCardTotal + totalOldDebt
       
       // 4. Fark hesapla
       const difference = amountReceived - grandTotal
@@ -593,7 +593,7 @@ export default function Home() {
             amount_received: amountReceived,
             new_debt_amount: debtAmount,
             payment_to_debts: amountReceived,
-            notes: `${formatTurkishDate(transactionDate)} tarihinden kalan ${debtAmount.toFixed(2)} TL açık (${courierStartDate} - ${courierEndDate} arası)`
+            notes: `${formatTurkishDate(transactionDate)} tarihinden kalan ${debtAmount.toFixed(2)} TL açık (Nakit: ${rangeCashTotal.toFixed(2)} TL + Kart: ${rangeCardTotal.toFixed(2)} TL, ${courierStartDate} - ${courierEndDate} arası)`
           })
         
         setSuccessMessage(`✅ Gün sonu alındı. ${debtAmount.toFixed(2)} TL açık kaydedildi.`)
@@ -649,8 +649,8 @@ export default function Home() {
             new_debt_amount: 0,
             payment_to_debts: amountReceived - remainingPayment,
             notes: difference > 0 
-              ? `${difference.toFixed(2)} TL bahşiş (${courierStartDate} - ${courierEndDate} arası)` 
-              : `Tam ödeme (${courierStartDate} - ${courierEndDate} arası)`
+              ? `${difference.toFixed(2)} TL bahşiş (Nakit: ${rangeCashTotal.toFixed(2)} TL + Kart: ${rangeCardTotal.toFixed(2)} TL, ${courierStartDate} - ${courierEndDate} arası)` 
+              : `Tam ödeme (Nakit: ${rangeCashTotal.toFixed(2)} TL + Kart: ${rangeCardTotal.toFixed(2)} TL, ${courierStartDate} - ${courierEndDate} arası)`
           })
         
         setSuccessMessage(
@@ -1179,7 +1179,7 @@ export default function Home() {
           ></div>
           
           {/* Menü İçeriği */}
-          <div className="fixed top-0 left-0 h-full w-64 bg-slate-900 shadow-2xl z-50 transform transition-transform">
+          <div className="fixed top-0 left-0 h-full w-64 bg-slate-900 shadow-2xl z-50 transform transition-transform overflow-y-auto admin-scrollbar">
             <div className="p-6">
               {/* Logo ve Başlık */}
               <div className="mb-8 text-center">
@@ -2177,7 +2177,7 @@ export default function Home() {
                     {(() => {
                       const summary = calculateCashSummary(selectedCourierOrders)
                       const totalOldDebt = courierDebts.reduce((sum, d) => sum + d.remaining_amount, 0)
-                      const grandTotal = summary.cashTotal + totalOldDebt
+                      const grandTotal = summary.cashTotal + summary.cardTotal + totalOldDebt
                       const received = endOfDayAmount ? parseFloat(endOfDayAmount) : 0
                       const difference = received - grandTotal
                       
@@ -2199,6 +2199,24 @@ export default function Home() {
                           {selectedCourierOrders.filter(o => o.payment_method === 'cash').length} nakit sipariş ({courierStartDate} - {courierEndDate})
                         </p>
                         <p className="text-xs text-green-700 dark:text-green-600 mt-2 font-medium">
+                          ℹ️ Bu değer değişmez (bilgi amaçlı)
+                        </p>
+                      </div>
+
+                      {/* Seçilen Tarih Aralığı Kart Toplam */}
+                      <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-200 dark:border-blue-800">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium text-blue-700 dark:text-blue-400">
+                            💳 Seçilen Tarih Aralığı Kart Toplam
+                          </span>
+                          <span className="text-2xl font-bold text-blue-700 dark:text-blue-300">
+                            {calculateCashSummary(selectedCourierOrders).cardTotal.toFixed(2)} ₺
+                          </span>
+                        </div>
+                        <p className="text-xs text-blue-600 dark:text-blue-500 mt-1">
+                          {selectedCourierOrders.filter(o => o.payment_method === 'card').length} kart sipariş ({courierStartDate} - {courierEndDate})
+                        </p>
+                        <p className="text-xs text-blue-700 dark:text-blue-600 mt-2 font-medium">
                           ℹ️ Bu değer değişmez (bilgi amaçlı)
                         </p>
                       </div>
@@ -2236,11 +2254,11 @@ export default function Home() {
                             🎯 GENEL TOPLAM (Beklenen)
                           </span>
                           <span className="text-3xl font-black text-purple-700 dark:text-purple-300">
-                            {(calculateCashSummary(selectedCourierOrders).cashTotal + courierDebts.reduce((sum, d) => sum + d.remaining_amount, 0)).toFixed(2)} ₺
+                            {(calculateCashSummary(selectedCourierOrders).cashTotal + calculateCashSummary(selectedCourierOrders).cardTotal + courierDebts.reduce((sum, d) => sum + d.remaining_amount, 0)).toFixed(2)} ₺
                           </span>
                         </div>
                         <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
-                          Seçilen tarih aralığı nakit + Geçmiş borçlar
+                          Seçilen tarih aralığı nakit + Kart + Geçmiş borçlar
                         </p>
                         <p className="text-xs text-purple-700 dark:text-purple-500 mt-2 font-medium">
                           ⚡ Gün sonu alındığında bu değer sıfırlanır
@@ -2268,7 +2286,7 @@ export default function Home() {
                     {endOfDayAmount && !isNaN(parseFloat(endOfDayAmount)) && (() => {
                       const summary = calculateCashSummary(selectedCourierOrders)
                       const totalOldDebt = courierDebts.reduce((sum, d) => sum + d.remaining_amount, 0)
-                      const grandTotal = summary.cashTotal + totalOldDebt
+                      const grandTotal = summary.cashTotal + summary.cardTotal + totalOldDebt
                       const received = parseFloat(endOfDayAmount)
                       const difference = received - grandTotal
                       

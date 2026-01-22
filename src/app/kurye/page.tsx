@@ -545,7 +545,7 @@ export default function KuryePage() {
       {isLoggedIn && (
         <div className={`fixed top-0 left-0 h-full w-64 sm:w-80 bg-slate-900 text-white z-40 transform transition-transform duration-300 ${
           showMenu ? 'translate-x-0' : '-translate-x-full'
-        } overflow-y-auto`}>
+        } overflow-y-auto admin-scrollbar`}>
           <div className="p-6 pt-20">
             <h2 className="text-xl sm:text-2xl font-bold mb-6">📦 Kurye Panel</h2>
             

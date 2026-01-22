@@ -615,7 +615,7 @@ export default function RestoranPage() {
             onClick={() => setShowMenu(false)}
           ></div>
           
-          <div className="fixed top-0 left-0 h-full w-64 bg-slate-900 shadow-2xl z-50">
+          <div className="fixed top-0 left-0 h-full w-64 bg-slate-900 shadow-2xl z-50 overflow-y-auto admin-scrollbar">
             <div className="p-6">
               <div className="mb-8 text-center">
                 <img 
