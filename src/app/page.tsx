@@ -76,6 +76,8 @@ export default function Home() {
   const [newOrderDetails, setNewOrderDetails] = useState<Package | null>(null)
   const [dateFilter, setDateFilter] = useState<'today' | 'week' | 'month' | 'all'>('all')
   const [courierDateFilter, setCourierDateFilter] = useState<'today' | 'week' | 'month' | 'all'>('all')
+  const [courierStartDate, setCourierStartDate] = useState('')
+  const [courierEndDate, setCourierEndDate] = useState('')
   const [showMenu, setShowMenu] = useState(false)
   const [showRestaurantSubmenu, setShowRestaurantSubmenu] = useState(false)
   const [restaurantSubTab, setRestaurantSubTab] = useState<'list' | 'details' | 'debt'>('list')
@@ -474,33 +476,43 @@ export default function Home() {
     setEndOfDayProcessing(true)
     
     try {
-      // 1. Bugünkü nakit toplamı hesapla
-      const todayStart = new Date()
-      todayStart.setHours(0, 0, 0, 0)
+      // 1. Seçilen tarih aralığındaki nakit toplamı hesapla
+      if (!courierStartDate || !courierEndDate) {
+        setErrorMessage('Tarih aralığı seçilmemiş!')
+        setEndOfDayProcessing(false)
+        return
+      }
       
-      const { data: todayPackages, error: packagesError } = await supabase
+      const start = new Date(courierStartDate)
+      start.setHours(0, 0, 0, 0)
+      
+      const end = new Date(courierEndDate)
+      end.setHours(23, 59, 59, 999)
+      
+      const { data: rangePackages, error: packagesError } = await supabase
         .from('packages')
         .select('amount, payment_method')
         .eq('courier_id', selectedCourierId)
         .eq('status', 'delivered')
         .eq('payment_method', 'cash')
-        .gte('delivered_at', todayStart.toISOString())
+        .gte('delivered_at', start.toISOString())
+        .lte('delivered_at', end.toISOString())
 
       if (packagesError) throw packagesError
 
-      const todayCashTotal = todayPackages?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0
+      const rangeCashTotal = rangePackages?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0
       
       // 2. Geçmiş borçları çek
       const totalOldDebt = courierDebts.reduce((sum, d) => sum + d.remaining_amount, 0)
       
-      // 3. Genel toplam = Bugünkü nakit + Eski borçlar
-      const grandTotal = todayCashTotal + totalOldDebt
+      // 3. Genel toplam = Seçilen tarih aralığındaki nakit + Eski borçlar
+      const grandTotal = rangeCashTotal + totalOldDebt
       
       // 4. Fark hesapla
       const difference = amountReceived - grandTotal
       
       // 5. İşlem kaydet
-      const today = new Date().toISOString().split('T')[0]
+      const transactionDate = courierEndDate // Bitiş tarihini işlem tarihi olarak kullan
       
       if (difference < 0) {
         // AÇIK VAR - Yeni borç oluştur
@@ -536,12 +548,12 @@ export default function Home() {
           }
         }
         
-        // Yeni borç kaydı oluştur (bugünkü açık)
+        // Yeni borç kaydı oluştur (bitiş tarihinden kalan)
         const { error: debtError } = await supabase
           .from('courier_debts')
           .insert({
             courier_id: selectedCourierId,
-            debt_date: today,
+            debt_date: transactionDate,
             amount: debtAmount,
             remaining_amount: debtAmount,
             status: 'pending'
@@ -554,12 +566,12 @@ export default function Home() {
           .from('debt_transactions')
           .insert({
             courier_id: selectedCourierId,
-            transaction_date: today,
-            daily_cash_total: todayCashTotal,
+            transaction_date: transactionDate,
+            daily_cash_total: rangeCashTotal,
             amount_received: amountReceived,
             new_debt_amount: debtAmount,
             payment_to_debts: amountReceived,
-            notes: `${formatTurkishDate(today)} tarihinden kalan ${debtAmount.toFixed(2)} TL açık`
+            notes: `${formatTurkishDate(transactionDate)} tarihinden kalan ${debtAmount.toFixed(2)} TL açık (${courierStartDate} - ${courierEndDate} arası)`
           })
         
         setSuccessMessage(`✅ Gün sonu alındı. ${debtAmount.toFixed(2)} TL açık kaydedildi.`)
@@ -599,14 +611,14 @@ export default function Home() {
           .from('debt_transactions')
           .insert({
             courier_id: selectedCourierId,
-            transaction_date: today,
-            daily_cash_total: todayCashTotal,
+            transaction_date: transactionDate,
+            daily_cash_total: rangeCashTotal,
             amount_received: amountReceived,
             new_debt_amount: 0,
             payment_to_debts: amountReceived - remainingPayment,
             notes: difference > 0 
-              ? `${difference.toFixed(2)} TL bahşiş` 
-              : 'Tam ödeme'
+              ? `${difference.toFixed(2)} TL bahşiş (${courierStartDate} - ${courierEndDate} arası)` 
+              : `Tam ödeme (${courierStartDate} - ${courierEndDate} arası)`
           })
         
         setSuccessMessage(
@@ -796,20 +808,19 @@ export default function Home() {
         .eq('status', 'delivered')
         .order('delivered_at', { ascending: false })
 
-      // Tarih filtresine göre sorgu ekle
-      if (courierDateFilter !== 'all') {
-        const now = new Date()
-        let startDate = new Date()
-
-        if (courierDateFilter === 'today') {
-          startDate.setHours(now.getHours() - 24)
-        } else if (courierDateFilter === 'week') {
-          startDate.setDate(now.getDate() - 7)
-        } else if (courierDateFilter === 'month') {
-          startDate.setDate(now.getDate() - 30)
-        }
-
-        query = query.gte('delivered_at', startDate.toISOString())
+      // Tarih aralığı filtresine göre sorgu ekle
+      if (courierStartDate && courierEndDate) {
+        // Başlangıç tarihi: Seçilen günün 00:00:00
+        const start = new Date(courierStartDate)
+        start.setHours(0, 0, 0, 0)
+        
+        // Bitiş tarihi: Seçilen günün 23:59:59
+        const end = new Date(courierEndDate)
+        end.setHours(23, 59, 59, 999)
+        
+        query = query
+          .gte('delivered_at', start.toISOString())
+          .lte('delivered_at', end.toISOString())
       }
 
       const { data, error } = await query
@@ -839,9 +850,24 @@ export default function Home() {
   const handleCourierClick = async (courierId: string) => {
     setSelectedCourierId(courierId)
     setShowCourierModal(true)
+    
+    // Tarih aralığı yoksa bugünü varsayılan olarak ayarla
+    if (!courierStartDate || !courierEndDate) {
+      const today = new Date().toISOString().split('T')[0]
+      setCourierStartDate(today)
+      setCourierEndDate(today)
+    }
+    
     await fetchCourierOrders(courierId)
     await fetchCourierDebts(courierId)
   }
+
+  // Tarih değiştiğinde siparişleri yenile
+  useEffect(() => {
+    if (selectedCourierId && courierStartDate && courierEndDate) {
+      fetchCourierOrders(selectedCourierId)
+    }
+  }, [courierStartDate, courierEndDate])
 
   // Teslimat süresini hesapla (dakika)
   const calculateDeliveryDuration = (pickedUpAt?: string, deliveredAt?: string) => {
@@ -1741,19 +1767,26 @@ export default function Home() {
                   <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
                     🚴 {couriers.find(c => c.id === selectedCourierId)?.full_name} - Detaylı Rapor
                   </h3>
-                  <select
-                    value={courierDateFilter}
-                    onChange={(e) => setCourierDateFilter(e.target.value as 'today' | 'week' | 'month' | 'all')}
-                    className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-600 font-medium text-sm"
-                  >
-                    <option value="today">📅 Bugün</option>
-                    <option value="week">📅 Son 7 Gün</option>
-                    <option value="month">📅 Son 30 Gün</option>
-                    <option value="all">📅 Tüm Zamanlar</option>
-                  </select>
+                  
+                  {/* Tarih Aralığı Seçici */}
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="date"
+                      value={courierStartDate}
+                      onChange={(e) => setCourierStartDate(e.target.value)}
+                      className="px-3 py-2 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-600 text-sm"
+                    />
+                    <span className="text-slate-500 dark:text-slate-400">-</span>
+                    <input
+                      type="date"
+                      value={courierEndDate}
+                      onChange={(e) => setCourierEndDate(e.target.value)}
+                      className="px-3 py-2 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-600 text-sm"
+                    />
+                  </div>
                   
                   {/* Gün Sonu Al Butonu */}
-                  {courierDateFilter === 'today' && (
+                  {courierStartDate && courierEndDate && (
                     <button
                       onClick={() => setShowEndOfDayModal(true)}
                       className="ml-auto px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-lg font-medium text-sm shadow-lg transition-all active:scale-95"
@@ -1981,19 +2014,19 @@ export default function Home() {
                       return null // Sadece hesaplama için, render etme
                     })()}
                     
-                    {/* Bugünkü Nakit Toplam */}
+                    {/* Seçilen Tarih Aralığı Nakit Toplam */}
                     <div className="mb-6 space-y-3">
                       <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border border-green-200 dark:border-green-800">
                         <div className="flex justify-between items-center">
                           <span className="text-sm font-medium text-green-700 dark:text-green-400">
-                            💵 Bugünkü Nakit Toplam
+                            💵 Seçilen Tarih Aralığı Nakit Toplam
                           </span>
                           <span className="text-2xl font-bold text-green-700 dark:text-green-300">
                             {calculateCashSummary(selectedCourierOrders).cashTotal.toFixed(2)} ₺
                           </span>
                         </div>
                         <p className="text-xs text-green-600 dark:text-green-500 mt-1">
-                          {selectedCourierOrders.filter(o => o.payment_method === 'cash').length} nakit sipariş
+                          {selectedCourierOrders.filter(o => o.payment_method === 'cash').length} nakit sipariş ({courierStartDate} - {courierEndDate})
                         </p>
                       </div>
 
@@ -2034,7 +2067,7 @@ export default function Home() {
                           </span>
                         </div>
                         <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
-                          Bugünkü nakit + Geçmiş borçlar
+                          Seçilen tarih aralığı nakit + Geçmiş borçlar
                         </p>
                       </div>
                     </div>
