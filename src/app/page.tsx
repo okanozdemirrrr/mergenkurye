@@ -2404,6 +2404,20 @@ export default function Home() {
                       >
                         💳 Restoranların Borcu
                       </button>
+                      <button
+                        onClick={() => {
+                          setActiveTab('restaurants')
+                          setRestaurantSubTab('payments')
+                          setShowMenu(false)
+                        }}
+                        className={`w-full text-left px-4 py-2 rounded-lg text-sm transition-all ${
+                          activeTab === 'restaurants' && restaurantSubTab === 'payments'
+                            ? 'bg-blue-500 text-white'
+                            : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                        }`}
+                      >
+                        💰 Restoranların Ödemesi
+                      </button>
                     </div>
                   )}
                 </div>
@@ -4686,6 +4700,113 @@ export default function Home() {
         </div>
       </div>
     )
+    
+    // Restoranların Ödemesi görünümü
+    if (restaurantSubTab === 'payments') {
+      return (
+        <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
+          <h2 className="text-2xl font-bold mb-6">💰 Restoranların Ödemesi</h2>
+          
+          {/* Restoran Durumu Özeti */}
+          <div className="mb-6 p-4 bg-slate-100 dark:bg-slate-700 rounded-lg">
+            <div className="font-bold mb-2">📊 Restoran Ödeme Durumu Özeti:</div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">{restaurants.length}</div>
+                <div className="text-xs text-slate-600 dark:text-slate-400">Toplam Restoran</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">
+                  {restaurants.reduce((sum, r) => sum + (r.totalOrders || 0), 0)}
+                </div>
+                <div className="text-xs text-slate-600 dark:text-slate-400">Toplam Sipariş</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-600">
+                  {restaurants.reduce((sum, r) => sum + (r.totalRevenue || 0), 0).toFixed(2)} ₺
+                </div>
+                <div className="text-xs text-slate-600 dark:text-slate-400">Toplam Ciro</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-red-600">
+                  {restaurants.reduce((sum, r) => sum + (r.totalDebt || 0), 0).toFixed(2)} ₺
+                </div>
+                <div className="text-xs text-slate-600 dark:text-slate-400">Toplam Borç</div>
+              </div>
+            </div>
+            <div className="mt-3 text-xs text-slate-600 dark:text-slate-400 text-center">
+              Son güncelleme: {new Date().toLocaleTimeString('tr-TR')} • Otomatik güncelleme: 30 saniye
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {restaurants.length === 0 ? (
+              <div className="col-span-full text-center py-8 text-slate-500">
+                <div className="text-4xl mb-2">🚫</div>
+                <div className="font-bold">Restoran bulunamadı!</div>
+                <div className="text-sm mt-2">Restaurants tablosunda veri yok.</div>
+              </div>
+            ) : (
+              restaurants.map(r => (
+                <div key={r.id} className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border dark:border-slate-600">
+                  <div className="flex justify-between items-start mb-3">
+                    <button
+                      onClick={() => handleRestaurantClick(r.id)}
+                      className="font-bold text-lg text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors cursor-pointer text-left"
+                    >
+                      🍽️ {r.name}
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-slate-600 dark:text-slate-400">Toplam Sipariş:</span>
+                      <span className="font-bold text-blue-600">{r.totalOrders || 0}</span>
+                    </div>
+                    
+                    <div className="flex justify-between">
+                      <span className="text-slate-600 dark:text-slate-400">Toplam Ciro:</span>
+                      <span className="font-bold text-green-600">{(r.totalRevenue || 0).toFixed(2)} ₺</span>
+                    </div>
+                    
+                    <div className="flex justify-between">
+                      <span className="text-slate-600 dark:text-slate-400">Restorana Borcum:</span>
+                      <span className={`font-bold ${
+                        (r.totalDebt || 0) > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
+                      }`}>
+                        {(r.totalDebt || 0).toFixed(2)} ₺
+                      </span>
+                    </div>
+
+                    <div className="mt-3 pt-2 border-t border-slate-200 dark:border-slate-600 space-y-2">
+                      <button
+                        onClick={() => handleRestaurantClick(r.id)}
+                        className="w-full text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 py-2 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+                      >
+                        📊 Detaylı Rapor Görüntüle
+                      </button>
+                      
+                      {(r.totalDebt || 0) > 0 && (
+                        <button
+                          onClick={() => {
+                            setSelectedRestaurantId(r.id)
+                            fetchRestaurantDebts(r.id)
+                            setShowRestaurantDebtPayModal(true)
+                          }}
+                          className="w-full text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 py-2 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+                        >
+                          💳 Borç Öde
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )
+    }
   }
 
 }
