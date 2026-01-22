@@ -16,6 +16,7 @@ interface Restaurant {
 
 interface Package {
   id: number
+  order_number?: string
   customer_name: string
   customer_phone?: string
   delivery_address: string
@@ -31,6 +32,7 @@ interface Package {
   picked_up_at?: string
   delivered_at?: string
   settled_at?: string | null
+  restaurant_settled_at?: string | null
   courier_name?: string
 }
 
@@ -1410,7 +1412,7 @@ export default function Home() {
     try {
       const { data, error } = await supabase
         .from('packages')
-        .select('restaurant_id, amount')
+        .select('restaurant_id, amount, restaurant_settled_at')
         .eq('status', 'delivered')
         .in('restaurant_id', restaurantIds)
 
@@ -1418,7 +1420,7 @@ export default function Home() {
 
       const stats: { [key: string]: { count: number, revenue: number } } = {}
       data?.forEach((pkg) => {
-        if (pkg.restaurant_id) {
+        if (pkg.restaurant_id && !pkg.restaurant_settled_at) { // Sadece ödenmemiş paketler
           const key = String(pkg.restaurant_id)
           if (!stats[key]) {
             stats[key] = { count: 0, revenue: 0 }
@@ -1711,7 +1713,17 @@ export default function Home() {
     <>
       {/* RESTORAN DETAY MODALI */}
       {showRestaurantModal && selectedRestaurantId && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div 
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowRestaurantModal(false)
+              setSelectedRestaurantId(null)
+              setRestaurantStartDate('')
+              setRestaurantEndDate('')
+            }
+          }}
+        >
           <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
             {/* Modal Header */}
             <div className="flex justify-between items-center p-6 border-b border-slate-200 dark:border-slate-700">
@@ -1748,8 +1760,13 @@ export default function Home() {
                 )}
               </div>
               <button
-                onClick={() => setShowRestaurantModal(false)}
-                className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 text-2xl ml-4"
+                onClick={() => {
+                  setShowRestaurantModal(false)
+                  setSelectedRestaurantId(null)
+                  setRestaurantStartDate('')
+                  setRestaurantEndDate('')
+                }}
+                className="flex items-center justify-center w-8 h-8 ml-4 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors text-2xl font-light"
               >
                 ×
               </button>
@@ -1799,6 +1816,7 @@ export default function Home() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
+                          <th className="text-left py-3 px-4 font-semibold">Sipariş No</th>
                           <th className="text-left py-3 px-4 font-semibold">Tarih/Saat</th>
                           <th className="text-left py-3 px-4 font-semibold">Müşteri</th>
                           <th className="text-left py-3 px-4 font-semibold">Kurye</th>
@@ -1811,6 +1829,11 @@ export default function Home() {
                           <tr key={order.id} className={`border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/30 ${
                             index % 2 === 0 ? 'bg-white dark:bg-slate-800' : 'bg-slate-50/50 dark:bg-slate-700/20'
                           }`}>
+                            <td className="py-3 px-4">
+                              <span className="font-bold text-blue-600 dark:text-blue-400">
+                                #{order.order_number || '------'}
+                              </span>
+                            </td>
                             <td className="py-3 px-4">
                               <div className="text-sm">
                                 <div className="font-medium">{formatTurkishTime(order.delivered_at)}</div>
@@ -2579,8 +2602,11 @@ export default function Home() {
                   'border-l-red-500'
                 } border-r border-t border-b border-slate-200 dark:border-slate-600`}>
                   
-                  {/* Oluşturulma Saati */}
-                  <div className="flex justify-end mb-2">
+                  {/* Oluşturulma Saati ve Sipariş No */}
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded">
+                      #{pkg.order_number || '------'}
+                    </span>
                     <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
                       🕐 {formatTurkishTime(pkg.created_at)}
                     </span>
@@ -2839,6 +2865,7 @@ export default function Home() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b dark:border-slate-700">
+                <th className="text-left py-3 px-4">Sipariş No</th>
                 <th className="text-left py-3 px-4">Tarih/Saat</th>
                 <th className="text-left py-3 px-4">Müşteri</th>
                 <th className="text-left py-3 px-4">Restoran</th>
@@ -2850,13 +2877,18 @@ export default function Home() {
             <tbody>
               {filteredHistory.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-8 text-slate-500">
+                  <td colSpan={7} className="text-center py-8 text-slate-500">
                     Bu tarih aralığında sipariş bulunamadı.
                   </td>
                 </tr>
               ) : (
                 filteredHistory.map(pkg => (
                   <tr key={pkg.id} className="border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                    <td className="py-3 px-4">
+                      <span className="font-bold text-blue-600 dark:text-blue-400">
+                        #{pkg.order_number || '------'}
+                      </span>
+                    </td>
                     <td className="py-3 px-4">
                       <div className="text-sm">
                         <div className="font-medium">{formatTurkishTime(pkg.delivered_at)}</div>
@@ -3127,6 +3159,7 @@ export default function Home() {
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
+                            <th className="text-left py-3 px-4 font-semibold">Sipariş No</th>
                             <th className="text-left py-3 px-4 font-semibold">Tarih/Saat</th>
                             <th className="text-left py-3 px-4 font-semibold">Müşteri</th>
                             <th className="text-left py-3 px-4 font-semibold">Restoran</th>
@@ -3142,6 +3175,11 @@ export default function Home() {
                             <tr key={order.id} className={`border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/30 ${
                               index % 2 === 0 ? 'bg-white dark:bg-slate-800' : 'bg-slate-50/50 dark:bg-slate-700/20'
                             }`}>
+                              <td className="py-3 px-4">
+                                <span className="font-bold text-blue-600 dark:text-blue-400">
+                                  #{order.order_number || '------'}
+                                </span>
+                              </td>
                               <td className="py-3 px-4">
                                 <div className="text-sm">
                                   <div className="font-medium">{formatTurkishTime(order.delivered_at)}</div>
@@ -4587,7 +4625,7 @@ export default function Home() {
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-red-600">
-                  {restaurants.reduce((sum, r) => sum + (r.totalDebt || 0), 0).toFixed(2)} ₺
+                  {restaurants.reduce((sum, r) => sum + (r.totalRevenue || 0) + (r.totalDebt || 0), 0).toFixed(2)} ₺
                 </div>
                 <div className="text-xs text-slate-600 dark:text-slate-400">Toplam Borç</div>
               </div>
@@ -4630,9 +4668,9 @@ export default function Home() {
                     <div className="flex justify-between">
                       <span className="text-slate-600 dark:text-slate-400">Restorana Borcum:</span>
                       <span className={`font-bold ${
-                        (r.totalDebt || 0) > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
+                        ((r.totalRevenue || 0) + (r.totalDebt || 0)) > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
                       }`}>
-                        {(r.totalDebt || 0).toFixed(2)} ₺
+                        {((r.totalRevenue || 0) + (r.totalDebt || 0)).toFixed(2)} ₺
                       </span>
                     </div>
 
@@ -4644,7 +4682,7 @@ export default function Home() {
                         📊 Detaylı Rapor Görüntüle
                       </button>
                       
-                      {(r.totalDebt || 0) > 0 && (
+                      {((r.totalRevenue || 0) + (r.totalDebt || 0)) > 0 && (
                         <button
                           onClick={() => {
                             setSelectedRestaurantId(r.id)

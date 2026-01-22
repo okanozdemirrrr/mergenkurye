@@ -1219,19 +1219,26 @@ export default function RestoranPage() {
                 packages.map(pkg => (
                   <div key={pkg.id} className="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
                     <div className="flex justify-between items-start mb-2">
-                      <h3 className="font-medium text-sm text-white">{pkg.customer_name}</h3>
-                      <span className={`text-xs px-2 py-0.5 rounded font-medium ${
-                        pkg.status === 'waiting' ? 'bg-yellow-500/20 text-yellow-400' :
-                        pkg.status === 'assigned' ? 'bg-blue-500/20 text-blue-400' :
-                        pkg.status === 'picking_up' ? 'bg-orange-500/20 text-orange-400' :
-                        pkg.status === 'on_the_way' ? 'bg-purple-500/20 text-purple-400' :
-                        'bg-green-500/20 text-green-400'
-                      }`}>
-                        {pkg.status === 'waiting' ? 'Bekliyor' :
-                         pkg.status === 'assigned' ? 'Atandı' :
-                         pkg.status === 'picking_up' ? 'Alınıyor' :
-                         pkg.status === 'on_the_way' ? 'Yolda' : 'Teslim'}
-                      </span>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-bold text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded">
+                            #{pkg.order_number || '------'}
+                          </span>
+                          <span className={`text-xs px-2 py-0.5 rounded font-medium ${
+                            pkg.status === 'waiting' ? 'bg-yellow-500/20 text-yellow-400' :
+                            pkg.status === 'assigned' ? 'bg-blue-500/20 text-blue-400' :
+                            pkg.status === 'picking_up' ? 'bg-orange-500/20 text-orange-400' :
+                            pkg.status === 'on_the_way' ? 'bg-purple-500/20 text-purple-400' :
+                            'bg-green-500/20 text-green-400'
+                          }`}>
+                            {pkg.status === 'waiting' ? 'Bekliyor' :
+                             pkg.status === 'assigned' ? 'Atandı' :
+                             pkg.status === 'picking_up' ? 'Alınıyor' :
+                             pkg.status === 'on_the_way' ? 'Yolda' : 'Teslim'}
+                          </span>
+                        </div>
+                        <h3 className="font-medium text-sm text-white">{pkg.customer_name}</h3>
+                      </div>
                     </div>
                     
                     {/* Tarih ve Saat Bilgileri */}
