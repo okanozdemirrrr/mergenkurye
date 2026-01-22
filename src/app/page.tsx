@@ -1798,6 +1798,155 @@ export default function Home() {
       )
     }
     
+    // Kurye Kazançları (Hakediş) görünümü
+    if (courierSubTab === 'earnings') {
+      // Tarih filtresine göre başlangıç tarihini hesapla
+      const getStartDate = () => {
+        const now = new Date()
+        const start = new Date()
+        
+        if (courierEarningsFilter === 'today') {
+          start.setHours(0, 0, 0, 0)
+        } else if (courierEarningsFilter === 'week') {
+          start.setDate(now.getDate() - 7)
+        } else if (courierEarningsFilter === 'month') {
+          start.setDate(now.getDate() - 30)
+        }
+        
+        return start
+      }
+
+      // Her kurye için kazanç hesapla
+      const courierEarnings = couriers.map(courier => {
+        const startDate = getStartDate()
+        
+        // Seçilen tarih aralığındaki delivered paketleri say
+        const deliveredCount = deliveredPackages.filter(pkg => 
+          pkg.courier_id === courier.id && 
+          pkg.delivered_at && 
+          new Date(pkg.delivered_at) >= startDate
+        ).length
+        
+        const earnings = deliveredCount * 80
+        
+        return {
+          ...courier,
+          deliveredCount,
+          earnings
+        }
+      }).sort((a, b) => b.earnings - a.earnings)
+
+      const totalEarnings = courierEarnings.reduce((sum, c) => sum + c.earnings, 0)
+      const totalDeliveries = courierEarnings.reduce((sum, c) => sum + c.deliveredCount, 0)
+
+      return (
+        <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold">💰 Kurye Kazançları (Hakediş)</h2>
+            
+            <select
+              value={courierEarningsFilter}
+              onChange={(e) => setCourierEarningsFilter(e.target.value as 'today' | 'week' | 'month')}
+              className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-600 font-medium"
+            >
+              <option value="today">📅 Bugün</option>
+              <option value="week">📅 Haftalık (7 Gün)</option>
+              <option value="month">📅 Aylık (30 Gün)</option>
+            </select>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-4 rounded-xl border-2 border-green-300 dark:border-green-700">
+              <div className="text-center">
+                <div className="text-3xl font-black text-green-700 dark:text-green-400">
+                  {totalEarnings.toFixed(2)} ₺
+                </div>
+                <div className="text-sm font-semibold text-green-600 dark:text-green-500 mt-1">
+                  💰 TOPLAM HAKEDİŞ
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 p-4 rounded-xl border-2 border-blue-300 dark:border-blue-700">
+              <div className="text-center">
+                <div className="text-3xl font-black text-blue-700 dark:text-blue-400">
+                  {totalDeliveries}
+                </div>
+                <div className="text-sm font-semibold text-blue-600 dark:text-blue-500 mt-1">
+                  📦 TOPLAM TESLİMAT
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 p-4 rounded-xl border-2 border-purple-300 dark:border-purple-700">
+              <div className="text-center">
+                <div className="text-3xl font-black text-purple-700 dark:text-purple-400">
+                  {couriers.length}
+                </div>
+                <div className="text-sm font-semibold text-purple-600 dark:text-purple-500 mt-1">
+                  👥 TOPLAM KURYE
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {courierEarnings.length === 0 ? (
+              <div className="text-center py-8 text-slate-500">
+                <div className="text-4xl mb-2">🚫</div>
+                <p>Kurye bulunamadı</p>
+              </div>
+            ) : (
+              courierEarnings.map((courier, index) => (
+                <div 
+                  key={courier.id}
+                  className={`p-4 rounded-xl border transition-all ${
+                    courier.earnings > 0
+                      ? 'bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600'
+                      : 'bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-700 opacity-60'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="text-2xl font-bold text-slate-400">
+                        #{index + 1}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                          {courier.full_name}
+                          {courier.is_active && (
+                            <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded">
+                              Aktif
+                            </span>
+                          )}
+                        </h4>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                          {courier.deliveredCount} paket × 80₺
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-3xl font-black text-green-600 dark:text-green-400">
+                        {courier.earnings.toFixed(2)} ₺
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">hakediş</p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+            <p className="text-sm text-blue-700 dark:text-blue-400">
+              ℹ️ <strong>Not:</strong> Kurye kazançları, teslim edilen her paket için 80₺ üzerinden hesaplanmaktadır. 
+              Sadece <strong>status = 'delivered'</strong> olan paketler hesaplamaya dahildir.
+            </p>
+          </div>
+        </div>
+      )
+    }
+    
     // Kurye Performansları görünümü (default)
     const activeCouriers = couriers.filter(c => c.is_active)
     const sortedByPerformance = [...activeCouriers].sort((a, b) => 
@@ -2105,6 +2254,154 @@ export default function Home() {
         const startDate = getStartDate()
         
         // Seçilen tarih aralığındaki delivered paketleri say
+        const deliveredCount = deliveredPackages.filter(pkg => 
+          (pkg.restaurant_id === restaurant.id || pkg.restaurant?.name === restaurant.name) &&
+          pkg.delivered_at && 
+          new Date(pkg.delivered_at) >= startDate
+        ).length
+        
+        const debt = deliveredCount * 100
+        
+        return {
+          ...restaurant,
+          deliveredCount,
+          debt
+        }
+      }).sort((a, b) => b.debt - a.debt)
+
+      const totalDebt = restaurantDebts.reduce((sum, r) => sum + r.debt, 0)
+      const totalDeliveries = restaurantDebts.reduce((sum, r) => sum + r.deliveredCount, 0)
+
+      return (
+        <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold">💳 Restoranların Borcu (Cari Takip)</h2>
+            
+            <select
+              value={restaurantDebtFilter}
+              onChange={(e) => setRestaurantDebtFilter(e.target.value as 'today' | 'week' | 'month')}
+              className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-600 font-medium"
+            >
+              <option value="today">📅 Bugün</option>
+              <option value="week">📅 Haftalık (7 Gün)</option>
+              <option value="month">📅 Aylık (30 Gün)</option>
+            </select>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="bg-gradient-to-r from-red-50 to-pink-50 dark:from-red-900/20 dark:to-pink-900/20 p-4 rounded-xl border-2 border-red-300 dark:border-red-700">
+              <div className="text-center">
+                <div className="text-3xl font-black text-red-700 dark:text-red-400">
+                  {totalDebt.toFixed(2)} ₺
+                </div>
+                <div className="text-sm font-semibold text-red-600 dark:text-red-500 mt-1">
+                  💳 TOPLAM ALACAK
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 p-4 rounded-xl border-2 border-blue-300 dark:border-blue-700">
+              <div className="text-center">
+                <div className="text-3xl font-black text-blue-700 dark:text-blue-400">
+                  {totalDeliveries}
+                </div>
+                <div className="text-sm font-semibold text-blue-600 dark:text-blue-500 mt-1">
+                  📦 TOPLAM TESLİMAT
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 p-4 rounded-xl border-2 border-purple-300 dark:border-purple-700">
+              <div className="text-center">
+                <div className="text-3xl font-black text-purple-700 dark:text-purple-400">
+                  {restaurants.length}
+                </div>
+                <div className="text-sm font-semibold text-purple-600 dark:text-purple-500 mt-1">
+                  🍽️ TOPLAM RESTORAN
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {restaurantDebts.length === 0 ? (
+              <div className="text-center py-8 text-slate-500">
+                <div className="text-4xl mb-2">🚫</div>
+                <p>Restoran bulunamadı</p>
+              </div>
+            ) : (
+              restaurantDebts.map((restaurant, index) => (
+                <div 
+                  key={restaurant.id}
+                  className={`p-4 rounded-xl border transition-all ${
+                    restaurant.debt > 0
+                      ? 'bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600'
+                      : 'bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-700 opacity-60'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="text-2xl font-bold text-slate-400">
+                        #{index + 1}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                          🍽️ {restaurant.name}
+                        </h4>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                          {restaurant.deliveredCount} paket × 100₺
+                        </p>
+                        {restaurant.phone && (
+                          <p className="text-xs text-slate-400 mt-1">
+                            📞 {restaurant.phone}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-3xl font-black text-red-600 dark:text-red-400">
+                        {restaurant.debt.toFixed(2)} ₺
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">borç</p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+            <p className="text-sm text-blue-700 dark:text-blue-400">
+              ℹ️ <strong>Not:</strong> Restoran borçları, teslim edilen her paket için 100₺ üzerinden hesaplanmaktadır. 
+              Sadece <strong>status = 'delivered'</strong> olan paketler hesaplamaya dahildir.
+              <br />
+              💡 <strong>Kâr Hesabı:</strong> Restoranlardan alınan 100₺ - Kuryelere ödenen 80₺ = 20₺ kâr (paket başına)
+            </p>
+          </div>
+        </div>
+      )
+    }
+    
+    // Restoranların Borcu görünümü
+    if (restaurantSubTab === 'debt') {
+      const getStartDate = () => {
+        const now = new Date()
+        const start = new Date()
+        
+        if (restaurantDebtFilter === 'today') {
+          start.setHours(0, 0, 0, 0)
+        } else if (restaurantDebtFilter === 'week') {
+          start.setDate(now.getDate() - 7)
+        } else if (restaurantDebtFilter === 'month') {
+          start.setDate(now.getDate() - 30)
+        }
+        
+        return start
+      }
+
+      const restaurantDebts = restaurants.map(restaurant => {
+        const startDate = getStartDate()
+        
         const deliveredCount = deliveredPackages.filter(pkg => 
           (pkg.restaurant_id === restaurant.id || pkg.restaurant?.name === restaurant.name) &&
           pkg.delivered_at && 
