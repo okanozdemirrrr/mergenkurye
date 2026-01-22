@@ -2165,7 +2165,6 @@ export default function Home() {
       </div>
     )
   }
-}
 
   function RestaurantsTab() {
     // Liste görünümü
@@ -2716,3 +2715,5 @@ export default function Home() {
       </div>
     )
   }
+
+}
