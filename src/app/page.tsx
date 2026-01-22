@@ -402,8 +402,14 @@ export default function Home() {
       setCourierDebts(data || [])
     } catch (error: any) {
       const errorMsg = error.message?.toLowerCase() || ''
-      if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
-        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
+      // Tablo yoksa veya internet hatası varsa sessizce geç
+      if (errorMsg.includes('failed to fetch') || 
+          errorMsg.includes('network') || 
+          errorMsg.includes('could not find') ||
+          errorMsg.includes('table') ||
+          errorMsg.includes('schema cache')) {
+        console.warn('⚠️ Borç tablosu henüz oluşturulmamış veya bağlantı hatası (sessiz):', error.message)
+        setCourierDebts([]) // Boş liste göster
         return
       }
       console.error('Borçlar yüklenemedi:', error)
@@ -576,8 +582,18 @@ export default function Home() {
       setTimeout(() => setSuccessMessage(''), 3000)
     } catch (error: any) {
       console.error('Gün sonu işlemi hatası:', error)
-      setErrorMessage('Gün sonu işlemi başarısız: ' + error.message)
-      setTimeout(() => setErrorMessage(''), 3000)
+      const errorMsg = error.message?.toLowerCase() || ''
+      
+      // Tablo yoksa özel mesaj
+      if (errorMsg.includes('could not find') || 
+          errorMsg.includes('table') || 
+          errorMsg.includes('schema cache')) {
+        setErrorMessage('⚠️ Veritabanı tabloları henüz oluşturulmamış! Lütfen database_migration_courier_debts.sql dosyasını Supabase SQL Editor\'de çalıştırın.')
+      } else {
+        setErrorMessage('Gün sonu işlemi başarısız: ' + error.message)
+      }
+      
+      setTimeout(() => setErrorMessage(''), 5000)
     } finally {
       setEndOfDayProcessing(false)
     }
