@@ -361,16 +361,22 @@ export default function Home() {
 
   const fetchCourierTodayDeliveryCounts = async (courierIds: string[]) => {
     try {
-      // Bugün (gece 00:00'dan itibaren)
+      // Bugün (gece 00:00'dan itibaren) - UTC formatında
       const todayStart = new Date()
       todayStart.setHours(0, 0, 0, 0)
       
+      // Yarın (gece 00:00) - Bugünün bitiş saati
+      const tomorrowStart = new Date(todayStart)
+      tomorrowStart.setDate(tomorrowStart.getDate() + 1)
+      
       const { data, error } = await supabase
         .from('packages')
-        .select('courier_id')
+        .select('courier_id, delivered_at')
         .eq('status', 'delivered')
         .in('courier_id', courierIds)
         .gte('delivered_at', todayStart.toISOString())
+        .lt('delivered_at', tomorrowStart.toISOString())
+        .not('delivered_at', 'is', null)
 
       if (error) throw error
 
