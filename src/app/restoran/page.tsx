@@ -54,11 +54,13 @@ export default function RestoranPage() {
   const [darkMode, setDarkMode] = useState(true)
   const [showMenu, setShowMenu] = useState(false)
   const [showStatistics, setShowStatistics] = useState(false)
+  const [showDebt, setShowDebt] = useState(false)
   const [statisticsTab, setStatisticsTab] = useState<'packages' | 'revenue'>('packages')
   const [statisticsFilter, setStatisticsFilter] = useState<'daily' | 'weekly' | 'monthly'>('daily')
   const [statisticsData, setStatisticsData] = useState<any[]>([])
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [debtFilter, setDebtFilter] = useState<'today' | 'week' | 'month'>('today')
 
   // Tarih ve saat formatı
   const formatDateTime = (dateString?: string) => {
@@ -618,7 +620,17 @@ export default function RestoranPage() {
                   className="w-full text-left px-4 py-3 rounded-lg font-medium transition-all text-slate-300 hover:bg-slate-800 hover:text-white"
                 >
                   <span className="mr-3">📊</span>
-                  İstatistiklerim
+                  Paketlerim ve Cirom
+                </button>
+                <button
+                  onClick={() => {
+                    setShowDebt(true)
+                    setShowMenu(false)
+                  }}
+                  className="w-full text-left px-4 py-3 rounded-lg font-medium transition-all text-slate-300 hover:bg-slate-800 hover:text-white"
+                >
+                  <span className="mr-3">💳</span>
+                  Paket Ücretim
                 </button>
               </nav>
 
@@ -653,7 +665,7 @@ export default function RestoranPage() {
         <div className="fixed inset-0 bg-black/80 z-50 p-4 overflow-y-auto flex items-center justify-center">
           <div className="max-w-4xl w-full bg-slate-900 rounded-xl p-6 border border-slate-800">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-white">📊 İstatistiklerim</h2>
+              <h2 className="text-2xl font-bold text-white">📊 Paketlerim ve Cirom</h2>
               <button 
                 onClick={() => setShowStatistics(false)} 
                 className="text-slate-400 hover:text-white text-2xl"
@@ -795,6 +807,163 @@ export default function RestoranPage() {
                 </ResponsiveContainer>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* PAKET ÜCRETİM (BORÇ) MODAL */}
+      {showDebt && (
+        <div className="fixed inset-0 bg-black/80 z-50 p-4 overflow-y-auto flex items-center justify-center">
+          <div className="max-w-4xl w-full bg-slate-900 rounded-xl p-6 border border-slate-800">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-white">💳 Paket Ücretim (Borç Durumu)</h2>
+              <button 
+                onClick={() => setShowDebt(false)} 
+                className="text-slate-400 hover:text-white text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Tarih Filtresi */}
+            <div className="flex justify-end mb-6">
+              <select
+                value={debtFilter}
+                onChange={(e) => setDebtFilter(e.target.value as 'today' | 'week' | 'month')}
+                className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-blue-500 outline-none font-medium"
+              >
+                <option value="today">📅 Bugün</option>
+                <option value="week">📅 Haftalık (7 Gün)</option>
+                <option value="month">📅 Aylık (30 Gün)</option>
+              </select>
+            </div>
+
+            {/* Borç Hesaplama */}
+            {(() => {
+              const getStartDate = () => {
+                const now = new Date()
+                const start = new Date()
+                
+                if (debtFilter === 'today') {
+                  start.setHours(0, 0, 0, 0)
+                } else if (debtFilter === 'week') {
+                  start.setDate(now.getDate() - 7)
+                } else if (debtFilter === 'month') {
+                  start.setDate(now.getDate() - 30)
+                }
+                
+                return start
+              }
+
+              const startDate = getStartDate()
+              
+              // Seçilen tarih aralığındaki delivered paketleri say
+              const deliveredPackages = packages.filter(pkg => 
+                pkg.status === 'delivered' && 
+                pkg.delivered_at && 
+                new Date(pkg.delivered_at) >= startDate
+              )
+
+              const deliveredCount = deliveredPackages.length
+              const totalDebt = deliveredCount * 100
+
+              return (
+                <>
+                  {/* Genel Özet */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div className="bg-gradient-to-r from-red-50 to-pink-50 dark:from-red-900/20 dark:to-pink-900/20 p-6 rounded-xl border-2 border-red-300 dark:border-red-700">
+                      <div className="text-center">
+                        <div className="text-4xl font-black text-red-700 dark:text-red-400">
+                          {totalDebt.toFixed(2)} ₺
+                        </div>
+                        <div className="text-sm font-semibold text-red-600 dark:text-red-500 mt-2">
+                          💳 TOPLAM BORÇ
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 p-6 rounded-xl border-2 border-blue-300 dark:border-blue-700">
+                      <div className="text-center">
+                        <div className="text-4xl font-black text-blue-700 dark:text-blue-400">
+                          {deliveredCount}
+                        </div>
+                        <div className="text-sm font-semibold text-blue-600 dark:text-blue-500 mt-2">
+                          📦 TESLİM EDİLEN PAKET
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 p-6 rounded-xl border-2 border-purple-300 dark:border-purple-700">
+                      <div className="text-center">
+                        <div className="text-4xl font-black text-purple-700 dark:text-purple-400">
+                          100 ₺
+                        </div>
+                        <div className="text-sm font-semibold text-purple-600 dark:text-purple-500 mt-2">
+                          💰 PAKET BAŞI ÜCRET
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Hesaplama Detayı */}
+                  <div className="bg-slate-800/50 rounded-lg p-6 mb-6">
+                    <h3 className="text-lg font-bold text-white mb-4">📊 Hesaplama Detayı</h3>
+                    <div className="space-y-3 text-slate-300">
+                      <div className="flex justify-between items-center">
+                        <span>Teslim Edilen Paket Sayısı:</span>
+                        <span className="font-bold text-blue-400">{deliveredCount} adet</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span>Paket Başı Ücret:</span>
+                        <span className="font-bold text-purple-400">100 ₺</span>
+                      </div>
+                      <div className="border-t border-slate-700 pt-3 flex justify-between items-center">
+                        <span className="text-lg font-bold">Toplam Borç:</span>
+                        <span className="text-2xl font-black text-red-400">{deliveredCount} × 100₺ = {totalDebt.toFixed(2)} ₺</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Paket Listesi */}
+                  {deliveredPackages.length > 0 && (
+                    <div className="bg-slate-800/50 rounded-lg p-6">
+                      <h3 className="text-lg font-bold text-white mb-4">📋 Teslim Edilen Paketler</h3>
+                      <div className="space-y-2 max-h-96 overflow-y-auto">
+                        {deliveredPackages.map((pkg, index) => (
+                          <div key={pkg.id} className="bg-slate-700/50 p-3 rounded-lg border border-slate-600">
+                            <div className="flex justify-between items-center">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-xs text-slate-400">#{index + 1}</span>
+                                  <span className="text-sm font-medium text-white">{pkg.customer_name}</span>
+                                </div>
+                                <p className="text-xs text-slate-400">
+                                  📅 {pkg.delivered_at ? new Date(pkg.delivered_at).toLocaleDateString('tr-TR') : '-'}
+                                  {' • '}
+                                  💵 {pkg.amount}₺
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-lg font-bold text-red-400">100 ₺</div>
+                                <p className="text-xs text-slate-500">ücret</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Bilgilendirme */}
+                  <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <p className="text-sm text-blue-700 dark:text-blue-400">
+                      ℹ️ <strong>Not:</strong> Paket ücretleri, teslim edilen her paket için 100₺ üzerinden hesaplanmaktadır. 
+                      Sadece <strong>status = 'delivered'</strong> olan paketler hesaplamaya dahildir.
+                    </p>
+                  </div>
+                </>
+              )
+            })()}
           </div>
         </div>
       )}
