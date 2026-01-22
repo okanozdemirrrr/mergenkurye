@@ -11,6 +11,7 @@ interface Restaurant {
   id: string
   name: string
   password?: string
+  maps_link?: string
 }
 
 interface Package {
@@ -282,7 +283,7 @@ export default function RestoranPage() {
     try {
       const { data, error } = await supabase
         .from('restaurants')
-        .select('id, name')
+        .select('id, name, maps_link')
         .order('name', { ascending: true })
 
       if (error) throw error
@@ -299,6 +300,20 @@ export default function RestoranPage() {
       setErrorMessage('Restoranlar yüklenirken bir hata oluştu')
       setTimeout(() => setErrorMessage(''), 3000)
     }
+  }
+
+  // Müşteri Memnuniyeti - Google Maps'e yönlendir
+  const handleCustomerSatisfaction = () => {
+    const restaurant = restaurants.find(r => r.id === selectedRestaurantId)
+    
+    if (!restaurant?.maps_link) {
+      setErrorMessage('Google Haritalar linkiniz henüz sisteme tanımlanmamıştır.')
+      setTimeout(() => setErrorMessage(''), 3000)
+      return
+    }
+    
+    // Yeni sekmede aç
+    window.open(restaurant.maps_link, '_blank')
   }
 
   // Restoran paketlerini çek
@@ -631,6 +646,17 @@ export default function RestoranPage() {
                 >
                   <span className="mr-3">💳</span>
                   Paket Ücretim
+                </button>
+                
+                <button
+                  onClick={() => {
+                    handleCustomerSatisfaction()
+                    setShowMenu(false)
+                  }}
+                  className="w-full text-left px-4 py-3 rounded-lg font-medium transition-all text-slate-300 hover:bg-slate-800 hover:text-white"
+                >
+                  <span className="mr-3">⭐</span>
+                  Müşteri Memnuniyeti
                 </button>
               </nav>
 
