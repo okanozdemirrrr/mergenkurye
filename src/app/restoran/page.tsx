@@ -617,11 +617,11 @@ export default function RestoranPage() {
           
           <div className="fixed top-0 left-0 h-full w-64 bg-slate-900 shadow-2xl z-50 overflow-y-auto admin-scrollbar">
             <div className="p-6">
-              <div className="mb-8 text-center">
+              <div className="mb-8 text-center -mt-4">
                 <img 
                   src="/logo.png" 
                   alt="Logo" 
-                  className="w-24 h-24 mx-auto mb-3"
+                  className="w-36 h-36 mx-auto mb-3"
                 />
                 <h2 className="text-xl font-bold text-white">Restoran Panel</h2>
               </div>
@@ -1192,7 +1192,7 @@ export default function RestoranPage() {
             {/* Başlık ve Filtre */}
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-white">Siparişlerim</h2>
+                <h2 className="text-base font-bold text-white">Alınan Siparişler</h2>
                 <span className="bg-orange-500/20 text-orange-400 text-xs px-2 py-0.5 rounded">
                   {packages.length}
                 </span>
@@ -1238,6 +1238,11 @@ export default function RestoranPage() {
                           </span>
                         </div>
                         <h3 className="font-medium text-sm text-white">{pkg.customer_name}</h3>
+                        {pkg.customer_phone && (
+                          <p className="text-xs text-slate-400 mt-1">
+                            📞 {pkg.customer_phone}
+                          </p>
+                        )}
                       </div>
                     </div>
                     
