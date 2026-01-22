@@ -1110,6 +1110,8 @@ export default function Home() {
       
       // Modal'ı kapat ve verileri yenile
       setShowRestaurantPaymentModal(false)
+      setShowRestaurantModal(false)
+      setSelectedRestaurantId(null)
       setRestaurantPaymentAmount('')
       await fetchRestaurantDebts(selectedRestaurantId)
       await fetchRestaurants()
@@ -1226,6 +1228,8 @@ export default function Home() {
       
       // Modal'ı kapat ve verileri yenile
       setShowRestaurantDebtPayModal(false)
+      setShowRestaurantModal(false)
+      setSelectedRestaurantId(null)
       setRestaurantDebtPayAmount('')
       await fetchRestaurantDebts(selectedRestaurantId)
       await fetchRestaurants()
