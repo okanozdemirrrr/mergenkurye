@@ -733,10 +733,21 @@ export default function Home() {
         }
       }
       
-      // Eğer ödeme toplam borçtan az ise, kalan tutarı yeni borç olarak kaydet
-      if (remainingPayment === 0 && paymentAmount < totalDebt) {
-        const newDebtAmount = totalDebt - paymentAmount
+      // Eğer tüm eski borçlar ödendiyse ama hala ödeme eksikse, yeni borç oluştur
+      const newDebtAmount = totalDebt - paymentAmount
+      
+      if (newDebtAmount > 0) {
+        // Önce tüm eski borçları tamamen kapat (status = paid)
+        await supabase
+          .from('courier_debts')
+          .update({ 
+            remaining_amount: 0,
+            status: 'paid'
+          })
+          .eq('courier_id', selectedCourierId)
+          .eq('status', 'pending')
         
+        // Sonra kalan tutarı yeni borç olarak ekle
         await supabase
           .from('courier_debts')
           .insert({

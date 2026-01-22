@@ -605,69 +605,74 @@ export default function KuryePage() {
           />
         </div>
 
-        {/* KURYE DURUM KONTROL TOGGLE - Mobil Responsive */}
-        <div className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-800 mb-3 sm:mb-4">
-          <div className="flex items-center justify-between mb-2 sm:mb-3">
-            <span className="text-xs sm:text-sm font-medium text-slate-300">Durum</span>
-            <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${is_active ? 'bg-green-500' : 'bg-red-500'}`}></div>
-              <span className="text-xs text-slate-400">
-                {is_active ? 'Aktif' : 'Pasif'}
-              </span>
-            </div>
-          </div>
-          
-          {/* Toggle Switch */}
-          <div className="flex items-center justify-center gap-2 sm:gap-3 py-2">
-            <span className={`text-xs font-medium transition-all ${!is_active ? 'text-red-400' : 'text-slate-500'}`}>
-              Pasif
-            </span>
-            
-            <button
-              onClick={() => updateCourierStatus('idle', !is_active)}
-              disabled={statusUpdating}
-              className={`relative w-14 h-7 rounded-full transition-all duration-300 disabled:opacity-50 ${
-                is_active ? 'bg-green-600' : 'bg-slate-700'
-              }`}
-            >
-              <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300 ${
-                is_active ? 'left-7' : 'left-0.5'
-              }`}>
-                {statusUpdating && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
-                  </div>
-                )}
+        {/* Sadece Aktif Paketler sekmesinde göster */}
+        {activeTab === 'packages' && (
+          <>
+            {/* KURYE DURUM KONTROL TOGGLE - Mobil Responsive */}
+            <div className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-800 mb-3 sm:mb-4">
+              <div className="flex items-center justify-between mb-2 sm:mb-3">
+                <span className="text-xs sm:text-sm font-medium text-slate-300">Durum</span>
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${is_active ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                  <span className="text-xs text-slate-400">
+                    {is_active ? 'Aktif' : 'Pasif'}
+                  </span>
+                </div>
               </div>
-            </button>
-            
-            <span className={`text-xs font-medium transition-all ${is_active ? 'text-green-400' : 'text-slate-500'}`}>
-              Aktif
-            </span>
-          </div>
-        </div>
+              
+              {/* Toggle Switch */}
+              <div className="flex items-center justify-center gap-2 sm:gap-3 py-2">
+                <span className={`text-xs font-medium transition-all ${!is_active ? 'text-red-400' : 'text-slate-500'}`}>
+                  Pasif
+                </span>
+                
+                <button
+                  onClick={() => updateCourierStatus('idle', !is_active)}
+                  disabled={statusUpdating}
+                  className={`relative w-14 h-7 rounded-full transition-all duration-300 disabled:opacity-50 ${
+                    is_active ? 'bg-green-600' : 'bg-slate-700'
+                  }`}
+                >
+                  <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300 ${
+                    is_active ? 'left-7' : 'left-0.5'
+                  }`}>
+                    {statusUpdating && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    )}
+                  </div>
+                </button>
+                
+                <span className={`text-xs font-medium transition-all ${is_active ? 'text-green-400' : 'text-slate-500'}`}>
+                  Aktif
+                </span>
+              </div>
+            </div>
 
-        {/* İSTATİSTİKLER - Mobil Responsive */}
-        <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-3 sm:mb-4">
-          <div className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-800">
-            <p className="text-slate-400 text-xs mb-1">Bugün Teslim</p>
-            <p className="text-xl sm:text-2xl font-bold text-green-400">{deliveredCount}</p>
-          </div>
-          <button 
-            onClick={() => setShowSummary(true)}
-            className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-800 hover:border-blue-600 transition-colors text-left active:scale-95"
-          >
-            <p className="text-slate-400 text-xs mb-1">Toplam Hesap</p>
-            <p className="text-xl sm:text-2xl font-bold text-blue-400">{(cashTotal + cardTotal).toFixed(2)} ₺</p>
-          </button>
-        </div>
+            {/* İSTATİSTİKLER - Mobil Responsive */}
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-3 sm:mb-4">
+              <div className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-800">
+                <p className="text-slate-400 text-xs mb-1">Bugün Teslim</p>
+                <p className="text-xl sm:text-2xl font-bold text-green-400">{deliveredCount}</p>
+              </div>
+              <button 
+                onClick={() => setShowSummary(true)}
+                className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-800 hover:border-blue-600 transition-colors text-left active:scale-95"
+              >
+                <p className="text-slate-400 text-xs mb-1">Toplam Hesap</p>
+                <p className="text-xl sm:text-2xl font-bold text-blue-400">{(cashTotal + cardTotal).toFixed(2)} ₺</p>
+              </button>
+            </div>
 
-        {/* TOPLAM KAZANÇ - Mobil Responsive */}
-        <div className="bg-gradient-to-r from-green-900 to-emerald-900 p-3 sm:p-4 rounded-xl border border-green-700 mb-3 sm:mb-4">
-          <p className="text-green-300 text-xs mb-1">💰 Toplam Kazanç</p>
-          <p className="text-2xl sm:text-3xl font-bold text-green-100">{deliveredCount * 80} ₺</p>
-          <p className="text-xs text-green-400 mt-1">{deliveredCount} paket × 80₺</p>
-        </div>
+            {/* TOPLAM KAZANÇ - Mobil Responsive */}
+            <div className="bg-gradient-to-r from-green-900 to-emerald-900 p-3 sm:p-4 rounded-xl border border-green-700 mb-3 sm:mb-4">
+              <p className="text-green-300 text-xs mb-1">💰 Toplam Kazanç</p>
+              <p className="text-2xl sm:text-3xl font-bold text-green-100">{deliveredCount * 80} ₺</p>
+              <p className="text-xs text-green-400 mt-1">{deliveredCount} paket × 80₺</p>
+            </div>
+          </>
+        )}
 
         {successMessage && (
           <div className="mb-3 p-3 bg-green-500/20 border border-green-500/50 rounded-lg text-green-400 text-sm text-center">
