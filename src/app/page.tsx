@@ -5,10 +5,13 @@ import { supabase } from './lib/supabase'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 interface Restaurant {
-  id: number
+  id: number | string
   name: string
   phone?: string
   address?: string
+  totalOrders?: number
+  totalRevenue?: number
+  totalDebt?: number
 }
 
 interface Package {
@@ -52,6 +55,16 @@ interface CourierDebt {
   created_at: string
 }
 
+interface RestaurantDebt {
+  id: number
+  restaurant_id: number | string
+  debt_date: string
+  amount: number
+  remaining_amount: number
+  status: 'pending' | 'paid'
+  created_at: string
+}
+
 export default function Home() {
   const [isMounted, setIsMounted] = useState(false)
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
@@ -80,7 +93,7 @@ export default function Home() {
   const [courierEndDate, setCourierEndDate] = useState('')
   const [showMenu, setShowMenu] = useState(false)
   const [showRestaurantSubmenu, setShowRestaurantSubmenu] = useState(false)
-  const [restaurantSubTab, setRestaurantSubTab] = useState<'list' | 'details' | 'debt'>('list')
+  const [restaurantSubTab, setRestaurantSubTab] = useState<'list' | 'details' | 'debt' | 'payments'>('list')
   const [showCourierSubmenu, setShowCourierSubmenu] = useState(false)
   const [courierSubTab, setCourierSubTab] = useState<'accounts' | 'performance' | 'earnings'>('accounts')
   const [darkMode, setDarkMode] = useState(true) // Varsayılan dark mode
@@ -99,6 +112,21 @@ export default function Home() {
   const [showPayDebtModal, setShowPayDebtModal] = useState(false)
   const [payDebtAmount, setPayDebtAmount] = useState('')
   const [payDebtProcessing, setPayDebtProcessing] = useState(false)
+
+  // Restoran Ödeme State'leri
+  const [selectedRestaurantId, setSelectedRestaurantId] = useState<number | null>(null)
+  const [selectedRestaurantOrders, setSelectedRestaurantOrders] = useState<Package[]>([])
+  const [showRestaurantModal, setShowRestaurantModal] = useState(false)
+  const [restaurantDebts, setRestaurantDebts] = useState<RestaurantDebt[]>([])
+  const [loadingRestaurantDebts, setLoadingRestaurantDebts] = useState(false)
+  const [showRestaurantPaymentModal, setShowRestaurantPaymentModal] = useState(false)
+  const [restaurantPaymentAmount, setRestaurantPaymentAmount] = useState('')
+  const [restaurantPaymentProcessing, setRestaurantPaymentProcessing] = useState(false)
+  const [showRestaurantDebtPayModal, setShowRestaurantDebtPayModal] = useState(false)
+  const [restaurantDebtPayAmount, setRestaurantDebtPayAmount] = useState('')
+  const [restaurantDebtPayProcessing, setRestaurantDebtPayProcessing] = useState(false)
+  const [restaurantStartDate, setRestaurantStartDate] = useState('')
+  const [restaurantEndDate, setRestaurantEndDate] = useState('')
 
   // Build-safe mount kontrolü
   useEffect(() => {
@@ -804,6 +832,430 @@ export default function Home() {
     }
   }
 
+  // ============================================
+  // RESTORAN ÖDEME VE BORÇ YÖNETİMİ FONKSİYONLARI
+  // ============================================
+
+  // Restoran siparişlerini çek
+  const fetchRestaurantOrders = async (restaurantId: number) => {
+    try {
+      let query = supabase
+        .from('packages')
+        .select('*, couriers(full_name)')
+        .eq('restaurant_id', restaurantId)
+        .eq('status', 'delivered')
+        .order('delivered_at', { ascending: false })
+
+      // Tarih aralığı filtresine göre sorgu ekle
+      if (restaurantStartDate && restaurantEndDate) {
+        const start = new Date(restaurantStartDate)
+        start.setHours(0, 0, 0, 0)
+        
+        const end = new Date(restaurantEndDate)
+        end.setHours(23, 59, 59, 999)
+        
+        query = query
+          .gte('delivered_at', start.toISOString())
+          .lte('delivered_at', end.toISOString())
+      }
+
+      const { data, error } = await query
+
+      if (error) throw error
+
+      const transformedData = (data || []).map((pkg: any) => ({
+        ...pkg,
+        courier_name: pkg.couriers?.full_name,
+        couriers: undefined
+      }))
+
+      setSelectedRestaurantOrders(transformedData)
+    } catch (error: any) {
+      const errorMsg = error.message?.toLowerCase() || ''
+      if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
+        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
+        return
+      }
+      console.error('Restoran siparişleri yüklenirken hata:', error.message)
+    }
+  }
+
+  // Restoran borçlarını çek
+  const fetchRestaurantDebts = async (restaurantId: number) => {
+    setLoadingRestaurantDebts(true)
+    try {
+      const { data, error } = await supabase
+        .from('restaurant_debts')
+        .select('*')
+        .eq('restaurant_id', restaurantId)
+        .eq('status', 'pending')
+        .order('debt_date', { ascending: true })
+
+      if (error) throw error
+      setRestaurantDebts(data || [])
+    } catch (error: any) {
+      const errorMsg = error.message?.toLowerCase() || ''
+      if (errorMsg.includes('failed to fetch') || 
+          errorMsg.includes('network') || 
+          errorMsg.includes('could not find') ||
+          errorMsg.includes('table') ||
+          errorMsg.includes('schema cache')) {
+        console.warn('⚠️ Borç tablosu henüz oluşturulmamış veya bağlantı hatası (sessiz):', error.message)
+        setRestaurantDebts([])
+        return
+      }
+      console.error('Borçlar yüklenemedi:', error)
+      setErrorMessage('Borçlar yüklenemedi: ' + error.message)
+    } finally {
+      setLoadingRestaurantDebts(false)
+    }
+  }
+
+  // Restoran detaylarını göster
+  const handleRestaurantClick = async (restaurantId: number) => {
+    setSelectedRestaurantId(restaurantId)
+    setShowRestaurantModal(true)
+    
+    // Tarih aralığı yoksa bugünü varsayılan olarak ayarla
+    if (!restaurantStartDate || !restaurantEndDate) {
+      const today = new Date().toISOString().split('T')[0]
+      setRestaurantStartDate(today)
+      setRestaurantEndDate(today)
+    }
+    
+    await fetchRestaurantOrders(restaurantId)
+    await fetchRestaurantDebts(restaurantId)
+  }
+
+  // Restoran hesap ödeme işlemi
+  const handleRestaurantPayment = async () => {
+    if (!selectedRestaurantId) return
+    
+    const paymentAmount = parseFloat(restaurantPaymentAmount)
+    if (isNaN(paymentAmount) || paymentAmount <= 0) {
+      setErrorMessage('Geçerli bir tutar girin!')
+      return
+    }
+
+    setRestaurantPaymentProcessing(true)
+    
+    try {
+      if (!restaurantStartDate || !restaurantEndDate) {
+        setErrorMessage('Tarih aralığı seçilmemiş!')
+        setRestaurantPaymentProcessing(false)
+        return
+      }
+      
+      const start = new Date(restaurantStartDate)
+      start.setHours(0, 0, 0, 0)
+      
+      const end = new Date(restaurantEndDate)
+      end.setHours(23, 59, 59, 999)
+      
+      // Seçilen tarih aralığındaki toplam sipariş tutarını hesapla
+      const { data: rangePackages, error: packagesError } = await supabase
+        .from('packages')
+        .select('amount')
+        .eq('restaurant_id', selectedRestaurantId)
+        .eq('status', 'delivered')
+        .gte('delivered_at', start.toISOString())
+        .lte('delivered_at', end.toISOString())
+
+      if (packagesError) throw packagesError
+
+      const totalOrderAmount = rangePackages?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0
+      
+      // Geçmiş borçları çek
+      const totalOldDebt = restaurantDebts.reduce((sum, d) => sum + d.remaining_amount, 0)
+      
+      // Genel toplam = Seçilen tarih aralığındaki sipariş tutarı + Eski borçlar
+      const grandTotal = totalOrderAmount + totalOldDebt
+      
+      // Hata kontrolü: Fazla ödeme
+      if (paymentAmount > grandTotal) {
+        setErrorMessage(`⚠️ Fazla tutar girdiniz, lütfen ödemeyi kontrol edin! (Toplam Borç: ${grandTotal.toFixed(2)} ₺)`)
+        setRestaurantPaymentProcessing(false)
+        return
+      }
+      
+      // Fark hesapla
+      const difference = grandTotal - paymentAmount
+      
+      const transactionDate = restaurantEndDate
+      const settledTimestamp = new Date().toISOString()
+      
+      if (difference > 0) {
+        // EKSİK ÖDEME - Yeni borç oluştur
+        const debtAmount = difference
+        
+        // Önce eski borçları öde (varsa)
+        let remainingPayment = paymentAmount
+        
+        for (const debt of restaurantDebts) {
+          if (remainingPayment <= 0) break
+          
+          if (remainingPayment >= debt.remaining_amount) {
+            await supabase
+              .from('restaurant_debts')
+              .update({ 
+                remaining_amount: 0,
+                status: 'paid'
+              })
+              .eq('id', debt.id)
+            
+            remainingPayment -= debt.remaining_amount
+          } else {
+            await supabase
+              .from('restaurant_debts')
+              .update({ 
+                remaining_amount: debt.remaining_amount - remainingPayment
+              })
+              .eq('id', debt.id)
+            
+            remainingPayment = 0
+          }
+        }
+        
+        // Yeni borç kaydı oluştur
+        const { error: debtError } = await supabase
+          .from('restaurant_debts')
+          .insert({
+            restaurant_id: selectedRestaurantId,
+            debt_date: transactionDate,
+            amount: debtAmount,
+            remaining_amount: debtAmount,
+            status: 'pending'
+          })
+        
+        if (debtError) throw debtError
+        
+        // Seçilen tarih aralığındaki paketleri "kapatıldı" olarak işaretle
+        await supabase
+          .from('packages')
+          .update({ restaurant_settled_at: settledTimestamp })
+          .eq('restaurant_id', selectedRestaurantId)
+          .eq('status', 'delivered')
+          .gte('delivered_at', start.toISOString())
+          .lte('delivered_at', end.toISOString())
+          .is('restaurant_settled_at', null)
+        
+        // Transaction kaydı
+        await supabase
+          .from('restaurant_payment_transactions')
+          .insert({
+            restaurant_id: selectedRestaurantId,
+            transaction_date: transactionDate,
+            total_order_amount: totalOrderAmount,
+            amount_paid: paymentAmount,
+            new_debt_amount: debtAmount,
+            payment_to_debts: paymentAmount,
+            notes: `${formatTurkishDate(transactionDate)} tarihinden kalan ${debtAmount.toFixed(2)} TL borç (${restaurantStartDate} - ${restaurantEndDate} arası)`
+          })
+        
+        setSuccessMessage(`✅ Ödeme alındı. ${debtAmount.toFixed(2)} TL borç kaydedildi.`)
+      } else {
+        // TAM ÖDEME - Eski borçları öde
+        let remainingPayment = paymentAmount
+        
+        for (const debt of restaurantDebts) {
+          if (remainingPayment <= 0) break
+          
+          if (remainingPayment >= debt.remaining_amount) {
+            await supabase
+              .from('restaurant_debts')
+              .update({ 
+                remaining_amount: 0,
+                status: 'paid'
+              })
+              .eq('id', debt.id)
+            
+            remainingPayment -= debt.remaining_amount
+          } else {
+            await supabase
+              .from('restaurant_debts')
+              .update({ 
+                remaining_amount: debt.remaining_amount - remainingPayment
+              })
+              .eq('id', debt.id)
+            
+            remainingPayment = 0
+          }
+        }
+        
+        // Seçilen tarih aralığındaki paketleri "kapatıldı" olarak işaretle
+        await supabase
+          .from('packages')
+          .update({ restaurant_settled_at: settledTimestamp })
+          .eq('restaurant_id', selectedRestaurantId)
+          .eq('status', 'delivered')
+          .gte('delivered_at', start.toISOString())
+          .lte('delivered_at', end.toISOString())
+          .is('restaurant_settled_at', null)
+        
+        // Transaction kaydı
+        await supabase
+          .from('restaurant_payment_transactions')
+          .insert({
+            restaurant_id: selectedRestaurantId,
+            transaction_date: transactionDate,
+            total_order_amount: totalOrderAmount,
+            amount_paid: paymentAmount,
+            new_debt_amount: 0,
+            payment_to_debts: paymentAmount - remainingPayment,
+            notes: `Tam ödeme (${restaurantStartDate} - ${restaurantEndDate} arası)`
+          })
+        
+        setSuccessMessage('✅ Ödeme alındı. Hesap tam olarak kapatıldı.')
+      }
+      
+      // Modal'ı kapat ve verileri yenile
+      setShowRestaurantPaymentModal(false)
+      setRestaurantPaymentAmount('')
+      await fetchRestaurantDebts(selectedRestaurantId)
+      await fetchRestaurants()
+      
+      setTimeout(() => setSuccessMessage(''), 3000)
+    } catch (error: any) {
+      console.error('Ödeme işlemi hatası:', error)
+      const errorMsg = error.message?.toLowerCase() || ''
+      
+      if (errorMsg.includes('could not find') || 
+          errorMsg.includes('table') || 
+          errorMsg.includes('schema cache')) {
+        setErrorMessage('⚠️ Veritabanı tabloları henüz oluşturulmamış! Lütfen database_migration_restaurant_debts.sql dosyasını Supabase SQL Editor\'de çalıştırın.')
+      } else {
+        setErrorMessage('Ödeme işlemi başarısız: ' + error.message)
+      }
+      
+      setTimeout(() => setErrorMessage(''), 5000)
+    } finally {
+      setRestaurantPaymentProcessing(false)
+    }
+  }
+
+  // Restoran borç ödeme işlemi
+  const handleRestaurantDebtPayment = async () => {
+    if (!selectedRestaurantId) return
+    
+    const paymentAmount = parseFloat(restaurantDebtPayAmount)
+    if (isNaN(paymentAmount) || paymentAmount <= 0) {
+      setErrorMessage('Geçerli bir tutar girin!')
+      return
+    }
+
+    setRestaurantDebtPayProcessing(true)
+    
+    try {
+      const totalDebt = restaurantDebts.reduce((sum, d) => sum + d.remaining_amount, 0)
+      
+      if (paymentAmount > totalDebt) {
+        setErrorMessage(`Ödeme tutarı toplam borçtan fazla olamaz! (Toplam Borç: ${totalDebt.toFixed(2)} ₺)`)
+        setRestaurantDebtPayProcessing(false)
+        return
+      }
+      
+      let remainingPayment = paymentAmount
+      const today = new Date().toISOString().split('T')[0]
+      
+      // Eski borçları en eskiden başlayarak öde
+      for (const debt of restaurantDebts) {
+        if (remainingPayment <= 0) break
+        
+        if (remainingPayment >= debt.remaining_amount) {
+          await supabase
+            .from('restaurant_debts')
+            .update({ 
+              remaining_amount: 0,
+              status: 'paid'
+            })
+            .eq('id', debt.id)
+          
+          remainingPayment -= debt.remaining_amount
+        } else {
+          await supabase
+            .from('restaurant_debts')
+            .update({ 
+              remaining_amount: debt.remaining_amount - remainingPayment
+            })
+            .eq('id', debt.id)
+          
+          remainingPayment = 0
+        }
+      }
+      
+      // Eğer tüm eski borçlar ödendiyse ama hala ödeme eksikse, yeni borç oluştur
+      const newDebtAmount = totalDebt - paymentAmount
+      
+      if (newDebtAmount > 0) {
+        // Önce tüm eski borçları tamamen kapat
+        await supabase
+          .from('restaurant_debts')
+          .update({ 
+            remaining_amount: 0,
+            status: 'paid'
+          })
+          .eq('restaurant_id', selectedRestaurantId)
+          .eq('status', 'pending')
+        
+        // Sonra kalan tutarı yeni borç olarak ekle
+        await supabase
+          .from('restaurant_debts')
+          .insert({
+            restaurant_id: selectedRestaurantId,
+            debt_date: today,
+            amount: newDebtAmount,
+            remaining_amount: newDebtAmount,
+            status: 'pending'
+          })
+      }
+      
+      // Transaction kaydı
+      await supabase
+        .from('restaurant_payment_transactions')
+        .insert({
+          restaurant_id: selectedRestaurantId,
+          transaction_date: today,
+          total_order_amount: 0,
+          amount_paid: paymentAmount,
+          new_debt_amount: paymentAmount < totalDebt ? (totalDebt - paymentAmount) : 0,
+          payment_to_debts: paymentAmount,
+          notes: `Borç ödemesi: ${paymentAmount.toFixed(2)} ₺ ödendi${paymentAmount < totalDebt ? `, ${(totalDebt - paymentAmount).toFixed(2)} ₺ kalan borç ${formatTurkishDate(today)} tarihine aktarıldı` : ''}`
+        })
+      
+      setSuccessMessage(`✅ Borç ödemesi alındı. ${paymentAmount.toFixed(2)} ₺ ödendi.`)
+      
+      // Modal'ı kapat ve verileri yenile
+      setShowRestaurantDebtPayModal(false)
+      setRestaurantDebtPayAmount('')
+      await fetchRestaurantDebts(selectedRestaurantId)
+      await fetchRestaurants()
+      
+      setTimeout(() => setSuccessMessage(''), 3000)
+    } catch (error: any) {
+      console.error('Borç ödeme işlemi hatası:', error)
+      const errorMsg = error.message?.toLowerCase() || ''
+      
+      if (errorMsg.includes('could not find') || 
+          errorMsg.includes('table') || 
+          errorMsg.includes('schema cache')) {
+        setErrorMessage('⚠️ Veritabanı tabloları henüz oluşturulmamış! Lütfen database_migration_restaurant_debts.sql dosyasını Supabase SQL Editor\'de çalıştırın.')
+      } else {
+        setErrorMessage('Borç ödeme işlemi başarısız: ' + error.message)
+      }
+      
+      setTimeout(() => setErrorMessage(''), 5000)
+    } finally {
+      setRestaurantDebtPayProcessing(false)
+    }
+  }
+
+  // Restoran tarih değiştiğinde siparişleri yenile
+  useEffect(() => {
+    if (selectedRestaurantId && restaurantStartDate && restaurantEndDate) {
+      fetchRestaurantOrders(selectedRestaurantId)
+    }
+  }, [selectedRestaurantId, restaurantStartDate, restaurantEndDate])
+
   // fetchCourierStatuses fonksiyonu kaldırıldı - artık fetchCouriers'da tüm bilgiler geliyor
 
   const handleAssignCourier = async (packageId: number) => {
@@ -909,8 +1361,118 @@ export default function Home() {
   }, [showCourierModal, selectedCourierId])
 
   const fetchRestaurants = async () => {
-    const { data } = await supabase.from('restaurants').select('id, name, phone, address').order('name', { ascending: true })
-    setRestaurants(data || [])
+    try {
+      const { data, error } = await supabase
+        .from('restaurants')
+        .select('id, name, phone, address')
+        .order('name', { ascending: true })
+
+      if (error) throw error
+      
+      if (!data || data.length === 0) {
+        setRestaurants([])
+        return
+      }
+      
+      const restaurantsData = data.map(restaurant => ({
+        ...restaurant,
+        totalOrders: 0,
+        totalRevenue: 0,
+        totalDebt: 0
+      }))
+      
+      setRestaurants(restaurantsData)
+      
+      // Restoran istatistiklerini ayrı olarak çek
+      if (restaurantsData.length > 0) {
+        const ids = restaurantsData.map(r => r.id)
+        await Promise.all([
+          fetchRestaurantStats(ids),
+          fetchRestaurantDebtsTotal(ids)
+        ])
+      }
+    } catch (error: any) {
+      const errorMsg = error.message?.toLowerCase() || ''
+      if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
+        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
+        return
+      }
+      console.error('Restoranlar yüklenemedi:', error)
+    }
+  }
+
+  // Restoran istatistiklerini çek
+  const fetchRestaurantStats = async (restaurantIds: number[]) => {
+    try {
+      const { data, error } = await supabase
+        .from('packages')
+        .select('restaurant_id, amount')
+        .eq('status', 'delivered')
+        .in('restaurant_id', restaurantIds)
+
+      if (error) throw error
+
+      const stats: { [key: number]: { count: number, revenue: number } } = {}
+      data?.forEach((pkg) => {
+        if (pkg.restaurant_id) {
+          if (!stats[pkg.restaurant_id]) {
+            stats[pkg.restaurant_id] = { count: 0, revenue: 0 }
+          }
+          stats[pkg.restaurant_id].count += 1
+          stats[pkg.restaurant_id].revenue += pkg.amount || 0
+        }
+      })
+
+      setRestaurants(prev => prev.map(r => ({
+        ...r,
+        totalOrders: stats[r.id]?.count || 0,
+        totalRevenue: stats[r.id]?.revenue || 0
+      })))
+    } catch (error: any) {
+      const errorMsg = error.message?.toLowerCase() || ''
+      if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
+        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
+        return
+      }
+      console.error('Restoran istatistikleri alınırken hata:', error)
+    }
+  }
+
+  // Restoran toplam borçlarını çek
+  const fetchRestaurantDebtsTotal = async (restaurantIds: number[]) => {
+    try {
+      const { data, error } = await supabase
+        .from('restaurant_debts')
+        .select('restaurant_id, remaining_amount')
+        .eq('status', 'pending')
+        .in('restaurant_id', restaurantIds)
+
+      if (error) throw error
+
+      const debts: { [key: number]: number } = {}
+      data?.forEach((debt) => {
+        if (debt.restaurant_id) {
+          debts[debt.restaurant_id] = (debts[debt.restaurant_id] || 0) + debt.remaining_amount
+        }
+      })
+
+      setRestaurants(prev => prev.map(r => ({
+        ...r,
+        totalDebt: debts[r.id] || 0
+      })))
+    } catch (error: any) {
+      const errorMsg = error.message?.toLowerCase() || ''
+      if (errorMsg.includes('failed to fetch') || 
+          errorMsg.includes('network') || 
+          errorMsg.includes('could not find') ||
+          errorMsg.includes('table') ||
+          errorMsg.includes('schema cache')) {
+        console.warn('⚠️ Borç tablosu henüz oluşturulmamış veya bağlantı hatası (sessiz):', error.message)
+        setRestaurants(prev => prev.map(r => ({ ...r, totalDebt: 0 })))
+        return
+      }
+      console.error('Restoran borçları alınırken hata:', error)
+    }
   }
 
   const handleCourierChange = (packageId: number, courierId: string) => {
@@ -1140,6 +1702,506 @@ export default function Home() {
   }
 
   return (
+    <>
+      {/* RESTORAN DETAY MODALI */}
+      {showRestaurantModal && selectedRestaurantId && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex justify-between items-center p-6 border-b border-slate-200 dark:border-slate-700">
+              <div className="flex items-center gap-4 flex-1">
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
+                  🍽️ {restaurants.find(r => r.id === selectedRestaurantId)?.name} - Detaylı Rapor
+                </h3>
+                
+                {/* Tarih Aralığı Seçici */}
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={restaurantStartDate}
+                    onChange={(e) => setRestaurantStartDate(e.target.value)}
+                    className="px-3 py-2 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-600 text-sm"
+                  />
+                  <span className="text-slate-500 dark:text-slate-400">-</span>
+                  <input
+                    type="date"
+                    value={restaurantEndDate}
+                    onChange={(e) => setRestaurantEndDate(e.target.value)}
+                    className="px-3 py-2 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-600 text-sm"
+                  />
+                </div>
+                
+                {/* Hesap Öde Butonu */}
+                {restaurantStartDate && restaurantEndDate && (
+                  <button
+                    onClick={() => setShowRestaurantPaymentModal(true)}
+                    className="ml-auto px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg font-medium text-sm shadow-lg transition-all active:scale-95"
+                  >
+                    💰 Hesap Öde
+                  </button>
+                )}
+              </div>
+              <button
+                onClick={() => setShowRestaurantModal(false)}
+                className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 text-2xl ml-4"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)] admin-scrollbar">
+              {/* Ödenmesi Gereken Hesap */}
+              {selectedRestaurantOrders.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="text-lg font-bold mb-4 text-slate-900 dark:text-white">💰 Ödenmesi Gereken Hesap</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-blue-100 dark:bg-blue-900/30 p-4 rounded-xl border-2 border-blue-300 dark:border-blue-700">
+                      <div className="text-center">
+                        <div className="text-3xl font-black text-blue-700 dark:text-blue-400">
+                          {selectedRestaurantOrders.length}
+                        </div>
+                        <div className="text-sm font-semibold text-blue-600 dark:text-blue-500 mt-1">
+                          📦 TOPLAM SİPARİŞ
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-green-100 dark:bg-green-900/30 p-4 rounded-xl border-2 border-green-300 dark:border-green-700">
+                      <div className="text-center">
+                        <div className="text-3xl font-black text-green-700 dark:text-green-400">
+                          {selectedRestaurantOrders.reduce((sum, o) => sum + (o.amount || 0), 0).toFixed(2)} ₺
+                        </div>
+                        <div className="text-sm font-semibold text-green-600 dark:text-green-500 mt-1">
+                          💵 TOPLAM TUTAR
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Sipariş Detay Tablosu */}
+              <div>
+                <h4 className="text-lg font-bold mb-4 text-slate-900 dark:text-white">📋 Sipariş Detayları</h4>
+                {selectedRestaurantOrders.length === 0 ? (
+                  <div className="text-center py-8 text-slate-500">
+                    Bu restoran henüz sipariş almamış.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto admin-scrollbar">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
+                          <th className="text-left py-3 px-4 font-semibold">Tarih/Saat</th>
+                          <th className="text-left py-3 px-4 font-semibold">Müşteri</th>
+                          <th className="text-left py-3 px-4 font-semibold">Kurye</th>
+                          <th className="text-left py-3 px-4 font-semibold">Tutar</th>
+                          <th className="text-left py-3 px-4 font-semibold">Ödeme</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedRestaurantOrders.map((order, index) => (
+                          <tr key={order.id} className={`border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/30 ${
+                            index % 2 === 0 ? 'bg-white dark:bg-slate-800' : 'bg-slate-50/50 dark:bg-slate-700/20'
+                          }`}>
+                            <td className="py-3 px-4">
+                              <div className="text-sm">
+                                <div className="font-medium">{formatTurkishTime(order.delivered_at)}</div>
+                                <div className="text-slate-500 text-xs">
+                                  {order.delivered_at ? new Date(order.delivered_at).toLocaleDateString('tr-TR') : '-'}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 font-medium">{order.customer_name}</td>
+                            <td className="py-3 px-4">{order.courier_name || 'Bilinmeyen'}</td>
+                            <td className="py-3 px-4">
+                              <span className="font-bold text-green-600 dark:text-green-400">
+                                {order.amount} ₺
+                              </span>
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                order.payment_method === 'cash' 
+                                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
+                                  : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                              }`}>
+                                {order.payment_method === 'cash' ? '💵 Nakit' : '💳 Kart'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* RESTORAN HESAP ÖDEME MODALI */}
+      {showRestaurantPaymentModal && selectedRestaurantId && (
+        <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto admin-scrollbar">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-slate-200 dark:border-slate-700">
+              <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
+                💰 Hesap Ödemesi - {restaurants.find(r => r.id === selectedRestaurantId)?.name}
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                {new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' })}
+              </p>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6">
+              {loadingRestaurantDebts ? (
+                <div className="text-center py-8">
+                  <div className="w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className="text-slate-500">Borçlar yükleniyor...</p>
+                </div>
+              ) : (
+                <>
+                  {/* Seçilen Tarih Aralığı Toplam Tutar */}
+                  <div className="mb-6 space-y-3">
+                    <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border border-green-200 dark:border-green-800">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                          💵 Seçilen Tarih Aralığı Toplam Tutar
+                        </span>
+                        <span className="text-2xl font-bold text-green-700 dark:text-green-300">
+                          {selectedRestaurantOrders.reduce((sum, o) => sum + (o.amount || 0), 0).toFixed(2)} ₺
+                        </span>
+                      </div>
+                      <p className="text-xs text-green-600 dark:text-green-500 mt-1">
+                        {selectedRestaurantOrders.length} sipariş ({restaurantStartDate} - {restaurantEndDate})
+                      </p>
+                    </div>
+
+                    {/* Geçmiş Borçlar */}
+                    {restaurantDebts.length > 0 && (
+                      <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border border-red-200 dark:border-red-800">
+                        <div className="flex justify-between items-center mb-3">
+                          <span className="text-sm font-medium text-red-700 dark:text-red-400">
+                            📋 Geçmiş Borçlar
+                          </span>
+                          <span className="text-2xl font-bold text-red-700 dark:text-red-300">
+                            {restaurantDebts.reduce((sum, d) => sum + d.remaining_amount, 0).toFixed(2)} ₺
+                          </span>
+                        </div>
+                        <div className="space-y-2">
+                          {restaurantDebts.map((debt) => (
+                            <div key={debt.id} className="flex justify-between items-center text-xs bg-white dark:bg-slate-700 p-2 rounded">
+                              <span className="text-slate-600 dark:text-slate-400">
+                                📅 {formatTurkishDate(debt.debt_date)} tarihinden kalan
+                              </span>
+                              <span className="font-bold text-red-600 dark:text-red-400">
+                                {debt.remaining_amount.toFixed(2)} ₺
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Genel Toplam */}
+                    <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-xl border-2 border-purple-300 dark:border-purple-700">
+                      <div className="flex justify-between items-center">
+                        <span className="text-base font-bold text-purple-700 dark:text-purple-300">
+                          🎯 GENEL TOPLAM (Ödenmesi Gereken)
+                        </span>
+                        <span className="text-3xl font-black text-purple-700 dark:text-purple-300">
+                          {(selectedRestaurantOrders.reduce((sum, o) => sum + (o.amount || 0), 0) + restaurantDebts.reduce((sum, d) => sum + d.remaining_amount, 0)).toFixed(2)} ₺
+                        </span>
+                      </div>
+                      <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
+                        Seçilen tarih aralığı toplam + Geçmiş borçlar
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Ödenen Para Input */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                      💰 Restorana Ödenen Para
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={restaurantPaymentAmount}
+                      onChange={(e) => setRestaurantPaymentAmount(e.target.value)}
+                      placeholder="Örn: 30000.00"
+                      autoFocus
+                      className="w-full px-4 py-3 bg-white dark:bg-slate-700 border-2 border-slate-300 dark:border-slate-600 rounded-xl text-lg font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                    />
+                  </div>
+
+                  {/* Fark Hesaplama */}
+                  {restaurantPaymentAmount && !isNaN(parseFloat(restaurantPaymentAmount)) && (() => {
+                    const totalOrderAmount = selectedRestaurantOrders.reduce((sum, o) => sum + (o.amount || 0), 0)
+                    const totalOldDebt = restaurantDebts.reduce((sum, d) => sum + d.remaining_amount, 0)
+                    const grandTotal = totalOrderAmount + totalOldDebt
+                    const paid = parseFloat(restaurantPaymentAmount)
+                    const difference = grandTotal - paid
+                    
+                    if (paid > grandTotal) {
+                      return (
+                        <div className="mb-6">
+                          <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-xl border-2 border-yellow-300 dark:border-yellow-700">
+                            <div className="text-center">
+                              <span className="text-2xl font-black text-yellow-700 dark:text-yellow-300">
+                                ⚠️ FAZLA TUTAR
+                              </span>
+                              <p className="text-sm text-yellow-600 dark:text-yellow-400 mt-2">
+                                Fazla tutar girdiniz, lütfen ödemeyi kontrol edin!
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    } else if (difference > 0) {
+                      return (
+                        <div className="mb-6">
+                          <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border-2 border-red-300 dark:border-red-700">
+                            <div className="flex justify-between items-center">
+                              <span className="text-base font-bold text-red-700 dark:text-red-300">
+                                ⚠️ EKSİK ÖDEME
+                              </span>
+                              <span className="text-3xl font-black text-red-700 dark:text-red-300">
+                                {difference.toFixed(2)} ₺
+                              </span>
+                            </div>
+                            <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+                              Bu miktar restoran borcuna eklenecek
+                            </p>
+                          </div>
+                        </div>
+                      )
+                    } else {
+                      return (
+                        <div className="mb-6">
+                          <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border-2 border-green-300 dark:border-green-700">
+                            <div className="text-center">
+                              <span className="text-2xl font-black text-green-700 dark:text-green-300">
+                                ✓ TAM ÖDEME
+                              </span>
+                              <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                                Hesap tam olarak kapandı
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    }
+                  })()}
+
+                  {/* Butonlar */}
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => {
+                        setShowRestaurantPaymentModal(false)
+                        setRestaurantPaymentAmount('')
+                      }}
+                      className="flex-1 px-4 py-3 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-medium hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
+                    >
+                      İptal
+                    </button>
+                    <button
+                      onClick={handleRestaurantPayment}
+                      disabled={restaurantPaymentProcessing || !restaurantPaymentAmount || parseFloat(restaurantPaymentAmount) > (selectedRestaurantOrders.reduce((sum, o) => sum + (o.amount || 0), 0) + restaurantDebts.reduce((sum, d) => sum + d.remaining_amount, 0))}
+                      className="flex-1 px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {restaurantPaymentProcessing ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          İşleniyor...
+                        </span>
+                      ) : (
+                        '✓ Ödemeyi Onayla'
+                      )}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* RESTORAN BORÇ ÖDEME MODALI */}
+      {showRestaurantDebtPayModal && selectedRestaurantId && (
+        <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto admin-scrollbar">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-slate-200 dark:border-slate-700">
+              <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
+                💳 Borç Ödemesi - {restaurants.find(r => r.id === selectedRestaurantId)?.name}
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                {new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' })}
+              </p>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6">
+              {loadingRestaurantDebts ? (
+                <div className="text-center py-8">
+                  <div className="w-12 h-12 border-4 border-red-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className="text-slate-500">Borçlar yükleniyor...</p>
+                </div>
+              ) : (
+                <>
+                  {/* Borç Listesi */}
+                  <div className="mb-6">
+                    <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-4">📋 Mevcut Borçlar</h4>
+                    
+                    {restaurantDebts.length === 0 ? (
+                      <div className="text-center py-8 text-slate-500">
+                        <div className="text-4xl mb-2">✅</div>
+                        <p>Restoran borcu yok</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 mb-4">
+                        {restaurantDebts.map((debt) => (
+                          <div key={debt.id} className="flex justify-between items-center bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-200 dark:border-red-800">
+                            <span className="text-sm text-slate-700 dark:text-slate-300">
+                              📅 {formatTurkishDate(debt.debt_date)} gününden kalan
+                            </span>
+                            <span className="text-lg font-bold text-red-600 dark:text-red-400">
+                              {debt.remaining_amount.toFixed(2)} ₺
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Toplam Borç */}
+                    {restaurantDebts.length > 0 && (
+                      <div className="bg-red-100 dark:bg-red-900/30 p-4 rounded-xl border-2 border-red-300 dark:border-red-700">
+                        <div className="flex justify-between items-center">
+                          <span className="text-base font-bold text-red-700 dark:text-red-300">
+                            💰 TOPLAM BORÇ
+                          </span>
+                          <span className="text-3xl font-black text-red-700 dark:text-red-300">
+                            {restaurantDebts.reduce((sum, d) => sum + d.remaining_amount, 0).toFixed(2)} ₺
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Ödeme Tutarı Input */}
+                  {restaurantDebts.length > 0 && (
+                    <>
+                      <div className="mb-6">
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                          💵 Ödenen Tutar
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={restaurantDebtPayAmount}
+                          onChange={(e) => setRestaurantDebtPayAmount(e.target.value)}
+                          placeholder="Örn: 5000.00"
+                          autoFocus
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-700 border-2 border-slate-300 dark:border-slate-600 rounded-xl text-lg font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none"
+                        />
+                      </div>
+
+                      {/* Hesaplama Önizlemesi */}
+                      {restaurantDebtPayAmount && !isNaN(parseFloat(restaurantDebtPayAmount)) && (() => {
+                        const payment = parseFloat(restaurantDebtPayAmount)
+                        const totalDebt = restaurantDebts.reduce((sum, d) => sum + d.remaining_amount, 0)
+                        const remaining = totalDebt - payment
+                        
+                        if (payment > totalDebt) {
+                          return (
+                            <div className="mb-6">
+                              <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-xl border-2 border-yellow-300 dark:border-yellow-700">
+                                <div className="text-center">
+                                  <span className="text-2xl font-black text-yellow-700 dark:text-yellow-300">
+                                    ⚠️ UYARI
+                                  </span>
+                                  <p className="text-sm text-yellow-600 dark:text-yellow-400 mt-2">
+                                    Ödeme tutarı toplam borçtan fazla olamaz!
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        } else if (remaining > 0) {
+                          return (
+                            <div className="mb-6">
+                              <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-xl border-2 border-orange-300 dark:border-orange-700">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-base font-bold text-orange-700 dark:text-orange-300">
+                                    📊 KALAN BORÇ
+                                  </span>
+                                  <span className="text-3xl font-black text-orange-700 dark:text-orange-300">
+                                    {remaining.toFixed(2)} ₺
+                                  </span>
+                                </div>
+                                <p className="text-xs text-orange-600 dark:text-orange-400 mt-2">
+                                  Bu miktar bugün tarihine aktarılacak
+                                </p>
+                              </div>
+                            </div>
+                          )
+                        } else {
+                          return (
+                            <div className="mb-6">
+                              <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border-2 border-green-300 dark:border-green-700">
+                                <div className="text-center">
+                                  <span className="text-2xl font-black text-green-700 dark:text-green-300">
+                                    ✅ TÜM BORÇ ÖDENDİ
+                                  </span>
+                                  <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                                    Restoran borçsuz olacak
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        }
+                      })()}
+
+                      {/* Butonlar */}
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => {
+                            setShowRestaurantDebtPayModal(false)
+                            setRestaurantDebtPayAmount('')
+                          }}
+                          className="flex-1 px-4 py-3 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-medium hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
+                        >
+                          İptal
+                        </button>
+                        <button
+                          onClick={handleRestaurantDebtPayment}
+                          disabled={restaurantDebtPayProcessing || !restaurantDebtPayAmount || parseFloat(restaurantDebtPayAmount) > restaurantDebts.reduce((sum, d) => sum + d.remaining_amount, 0)}
+                          className="flex-1 px-4 py-3 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {restaurantDebtPayProcessing ? (
+                            <span className="flex items-center justify-center gap-2">
+                              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              İşleniyor...
+                            </span>
+                          ) : (
+                            '✓ Borç Öde'
+                          )}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
     <div className={`min-h-screen ${darkMode ? 'bg-slate-50 dark:bg-slate-900' : 'bg-white'}`}>
       {/* Hamburger Menü Butonu - Sol Üst */}
       <button 
@@ -1469,6 +2531,7 @@ export default function Home() {
         </div>
       </div>
     </div>
+    </>
   )
 
   // Tab Bileşenleri
