@@ -1004,12 +1004,12 @@ export default function RestoranPage() {
         <div className="lg:col-span-2">
           <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
             {/* Başlık */}
-            <div className="flex justify-center items-center mb-6">
+            <div className="flex justify-center items-center mb-6 -mt-4">
               <div className="text-center">
                 <img 
                   src="/logo.png" 
                   alt="Logo" 
-                  className="w-32 h-32 mx-auto mb-2"
+                  className="w-40 h-40 mx-auto mb-2"
                 />
                 <h1 className="text-xl font-bold text-white">
                   {selectedRestaurant?.name}
