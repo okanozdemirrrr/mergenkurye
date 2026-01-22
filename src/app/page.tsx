@@ -24,7 +24,7 @@ interface Package {
   content?: string
   courier_id?: string | null
   payment_method?: 'cash' | 'card' | null
-  restaurant_id?: number | null
+  restaurant_id?: number | string | null
   restaurant?: Restaurant | null
   created_at?: string
   assigned_at?: string
@@ -114,7 +114,7 @@ export default function Home() {
   const [payDebtProcessing, setPayDebtProcessing] = useState(false)
 
   // Restoran Ödeme State'leri
-  const [selectedRestaurantId, setSelectedRestaurantId] = useState<number | null>(null)
+  const [selectedRestaurantId, setSelectedRestaurantId] = useState<number | string | null>(null)
   const [selectedRestaurantOrders, setSelectedRestaurantOrders] = useState<Package[]>([])
   const [showRestaurantModal, setShowRestaurantModal] = useState(false)
   const [restaurantDebts, setRestaurantDebts] = useState<RestaurantDebt[]>([])
@@ -837,7 +837,7 @@ export default function Home() {
   // ============================================
 
   // Restoran siparişlerini çek
-  const fetchRestaurantOrders = async (restaurantId: number) => {
+  const fetchRestaurantOrders = async (restaurantId: number | string) => {
     try {
       let query = supabase
         .from('packages')
@@ -881,7 +881,7 @@ export default function Home() {
   }
 
   // Restoran borçlarını çek
-  const fetchRestaurantDebts = async (restaurantId: number) => {
+  const fetchRestaurantDebts = async (restaurantId: number | string) => {
     setLoadingRestaurantDebts(true)
     try {
       const { data, error } = await supabase
@@ -912,7 +912,7 @@ export default function Home() {
   }
 
   // Restoran detaylarını göster
-  const handleRestaurantClick = async (restaurantId: number) => {
+  const handleRestaurantClick = async (restaurantId: number | string) => {
     setSelectedRestaurantId(restaurantId)
     setShowRestaurantModal(true)
     
@@ -1402,7 +1402,7 @@ export default function Home() {
   }
 
   // Restoran istatistiklerini çek
-  const fetchRestaurantStats = async (restaurantIds: number[]) => {
+  const fetchRestaurantStats = async (restaurantIds: (number | string)[]) => {
     try {
       const { data, error } = await supabase
         .from('packages')
@@ -1412,21 +1412,22 @@ export default function Home() {
 
       if (error) throw error
 
-      const stats: { [key: number]: { count: number, revenue: number } } = {}
+      const stats: { [key: string]: { count: number, revenue: number } } = {}
       data?.forEach((pkg) => {
         if (pkg.restaurant_id) {
-          if (!stats[pkg.restaurant_id]) {
-            stats[pkg.restaurant_id] = { count: 0, revenue: 0 }
+          const key = String(pkg.restaurant_id)
+          if (!stats[key]) {
+            stats[key] = { count: 0, revenue: 0 }
           }
-          stats[pkg.restaurant_id].count += 1
-          stats[pkg.restaurant_id].revenue += pkg.amount || 0
+          stats[key].count += 1
+          stats[key].revenue += pkg.amount || 0
         }
       })
 
       setRestaurants(prev => prev.map(r => ({
         ...r,
-        totalOrders: stats[r.id]?.count || 0,
-        totalRevenue: stats[r.id]?.revenue || 0
+        totalOrders: stats[String(r.id)]?.count || 0,
+        totalRevenue: stats[String(r.id)]?.revenue || 0
       })))
     } catch (error: any) {
       const errorMsg = error.message?.toLowerCase() || ''
@@ -1439,7 +1440,7 @@ export default function Home() {
   }
 
   // Restoran toplam borçlarını çek
-  const fetchRestaurantDebtsTotal = async (restaurantIds: number[]) => {
+  const fetchRestaurantDebtsTotal = async (restaurantIds: (number | string)[]) => {
     try {
       const { data, error } = await supabase
         .from('restaurant_debts')
@@ -1449,16 +1450,17 @@ export default function Home() {
 
       if (error) throw error
 
-      const debts: { [key: number]: number } = {}
+      const debts: { [key: string]: number } = {}
       data?.forEach((debt) => {
         if (debt.restaurant_id) {
-          debts[debt.restaurant_id] = (debts[debt.restaurant_id] || 0) + debt.remaining_amount
+          const key = String(debt.restaurant_id)
+          debts[key] = (debts[key] || 0) + debt.remaining_amount
         }
       })
 
       setRestaurants(prev => prev.map(r => ({
         ...r,
-        totalDebt: debts[r.id] || 0
+        totalDebt: debts[String(r.id)] || 0
       })))
     } catch (error: any) {
       const errorMsg = error.message?.toLowerCase() || ''

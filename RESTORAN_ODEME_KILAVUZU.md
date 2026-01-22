@@ -127,7 +127,7 @@ Borç ödeme işlemini gerçekleştirir:
 ### restaurant_debts Tablosu
 ```sql
 - id: BIGSERIAL PRIMARY KEY
-- restaurant_id: BIGINT (restaurants tablosuna referans)
+- restaurant_id: UUID (restaurants tablosuna referans)
 - debt_date: DATE (Borcun oluştuğu tarih)
 - amount: DECIMAL(10, 2) (İlk borç tutarı)
 - remaining_amount: DECIMAL(10, 2) (Kalan borç tutarı)
@@ -139,7 +139,7 @@ Borç ödeme işlemini gerçekleştirir:
 ### restaurant_payment_transactions Tablosu
 ```sql
 - id: BIGSERIAL PRIMARY KEY
-- restaurant_id: BIGINT
+- restaurant_id: UUID
 - transaction_date: DATE
 - total_order_amount: DECIMAL(10, 2)
 - amount_paid: DECIMAL(10, 2)
