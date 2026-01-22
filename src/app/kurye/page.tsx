@@ -55,6 +55,9 @@ export default function KuryePage() {
   const [leaderboard, setLeaderboard] = useState<CourierLeaderboard[]>([])
   const [myRank, setMyRank] = useState<number | null>(null)
   const [showLeaderboard, setShowLeaderboard] = useState(false) // Leaderboard modal
+  const [showMenu, setShowMenu] = useState(false) // Hamburger menü
+  const [activeTab, setActiveTab] = useState<'packages' | 'history'>('packages') // Aktif sekme
+  const [todayDeliveredPackages, setTodayDeliveredPackages] = useState<Package[]>([]) // Bugünkü teslim edilenler
 
   // Build-safe mount kontrolü
   useEffect(() => {
@@ -176,6 +179,42 @@ export default function KuryePage() {
       
       console.error('❌ İstatistik yüklenemedi:', error)
       setErrorMessage('İstatistikler yüklenemedi: ' + error.message)
+    }
+  }
+
+  // Bugünkü teslim edilen paketleri çek
+  const fetchTodayDeliveredPackages = async () => {
+    const courierId = localStorage.getItem(LOGIN_COURIER_ID_KEY)
+    if (!courierId) return
+
+    try {
+      const todayStart = new Date()
+      todayStart.setHours(0, 0, 0, 0)
+      
+      const { data, error } = await supabase
+        .from('packages')
+        .select('*, restaurants(name, phone, address)')
+        .eq('courier_id', courierId)
+        .eq('status', 'delivered')
+        .gte('delivered_at', todayStart.toISOString())
+        .order('delivered_at', { ascending: false })
+
+      if (error) throw error
+      
+      const transformed = (data || []).map((pkg: any) => ({
+        ...pkg,
+        restaurant: pkg.restaurants
+      }))
+      
+      setTodayDeliveredPackages(transformed)
+    } catch (error: any) {
+      const errorMsg = error.message?.toLowerCase() || ''
+      if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
+        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
+        return
+      }
+      
+      console.error('❌ Geçmiş paketler yüklenemedi:', error)
     }
   }
 
@@ -322,6 +361,7 @@ export default function KuryePage() {
       // İlk yükleme
       fetchPackages(true)
       fetchDailyStats()
+      fetchTodayDeliveredPackages()
       fetchCourierStatus()
       fetchLeaderboard()
       
@@ -349,6 +389,7 @@ export default function KuryePage() {
       const interval = setInterval(() => {
         fetchPackages(false)
         fetchDailyStats()
+        fetchTodayDeliveredPackages()
         fetchCourierStatus()
         fetchLeaderboard()
       }, 30000)
@@ -486,19 +527,73 @@ export default function KuryePage() {
         </div>
       )}
 
-      {/* Fixed Çıkış Butonu - Sol Üst - Mobil Responsive */}
+      {/* Hamburger Menü Butonu - Sol Üst */}
       {isLoggedIn && (
         <button 
-          onClick={() => { 
-            localStorage.removeItem(LOGIN_STORAGE_KEY);
-            localStorage.removeItem(LOGIN_COURIER_ID_KEY);
-            window.location.href = '/kurye';
-          }} 
-          className="fixed top-2 left-2 sm:top-4 sm:left-4 z-50 bg-red-600 hover:bg-red-700 text-white px-2 py-1.5 sm:px-3 sm:py-2 rounded-lg text-xs sm:text-sm font-medium shadow-lg transition-colors active:scale-95"
+          onClick={() => setShowMenu(!showMenu)} 
+          className="fixed top-2 left-2 sm:top-4 sm:left-4 z-50 bg-slate-800 hover:bg-slate-700 text-white p-2 sm:p-3 rounded-lg shadow-lg transition-colors active:scale-95"
         >
-          <span className="hidden sm:inline">← Çıkış</span>
-          <span className="sm:hidden">←</span>
+          <div className="space-y-1">
+            <div className="w-5 h-0.5 bg-white"></div>
+            <div className="w-5 h-0.5 bg-white"></div>
+            <div className="w-5 h-0.5 bg-white"></div>
+          </div>
         </button>
+      )}
+
+      {/* Açılır Menü */}
+      {isLoggedIn && (
+        <div className={`fixed top-0 left-0 h-full w-64 sm:w-80 bg-slate-900 text-white z-40 transform transition-transform duration-300 ${
+          showMenu ? 'translate-x-0' : '-translate-x-full'
+        } overflow-y-auto`}>
+          <div className="p-6 pt-20">
+            <h2 className="text-xl sm:text-2xl font-bold mb-6">📦 Kurye Panel</h2>
+            
+            <nav className="space-y-2">
+              <button
+                onClick={() => {
+                  setActiveTab('packages')
+                  setShowMenu(false)
+                }}
+                className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${
+                  activeTab === 'packages'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <span className="mr-3">📦</span>
+                Aktif Paketlerim
+              </button>
+
+              <button
+                onClick={() => {
+                  setActiveTab('history')
+                  setShowMenu(false)
+                }}
+                className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${
+                  activeTab === 'history'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <span className="mr-3">📋</span>
+                Paket Geçmişim
+              </button>
+
+              <button
+                onClick={() => { 
+                  localStorage.removeItem(LOGIN_STORAGE_KEY);
+                  localStorage.removeItem(LOGIN_COURIER_ID_KEY);
+                  window.location.href = '/kurye';
+                }} 
+                className="w-full text-left px-4 py-3 rounded-lg font-medium text-red-400 hover:bg-red-900/20 hover:text-red-300 transition-all mt-4"
+              >
+                <span className="mr-3">🚪</span>
+                Çıkış Yap
+              </button>
+            </nav>
+          </div>
+        </div>
       )}
 
       <div className="max-w-2xl mx-auto px-2 sm:px-0">
@@ -586,23 +681,25 @@ export default function KuryePage() {
           </div>
         )}
 
-        <div className="space-y-2 sm:space-y-3">
-          {packages.length === 0 ? (
-            <div className="text-center py-8 sm:py-12 text-slate-500">
-              <div className="text-3xl sm:text-4xl mb-2">📦</div>
-              <p className="text-xs sm:text-sm">Atanmış paket bulunmuyor</p>
-            </div>
-          ) : (
-            <>
-              {/* Paket Sayısı Göstergesi - Mobil Responsive */}
-              <div className="bg-slate-900 p-2 sm:p-3 rounded-xl border border-slate-800">
-                <p className="text-xs sm:text-sm text-slate-400">
-                  <span className="font-bold text-white">{packages.length}</span> aktif paket
-                </p>
+        {/* AKTİF PAKETLER SEKMESİ */}
+        {activeTab === 'packages' && (
+          <div className="space-y-2 sm:space-y-3">
+            {packages.length === 0 ? (
+              <div className="text-center py-8 sm:py-12 text-slate-500">
+                <div className="text-3xl sm:text-4xl mb-2">📦</div>
+                <p className="text-xs sm:text-sm">Atanmış paket bulunmuyor</p>
               </div>
+            ) : (
+              <>
+                {/* Paket Sayısı Göstergesi - Mobil Responsive */}
+                <div className="bg-slate-900 p-2 sm:p-3 rounded-xl border border-slate-800">
+                  <p className="text-xs sm:text-sm text-slate-400">
+                    <span className="font-bold text-white">{packages.length}</span> aktif paket
+                  </p>
+                </div>
 
-              {/* Paket Listesi - Mobil Responsive */}
-              {packages.map((pkg, index) => (
+                {/* Paket Listesi - Mobil Responsive */}
+                {packages.map((pkg, index) => (
                 <div key={pkg.id} className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-800">
                   {/* Üst Kısım */}
                   <div className="flex justify-between items-start mb-2 sm:mb-3">
@@ -755,9 +852,93 @@ export default function KuryePage() {
                   )}
                 </div>
               ))}
-            </>
-          )}
-        </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* PAKET GEÇMİŞİ SEKMESİ */}
+        {activeTab === 'history' && (
+          <div className="space-y-2 sm:space-y-3">
+            {todayDeliveredPackages.length === 0 ? (
+              <div className="text-center py-8 sm:py-12 text-slate-500">
+                <div className="text-3xl sm:text-4xl mb-2">📋</div>
+                <p className="text-xs sm:text-sm">Bugün teslim edilen paket yok</p>
+              </div>
+            ) : (
+              <>
+                {/* Paket Sayısı Göstergesi */}
+                <div className="bg-slate-900 p-2 sm:p-3 rounded-xl border border-slate-800">
+                  <p className="text-xs sm:text-sm text-slate-400">
+                    Bugün <span className="font-bold text-white">{todayDeliveredPackages.length}</span> paket teslim edildi
+                  </p>
+                </div>
+
+                {/* Teslim Edilen Paket Listesi */}
+                {todayDeliveredPackages.map((pkg, index) => (
+                  <div key={pkg.id} className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-800">
+                    {/* Üst Kısım */}
+                    <div className="flex justify-between items-start mb-2 sm:mb-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs text-slate-500">#{index + 1}</span>
+                          <span className="text-xs px-2 py-0.5 bg-green-500/20 text-green-400 rounded">
+                            ✓ Teslim Edildi
+                          </span>
+                        </div>
+                        <p className="font-medium text-sm sm:text-base text-white">{pkg.customer_name}</p>
+                        
+                        {/* Müşteri Telefonu */}
+                        {pkg.customer_phone && (
+                          <p className="text-xs text-slate-400 mt-1">
+                            📞 {pkg.customer_phone}
+                          </p>
+                        )}
+                        
+                        {/* Paket İçeriği */}
+                        {pkg.content && (
+                          <p className="text-xs text-slate-400 mt-1">
+                            📦 {pkg.content}
+                          </p>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xl font-bold text-green-400">{pkg.amount}₺</p>
+                        <p className="text-xs text-slate-500">
+                          {pkg.payment_method === 'cash' ? '💵 Nakit' : '💳 Kart'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Adres */}
+                    <div className="mb-2 p-2 bg-slate-800/50 rounded-lg">
+                      <p className="text-xs text-slate-300">📍 {pkg.delivery_address}</p>
+                    </div>
+
+                    {/* Restoran Bilgisi */}
+                    {pkg.restaurant?.name && (
+                      <div className="p-2 bg-orange-900/20 rounded-lg border border-orange-800">
+                        <p className="text-xs text-orange-300">
+                          🍽️ {pkg.restaurant.name}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Teslimat Zamanı */}
+                    {pkg.delivered_at && (
+                      <div className="mt-2 text-xs text-slate-500 text-center">
+                        🕐 {new Date(pkg.delivered_at).toLocaleTimeString('tr-TR', { 
+                          hour: '2-digit', 
+                          minute: '2-digit' 
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* HESAP ÖZETİ MODAL - Mobil Responsive */}

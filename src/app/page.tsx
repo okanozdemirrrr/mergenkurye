@@ -40,6 +40,16 @@ interface Courier {
   status?: 'idle' | 'picking_up' | 'on_the_way' | 'assigned' | 'inactive'
 }
 
+interface CourierDebt {
+  id: number
+  courier_id: string
+  debt_date: string
+  amount: number
+  remaining_amount: number
+  status: 'pending' | 'paid'
+  created_at: string
+}
+
 export default function Home() {
   const [isMounted, setIsMounted] = useState(false)
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
@@ -74,6 +84,13 @@ export default function Home() {
   const [restaurantChartFilter, setRestaurantChartFilter] = useState<'today' | 'week' | 'month'>('today')
   const [courierEarningsFilter, setCourierEarningsFilter] = useState<'today' | 'week' | 'month'>('today')
   const [restaurantDebtFilter, setRestaurantDebtFilter] = useState<'today' | 'week' | 'month'>('today')
+  
+  // Gün Sonu State'leri
+  const [showEndOfDayModal, setShowEndOfDayModal] = useState(false)
+  const [endOfDayAmount, setEndOfDayAmount] = useState('')
+  const [endOfDayProcessing, setEndOfDayProcessing] = useState(false)
+  const [courierDebts, setCourierDebts] = useState<CourierDebt[]>([])
+  const [loadingDebts, setLoadingDebts] = useState(false)
 
   // Build-safe mount kontrolü
   useEffect(() => {
@@ -370,6 +387,202 @@ export default function Home() {
     }
   }
 
+  // Kurye borçlarını çek
+  const fetchCourierDebts = async (courierId: string) => {
+    setLoadingDebts(true)
+    try {
+      const { data, error } = await supabase
+        .from('courier_debts')
+        .select('*')
+        .eq('courier_id', courierId)
+        .eq('status', 'pending')
+        .order('debt_date', { ascending: true })
+
+      if (error) throw error
+      setCourierDebts(data || [])
+    } catch (error: any) {
+      const errorMsg = error.message?.toLowerCase() || ''
+      if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
+        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
+        return
+      }
+      console.error('Borçlar yüklenemedi:', error)
+      setErrorMessage('Borçlar yüklenemedi: ' + error.message)
+    } finally {
+      setLoadingDebts(false)
+    }
+  }
+
+  // Gün sonu işlemi
+  const handleEndOfDay = async () => {
+    if (!selectedCourierId) return
+    
+    const amountReceived = parseFloat(endOfDayAmount)
+    if (isNaN(amountReceived) || amountReceived < 0) {
+      setErrorMessage('Geçerli bir tutar girin!')
+      return
+    }
+
+    setEndOfDayProcessing(true)
+    
+    try {
+      // 1. Bugünkü nakit toplamı hesapla
+      const todayStart = new Date()
+      todayStart.setHours(0, 0, 0, 0)
+      
+      const { data: todayPackages, error: packagesError } = await supabase
+        .from('packages')
+        .select('amount, payment_method')
+        .eq('courier_id', selectedCourierId)
+        .eq('status', 'delivered')
+        .eq('payment_method', 'cash')
+        .gte('delivered_at', todayStart.toISOString())
+
+      if (packagesError) throw packagesError
+
+      const todayCashTotal = todayPackages?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0
+      
+      // 2. Geçmiş borçları çek
+      const totalOldDebt = courierDebts.reduce((sum, d) => sum + d.remaining_amount, 0)
+      
+      // 3. Genel toplam = Bugünkü nakit + Eski borçlar
+      const grandTotal = todayCashTotal + totalOldDebt
+      
+      // 4. Fark hesapla
+      const difference = amountReceived - grandTotal
+      
+      // 5. İşlem kaydet
+      const today = new Date().toISOString().split('T')[0]
+      
+      if (difference < 0) {
+        // AÇIK VAR - Yeni borç oluştur
+        const debtAmount = Math.abs(difference)
+        
+        // Önce eski borçları öde (varsa)
+        let remainingPayment = amountReceived
+        
+        for (const debt of courierDebts) {
+          if (remainingPayment <= 0) break
+          
+          if (remainingPayment >= debt.remaining_amount) {
+            // Borç tamamen ödendi
+            await supabase
+              .from('courier_debts')
+              .update({ 
+                remaining_amount: 0,
+                status: 'paid'
+              })
+              .eq('id', debt.id)
+            
+            remainingPayment -= debt.remaining_amount
+          } else {
+            // Kısmi ödeme
+            await supabase
+              .from('courier_debts')
+              .update({ 
+                remaining_amount: debt.remaining_amount - remainingPayment
+              })
+              .eq('id', debt.id)
+            
+            remainingPayment = 0
+          }
+        }
+        
+        // Yeni borç kaydı oluştur (bugünkü açık)
+        const { error: debtError } = await supabase
+          .from('courier_debts')
+          .insert({
+            courier_id: selectedCourierId,
+            debt_date: today,
+            amount: debtAmount,
+            remaining_amount: debtAmount,
+            status: 'pending'
+          })
+        
+        if (debtError) throw debtError
+        
+        // Transaction kaydı
+        await supabase
+          .from('debt_transactions')
+          .insert({
+            courier_id: selectedCourierId,
+            transaction_date: today,
+            daily_cash_total: todayCashTotal,
+            amount_received: amountReceived,
+            new_debt_amount: debtAmount,
+            payment_to_debts: amountReceived,
+            notes: `${formatTurkishDate(today)} tarihinden kalan ${debtAmount.toFixed(2)} TL açık`
+          })
+        
+        setSuccessMessage(`✅ Gün sonu alındı. ${debtAmount.toFixed(2)} TL açık kaydedildi.`)
+      } else {
+        // BAHŞİŞ VAR veya TAM - Eski borçları öde
+        let remainingPayment = amountReceived
+        
+        for (const debt of courierDebts) {
+          if (remainingPayment <= 0) break
+          
+          if (remainingPayment >= debt.remaining_amount) {
+            // Borç tamamen ödendi
+            await supabase
+              .from('courier_debts')
+              .update({ 
+                remaining_amount: 0,
+                status: 'paid'
+              })
+              .eq('id', debt.id)
+            
+            remainingPayment -= debt.remaining_amount
+          } else {
+            // Kısmi ödeme
+            await supabase
+              .from('courier_debts')
+              .update({ 
+                remaining_amount: debt.remaining_amount - remainingPayment
+              })
+              .eq('id', debt.id)
+            
+            remainingPayment = 0
+          }
+        }
+        
+        // Transaction kaydı
+        await supabase
+          .from('debt_transactions')
+          .insert({
+            courier_id: selectedCourierId,
+            transaction_date: today,
+            daily_cash_total: todayCashTotal,
+            amount_received: amountReceived,
+            new_debt_amount: 0,
+            payment_to_debts: amountReceived - remainingPayment,
+            notes: difference > 0 
+              ? `${difference.toFixed(2)} TL bahşiş` 
+              : 'Tam ödeme'
+          })
+        
+        setSuccessMessage(
+          difference > 0 
+            ? `✅ Gün sonu alındı. ${difference.toFixed(2)} TL bahşiş!` 
+            : '✅ Gün sonu alındı. Tam ödeme.'
+        )
+      }
+      
+      // Modal'ı kapat ve verileri yenile
+      setShowEndOfDayModal(false)
+      setEndOfDayAmount('')
+      await fetchCourierDebts(selectedCourierId)
+      
+      setTimeout(() => setSuccessMessage(''), 3000)
+    } catch (error: any) {
+      console.error('Gün sonu işlemi hatası:', error)
+      setErrorMessage('Gün sonu işlemi başarısız: ' + error.message)
+      setTimeout(() => setErrorMessage(''), 3000)
+    } finally {
+      setEndOfDayProcessing(false)
+    }
+  }
+
   // fetchCourierStatuses fonksiyonu kaldırıldı - artık fetchCouriers'da tüm bilgiler geliyor
 
   const handleAssignCourier = async (packageId: number) => {
@@ -502,6 +715,19 @@ export default function Home() {
     }
   }
 
+  const formatTurkishDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString)
+      const day = date.getDate().toString().padStart(2, '0')
+      const month = (date.getMonth() + 1).toString().padStart(2, '0')
+      const year = date.getFullYear()
+      return `${day}.${month}.${year}`
+    } catch (error) {
+      console.error('Tarih formatı hatası:', error)
+      return dateString
+    }
+  }
+
   const fetchCourierOrders = async (courierId: string) => {
     try {
       let query = supabase
@@ -555,6 +781,7 @@ export default function Home() {
     setSelectedCourierId(courierId)
     setShowCourierModal(true)
     await fetchCourierOrders(courierId)
+    await fetchCourierDebts(courierId)
   }
 
   // Teslimat süresini hesapla (dakika)
@@ -1442,7 +1669,7 @@ export default function Home() {
             <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
               {/* Modal Header */}
               <div className="flex justify-between items-center p-6 border-b border-slate-200 dark:border-slate-700">
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 flex-1">
                   <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
                     🚴 {couriers.find(c => c.id === selectedCourierId)?.full_name} - Detaylı Rapor
                   </h3>
@@ -1456,10 +1683,20 @@ export default function Home() {
                     <option value="month">📅 Son 30 Gün</option>
                     <option value="all">📅 Tüm Zamanlar</option>
                   </select>
+                  
+                  {/* Gün Sonu Al Butonu */}
+                  {courierDateFilter === 'today' && (
+                    <button
+                      onClick={() => setShowEndOfDayModal(true)}
+                      className="ml-auto px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-lg font-medium text-sm shadow-lg transition-all active:scale-95"
+                    >
+                      💰 Gün Sonu Al
+                    </button>
+                  )}
                 </div>
                 <button
                   onClick={() => setShowCourierModal(false)}
-                  className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 text-2xl"
+                  className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 text-2xl ml-4"
                 >
                   ×
                 </button>
@@ -1636,6 +1873,202 @@ export default function Home() {
                       </div>
                     </div>
                   </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* GÜN SONU MODAL */}
+        {showEndOfDayModal && selectedCourierId && (
+          <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              {/* Modal Header */}
+              <div className="p-6 border-b border-slate-200 dark:border-slate-700">
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
+                  💰 Gün Sonu Kasası - {couriers.find(c => c.id === selectedCourierId)?.full_name}
+                </h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  {new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                </p>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-6">
+                {loadingDebts ? (
+                  <div className="text-center py-8">
+                    <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-slate-500">Borçlar yükleniyor...</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Bugünkü Nakit Toplam */}
+                    {(() => {
+                      const summary = calculateCashSummary(selectedCourierOrders)
+                      const totalOldDebt = courierDebts.reduce((sum, d) => sum + d.remaining_amount, 0)
+                      const grandTotal = summary.cashTotal + totalOldDebt
+                      
+                      return (
+                        <>
+                          <div className="mb-6 space-y-3">
+                            <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border border-green-200 dark:border-green-800">
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                                  💵 Bugünkü Nakit Toplam
+                                </span>
+                                <span className="text-2xl font-bold text-green-700 dark:text-green-300">
+                                  {summary.cashTotal.toFixed(2)} ₺
+                                </span>
+                              </div>
+                              <p className="text-xs text-green-600 dark:text-green-500 mt-1">
+                                {selectedCourierOrders.filter(o => o.payment_method === 'cash').length} nakit sipariş
+                              </p>
+                            </div>
+
+                            {/* Geçmiş Borçlar */}
+                            {courierDebts.length > 0 && (
+                              <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border border-red-200 dark:border-red-800">
+                                <div className="flex justify-between items-center mb-3">
+                                  <span className="text-sm font-medium text-red-700 dark:text-red-400">
+                                    📋 Geçmiş Borçlar
+                                  </span>
+                                  <span className="text-2xl font-bold text-red-700 dark:text-red-300">
+                                    {totalOldDebt.toFixed(2)} ₺
+                                  </span>
+                                </div>
+                                <div className="space-y-2">
+                                  {courierDebts.map((debt) => (
+                                    <div key={debt.id} className="flex justify-between items-center text-xs bg-white dark:bg-slate-700 p-2 rounded">
+                                      <span className="text-slate-600 dark:text-slate-400">
+                                        📅 {formatTurkishDate(debt.debt_date)} tarihinden kalan
+                                      </span>
+                                      <span className="font-bold text-red-600 dark:text-red-400">
+                                        {debt.remaining_amount.toFixed(2)} ₺
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Genel Toplam */}
+                            <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-xl border-2 border-purple-300 dark:border-purple-700">
+                              <div className="flex justify-between items-center">
+                                <span className="text-base font-bold text-purple-700 dark:text-purple-300">
+                                  🎯 GENEL TOPLAM (Beklenen)
+                                </span>
+                                <span className="text-3xl font-black text-purple-700 dark:text-purple-300">
+                                  {grandTotal.toFixed(2)} ₺
+                                </span>
+                              </div>
+                              <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
+                                Bugünkü nakit + Geçmiş borçlar
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Alınan Para Input */}
+                          <div className="mb-6">
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                              💰 Kuryeden Alınan Para
+                            </label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={endOfDayAmount}
+                              onChange={(e) => setEndOfDayAmount(e.target.value)}
+                              placeholder="Örn: 1250.00"
+                              className="w-full px-4 py-3 bg-white dark:bg-slate-700 border-2 border-slate-300 dark:border-slate-600 rounded-xl text-lg font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            />
+                          </div>
+
+                          {/* Fark Hesaplama */}
+                          {endOfDayAmount && !isNaN(parseFloat(endOfDayAmount)) && (
+                            <div className="mb-6">
+                              {(() => {
+                                const received = parseFloat(endOfDayAmount)
+                                const difference = received - grandTotal
+                                
+                                if (difference < 0) {
+                                  return (
+                                    <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border-2 border-red-300 dark:border-red-700">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-base font-bold text-red-700 dark:text-red-300">
+                                          ⚠️ AÇIK
+                                        </span>
+                                        <span className="text-3xl font-black text-red-700 dark:text-red-300">
+                                          {Math.abs(difference).toFixed(2)} ₺
+                                        </span>
+                                      </div>
+                                      <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+                                        Bu miktar kurye borcuna eklenecek
+                                      </p>
+                                    </div>
+                                  )
+                                } else if (difference > 0) {
+                                  return (
+                                    <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border-2 border-green-300 dark:border-green-700">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-base font-bold text-green-700 dark:text-green-300">
+                                          ✅ BAHŞİŞ
+                                        </span>
+                                        <span className="text-3xl font-black text-green-700 dark:text-green-300">
+                                          {difference.toFixed(2)} ₺
+                                        </span>
+                                      </div>
+                                      <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                                        Kurye fazla para getirdi
+                                      </p>
+                                    </div>
+                                  )
+                                } else {
+                                  return (
+                                    <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border-2 border-blue-300 dark:border-blue-700">
+                                      <div className="text-center">
+                                        <span className="text-2xl font-black text-blue-700 dark:text-blue-300">
+                                          ✓ TAM ÖDEME
+                                        </span>
+                                        <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                                          Hesap tam olarak kapandı
+                                        </p>
+                                      </div>
+                                    </div>
+                                  )
+                                }
+                              })()}
+                            </div>
+                          )}
+
+                          {/* Butonlar */}
+                          <div className="flex gap-3">
+                            <button
+                              onClick={() => {
+                                setShowEndOfDayModal(false)
+                                setEndOfDayAmount('')
+                              }}
+                              className="flex-1 px-4 py-3 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-medium hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
+                            >
+                              İptal
+                            </button>
+                            <button
+                              onClick={handleEndOfDay}
+                              disabled={endOfDayProcessing || !endOfDayAmount}
+                              className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {endOfDayProcessing ? (
+                                <span className="flex items-center justify-center gap-2">
+                                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                  İşleniyor...
+                                </span>
+                              ) : (
+                                '✓ Gün Sonu Kapat'
+                              )}
+                            </button>
+                          </div>
+                        </>
+                      )
+                    })()}
+                  </>
                 )}
               </div>
             </div>
