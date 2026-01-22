@@ -38,6 +38,7 @@ interface Courier {
   is_active?: boolean
   activePackageCount?: number
   status?: 'idle' | 'picking_up' | 'on_the_way' | 'assigned' | 'inactive'
+  totalDebt?: number
 }
 
 interface CourierDebt {
@@ -268,7 +269,8 @@ export default function Home() {
         await Promise.all([
           fetchCourierDeliveryCounts(ids),
           fetchCourierTodayDeliveryCounts(ids),
-          fetchCourierActivePackageCounts(ids)
+          fetchCourierActivePackageCounts(ids),
+          fetchCourierDebtsTotal(ids)
         ])
       }
     } catch (error: any) {
@@ -384,6 +386,46 @@ export default function Home() {
       }
       
       console.error('Kurye bugünkü teslimat sayıları alınırken hata:', error)
+    }
+  }
+
+  // Kurye toplam borçlarını çek
+  const fetchCourierDebtsTotal = async (courierIds: string[]) => {
+    try {
+      const { data, error } = await supabase
+        .from('courier_debts')
+        .select('courier_id, remaining_amount')
+        .eq('status', 'pending')
+        .in('courier_id', courierIds)
+
+      if (error) throw error
+
+      const debts: { [key: string]: number } = {}
+      data?.forEach((debt) => { 
+        if (debt.courier_id) {
+          debts[debt.courier_id] = (debts[debt.courier_id] || 0) + debt.remaining_amount
+        }
+      })
+
+      setCouriers(prev => prev.map(c => ({ 
+        ...c, 
+        totalDebt: debts[c.id] || 0 
+      })))
+    } catch (error: any) {
+      // Tablo yoksa veya internet hatası varsa sessizce geç
+      const errorMsg = error.message?.toLowerCase() || ''
+      if (errorMsg.includes('failed to fetch') || 
+          errorMsg.includes('network') || 
+          errorMsg.includes('could not find') ||
+          errorMsg.includes('table') ||
+          errorMsg.includes('schema cache')) {
+        console.warn('⚠️ Borç tablosu henüz oluşturulmamış veya bağlantı hatası (sessiz):', error.message)
+        // Borç bilgisi olmadan devam et
+        setCouriers(prev => prev.map(c => ({ ...c, totalDebt: 0 })))
+        return
+      }
+      
+      console.error('Kurye borçları alınırken hata:', error)
     }
   }
 
@@ -578,6 +620,7 @@ export default function Home() {
       setShowEndOfDayModal(false)
       setEndOfDayAmount('')
       await fetchCourierDebts(selectedCourierId)
+      await fetchCouriers() // Kurye listesindeki borç bilgisini güncelle
       
       setTimeout(() => setSuccessMessage(''), 3000)
     } catch (error: any) {
@@ -1664,6 +1707,15 @@ export default function Home() {
                       <span className="font-bold text-purple-600">{c.deliveryCount || 0}</span>
                     </div>
 
+                    <div className="flex justify-between">
+                      <span className="text-slate-600 dark:text-slate-400">Kuryenin Borcu:</span>
+                      <span className={`font-bold ${
+                        (c.totalDebt || 0) > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
+                      }`}>
+                        {(c.totalDebt || 0).toFixed(2)} ₺
+                      </span>
+                    </div>
+
                     <div className="mt-3 pt-2 border-t border-slate-200 dark:border-slate-600">
                       <button
                         onClick={() => handleCourierClick(c.id)}
@@ -1918,172 +1970,179 @@ export default function Home() {
                   </div>
                 ) : (
                   <>
-                    {/* Bugünkü Nakit Toplam */}
+                    {/* Hesaplamalar */}
                     {(() => {
                       const summary = calculateCashSummary(selectedCourierOrders)
                       const totalOldDebt = courierDebts.reduce((sum, d) => sum + d.remaining_amount, 0)
                       const grandTotal = summary.cashTotal + totalOldDebt
+                      const received = endOfDayAmount ? parseFloat(endOfDayAmount) : 0
+                      const difference = received - grandTotal
                       
-                      return (
-                        <>
-                          <div className="mb-6 space-y-3">
-                            <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border border-green-200 dark:border-green-800">
-                              <div className="flex justify-between items-center">
-                                <span className="text-sm font-medium text-green-700 dark:text-green-400">
-                                  💵 Bugünkü Nakit Toplam
-                                </span>
-                                <span className="text-2xl font-bold text-green-700 dark:text-green-300">
-                                  {summary.cashTotal.toFixed(2)} ₺
-                                </span>
-                              </div>
-                              <p className="text-xs text-green-600 dark:text-green-500 mt-1">
-                                {selectedCourierOrders.filter(o => o.payment_method === 'cash').length} nakit sipariş
-                              </p>
-                            </div>
-
-                            {/* Geçmiş Borçlar */}
-                            {courierDebts.length > 0 && (
-                              <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border border-red-200 dark:border-red-800">
-                                <div className="flex justify-between items-center mb-3">
-                                  <span className="text-sm font-medium text-red-700 dark:text-red-400">
-                                    📋 Geçmiş Borçlar
-                                  </span>
-                                  <span className="text-2xl font-bold text-red-700 dark:text-red-300">
-                                    {totalOldDebt.toFixed(2)} ₺
-                                  </span>
-                                </div>
-                                <div className="space-y-2">
-                                  {courierDebts.map((debt) => (
-                                    <div key={debt.id} className="flex justify-between items-center text-xs bg-white dark:bg-slate-700 p-2 rounded">
-                                      <span className="text-slate-600 dark:text-slate-400">
-                                        📅 {formatTurkishDate(debt.debt_date)} tarihinden kalan
-                                      </span>
-                                      <span className="font-bold text-red-600 dark:text-red-400">
-                                        {debt.remaining_amount.toFixed(2)} ₺
-                                      </span>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Genel Toplam */}
-                            <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-xl border-2 border-purple-300 dark:border-purple-700">
-                              <div className="flex justify-between items-center">
-                                <span className="text-base font-bold text-purple-700 dark:text-purple-300">
-                                  🎯 GENEL TOPLAM (Beklenen)
-                                </span>
-                                <span className="text-3xl font-black text-purple-700 dark:text-purple-300">
-                                  {grandTotal.toFixed(2)} ₺
-                                </span>
-                              </div>
-                              <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
-                                Bugünkü nakit + Geçmiş borçlar
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Alınan Para Input */}
-                          <div className="mb-6">
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                              💰 Kuryeden Alınan Para
-                            </label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={endOfDayAmount}
-                              onChange={(e) => setEndOfDayAmount(e.target.value)}
-                              placeholder="Örn: 1250.00"
-                              className="w-full px-4 py-3 bg-white dark:bg-slate-700 border-2 border-slate-300 dark:border-slate-600 rounded-xl text-lg font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                            />
-                          </div>
-
-                          {/* Fark Hesaplama */}
-                          {endOfDayAmount && !isNaN(parseFloat(endOfDayAmount)) && (
-                            <div className="mb-6">
-                              {(() => {
-                                const received = parseFloat(endOfDayAmount)
-                                const difference = received - grandTotal
-                                
-                                if (difference < 0) {
-                                  return (
-                                    <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border-2 border-red-300 dark:border-red-700">
-                                      <div className="flex justify-between items-center">
-                                        <span className="text-base font-bold text-red-700 dark:text-red-300">
-                                          ⚠️ AÇIK
-                                        </span>
-                                        <span className="text-3xl font-black text-red-700 dark:text-red-300">
-                                          {Math.abs(difference).toFixed(2)} ₺
-                                        </span>
-                                      </div>
-                                      <p className="text-xs text-red-600 dark:text-red-400 mt-2">
-                                        Bu miktar kurye borcuna eklenecek
-                                      </p>
-                                    </div>
-                                  )
-                                } else if (difference > 0) {
-                                  return (
-                                    <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border-2 border-green-300 dark:border-green-700">
-                                      <div className="flex justify-between items-center">
-                                        <span className="text-base font-bold text-green-700 dark:text-green-300">
-                                          ✅ BAHŞİŞ
-                                        </span>
-                                        <span className="text-3xl font-black text-green-700 dark:text-green-300">
-                                          {difference.toFixed(2)} ₺
-                                        </span>
-                                      </div>
-                                      <p className="text-xs text-green-600 dark:text-green-400 mt-2">
-                                        Kurye fazla para getirdi
-                                      </p>
-                                    </div>
-                                  )
-                                } else {
-                                  return (
-                                    <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border-2 border-blue-300 dark:border-blue-700">
-                                      <div className="text-center">
-                                        <span className="text-2xl font-black text-blue-700 dark:text-blue-300">
-                                          ✓ TAM ÖDEME
-                                        </span>
-                                        <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
-                                          Hesap tam olarak kapandı
-                                        </p>
-                                      </div>
-                                    </div>
-                                  )
-                                }
-                              })()}
-                            </div>
-                          )}
-
-                          {/* Butonlar */}
-                          <div className="flex gap-3">
-                            <button
-                              onClick={() => {
-                                setShowEndOfDayModal(false)
-                                setEndOfDayAmount('')
-                              }}
-                              className="flex-1 px-4 py-3 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-medium hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
-                            >
-                              İptal
-                            </button>
-                            <button
-                              onClick={handleEndOfDay}
-                              disabled={endOfDayProcessing || !endOfDayAmount}
-                              className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {endOfDayProcessing ? (
-                                <span className="flex items-center justify-center gap-2">
-                                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                  İşleniyor...
-                                </span>
-                              ) : (
-                                '✓ Gün Sonu Kapat'
-                              )}
-                            </button>
-                          </div>
-                        </>
-                      )
+                      return null // Sadece hesaplama için, render etme
                     })()}
+                    
+                    {/* Bugünkü Nakit Toplam */}
+                    <div className="mb-6 space-y-3">
+                      <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border border-green-200 dark:border-green-800">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                            💵 Bugünkü Nakit Toplam
+                          </span>
+                          <span className="text-2xl font-bold text-green-700 dark:text-green-300">
+                            {calculateCashSummary(selectedCourierOrders).cashTotal.toFixed(2)} ₺
+                          </span>
+                        </div>
+                        <p className="text-xs text-green-600 dark:text-green-500 mt-1">
+                          {selectedCourierOrders.filter(o => o.payment_method === 'cash').length} nakit sipariş
+                        </p>
+                      </div>
+
+                      {/* Geçmiş Borçlar */}
+                      {courierDebts.length > 0 && (
+                        <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border border-red-200 dark:border-red-800">
+                          <div className="flex justify-between items-center mb-3">
+                            <span className="text-sm font-medium text-red-700 dark:text-red-400">
+                              📋 Geçmiş Borçlar
+                            </span>
+                            <span className="text-2xl font-bold text-red-700 dark:text-red-300">
+                              {courierDebts.reduce((sum, d) => sum + d.remaining_amount, 0).toFixed(2)} ₺
+                            </span>
+                          </div>
+                          <div className="space-y-2">
+                            {courierDebts.map((debt) => (
+                              <div key={debt.id} className="flex justify-between items-center text-xs bg-white dark:bg-slate-700 p-2 rounded">
+                                <span className="text-slate-600 dark:text-slate-400">
+                                  📅 {formatTurkishDate(debt.debt_date)} tarihinden kalan
+                                </span>
+                                <span className="font-bold text-red-600 dark:text-red-400">
+                                  {debt.remaining_amount.toFixed(2)} ₺
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Genel Toplam */}
+                      <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-xl border-2 border-purple-300 dark:border-purple-700">
+                        <div className="flex justify-between items-center">
+                          <span className="text-base font-bold text-purple-700 dark:text-purple-300">
+                            🎯 GENEL TOPLAM (Beklenen)
+                          </span>
+                          <span className="text-3xl font-black text-purple-700 dark:text-purple-300">
+                            {(calculateCashSummary(selectedCourierOrders).cashTotal + courierDebts.reduce((sum, d) => sum + d.remaining_amount, 0)).toFixed(2)} ₺
+                          </span>
+                        </div>
+                        <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
+                          Bugünkü nakit + Geçmiş borçlar
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Alınan Para Input */}
+                    <div className="mb-6">
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                        💰 Kuryeden Alınan Para
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={endOfDayAmount}
+                        onChange={(e) => setEndOfDayAmount(e.target.value)}
+                        placeholder="Örn: 1250.00"
+                        autoFocus
+                        className="w-full px-4 py-3 bg-white dark:bg-slate-700 border-2 border-slate-300 dark:border-slate-600 rounded-xl text-lg font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                      />
+                    </div>
+
+                    {/* Fark Hesaplama */}
+                    {endOfDayAmount && !isNaN(parseFloat(endOfDayAmount)) && (() => {
+                      const summary = calculateCashSummary(selectedCourierOrders)
+                      const totalOldDebt = courierDebts.reduce((sum, d) => sum + d.remaining_amount, 0)
+                      const grandTotal = summary.cashTotal + totalOldDebt
+                      const received = parseFloat(endOfDayAmount)
+                      const difference = received - grandTotal
+                      
+                      if (difference < 0) {
+                        return (
+                          <div className="mb-6">
+                            <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border-2 border-red-300 dark:border-red-700">
+                              <div className="flex justify-between items-center">
+                                <span className="text-base font-bold text-red-700 dark:text-red-300">
+                                  ⚠️ AÇIK
+                                </span>
+                                <span className="text-3xl font-black text-red-700 dark:text-red-300">
+                                  {Math.abs(difference).toFixed(2)} ₺
+                                </span>
+                              </div>
+                              <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+                                Bu miktar kurye borcuna eklenecek
+                              </p>
+                            </div>
+                          </div>
+                        )
+                      } else if (difference > 0) {
+                        return (
+                          <div className="mb-6">
+                            <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border-2 border-green-300 dark:border-green-700">
+                              <div className="flex justify-between items-center">
+                                <span className="text-base font-bold text-green-700 dark:text-green-300">
+                                  ✅ BAHŞİŞ
+                                </span>
+                                <span className="text-3xl font-black text-green-700 dark:text-green-300">
+                                  {difference.toFixed(2)} ₺
+                                </span>
+                              </div>
+                              <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                                Kurye fazla para getirdi
+                              </p>
+                            </div>
+                          </div>
+                        )
+                      } else {
+                        return (
+                          <div className="mb-6">
+                            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border-2 border-blue-300 dark:border-blue-700">
+                              <div className="text-center">
+                                <span className="text-2xl font-black text-blue-700 dark:text-blue-300">
+                                  ✓ TAM ÖDEME
+                                </span>
+                                <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                                  Hesap tam olarak kapandı
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      }
+                    })()}
+
+                    {/* Butonlar */}
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => {
+                          setShowEndOfDayModal(false)
+                          setEndOfDayAmount('')
+                        }}
+                        className="flex-1 px-4 py-3 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-medium hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
+                      >
+                        İptal
+                      </button>
+                      <button
+                        onClick={handleEndOfDay}
+                        disabled={endOfDayProcessing || !endOfDayAmount}
+                        className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {endOfDayProcessing ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            İşleniyor...
+                          </span>
+                        ) : (
+                          '✓ Gün Sonu Kapat'
+                        )}
+                      </button>
+                    </div>
                   </>
                 )}
               </div>
