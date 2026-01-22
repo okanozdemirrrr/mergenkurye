@@ -95,6 +95,11 @@ export default function Home() {
   const [endOfDayProcessing, setEndOfDayProcessing] = useState(false)
   const [courierDebts, setCourierDebts] = useState<CourierDebt[]>([])
   const [loadingDebts, setLoadingDebts] = useState(false)
+  
+  // Borç Ödeme State'leri
+  const [showPayDebtModal, setShowPayDebtModal] = useState(false)
+  const [payDebtAmount, setPayDebtAmount] = useState('')
+  const [payDebtProcessing, setPayDebtProcessing] = useState(false)
 
   // Build-safe mount kontrolü
   useEffect(() => {
@@ -673,6 +678,113 @@ export default function Home() {
       setTimeout(() => setErrorMessage(''), 5000)
     } finally {
       setEndOfDayProcessing(false)
+    }
+  }
+
+  // Borç ödeme işlemi
+  const handlePayDebt = async () => {
+    if (!selectedCourierId) return
+    
+    const paymentAmount = parseFloat(payDebtAmount)
+    if (isNaN(paymentAmount) || paymentAmount <= 0) {
+      setErrorMessage('Geçerli bir tutar girin!')
+      return
+    }
+
+    setPayDebtProcessing(true)
+    
+    try {
+      const totalDebt = courierDebts.reduce((sum, d) => sum + d.remaining_amount, 0)
+      
+      if (paymentAmount > totalDebt) {
+        setErrorMessage(`Ödeme tutarı toplam borçtan fazla olamaz! (Toplam Borç: ${totalDebt.toFixed(2)} ₺)`)
+        setPayDebtProcessing(false)
+        return
+      }
+      
+      let remainingPayment = paymentAmount
+      const today = new Date().toISOString().split('T')[0]
+      
+      // Eski borçları en eskiden başlayarak öde
+      for (const debt of courierDebts) {
+        if (remainingPayment <= 0) break
+        
+        if (remainingPayment >= debt.remaining_amount) {
+          // Borç tamamen ödendi
+          await supabase
+            .from('courier_debts')
+            .update({ 
+              remaining_amount: 0,
+              status: 'paid'
+            })
+            .eq('id', debt.id)
+          
+          remainingPayment -= debt.remaining_amount
+        } else {
+          // Kısmi ödeme
+          await supabase
+            .from('courier_debts')
+            .update({ 
+              remaining_amount: debt.remaining_amount - remainingPayment
+            })
+            .eq('id', debt.id)
+          
+          remainingPayment = 0
+        }
+      }
+      
+      // Eğer ödeme toplam borçtan az ise, kalan tutarı yeni borç olarak kaydet
+      if (remainingPayment === 0 && paymentAmount < totalDebt) {
+        const newDebtAmount = totalDebt - paymentAmount
+        
+        await supabase
+          .from('courier_debts')
+          .insert({
+            courier_id: selectedCourierId,
+            debt_date: today,
+            amount: newDebtAmount,
+            remaining_amount: newDebtAmount,
+            status: 'pending'
+          })
+      }
+      
+      // Transaction kaydı
+      await supabase
+        .from('debt_transactions')
+        .insert({
+          courier_id: selectedCourierId,
+          transaction_date: today,
+          daily_cash_total: 0,
+          amount_received: paymentAmount,
+          new_debt_amount: paymentAmount < totalDebt ? (totalDebt - paymentAmount) : 0,
+          payment_to_debts: paymentAmount,
+          notes: `Borç ödemesi: ${paymentAmount.toFixed(2)} ₺ ödendi${paymentAmount < totalDebt ? `, ${(totalDebt - paymentAmount).toFixed(2)} ₺ kalan borç ${formatTurkishDate(today)} tarihine aktarıldı` : ''}`
+        })
+      
+      setSuccessMessage(`✅ Borç ödemesi alındı. ${paymentAmount.toFixed(2)} ₺ ödendi.`)
+      
+      // Modal'ı kapat ve verileri yenile
+      setShowPayDebtModal(false)
+      setPayDebtAmount('')
+      await fetchCourierDebts(selectedCourierId)
+      await fetchCouriers() // Kurye listesindeki borç bilgisini güncelle
+      
+      setTimeout(() => setSuccessMessage(''), 3000)
+    } catch (error: any) {
+      console.error('Borç ödeme işlemi hatası:', error)
+      const errorMsg = error.message?.toLowerCase() || ''
+      
+      if (errorMsg.includes('could not find') || 
+          errorMsg.includes('table') || 
+          errorMsg.includes('schema cache')) {
+        setErrorMessage('⚠️ Veritabanı tabloları henüz oluşturulmamış! Lütfen database_migration_courier_debts.sql dosyasını Supabase SQL Editor\'de çalıştırın.')
+      } else {
+        setErrorMessage('Borç ödeme işlemi başarısız: ' + error.message)
+      }
+      
+      setTimeout(() => setErrorMessage(''), 5000)
+    } finally {
+      setPayDebtProcessing(false)
     }
   }
 
@@ -1826,6 +1938,16 @@ export default function Home() {
                       💰 Gün Sonu Al
                     </button>
                   )}
+                  
+                  {/* Borç Öde Butonu */}
+                  {courierDebts.length > 0 && (
+                    <button
+                      onClick={() => setShowPayDebtModal(true)}
+                      className="px-4 py-2 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white rounded-lg font-medium text-sm shadow-lg transition-all active:scale-95"
+                    >
+                      💳 Borç Öde
+                    </button>
+                  )}
                 </div>
                 <button
                   onClick={() => setShowCourierModal(false)}
@@ -2214,6 +2336,178 @@ export default function Home() {
                         )}
                       </button>
                     </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* BORÇ ÖDE MODAL */}
+        {showPayDebtModal && selectedCourierId && (
+          <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              {/* Modal Header */}
+              <div className="p-6 border-b border-slate-200 dark:border-slate-700">
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
+                  💳 Borç Ödemesi - {couriers.find(c => c.id === selectedCourierId)?.full_name}
+                </h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  {new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                </p>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-6">
+                {loadingDebts ? (
+                  <div className="text-center py-8">
+                    <div className="w-12 h-12 border-4 border-red-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-slate-500">Borçlar yükleniyor...</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Borç Listesi */}
+                    <div className="mb-6">
+                      <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-4">📋 Mevcut Borçlar</h4>
+                      
+                      {courierDebts.length === 0 ? (
+                        <div className="text-center py-8 text-slate-500">
+                          <div className="text-4xl mb-2">✅</div>
+                          <p>Kurye borcu yok</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2 mb-4">
+                          {courierDebts.map((debt) => (
+                            <div key={debt.id} className="flex justify-between items-center bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-200 dark:border-red-800">
+                              <span className="text-sm text-slate-700 dark:text-slate-300">
+                                📅 {formatTurkishDate(debt.debt_date)} gününden kalan
+                              </span>
+                              <span className="text-lg font-bold text-red-600 dark:text-red-400">
+                                {debt.remaining_amount.toFixed(2)} ₺
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Toplam Borç */}
+                      {courierDebts.length > 0 && (
+                        <div className="bg-red-100 dark:bg-red-900/30 p-4 rounded-xl border-2 border-red-300 dark:border-red-700">
+                          <div className="flex justify-between items-center">
+                            <span className="text-base font-bold text-red-700 dark:text-red-300">
+                              💰 TOPLAM BORÇ
+                            </span>
+                            <span className="text-3xl font-black text-red-700 dark:text-red-300">
+                              {courierDebts.reduce((sum, d) => sum + d.remaining_amount, 0).toFixed(2)} ₺
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Ödeme Tutarı Input */}
+                    {courierDebts.length > 0 && (
+                      <>
+                        <div className="mb-6">
+                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                            💵 Ödenen Tutar
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={payDebtAmount}
+                            onChange={(e) => setPayDebtAmount(e.target.value)}
+                            placeholder="Örn: 500.00"
+                            autoFocus
+                            className="w-full px-4 py-3 bg-white dark:bg-slate-700 border-2 border-slate-300 dark:border-slate-600 rounded-xl text-lg font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none"
+                          />
+                        </div>
+
+                        {/* Hesaplama Önizlemesi */}
+                        {payDebtAmount && !isNaN(parseFloat(payDebtAmount)) && (() => {
+                          const payment = parseFloat(payDebtAmount)
+                          const totalDebt = courierDebts.reduce((sum, d) => sum + d.remaining_amount, 0)
+                          const remaining = totalDebt - payment
+                          
+                          if (payment > totalDebt) {
+                            return (
+                              <div className="mb-6">
+                                <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-xl border-2 border-yellow-300 dark:border-yellow-700">
+                                  <div className="text-center">
+                                    <span className="text-2xl font-black text-yellow-700 dark:text-yellow-300">
+                                      ⚠️ UYARI
+                                    </span>
+                                    <p className="text-sm text-yellow-600 dark:text-yellow-400 mt-2">
+                                      Ödeme tutarı toplam borçtan fazla olamaz!
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          } else if (remaining > 0) {
+                            return (
+                              <div className="mb-6">
+                                <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-xl border-2 border-orange-300 dark:border-orange-700">
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-base font-bold text-orange-700 dark:text-orange-300">
+                                      📊 KALAN BORÇ
+                                    </span>
+                                    <span className="text-3xl font-black text-orange-700 dark:text-orange-300">
+                                      {remaining.toFixed(2)} ₺
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-orange-600 dark:text-orange-400 mt-2">
+                                    Bu miktar bugün tarihine aktarılacak
+                                  </p>
+                                </div>
+                              </div>
+                            )
+                          } else {
+                            return (
+                              <div className="mb-6">
+                                <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border-2 border-green-300 dark:border-green-700">
+                                  <div className="text-center">
+                                    <span className="text-2xl font-black text-green-700 dark:text-green-300">
+                                      ✅ TÜM BORÇ ÖDENDİ
+                                    </span>
+                                    <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                                      Kurye borçsuz olacak
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          }
+                        })()}
+
+                        {/* Butonlar */}
+                        <div className="flex gap-3">
+                          <button
+                            onClick={() => {
+                              setShowPayDebtModal(false)
+                              setPayDebtAmount('')
+                            }}
+                            className="flex-1 px-4 py-3 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-medium hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
+                          >
+                            İptal
+                          </button>
+                          <button
+                            onClick={handlePayDebt}
+                            disabled={payDebtProcessing || !payDebtAmount || parseFloat(payDebtAmount) > courierDebts.reduce((sum, d) => sum + d.remaining_amount, 0)}
+                            className="flex-1 px-4 py-3 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {payDebtProcessing ? (
+                              <span className="flex items-center justify-center gap-2">
+                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                İşleniyor...
+                              </span>
+                            ) : (
+                              '✓ Borç Öde'
+                            )}
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </>
                 )}
               </div>
