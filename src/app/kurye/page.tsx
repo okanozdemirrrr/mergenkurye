@@ -81,6 +81,7 @@ export default function KuryePage() {
   const [isListening, setIsListening] = useState(false)
   const [voiceCommand, setVoiceCommand] = useState('')
   const [recognition, setRecognition] = useState<any>(null)
+  const [showVoiceHelp, setShowVoiceHelp] = useState(false) // Sesli komut yardım pop-up'ı
   
   // SAYISAL ETİKETLEME (SLOT SYSTEM) - SABİT NUMARALANDIRMA
   const [packageSlots, setPackageSlots] = useState<{ [key: number]: number }>({}) // packageId -> slotNumber
@@ -120,6 +121,17 @@ export default function KuryePage() {
       return newSlots
     })
   }, [packages.map(p => p.id).sort().join(',')])
+
+  // Sesli komut yardım pop-up'ı - 10 saniye sonra göster
+  useEffect(() => {
+    if (!isMounted || !isLoggedIn) return
+
+    const timer = setTimeout(() => {
+      setShowVoiceHelp(true)
+    }, 10000) // 10 saniye
+
+    return () => clearTimeout(timer)
+  }, [isMounted, isLoggedIn])
 
   // Build-safe mount kontrolü
   useEffect(() => {
@@ -565,29 +577,29 @@ export default function KuryePage() {
         return
       }
 
-      // [Numara] kabul - Örn: "bir kabul"
-      if (command.includes('kabul')) {
+      // [Numara] kabul / onayla / tamam - Örn: "bir kabul"
+      if (command.includes('kabul') || command.includes('onayla') || command.includes('tamam')) {
         await handleAcceptPackage(pkg.id)
         speak(`${slotNumber} kabul edildi`)
         return
       }
 
-      // [Numara] aldım - Örn: "iki aldım"
-      if (command.includes('aldım')) {
+      // [Numara] aldım / paket bende / teslim al - Örn: "iki aldım"
+      if (command.includes('aldım') || command.includes('bende') || command.includes('teslim al')) {
         await handleUpdateStatus(pkg.id, 'on_the_way', { picked_up_at: new Date().toISOString() })
         speak(`${slotNumber} alındı`)
         return
       }
 
-      // [Numara] bitti veya [Numara] teslim - Örn: "üç bitti"
-      if (command.includes('bitti') || command.includes('teslim')) {
+      // [Numara] bitti / teslim edildi / teslim / kapat - Örn: "üç bitti"
+      if (command.includes('bitti') || command.includes('teslim') || command.includes('kapat')) {
         await handleDeliver(pkg.id)
         speak(`${slotNumber} teslim edildi`)
         return
       }
 
-      // [Numara] dükkan veya [Numara] restoran - Örn: "dört dükkan"
-      if (command.includes('dükkan') || command.includes('restoran')) {
+      // [Numara] dükkan / restoran / işletme - Örn: "dört dükkan"
+      if (command.includes('dükkan') || command.includes('restoran') || command.includes('işletme')) {
         if (pkg.restaurant?.phone) {
           window.location.href = `tel:${pkg.restaurant.phone}`
           speak(`${slotNumber} dükkan aranıyor`)
@@ -597,8 +609,8 @@ export default function KuryePage() {
         return
       }
 
-      // [Numara] müşteri - Örn: "beş müşteri"
-      if (command.includes('müşteri')) {
+      // [Numara] müşteri / kişi / ara - Örn: "beş müşteri"
+      if (command.includes('müşteri') || command.includes('kişi') || command.includes('ara')) {
         if (pkg.customer_phone) {
           window.location.href = `tel:${pkg.customer_phone}`
           speak(`${slotNumber} müşteri aranıyor`)
@@ -607,10 +619,18 @@ export default function KuryePage() {
         }
         return
       }
+
+      // [Numara] konum / yol / harita / navigasyon - Örn: "altı konum"
+      if (command.includes('konum') || command.includes('yol') || command.includes('harita') || command.includes('navigasyon')) {
+        const address = encodeURIComponent(pkg.delivery_address)
+        window.open(`https://www.google.com/maps/search/?api=1&query=${address}`, '_blank')
+        speak(`${slotNumber} navigasyon açılıyor`)
+        return
+      }
     }
 
     // Genel komutlar (numarasız) - fallback
-    if (command.includes('kabul')) {
+    if (command.includes('kabul') || command.includes('onayla') || command.includes('tamam')) {
       const pendingPackage = packages.find(pkg => 
         pkg.status === 'assigned' || pkg.status === 'waiting'
       )
@@ -623,7 +643,7 @@ export default function KuryePage() {
       return
     }
 
-    if (command.includes('bitti') || command.includes('teslim')) {
+    if (command.includes('bitti') || command.includes('teslim') || command.includes('kapat')) {
       const activePackage = packages.find(pkg => pkg.status !== 'delivered')
       if (activePackage) {
         await handleDeliver(activePackage.id)
@@ -634,7 +654,7 @@ export default function KuryePage() {
       return
     }
 
-    if (command.includes('müşteri')) {
+    if (command.includes('müşteri') || command.includes('kişi')) {
       const activePackage = packages.find(pkg => pkg.status !== 'delivered')
       if (activePackage && activePackage.customer_phone) {
         window.location.href = `tel:${activePackage.customer_phone}`
@@ -645,13 +665,25 @@ export default function KuryePage() {
       return
     }
 
-    if (command.includes('dükkan') || command.includes('restoran')) {
+    if (command.includes('dükkan') || command.includes('restoran') || command.includes('işletme')) {
       const activePackage = packages.find(pkg => pkg.status !== 'delivered')
       if (activePackage && activePackage.restaurant?.phone) {
         window.location.href = `tel:${activePackage.restaurant.phone}`
         speak('Dükkan aranıyor')
       } else {
         speak('Telefon yok')
+      }
+      return
+    }
+
+    if (command.includes('konum') || command.includes('yol') || command.includes('harita') || command.includes('navigasyon')) {
+      const activePackage = packages.find(pkg => pkg.status !== 'delivered')
+      if (activePackage) {
+        const address = encodeURIComponent(activePackage.delivery_address)
+        window.open(`https://www.google.com/maps/search/?api=1&query=${address}`, '_blank')
+        speak('Navigasyon açılıyor')
+      } else {
+        speak('Paket yok')
       }
       return
     }
@@ -1086,6 +1118,132 @@ export default function KuryePage() {
                 )}
               </div>
             </button>
+          </div>
+        )}
+
+        {/* SESLİ KOMUT YARDIM POP-UP */}
+        {showVoiceHelp && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+            <div className="bg-gradient-to-br from-slate-900 to-slate-800 border-2 border-blue-500/50 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              {/* Başlık */}
+              <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-purple-600 p-4 rounded-t-2xl flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl">🎤</span>
+                  <h2 className="text-xl font-bold text-white">Sesli Komut Rehberi</h2>
+                </div>
+                <button
+                  onClick={() => setShowVoiceHelp(false)}
+                  className="text-white hover:bg-white/20 rounded-lg p-2 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* İçerik */}
+              <div className="p-6 space-y-6">
+                {/* Kullanım Talimatı */}
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
+                  <p className="text-blue-300 text-sm leading-relaxed">
+                    🎯 <strong>Nasıl Kullanılır:</strong> Mikrofon butonuna basın veya interkom tuşuna basın, komutunuzu söyleyin. 
+                    Paket numarasını söyleyip ardından işlemi belirtin.
+                  </p>
+                </div>
+
+                {/* Komut Grupları */}
+                <div className="space-y-4">
+                  {/* Onay */}
+                  <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+                    <h3 className="text-green-400 font-bold mb-2 flex items-center gap-2">
+                      <span className="text-xl">✅</span> Paketi Kabul Etmek
+                    </h3>
+                    <p className="text-slate-300 text-sm mb-2">
+                      <span className="text-white font-mono bg-slate-700 px-2 py-1 rounded">1 kabul</span> veya{' '}
+                      <span className="text-white font-mono bg-slate-700 px-2 py-1 rounded">1 onayla</span> veya{' '}
+                      <span className="text-white font-mono bg-slate-700 px-2 py-1 rounded">1 tamam</span>
+                    </p>
+                  </div>
+
+                  {/* Teslim Alma */}
+                  <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+                    <h3 className="text-yellow-400 font-bold mb-2 flex items-center gap-2">
+                      <span className="text-xl">📦</span> Paketi Teslim Almak (Restorandan)
+                    </h3>
+                    <p className="text-slate-300 text-sm mb-2">
+                      <span className="text-white font-mono bg-slate-700 px-2 py-1 rounded">2 aldım</span> veya{' '}
+                      <span className="text-white font-mono bg-slate-700 px-2 py-1 rounded">2 paket bende</span> veya{' '}
+                      <span className="text-white font-mono bg-slate-700 px-2 py-1 rounded">2 teslim al</span>
+                    </p>
+                  </div>
+
+                  {/* Teslim Etme */}
+                  <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+                    <h3 className="text-blue-400 font-bold mb-2 flex items-center gap-2">
+                      <span className="text-xl">🏁</span> Paketi Teslim Etmek (Müşteriye)
+                    </h3>
+                    <p className="text-slate-300 text-sm mb-2">
+                      <span className="text-white font-mono bg-slate-700 px-2 py-1 rounded">3 bitti</span> veya{' '}
+                      <span className="text-white font-mono bg-slate-700 px-2 py-1 rounded">3 teslim edildi</span> veya{' '}
+                      <span className="text-white font-mono bg-slate-700 px-2 py-1 rounded">3 kapat</span>
+                    </p>
+                  </div>
+
+                  {/* Dükkan Arama */}
+                  <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+                    <h3 className="text-orange-400 font-bold mb-2 flex items-center gap-2">
+                      <span className="text-xl">🏪</span> Restoranı Aramak
+                    </h3>
+                    <p className="text-slate-300 text-sm mb-2">
+                      <span className="text-white font-mono bg-slate-700 px-2 py-1 rounded">4 dükkan</span> veya{' '}
+                      <span className="text-white font-mono bg-slate-700 px-2 py-1 rounded">4 restoran</span> veya{' '}
+                      <span className="text-white font-mono bg-slate-700 px-2 py-1 rounded">4 işletme</span>
+                    </p>
+                  </div>
+
+                  {/* Müşteri Arama */}
+                  <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+                    <h3 className="text-purple-400 font-bold mb-2 flex items-center gap-2">
+                      <span className="text-xl">📞</span> Müşteriyi Aramak
+                    </h3>
+                    <p className="text-slate-300 text-sm mb-2">
+                      <span className="text-white font-mono bg-slate-700 px-2 py-1 rounded">5 müşteri</span> veya{' '}
+                      <span className="text-white font-mono bg-slate-700 px-2 py-1 rounded">5 kişi</span> veya{' '}
+                      <span className="text-white font-mono bg-slate-700 px-2 py-1 rounded">5 ara</span>
+                    </p>
+                  </div>
+
+                  {/* Navigasyon */}
+                  <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+                    <h3 className="text-pink-400 font-bold mb-2 flex items-center gap-2">
+                      <span className="text-xl">🗺️</span> Navigasyon Açmak
+                    </h3>
+                    <p className="text-slate-300 text-sm mb-2">
+                      <span className="text-white font-mono bg-slate-700 px-2 py-1 rounded">6 konum</span> veya{' '}
+                      <span className="text-white font-mono bg-slate-700 px-2 py-1 rounded">6 yol</span> veya{' '}
+                      <span className="text-white font-mono bg-slate-700 px-2 py-1 rounded">6 harita</span> veya{' '}
+                      <span className="text-white font-mono bg-slate-700 px-2 py-1 rounded">6 navigasyon</span>
+                    </p>
+                  </div>
+                </div>
+
+                {/* Alt Bilgi */}
+                <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/30 rounded-xl p-4">
+                  <p className="text-purple-300 text-xs leading-relaxed">
+                    💡 <strong>İpucu:</strong> Paket numaraları ekranın sol üstünde mor-pembe renkli kutularda gösterilir. 
+                    Komutları söylerken net ve yavaş konuşun. Bluetooth kulaklık kullanıyorsanız, play/pause tuşu ile de mikrofonu açabilirsiniz.
+                  </p>
+                </div>
+
+                {/* Kapat Butonu */}
+                <button
+                  onClick={() => setShowVoiceHelp(false)}
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-3 rounded-xl transition-all active:scale-95"
+                >
+                  Anladım, Başlayalım! 🚀
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
