@@ -804,8 +804,8 @@ export default function KuryePage() {
       const { error } = await supabase
         .from('packages')
         .update({
-          status: 'picking_up',
-          picked_up_at: new Date().toISOString()
+          status: 'picking_up'
+          // picked_up_at KALDIRILDI - Bu "Teslim Aldım" butonunda set edilecek
         })
         .eq('id', packageId)
 

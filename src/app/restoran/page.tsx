@@ -1192,7 +1192,7 @@ export default function RestoranPage() {
             {/* Başlık ve Filtre */}
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-white">Alınan Siparişler</h2>
+                <h2 className="text-base font-bold text-white">Verilen Siparişler</h2>
                 <span className="bg-orange-500/20 text-orange-400 text-xs px-2 py-0.5 rounded">
                   {packages.length}
                 </span>
