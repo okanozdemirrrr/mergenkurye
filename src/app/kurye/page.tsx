@@ -56,7 +56,7 @@ export default function KuryePage() {
   const [myRank, setMyRank] = useState<number | null>(null)
   const [showLeaderboard, setShowLeaderboard] = useState(false) // Leaderboard modal
   const [showMenu, setShowMenu] = useState(false) // Hamburger menü
-  const [activeTab, setActiveTab] = useState<'packages' | 'history'>('packages') // Aktif sekme
+  const [activeTab, setActiveTab] = useState<'packages' | 'history' | 'earnings'>('packages') // Aktif sekme
   const [todayDeliveredPackages, setTodayDeliveredPackages] = useState<Package[]>([]) // Bugünkü teslim edilenler
 
   // Build-safe mount kontrolü
@@ -581,6 +581,21 @@ export default function KuryePage() {
               </button>
 
               <button
+                onClick={() => {
+                  setActiveTab('earnings')
+                  setShowMenu(false)
+                }}
+                className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${
+                  activeTab === 'earnings'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <span className="mr-3">💰</span>
+                Toplam Hesap
+              </button>
+
+              <button
                 onClick={() => { 
                   localStorage.removeItem(LOGIN_STORAGE_KEY);
                   localStorage.removeItem(LOGIN_COURIER_ID_KEY);
@@ -596,82 +611,56 @@ export default function KuryePage() {
         </div>
       )}
 
-      <div className="max-w-2xl mx-auto px-2 sm:px-0">
-        <div className="flex justify-center items-center mb-3 sm:mb-4 pt-12 sm:pt-2">
-          <img 
-            src="/logo.png" 
-            alt="Logo" 
-            className="w-24 h-24 sm:w-32 sm:h-32"
-          />
-        </div>
-
-        {/* Sadece Aktif Paketler sekmesinde göster */}
+      <div className="max-w-2xl mx-auto px-2 sm:px-0 relative">
+        {/* TOPLAM KAZANÇ - EN ÜSTTE */}
         {activeTab === 'packages' && (
-          <>
-            {/* KURYE DURUM KONTROL TOGGLE - Mobil Responsive */}
-            <div className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-800 mb-3 sm:mb-4">
-              <div className="flex items-center justify-between mb-2 sm:mb-3">
-                <span className="text-xs sm:text-sm font-medium text-slate-300">Durum</span>
-                <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${is_active ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                  <span className="text-xs text-slate-400">
-                    {is_active ? 'Aktif' : 'Pasif'}
-                  </span>
-                </div>
+          <div className="bg-gradient-to-r from-green-900 to-emerald-900 p-2 sm:p-3 rounded-xl border border-green-700 mb-3 sm:mb-4 mt-12 sm:mt-2">
+            <div className="flex justify-between items-center">
+              <p className="text-green-300 text-xs">💰 Toplam Kazanç</p>
+              <div className="text-right">
+                <p className="text-xl sm:text-2xl font-bold text-green-100">{deliveredCount * 80} ₺</p>
+                <p className="text-xs text-green-400">{deliveredCount} paket × 80₺</p>
               </div>
-              
-              {/* Toggle Switch */}
-              <div className="flex items-center justify-center gap-2 sm:gap-3 py-2">
-                <span className={`text-xs font-medium transition-all ${!is_active ? 'text-red-400' : 'text-slate-500'}`}>
-                  Pasif
-                </span>
-                
-                <button
-                  onClick={() => updateCourierStatus('idle', !is_active)}
-                  disabled={statusUpdating}
-                  className={`relative w-14 h-7 rounded-full transition-all duration-300 disabled:opacity-50 ${
-                    is_active ? 'bg-green-600' : 'bg-slate-700'
-                  }`}
-                >
-                  <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300 ${
-                    is_active ? 'left-7' : 'left-0.5'
-                  }`}>
-                    {statusUpdating && (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
-                      </div>
-                    )}
+            </div>
+          </div>
+        )}
+
+        {/* LOGO VE BUGÜN TESLİM YAN YANA */}
+        {activeTab === 'packages' && (
+          <div className="flex items-center justify-between gap-3 mb-3 sm:mb-4">
+            <img 
+              src="/logo.png" 
+              alt="Logo" 
+              className="w-20 h-20 sm:w-24 sm:h-24"
+            />
+            <div className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-800 flex-1">
+              <p className="text-slate-400 text-xs mb-1">Bugün Teslim</p>
+              <p className="text-xl sm:text-2xl font-bold text-green-400">{deliveredCount}</p>
+            </div>
+          </div>
+        )}
+
+        {/* DURUM TOGGLE - SAĞ ALT KÖŞE */}
+        {activeTab === 'packages' && (
+          <div className="fixed bottom-4 right-4 z-50">
+            <button
+              onClick={() => updateCourierStatus('idle', !is_active)}
+              disabled={statusUpdating}
+              className={`relative w-14 h-7 rounded-full transition-all duration-300 disabled:opacity-50 shadow-lg ${
+                is_active ? 'bg-green-600' : 'bg-slate-700'
+              }`}
+            >
+              <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300 ${
+                is_active ? 'left-7' : 'left-0.5'
+              }`}>
+                {statusUpdating && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
                   </div>
-                </button>
-                
-                <span className={`text-xs font-medium transition-all ${is_active ? 'text-green-400' : 'text-slate-500'}`}>
-                  Aktif
-                </span>
+                )}
               </div>
-            </div>
-
-            {/* İSTATİSTİKLER - Mobil Responsive */}
-            <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-3 sm:mb-4">
-              <div className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-800">
-                <p className="text-slate-400 text-xs mb-1">Bugün Teslim</p>
-                <p className="text-xl sm:text-2xl font-bold text-green-400">{deliveredCount}</p>
-              </div>
-              <button 
-                onClick={() => setShowSummary(true)}
-                className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-800 hover:border-blue-600 transition-colors text-left active:scale-95"
-              >
-                <p className="text-slate-400 text-xs mb-1">Toplam Hesap</p>
-                <p className="text-xl sm:text-2xl font-bold text-blue-400">{(cashTotal + cardTotal).toFixed(2)} ₺</p>
-              </button>
-            </div>
-
-            {/* TOPLAM KAZANÇ - Mobil Responsive */}
-            <div className="bg-gradient-to-r from-green-900 to-emerald-900 p-3 sm:p-4 rounded-xl border border-green-700 mb-3 sm:mb-4">
-              <p className="text-green-300 text-xs mb-1">💰 Toplam Kazanç</p>
-              <p className="text-2xl sm:text-3xl font-bold text-green-100">{deliveredCount * 80} ₺</p>
-              <p className="text-xs text-green-400 mt-1">{deliveredCount} paket × 80₺</p>
-            </div>
-          </>
+            </button>
+          </div>
         )}
 
         {successMessage && (
@@ -949,6 +938,105 @@ export default function KuryePage() {
                     )}
                   </div>
                 ))}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* TOPLAM HESAP SEKMESİ */}
+        {activeTab === 'earnings' && (
+          <div className="space-y-2 sm:space-y-3">
+            {/* Tarih Seçici */}
+            <div className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-800">
+              <h3 className="text-sm font-bold text-white mb-3">Tarih Aralığı Seçin</h3>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs text-slate-400 mb-1 block">Başlangıç</label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-xs text-white focus:border-blue-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 mb-1 block">Bitiş</label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-xs text-white focus:border-blue-500 outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Özet Bilgiler */}
+            {startDate && endDate && (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
+                    <p className="text-slate-400 text-xs mb-1">Toplam Paket</p>
+                    <p className="text-xl font-bold text-blue-400">
+                      {todayDeliveredPackages.filter(pkg => {
+                        const deliveredDate = new Date(pkg.delivered_at || '')
+                        return deliveredDate >= new Date(startDate) && deliveredDate <= new Date(endDate + 'T23:59:59')
+                      }).length}
+                    </p>
+                  </div>
+                  <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
+                    <p className="text-slate-400 text-xs mb-1">Toplam Hesap</p>
+                    <p className="text-xl font-bold text-green-400">
+                      {todayDeliveredPackages.filter(pkg => {
+                        const deliveredDate = new Date(pkg.delivered_at || '')
+                        return deliveredDate >= new Date(startDate) && deliveredDate <= new Date(endDate + 'T23:59:59')
+                      }).reduce((sum, pkg) => sum + (pkg.amount || 0), 0).toFixed(2)} ₺
+                    </p>
+                  </div>
+                </div>
+
+                {/* Paket Listesi */}
+                <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
+                  <h3 className="text-sm font-bold text-white mb-3">Teslim Edilen Paketler</h3>
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {todayDeliveredPackages.filter(pkg => {
+                      const deliveredDate = new Date(pkg.delivered_at || '')
+                      return deliveredDate >= new Date(startDate) && deliveredDate <= new Date(endDate + 'T23:59:59')
+                    }).length === 0 ? (
+                      <div className="text-center py-8 text-slate-500">
+                        <div className="text-3xl mb-2">📦</div>
+                        <p className="text-xs">Bu tarih aralığında paket yok</p>
+                      </div>
+                    ) : (
+                      todayDeliveredPackages.filter(pkg => {
+                        const deliveredDate = new Date(pkg.delivered_at || '')
+                        return deliveredDate >= new Date(startDate) && deliveredDate <= new Date(endDate + 'T23:59:59')
+                      }).map((pkg) => (
+                        <div key={pkg.id} className="bg-slate-800/50 p-2 rounded-lg border border-slate-700">
+                          <div className="flex justify-between items-start mb-1">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-xs font-bold text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded">
+                                  #{pkg.order_number || '------'}
+                                </span>
+                              </div>
+                              <p className="font-medium text-sm text-white">{pkg.customer_name}</p>
+                              <p className="text-xs text-slate-400 mt-1">
+                                📅 {new Date(pkg.delivered_at || '').toLocaleDateString('tr-TR')} - {new Date(pkg.delivered_at || '').toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-lg font-bold text-green-400">{pkg.amount}₺</p>
+                              <p className="text-xs text-slate-500">
+                                {pkg.payment_method === 'cash' ? '💵 Nakit' : '💳 Kart'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
               </>
             )}
           </div>
