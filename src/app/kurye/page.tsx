@@ -547,10 +547,30 @@ export default function KuryePage() {
 
   const speak = (text: string) => {
     if ('speechSynthesis' in window) {
+      // Önce konuşmayı durdur
+      window.speechSynthesis.cancel()
+      
       const utterance = new SpeechSynthesisUtterance(text)
       utterance.lang = 'tr-TR'
-      utterance.rate = 1.0
-      utterance.pitch = 1.0
+      utterance.rate = 0.9 // Daha yavaş ve anlaşılır
+      utterance.pitch = 1.1 // Daha nazik ve profesyonel ton
+      utterance.volume = 1.0
+      
+      // Türkçe kadın sesini seç
+      const voices = window.speechSynthesis.getVoices()
+      const turkishFemaleVoice = voices.find(voice => 
+        voice.lang.startsWith('tr') && voice.name.toLowerCase().includes('female')
+      ) || voices.find(voice => 
+        voice.lang.startsWith('tr') && !voice.name.toLowerCase().includes('male')
+      ) || voices.find(voice => 
+        voice.lang.startsWith('tr')
+      )
+      
+      if (turkishFemaleVoice) {
+        utterance.voice = turkishFemaleVoice
+        console.log('🎙️ Seçilen ses:', turkishFemaleVoice.name)
+      }
+      
       window.speechSynthesis.speak(utterance)
     }
   }
@@ -608,9 +628,10 @@ export default function KuryePage() {
       voiceTimeoutRef.current = null
     }
 
-    // Komut işleme başladı - recognition'ı zorla durdur ve idle moda geç
+    // Komut işleme başladı - recognition'ı zorla durdur
     if (recognition && isListening) {
-      recognition.abort() // Zorla durdur
+      recognition.stop() // Önce normal durdur
+      recognition.abort() // Sonra zorla durdur
       setIsListening(false)
     }
 
@@ -619,15 +640,24 @@ export default function KuryePage() {
       navigator.mediaSession.playbackState = 'playing'
     }
 
-    // Sayı çıkarma - sadece kök kelimeleri tanı (suffix'leri ignore et)
+    // Sayı çıkarma - Regex ile ekleri temizle ve saf sayıyı al
     const numberWords: { [key: string]: number } = {
       'bir': 1, 'iki': 2, 'üç': 3, 'dört': 4, 'beş': 5,
       'altı': 6, 'yedi': 7, 'sekiz': 8, 'dokuz': 9, 'on': 10
     }
 
     let slotNumber: number | null = null
+    
+    // Ekleri temizle (birin -> bir, ikinin -> iki, üçü -> üç)
+    const cleanedTranscript = transcript
+      .replace(/([a-zğüşıöç]+)(in|ın|un|ün|i|ı|u|ü|e|a|nin|nın|nun|nün)\b/gi, '$1')
+    
+    console.log('🧹 Temizlenmiş transcript:', cleanedTranscript)
+    
     for (const [word, num] of Object.entries(numberWords)) {
-      if (transcript.includes(word)) {
+      // Kelime sınırlarını kontrol et (tam eşleşme)
+      const regex = new RegExp(`\\b${word}\\b`, 'i')
+      if (regex.test(cleanedTranscript)) {
         slotNumber = num
         console.log('� Slot numarası tespit edildi:', slotNumber)
         break
@@ -661,10 +691,11 @@ export default function KuryePage() {
         if (pkg.status === 'assigned' || pkg.status === 'waiting') {
           console.log('🟢 handleAcceptPackage çağrılıyor...')
           await handleAcceptPackage(pkg.id)
-          speak(`${slotNumber} kabul edildi`)
+          const customerName = pkg.customer_name.split(' ')[0] // İlk isim
+          speak(`${slotNumber} numara kabul edildi. Yolun açık olsun ${customerName} Bey'e gidiyorsun`)
         } else {
           console.log('⚠️ Paket zaten kabul edilmiş, mevcut status:', pkg.status)
-          speak('Zaten kabul edildi')
+          speak('Bu paket zaten kabul edilmiş')
         }
         return
       }
@@ -675,7 +706,7 @@ export default function KuryePage() {
         if (pkg.status === 'picking_up') {
           console.log('🟡 handleUpdateStatus çağrılıyor...')
           await handleUpdateStatus(pkg.id, 'on_the_way', { picked_up_at: new Date().toISOString() })
-          speak(`${slotNumber} alındı`)
+          speak(`${slotNumber} numara alındı. Güvenli sürüşler`)
         } else {
           console.log('⚠️ Paket picking_up durumunda değil, mevcut status:', pkg.status)
           speak('Önce kabul edin')
@@ -689,7 +720,7 @@ export default function KuryePage() {
         
         if (pkg.status !== 'on_the_way') {
           console.log('⚠️ Paket on_the_way durumunda değil, mevcut status:', pkg.status)
-          speak('Önce paketi alın')
+          speak('Önce paketi restorandan almalısınız')
           return
         }
         
@@ -709,7 +740,7 @@ export default function KuryePage() {
         console.log('💳 Ödeme yöntemi:', paymentMethod)
         if (!paymentMethod) {
           console.warn('⚠️ Ödeme yöntemi seçilmemiş')
-          speak('Nakit mi kart mı')
+          speak('Lütfen ödeme yöntemini nakit veya kart olarak belirtin. Örneğin, bir nakit teslim veya bir kart teslim diyebilirsiniz')
           setErrorMessage('Lütfen ödeme yöntemini seçin!')
           setTimeout(() => setErrorMessage(''), 3000)
           return
@@ -717,7 +748,8 @@ export default function KuryePage() {
         
         console.log('🔵 handleDeliver çağrılıyor...')
         await handleDeliver(pkg.id)
-        speak(`${slotNumber} ${paymentMethod === 'cash' ? 'nakit' : 'kart'} teslim edildi`)
+        const paymentText = paymentMethod === 'cash' ? 'nakit' : 'kart'
+        speak(`${slotNumber} numara ${paymentText} olarak teslim edildi. Harika iş`)
         return
       }
 
@@ -728,12 +760,13 @@ export default function KuryePage() {
         
         if (pkg.restaurant?.phone) {
           const phoneNumber = pkg.restaurant.phone
+          const restaurantName = pkg.restaurant.name
           console.log('📞 Aranacak numara:', phoneNumber)
           window.location.href = `tel:${phoneNumber}`
-          speak(`${slotNumber} dükkan aranıyor`)
+          speak(`${restaurantName} restoranı aranıyor`)
         } else {
           console.warn('⚠️ Restoran telefonu yok')
-          speak('Telefon yok')
+          speak('Restoran telefon numarası bulunamadı')
         }
         return
       }
@@ -744,12 +777,13 @@ export default function KuryePage() {
         console.log('📞 Müşteri telefonu:', pkg.customer_phone)
         
         if (pkg.customer_phone) {
+          const customerName = pkg.customer_name.split(' ')[0]
           console.log('📞 Aranacak numara:', pkg.customer_phone)
           window.location.href = `tel:${pkg.customer_phone}`
-          speak(`${slotNumber} müşteri aranıyor`)
+          speak(`${customerName} Bey aranıyor`)
         } else {
           console.warn('⚠️ Müşteri telefonu yok')
-          speak('Telefon yok')
+          speak('Müşteri telefon numarası bulunamadı')
         }
         return
       }
@@ -764,7 +798,7 @@ export default function KuryePage() {
         console.log('🗺️ Maps URL:', mapsUrl)
         
         window.open(mapsUrl, '_blank')
-        speak(`${slotNumber} navigasyon açılıyor`)
+        speak('Navigasyon açılıyor. Güvenli sürüşler')
         return
       }
     }
