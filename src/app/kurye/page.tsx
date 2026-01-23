@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 
 interface Package {
   id: number
+  order_number?: string
   customer_name: string
   customer_phone?: string
   delivery_address: string
@@ -58,8 +59,14 @@ export default function KuryePage() {
   const [showMenu, setShowMenu] = useState(false) // Hamburger menü
   const [activeTab, setActiveTab] = useState<'packages' | 'history' | 'earnings'>('packages') // Aktif sekme
   const [todayDeliveredPackages, setTodayDeliveredPackages] = useState<Package[]>([]) // Bugünkü teslim edilenler
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
+  const [startDate, setStartDate] = useState(() => {
+    const today = new Date()
+    return today.toISOString().split('T')[0]
+  })
+  const [endDate, setEndDate] = useState(() => {
+    const today = new Date()
+    return today.toISOString().split('T')[0]
+  })
   
   // SESLİ KOMUT STATE'LERİ
   const [isListening, setIsListening] = useState(false)
@@ -207,6 +214,8 @@ export default function KuryePage() {
         .order('delivered_at', { ascending: false })
 
       if (error) throw error
+      
+      console.log('📦 Bugün teslim edilen paketler:', data?.length || 0)
       
       const transformed = (data || []).map((pkg: any) => ({
         ...pkg,
