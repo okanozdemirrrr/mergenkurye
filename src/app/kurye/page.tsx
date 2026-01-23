@@ -905,14 +905,14 @@ export default function KuryePage() {
         )
         .subscribe()
       
-      // Fallback polling - 30 saniyede bir zorunlu güncelleme
+      // SESSİZ PERİYODİK YENİLEME - 15 SANİYE
       const interval = setInterval(() => {
         fetchPackages(false)
         fetchDailyStats()
         fetchTodayDeliveredPackages()
         fetchCourierStatus()
         fetchLeaderboard()
-      }, 30000)
+      }, 15000) // 15 saniye
       
       return () => {
         clearInterval(interval)

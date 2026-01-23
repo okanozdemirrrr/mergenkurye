@@ -181,8 +181,10 @@ export default function Home() {
     }
   }
 
-  const fetchPackages = async () => {
-    setErrorMessage('') // Önceki hataları temizle
+  const fetchPackages = async (isInitialLoad = false) => {
+    if (isInitialLoad) {
+      setErrorMessage('') // Sadece ilk yüklemede hataları temizle
+    }
     
     try {
       // Bugün (gece 00:00'dan itibaren)
@@ -235,8 +237,11 @@ export default function Home() {
         return // Eski veriler ekranda kalsın
       }
       
-      console.error('Siparişler yüklenirken hata:', error)
-      setErrorMessage('Siparişler yüklenirken hata: ' + error.message)
+      // Sadece ilk yüklemede hata göster
+      if (isInitialLoad) {
+        console.error('Siparişler yüklenirken hata:', error)
+        setErrorMessage('Siparişler yüklenirken hata: ' + error.message)
+      }
     }
   }
 
@@ -272,8 +277,10 @@ export default function Home() {
     }
   }
 
-  const fetchCouriers = async () => {
-    setErrorMessage('') // Önceki hataları temizle
+  const fetchCouriers = async (isInitialLoad = false) => {
+    if (isInitialLoad) {
+      setErrorMessage('') // Sadece ilk yüklemede hataları temizle
+    }
     
     try {
       const { data, error } = await supabase
@@ -318,7 +325,10 @@ export default function Home() {
         return
       }
       
-      setErrorMessage('Kuryeler yüklenemedi: ' + error.message)
+      // Sadece ilk yüklemede hata göster
+      if (isInitialLoad) {
+        setErrorMessage('Kuryeler yüklenemedi: ' + error.message)
+      }
     }
   }
 
@@ -1273,6 +1283,13 @@ export default function Home() {
         return currentState;
       }
       
+      // OPTİMİSTİK GÜNCELLEME - UI'ı hemen güncelle
+      setPackages(prev => prev.map(pkg => 
+        pkg.id === packageId 
+          ? { ...pkg, courier_id: courierId, status: 'assigned' }
+          : pkg
+      ));
+      
       // Async işlemi başlat
       (async () => {
         try {
@@ -1287,10 +1304,13 @@ export default function Home() {
           if (error) throw error;
           
           setSuccessMessage('Kurye atandı!');
-          fetchPackages(); 
-          fetchCouriers();
+          // Sessiz yenileme - loading yok
+          fetchPackages(false); 
+          fetchCouriers(false);
         } catch (error: any) { 
           setErrorMessage(error.message);
+          // Hata durumunda geri al
+          fetchPackages(false);
         } finally { 
           setAssigningIds(prev => { const n = new Set(prev); n.delete(packageId); return n });
         }
@@ -1302,18 +1322,20 @@ export default function Home() {
 
   useEffect(() => {
     if (isLoggedIn) {
-      // İlk yükleme
+      // İlk yükleme - SADECE BURADA LOADING GÖSTER
       setIsLoading(true)
-      fetchPackages().then(() => {
-        fetchCouriers()
-        fetchRestaurants()
-        fetchDeliveredPackages() // Her zaman çek, tüm sekmeler için gerekli
+      Promise.all([
+        fetchPackages(true),
+        fetchCouriers(true),
+        fetchRestaurants(),
+        fetchDeliveredPackages()
+      ]).finally(() => {
         setIsLoading(false)
       })
     }
   }, [isLoggedIn])
 
-  // Realtime için ayrı useEffect - Sadece INSERT'lerde bildirim
+  // Realtime + Sessiz Periyodik Yenileme
   useEffect(() => {
     if (!isLoggedIn || !isMounted) return
 
@@ -1323,8 +1345,9 @@ export default function Home() {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'packages' },
         () => {
-          fetchPackages() // Yeni paket geldi, ses çalacak
-          fetchCouriers()
+          // Yeni paket - Sessiz yenileme (loading yok)
+          fetchPackages(false)
+          fetchCouriers(false)
           fetchDeliveredPackages()
         }
       )
@@ -1332,8 +1355,9 @@ export default function Home() {
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'packages' },
         () => {
-          fetchPackages() // Güncelleme, ses çalmayacak (lastPackageIds değişmedi)
-          fetchCouriers()
+          // Güncelleme - Sessiz yenileme (loading yok)
+          fetchPackages(false)
+          fetchCouriers(false)
           fetchDeliveredPackages()
         }
       )
@@ -1341,17 +1365,18 @@ export default function Home() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'couriers' },
         () => {
-          fetchCouriers()
+          // Kurye değişikliği - Sessiz yenileme
+          fetchCouriers(false)
         }
       )
       .subscribe()
 
-    // Fallback polling - 30 saniyede bir
+    // SESSİZ PERİYODİK YENİLEME - 15 SANİYE - KULLANICI HİÇBİR ŞEY FARK ETMEZ
     const interval = setInterval(() => {
-      fetchPackages()
-      fetchCouriers()
+      fetchPackages(false) // isInitialLoad = false, loading gösterme
+      fetchCouriers(false)
       fetchDeliveredPackages()
-    }, 30000)
+    }, 15000) // 15 saniye
 
     return () => {
       clearInterval(interval)

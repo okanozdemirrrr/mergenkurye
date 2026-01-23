@@ -407,8 +407,8 @@ export default function RestoranPage() {
   useEffect(() => {
     if (isLoggedIn && selectedRestaurantId) {
       fetchPackages()
-      // Silent refresh - 30 saniyede bir
-      const interval = setInterval(fetchPackages, 30000)
+      // SESSİZ PERİYODİK YENİLEME - 15 SANİYE
+      const interval = setInterval(fetchPackages, 15000) // 15 saniye
       return () => clearInterval(interval)
     }
   }, [isLoggedIn, selectedRestaurantId, dateFilter])
