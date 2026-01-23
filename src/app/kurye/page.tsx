@@ -59,6 +59,7 @@ export default function KuryePage() {
   const [showMenu, setShowMenu] = useState(false) // Hamburger menü
   const [activeTab, setActiveTab] = useState<'packages' | 'history' | 'earnings'>('packages') // Aktif sekme
   const [todayDeliveredPackages, setTodayDeliveredPackages] = useState<Package[]>([]) // Bugünkü teslim edilenler
+  const [filteredPackages, setFilteredPackages] = useState<Package[]>([]) // Filtrelenmiş paketler
   const [startDate, setStartDate] = useState(() => {
     const today = new Date()
     return today.toISOString().split('T')[0]
@@ -67,11 +68,62 @@ export default function KuryePage() {
     const today = new Date()
     return today.toISOString().split('T')[0]
   })
+  const [historyStartDate, setHistoryStartDate] = useState(() => {
+    const today = new Date()
+    return today.toISOString().split('T')[0]
+  })
+  const [historyEndDate, setHistoryEndDate] = useState(() => {
+    const today = new Date()
+    return today.toISOString().split('T')[0]
+  })
   
   // SESLİ KOMUT STATE'LERİ
   const [isListening, setIsListening] = useState(false)
   const [voiceCommand, setVoiceCommand] = useState('')
   const [recognition, setRecognition] = useState<any>(null)
+  
+  // SAYISAL ETİKETLEME (SLOT SYSTEM)
+  const [packageSlots, setPackageSlots] = useState<{ [key: number]: number }>({}) // packageId -> slotNumber
+
+  // Boş slot bul (en küçük kullanılmayan numara)
+  const findAvailableSlot = () => {
+    const usedSlots = Object.values(packageSlots)
+    for (let i = 1; i <= 10; i++) {
+      if (!usedSlots.includes(i)) {
+        return i
+      }
+    }
+    return usedSlots.length + 1
+  }
+
+  // Paketlere slot numarası ata
+  useEffect(() => {
+    if (packages.length === 0) {
+      setPackageSlots({})
+      return
+    }
+
+    const newSlots: { [key: number]: number } = {}
+    const currentSlots = { ...packageSlots }
+
+    packages.forEach(pkg => {
+      if (currentSlots[pkg.id]) {
+        // Mevcut slot'u koru
+        newSlots[pkg.id] = currentSlots[pkg.id]
+      } else {
+        // Yeni paket için slot ata
+        const usedSlots = Object.values(newSlots)
+        for (let i = 1; i <= 10; i++) {
+          if (!usedSlots.includes(i)) {
+            newSlots[pkg.id] = i
+            break
+          }
+        }
+      }
+    })
+
+    setPackageSlots(newSlots)
+  }, [packages.map(p => p.id).join(',')])
 
   // Build-safe mount kontrolü
   useEffect(() => {
@@ -480,49 +532,199 @@ export default function KuryePage() {
   const handleVoiceCommand = async (command: string) => {
     console.log('Sesli komut:', command)
 
+    // Komut işleme başladı - recognition'ı durdur ve idle moda geç
+    if (recognition && isListening) {
+      recognition.stop()
+      setIsListening(false)
+    }
+
     // Müziği tekrar başlat
     if ('mediaSession' in navigator) {
       navigator.mediaSession.playbackState = 'playing'
     }
 
-    // Komut: Paketi teslim et
-    if (command.includes('teslim') || command.includes('teslimat')) {
-      const activePackage = packages.find(pkg => pkg.status !== 'delivered')
-      if (activePackage) {
-        await handleDeliver(activePackage.id)
-        speak('Paket teslim edildi')
+    // Sayı çıkarma - sadece kök kelimeleri tanı (suffix'leri ignore et)
+    const numberWords: { [key: string]: number } = {
+      'bir': 1, 'iki': 2, 'üç': 3, 'dört': 4, 'beş': 5,
+      'altı': 6, 'yedi': 7, 'sekiz': 8, 'dokuz': 9, 'on': 10
+    }
+
+    let slotNumber: number | null = null
+    for (const [word, num] of Object.entries(numberWords)) {
+      if (command.includes(word)) {
+        slotNumber = num
+        break
+      }
+    }
+
+    // Ultra-kısa sayısal komutlar
+    if (slotNumber) {
+      const packageId = Object.keys(packageSlots).find(
+        key => packageSlots[parseInt(key)] === slotNumber
+      )
+      const pkg = packageId ? packages.find(p => p.id === parseInt(packageId)) : null
+
+      if (!pkg) {
+        speak(`${slotNumber} bulunamadı`)
+        return
+      }
+
+      // [Numara] kabul - Örn: "bir kabul"
+      if (command.includes('kabul')) {
+        await handleAcceptPackage(pkg.id)
+        speak(`${slotNumber} kabul edildi`)
+        return
+      }
+
+      // [Numara] aldım - Örn: "iki aldım"
+      if (command.includes('aldım')) {
+        await handleUpdateStatus(pkg.id, 'on_the_way', { picked_up_at: new Date().toISOString() })
+        speak(`${slotNumber} alındı`)
+        return
+      }
+
+      // [Numara] bitti veya [Numara] teslim - Örn: "üç bitti"
+      if (command.includes('bitti') || command.includes('teslim')) {
+        await handleDeliver(pkg.id)
+        speak(`${slotNumber} teslim edildi`)
+        return
+      }
+
+      // [Numara] dükkan veya [Numara] restoran - Örn: "dört dükkan"
+      if (command.includes('dükkan') || command.includes('restoran')) {
+        if (pkg.restaurant?.phone) {
+          window.location.href = `tel:${pkg.restaurant.phone}`
+          speak(`${slotNumber} dükkan aranıyor`)
+        } else {
+          speak('Telefon yok')
+        }
+        return
+      }
+
+      // [Numara] müşteri - Örn: "beş müşteri"
+      if (command.includes('müşteri')) {
+        if (pkg.customer_phone) {
+          window.location.href = `tel:${pkg.customer_phone}`
+          speak(`${slotNumber} müşteri aranıyor`)
+        } else {
+          speak('Telefon yok')
+        }
+        return
+      }
+    }
+
+    // Genel komutlar (numarasız) - fallback
+    if (command.includes('kabul')) {
+      const pendingPackage = packages.find(pkg => 
+        pkg.status === 'assigned' || pkg.status === 'waiting'
+      )
+      if (pendingPackage) {
+        await handleAcceptPackage(pendingPackage.id)
+        speak('Kabul edildi')
       } else {
-        speak('Aktif paket bulunamadı')
+        speak('Paket yok')
       }
       return
     }
 
-    // Komut: Müşteriyi ara
-    if (command.includes('ara') || command.includes('müşteri')) {
+    if (command.includes('bitti') || command.includes('teslim')) {
+      const activePackage = packages.find(pkg => pkg.status !== 'delivered')
+      if (activePackage) {
+        await handleDeliver(activePackage.id)
+        speak('Teslim edildi')
+      } else {
+        speak('Paket yok')
+      }
+      return
+    }
+
+    if (command.includes('müşteri')) {
       const activePackage = packages.find(pkg => pkg.status !== 'delivered')
       if (activePackage && activePackage.customer_phone) {
         window.location.href = `tel:${activePackage.customer_phone}`
         speak('Müşteri aranıyor')
       } else {
-        speak('Telefon numarası bulunamadı')
+        speak('Telefon yok')
       }
       return
     }
 
-    // Komut: Sıradaki / Neresi
+    if (command.includes('dükkan') || command.includes('restoran')) {
+      const activePackage = packages.find(pkg => pkg.status !== 'delivered')
+      if (activePackage && activePackage.restaurant?.phone) {
+        window.location.href = `tel:${activePackage.restaurant.phone}`
+        speak('Dükkan aranıyor')
+      } else {
+        speak('Telefon yok')
+      }
+      return
+    }
+
     if (command.includes('sıra') || command.includes('nere') || command.includes('adres')) {
       const activePackage = packages.find(pkg => pkg.status !== 'delivered')
       if (activePackage) {
         const address = activePackage.delivery_address
         const amount = activePackage.amount
-        speak(`Sıradaki adres: ${address}. Tutar: ${amount} lira`)
+        speak(`${address}. ${amount} lira`)
       } else {
-        speak('Aktif paket bulunamadı')
+        speak('Paket yok')
       }
       return
     }
 
-    speak('Komut anlaşılamadı')
+    speak('Anlaşılamadı')
+  }
+
+  // Tarih aralığına göre paketleri filtrele
+  const filterPackagesByDateRange = (start: string, end: string) => {
+    const filtered = todayDeliveredPackages.filter(pkg => {
+      if (!pkg.delivered_at) return false
+      const deliveredDate = new Date(pkg.delivered_at)
+      const startDateTime = new Date(start + 'T00:00:00')
+      const endDateTime = new Date(end + 'T23:59:59')
+      return deliveredDate >= startDateTime && deliveredDate <= endDateTime
+    })
+    setFilteredPackages(filtered)
+  }
+
+  // İlk yüklemede bugünün paketlerini filtrele
+  useEffect(() => {
+    if (todayDeliveredPackages.length > 0) {
+      filterPackagesByDateRange(startDate, endDate)
+    }
+  }, [todayDeliveredPackages])
+
+  const handleAcceptPackage = async (packageId: number) => {
+    setIsUpdating(prev => new Set(prev).add(packageId))
+
+    try {
+      const { error } = await supabase
+        .from('packages')
+        .update({
+          status: 'picking_up',
+          picked_up_at: new Date().toISOString()
+        })
+        .eq('id', packageId)
+
+      if (error) throw error
+
+      setSuccessMessage('✅ Paket kabul edildi!')
+      setTimeout(() => setSuccessMessage(''), 2000)
+
+      await fetchPackages(false)
+      await fetchDailyStats()
+
+    } catch (error: any) {
+      console.error('Kabul hatası:', error)
+      setErrorMessage('Kabul işlemi başarısız: ' + error.message)
+      setTimeout(() => setErrorMessage(''), 3000)
+    } finally {
+      setIsUpdating(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(packageId)
+        return newSet
+      })
+    }
   }
 
   const handleDeliver = async (packageId: number) => {
@@ -927,6 +1129,10 @@ export default function KuryePage() {
                   <div className="flex justify-between items-start mb-2 sm:mb-3">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
+                        {/* SLOT NUMARASI */}
+                        <span className="text-lg font-black text-white bg-gradient-to-r from-purple-600 to-pink-600 px-3 py-1 rounded-lg shadow-lg">
+                          {packageSlots[pkg.id] || '?'}
+                        </span>
                         <span className="text-xs font-bold text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded">
                           #{pkg.order_number || '------'}
                         </span>
@@ -1084,22 +1290,53 @@ export default function KuryePage() {
         {/* PAKET GEÇMİŞİ SEKMESİ */}
         {activeTab === 'history' && (
           <div className="space-y-2 sm:space-y-3">
-            {todayDeliveredPackages.length === 0 ? (
+            {/* Tarih Seçici */}
+            <div className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-800">
+              <h3 className="text-sm font-bold text-white mb-3">Tarih Aralığı Seçin</h3>
+              <div className="flex gap-2 items-end">
+                <div className="flex-1">
+                  <label className="text-xs text-slate-400 mb-1 block">Başlangıç</label>
+                  <input
+                    type="date"
+                    value={historyStartDate}
+                    onChange={(e) => setHistoryStartDate(e.target.value)}
+                    className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-xs text-white focus:border-blue-500 outline-none"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="text-xs text-slate-400 mb-1 block">Bitiş</label>
+                  <input
+                    type="date"
+                    value={historyEndDate}
+                    onChange={(e) => setHistoryEndDate(e.target.value)}
+                    className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-xs text-white focus:border-blue-500 outline-none"
+                  />
+                </div>
+                <button
+                  onClick={() => filterPackagesByDateRange(historyStartDate, historyEndDate)}
+                  className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors"
+                >
+                  Göster
+                </button>
+              </div>
+            </div>
+
+            {filteredPackages.length === 0 ? (
               <div className="text-center py-8 sm:py-12 text-slate-500">
                 <div className="text-3xl sm:text-4xl mb-2">📋</div>
-                <p className="text-xs sm:text-sm">Bugün teslim edilen paket yok</p>
+                <p className="text-xs sm:text-sm">Bu tarih aralığında paket yok</p>
               </div>
             ) : (
               <>
                 {/* Paket Sayısı Göstergesi */}
                 <div className="bg-slate-900 p-2 sm:p-3 rounded-xl border border-slate-800">
                   <p className="text-xs sm:text-sm text-slate-400">
-                    Bugün <span className="font-bold text-white">{todayDeliveredPackages.length}</span> paket teslim edildi
+                    <span className="font-bold text-white">{filteredPackages.length}</span> paket bulundu
                   </p>
                 </div>
 
                 {/* Teslim Edilen Paket Listesi */}
-                {todayDeliveredPackages.map((pkg, index) => (
+                {filteredPackages.map((pkg, index) => (
                   <div key={pkg.id} className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-800">
                     {/* Üst Kısım */}
                     <div className="flex justify-between items-start mb-2 sm:mb-3">
@@ -1141,6 +1378,22 @@ export default function KuryePage() {
                       <p className="text-xs text-slate-300">📍 {pkg.delivery_address}</p>
                     </div>
 
+                    {/* Zaman Bilgileri */}
+                    <div className="mb-2 p-2 bg-slate-800/50 rounded-lg space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-slate-400">📅 Sipariş Tarihi:</span>
+                        <span className="text-slate-300">{pkg.created_at ? new Date(pkg.created_at).toLocaleDateString('tr-TR') : '-'}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-slate-400">✅ Kabul Saati:</span>
+                        <span className="text-blue-400">{pkg.picked_up_at ? new Date(pkg.picked_up_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '-'}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-slate-400">🚚 Teslim Saati:</span>
+                        <span className="text-green-400">{pkg.delivered_at ? new Date(pkg.delivered_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '-'}</span>
+                      </div>
+                    </div>
+
                     {/* Restoran Bilgisi */}
                     {pkg.restaurant?.name && (
                       <div className="p-2 bg-orange-900/20 rounded-lg border border-orange-800">
@@ -1177,8 +1430,8 @@ export default function KuryePage() {
             {/* Tarih Seçici */}
             <div className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-800">
               <h3 className="text-sm font-bold text-white mb-3">Tarih Aralığı Seçin</h3>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
+              <div className="flex gap-2 items-end">
+                <div className="flex-1">
                   <label className="text-xs text-slate-400 mb-1 block">Başlangıç</label>
                   <input
                     type="date"
@@ -1187,7 +1440,7 @@ export default function KuryePage() {
                     className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-xs text-white focus:border-blue-500 outline-none"
                   />
                 </div>
-                <div>
+                <div className="flex-1">
                   <label className="text-xs text-slate-400 mb-1 block">Bitiş</label>
                   <input
                     type="date"
@@ -1196,29 +1449,29 @@ export default function KuryePage() {
                     className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-xs text-white focus:border-blue-500 outline-none"
                   />
                 </div>
+                <button
+                  onClick={() => filterPackagesByDateRange(startDate, endDate)}
+                  className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors"
+                >
+                  Göster
+                </button>
               </div>
             </div>
 
             {/* Özet Bilgiler */}
-            {startDate && endDate && (
+            {filteredPackages.length > 0 && (
               <>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
                     <p className="text-slate-400 text-xs mb-1">Toplam Paket</p>
                     <p className="text-xl font-bold text-blue-400">
-                      {todayDeliveredPackages.filter(pkg => {
-                        const deliveredDate = new Date(pkg.delivered_at || '')
-                        return deliveredDate >= new Date(startDate) && deliveredDate <= new Date(endDate + 'T23:59:59')
-                      }).length}
+                      {filteredPackages.length}
                     </p>
                   </div>
                   <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
                     <p className="text-slate-400 text-xs mb-1">Toplam Hesap</p>
                     <p className="text-xl font-bold text-green-400">
-                      {todayDeliveredPackages.filter(pkg => {
-                        const deliveredDate = new Date(pkg.delivered_at || '')
-                        return deliveredDate >= new Date(startDate) && deliveredDate <= new Date(endDate + 'T23:59:59')
-                      }).reduce((sum, pkg) => sum + (pkg.amount || 0), 0).toFixed(2)} ₺
+                      {filteredPackages.reduce((sum, pkg) => sum + (pkg.amount || 0), 0).toFixed(2)} ₺
                     </p>
                   </div>
                 </div>
@@ -1227,19 +1480,13 @@ export default function KuryePage() {
                 <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
                   <h3 className="text-sm font-bold text-white mb-3">Teslim Edilen Paketler</h3>
                   <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {todayDeliveredPackages.filter(pkg => {
-                      const deliveredDate = new Date(pkg.delivered_at || '')
-                      return deliveredDate >= new Date(startDate) && deliveredDate <= new Date(endDate + 'T23:59:59')
-                    }).length === 0 ? (
+                    {filteredPackages.length === 0 ? (
                       <div className="text-center py-8 text-slate-500">
                         <div className="text-3xl mb-2">📦</div>
-                        <p className="text-xs">Bu tarih aralığında paket yok</p>
+                        <p className="text-xs">Göster butonuna basın</p>
                       </div>
                     ) : (
-                      todayDeliveredPackages.filter(pkg => {
-                        const deliveredDate = new Date(pkg.delivered_at || '')
-                        return deliveredDate >= new Date(startDate) && deliveredDate <= new Date(endDate + 'T23:59:59')
-                      }).map((pkg) => (
+                      filteredPackages.map((pkg) => (
                         <div key={pkg.id} className="bg-slate-800/50 p-2 rounded-lg border border-slate-700">
                           <div className="flex justify-between items-start mb-1">
                             <div className="flex-1">
@@ -1249,9 +1496,25 @@ export default function KuryePage() {
                                 </span>
                               </div>
                               <p className="font-medium text-sm text-white">{pkg.customer_name}</p>
+                              {pkg.customer_phone && (
+                                <p className="text-xs text-slate-400 mt-1">
+                                  📞 {pkg.customer_phone}
+                                </p>
+                              )}
                               <p className="text-xs text-slate-400 mt-1">
-                                📅 {new Date(pkg.delivered_at || '').toLocaleDateString('tr-TR')} - {new Date(pkg.delivered_at || '').toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                                📍 {pkg.delivery_address}
                               </p>
+                              <div className="mt-2 space-y-1">
+                                <p className="text-xs text-slate-500">
+                                  📅 Sipariş: {new Date(pkg.created_at || '').toLocaleDateString('tr-TR')}
+                                </p>
+                                <p className="text-xs text-blue-400">
+                                  ✅ Kabul: {pkg.picked_up_at ? new Date(pkg.picked_up_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '-'}
+                                </p>
+                                <p className="text-xs text-green-400">
+                                  🚚 Teslim: {pkg.delivered_at ? new Date(pkg.delivered_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '-'}
+                                </p>
+                              </div>
                             </div>
                             <div className="text-right">
                               <p className="text-lg font-bold text-green-400">{pkg.amount}₺</p>
