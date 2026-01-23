@@ -101,7 +101,18 @@ export default function Home() {
   const [darkMode, setDarkMode] = useState(true) // Varsayılan dark mode
   const [restaurantChartFilter, setRestaurantChartFilter] = useState<'today' | 'week' | 'month'>('today')
   const [courierEarningsFilter, setCourierEarningsFilter] = useState<'today' | 'week' | 'month'>('today')
-  const [restaurantDebtFilter, setRestaurantDebtFilter] = useState<'today' | 'week' | 'month'>('today')
+  
+  // Restoran Borcu Tarih Aralığı
+  const [restaurantDebtStartDate, setRestaurantDebtStartDate] = useState(() => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    return today.toISOString().split('T')[0]
+  })
+  const [restaurantDebtEndDate, setRestaurantDebtEndDate] = useState(() => {
+    const today = new Date()
+    today.setHours(23, 59, 59, 999)
+    return today.toISOString().split('T')[0]
+  })
   
   // Gün Sonu State'leri
   const [showEndOfDayModal, setShowEndOfDayModal] = useState(false)
@@ -4300,31 +4311,21 @@ export default function Home() {
     
     // Restoranların Borcu görünümü
     if (restaurantSubTab === 'debt') {
-      // Tarih filtresine göre başlangıç tarihini hesapla
-      const getStartDate = () => {
-        const now = new Date()
-        const start = new Date()
-        
-        if (restaurantDebtFilter === 'today') {
-          start.setHours(0, 0, 0, 0)
-        } else if (restaurantDebtFilter === 'week') {
-          start.setDate(now.getDate() - 7)
-        } else if (restaurantDebtFilter === 'month') {
-          start.setDate(now.getDate() - 30)
-        }
-        
-        return start
-      }
+      // Tarih aralığını hesapla
+      const startDate = new Date(restaurantDebtStartDate)
+      startDate.setHours(0, 0, 0, 0)
+      
+      const endDate = new Date(restaurantDebtEndDate)
+      endDate.setHours(23, 59, 59, 999)
 
       // Her restoran için borç hesapla
       const restaurantDebts = restaurants.map(restaurant => {
-        const startDate = getStartDate()
-        
         // Seçilen tarih aralığındaki delivered paketleri say
         const deliveredCount = deliveredPackages.filter(pkg => 
           (pkg.restaurant_id === restaurant.id || pkg.restaurant?.name === restaurant.name) &&
           pkg.delivered_at && 
-          new Date(pkg.delivered_at) >= startDate
+          new Date(pkg.delivered_at) >= startDate &&
+          new Date(pkg.delivered_at) <= endDate
         ).length
         
         const debt = deliveredCount * 100
@@ -4344,15 +4345,30 @@ export default function Home() {
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold">💳 Restoranların Borcu (Cari Takip)</h2>
             
-            <select
-              value={restaurantDebtFilter}
-              onChange={(e) => setRestaurantDebtFilter(e.target.value as 'today' | 'week' | 'month')}
-              className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-600 font-medium"
-            >
-              <option value="today">📅 Bugün</option>
-              <option value="week">📅 Haftalık (7 Gün)</option>
-              <option value="month">📅 Aylık (30 Gün)</option>
-            </select>
+            <div className="flex gap-3 items-center">
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  📅 Başlangıç:
+                </label>
+                <input
+                  type="date"
+                  value={restaurantDebtStartDate}
+                  onChange={(e) => setRestaurantDebtStartDate(e.target.value)}
+                  className="px-3 py-2 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-600 font-medium"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  📅 Bitiş:
+                </label>
+                <input
+                  type="date"
+                  value={restaurantDebtEndDate}
+                  onChange={(e) => setRestaurantDebtEndDate(e.target.value)}
+                  className="px-3 py-2 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-600 font-medium"
+                />
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
