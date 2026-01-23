@@ -542,7 +542,7 @@ export default function Home() {
       
       const { data: rangePackages, error: packagesError } = await supabase
         .from('packages')
-        .select('amount, payment_method')
+        .select('amount, payment_method, settled_at')
         .eq('courier_id', selectedCourierId)
         .eq('status', 'delivered')
         .gte('delivered_at', start.toISOString())
@@ -556,8 +556,10 @@ export default function Home() {
       // 2. Geçmiş borçları çek
       const totalOldDebt = courierDebts.reduce((sum, d) => sum + d.remaining_amount, 0)
       
-      // 3. Genel toplam = Seçilen tarih aralığındaki nakit + Kart + Eski borçlar
-      const grandTotal = rangeCashTotal + rangeCardTotal + totalOldDebt
+      // 3. GENEL TOPLAM = Sadece hesabı alınmamış paketler (settled_at NULL)
+      const unsettledPackages = rangePackages?.filter(p => !p.settled_at) || []
+      const unsettledTotal = unsettledPackages.reduce((sum, p) => sum + (p.amount || 0), 0)
+      const grandTotal = unsettledTotal + totalOldDebt
       
       // 4. Fark hesapla
       const difference = amountReceived - grandTotal
