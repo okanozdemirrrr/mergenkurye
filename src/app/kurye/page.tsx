@@ -15,6 +15,7 @@ interface Package {
   courier_id?: string | null
   payment_method?: 'cash' | 'card' | null
   created_at?: string
+  assigned_at?: string
   picked_up_at?: string
   delivered_at?: string
   restaurant?: { 
@@ -804,8 +805,8 @@ export default function KuryePage() {
       const { error } = await supabase
         .from('packages')
         .update({
-          status: 'picking_up'
-          // picked_up_at KALDIRILDI - Bu "Teslim Aldım" butonunda set edilecek
+          status: 'picking_up',
+          assigned_at: new Date().toISOString() // Kabul zamanı
         })
         .eq('id', packageId)
 
@@ -1615,7 +1616,11 @@ export default function KuryePage() {
                       </div>
                       <div className="flex justify-between text-xs">
                         <span className="text-slate-400">✅ Kabul Saati:</span>
-                        <span className="text-blue-400">{pkg.picked_up_at ? new Date(pkg.picked_up_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '-'}</span>
+                        <span className="text-blue-400">{pkg.assigned_at ? new Date(pkg.assigned_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '-'}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-slate-400">📦 Aldım Saati:</span>
+                        <span className="text-yellow-400">{pkg.picked_up_at ? new Date(pkg.picked_up_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '-'}</span>
                       </div>
                       <div className="flex justify-between text-xs">
                         <span className="text-slate-400">🚚 Teslim Saati:</span>
