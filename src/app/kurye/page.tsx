@@ -62,6 +62,11 @@ export default function KuryePage() {
   const [activeTab, setActiveTab] = useState<'packages' | 'history' | 'earnings'>('packages') // Aktif sekme
   const [todayDeliveredPackages, setTodayDeliveredPackages] = useState<Package[]>([]) // Bugünkü teslim edilenler
   const [filteredPackages, setFilteredPackages] = useState<Package[]>([]) // Filtrelenmiş paketler
+  const [currentPage, setCurrentPage] = useState(1) // Mevcut sayfa
+  const [totalPages, setTotalPages] = useState(1) // Toplam sayfa sayısı
+  const [unsettledAmount, setUnsettledAmount] = useState(0) // Verilecek hesap (admin'den)
+  const ITEMS_PER_PAGE = 30 // Sayfa başına öğe sayısı
+  
   const [startDate, setStartDate] = useState(() => {
     const today = new Date()
     return today.toISOString().split('T')[0]
@@ -783,16 +788,71 @@ export default function KuryePage() {
     speak('Anlaşılamadı')
   }
 
-  // Tarih aralığına göre paketleri filtrele
-  const filterPackagesByDateRange = (start: string, end: string) => {
-    const filtered = todayDeliveredPackages.filter(pkg => {
-      if (!pkg.delivered_at) return false
-      const deliveredDate = new Date(pkg.delivered_at)
+  // Tarih aralığına göre paketleri filtrele - DÜZELTİLDİ
+  const filterPackagesByDateRange = async (start: string, end: string) => {
+    const courierId = localStorage.getItem(LOGIN_COURIER_ID_KEY)
+    if (!courierId) return
+
+    try {
       const startDateTime = new Date(start + 'T00:00:00')
       const endDateTime = new Date(end + 'T23:59:59')
-      return deliveredDate >= startDateTime && deliveredDate <= endDateTime
-    })
-    setFilteredPackages(filtered)
+      
+      // Tarih aralığındaki TÜM teslim edilmiş paketleri çek
+      const { data, error, count } = await supabase
+        .from('packages')
+        .select('*, restaurants(name, phone, address)', { count: 'exact' })
+        .eq('courier_id', courierId)
+        .eq('status', 'delivered')
+        .gte('delivered_at', startDateTime.toISOString())
+        .lte('delivered_at', endDateTime.toISOString())
+        .order('delivered_at', { ascending: false })
+
+      if (error) throw error
+
+      const transformed = (data || []).map((pkg: any) => ({
+        ...pkg,
+        restaurant: pkg.restaurants
+      }))
+      
+      setFilteredPackages(transformed)
+      setTotalPages(Math.ceil((count || 0) / ITEMS_PER_PAGE))
+      setCurrentPage(1) // İlk sayfaya dön
+      
+      console.log(`📊 ${transformed.length} paket bulundu, ${Math.ceil((count || 0) / ITEMS_PER_PAGE)} sayfa`)
+    } catch (error: any) {
+      console.error('❌ Paket filtreleme hatası:', error)
+    }
+  }
+
+  // Verilecek hesabı çek (admin'den - settled_at null olanlar)
+  const fetchUnsettledAmount = async () => {
+    const courierId = localStorage.getItem(LOGIN_COURIER_ID_KEY)
+    if (!courierId) return
+
+    try {
+      const { data, error } = await supabase
+        .from('packages')
+        .select('amount')
+        .eq('courier_id', courierId)
+        .eq('status', 'delivered')
+        .is('settled_at', null) // Hesabı alınmamış paketler
+
+      if (error) throw error
+
+      const total = (data || []).reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
+      setUnsettledAmount(total)
+      
+      console.log(`💰 Verilecek hesap: ${total}₺`)
+    } catch (error: any) {
+      console.error('❌ Verilecek hesap hesaplanamadı:', error)
+    }
+  }
+
+  // Mevcut sayfadaki paketleri al
+  const getCurrentPagePackages = () => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
+    const endIndex = startIndex + ITEMS_PER_PAGE
+    return filteredPackages.slice(startIndex, endIndex)
   }
 
   // Scroll pozisyonunu kaydet
@@ -914,6 +974,7 @@ export default function KuryePage() {
       fetchTodayDeliveredPackages()
       fetchCourierStatus()
       fetchLeaderboard()
+      fetchUnsettledAmount() // Verilecek hesabı çek
       
       // REALTIME ONLY - Sadece veritabanı değişikliklerinde güncelle
       console.log('🔴 Realtime dinleme başlatıldı - Sadece DB değişikliklerinde güncelleme yapılacak')
@@ -935,6 +996,7 @@ export default function KuryePage() {
             fetchDailyStats()
             fetchTodayDeliveredPackages()
             fetchLeaderboard()
+            fetchUnsettledAmount() // Verilecek hesabı güncelle
           }
         )
         .subscribe()
@@ -1156,7 +1218,7 @@ export default function KuryePage() {
                 }`}
               >
                 <span className="mr-3">💰</span>
-                Toplam Hesap
+                Verilecek Hesap
               </button>
 
               <button
@@ -1701,7 +1763,7 @@ export default function KuryePage() {
           </div>
         )}
 
-        {/* TOPLAM HESAP SEKMESİ */}
+        {/* VERİLECEK HESAP SEKMESİ */}
         {activeTab === 'earnings' && (
           <div className="space-y-2 sm:space-y-3">
             {/* Tarih Seçici */}
@@ -1738,7 +1800,7 @@ export default function KuryePage() {
             {/* Özet Bilgiler */}
             {filteredPackages.length > 0 && (
               <>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
                     <p className="text-slate-400 text-xs mb-1">Toplam Paket</p>
                     <p className="text-xl font-bold text-blue-400">
@@ -1746,29 +1808,40 @@ export default function KuryePage() {
                     </p>
                   </div>
                   <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
-                    <p className="text-slate-400 text-xs mb-1">Toplam Hesap</p>
-                    <p className="text-xl font-bold text-green-400">
+                    <p className="text-slate-400 text-xs mb-1">Seçili Aralık</p>
+                    <p className="text-xl font-bold text-purple-400">
                       {filteredPackages.reduce((sum, pkg) => sum + (pkg.amount || 0), 0).toFixed(2)} ₺
+                    </p>
+                  </div>
+                  <div className="bg-gradient-to-br from-green-900 to-emerald-900 p-3 rounded-xl border-2 border-green-500">
+                    <p className="text-green-300 text-xs mb-1 font-bold">💰 Verilecek Hesap</p>
+                    <p className="text-xl font-bold text-green-100">
+                      {unsettledAmount.toFixed(2)} ₺
                     </p>
                   </div>
                 </div>
 
                 {/* Paket Listesi */}
                 <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
-                  <h3 className="text-sm font-bold text-white mb-3">Teslim Edilen Paketler</h3>
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-sm font-bold text-white">Teslim Edilen Paketler</h3>
+                    <span className="text-xs text-slate-400">
+                      Sayfa {currentPage} / {totalPages}
+                    </span>
+                  </div>
                   <div 
                     id="earnings-scroll-container"
                     className="space-y-2 max-h-96 overflow-y-auto admin-scrollbar" 
                     style={{ WebkitOverflowScrolling: 'touch' }}
                     onScroll={() => saveScrollPosition('earnings-scroll-container')}
                   >
-                    {filteredPackages.length === 0 ? (
+                    {getCurrentPagePackages().length === 0 ? (
                       <div className="text-center py-8 text-slate-500">
                         <div className="text-3xl mb-2">📦</div>
                         <p className="text-xs">Göster butonuna basın</p>
                       </div>
                     ) : (
-                      filteredPackages.map((pkg) => (
+                      getCurrentPagePackages().map((pkg) => (
                         <div key={pkg.id} className="bg-slate-800/50 p-2 rounded-lg border border-slate-700">
                           <div className="flex justify-between items-start mb-1">
                             <div className="flex-1">
@@ -1809,6 +1882,61 @@ export default function KuryePage() {
                       ))
                     )}
                   </div>
+                  
+                  {/* SAYFALAMA BUTONLARI */}
+                  {totalPages > 1 && (
+                    <div className="mt-4 flex justify-center items-center gap-1 flex-wrap">
+                      {/* Önceki Sayfa */}
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                        disabled={currentPage === 1}
+                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 text-white text-xs rounded transition-colors"
+                      >
+                        ‹
+                      </button>
+                      
+                      {/* Sayfa Numaraları */}
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => {
+                        // İlk 3, son 3 ve mevcut sayfa civarındaki 2 sayfayı göster
+                        if (
+                          page === 1 ||
+                          page === totalPages ||
+                          (page >= currentPage - 1 && page <= currentPage + 1) ||
+                          page <= 3 ||
+                          page > totalPages - 3
+                        ) {
+                          return (
+                            <button
+                              key={page}
+                              onClick={() => setCurrentPage(page)}
+                              className={`px-3 py-1.5 text-xs rounded transition-colors ${
+                                currentPage === page
+                                  ? 'bg-blue-600 text-white font-bold'
+                                  : 'bg-slate-800 hover:bg-slate-700 text-white'
+                              }`}
+                            >
+                              {page}
+                            </button>
+                          )
+                        } else if (
+                          page === currentPage - 2 ||
+                          page === currentPage + 2
+                        ) {
+                          return <span key={page} className="text-slate-500 px-1">...</span>
+                        }
+                        return null
+                      })}
+                      
+                      {/* Sonraki Sayfa */}
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                        disabled={currentPage === totalPages}
+                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 text-white text-xs rounded transition-colors"
+                      >
+                        ›
+                      </button>
+                    </div>
+                  )}
                 </div>
               </>
             )}
