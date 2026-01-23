@@ -1926,13 +1926,24 @@ export default function Home() {
         <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto admin-scrollbar">
             {/* Modal Header */}
-            <div className="p-6 border-b border-slate-200 dark:border-slate-700">
-              <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
-                💰 Hesap Ödemesi - {restaurants.find(r => r.id === selectedRestaurantId)?.name}
-              </h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                {new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' })}
-              </p>
+            <div className="flex justify-between items-center p-6 border-b border-slate-200 dark:border-slate-700">
+              <div>
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
+                  💰 Hesap Ödemesi - {restaurants.find(r => r.id === selectedRestaurantId)?.name}
+                </h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  {new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowRestaurantPaymentModal(false)
+                  setRestaurantPaymentAmount('')
+                }}
+                className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 text-2xl ml-4"
+              >
+                ×
+              </button>
             </div>
 
             {/* Modal Content */}
