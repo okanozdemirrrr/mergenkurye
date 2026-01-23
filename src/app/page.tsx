@@ -2695,7 +2695,7 @@ export default function Home() {
                           .filter(c => c.is_active) // Sadece aktif kuryeler
                           .map(c => (
                             <option key={c.id} value={c.id}>
-                              {c.full_name} ({c.deliveryCount || 0} teslim, {c.activePackageCount || 0} aktif)
+                              {c.full_name} ({c.todayDeliveryCount || 0} bugün, {c.activePackageCount || 0} aktif)
                             </option>
                           ))
                         }
