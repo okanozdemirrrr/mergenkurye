@@ -122,16 +122,18 @@ export default function KuryePage() {
     })
   }, [packages.map(p => p.id).sort().join(',')])
 
-  // Sesli komut yardım pop-up'ı - 10 saniye sonra göster
+  // Sesli komut yardım pop-up'ı - SADECE DİNLEME MODUNDA 10 saniye sonra göster
   useEffect(() => {
-    if (!isMounted || !isLoggedIn) return
+    if (!isMounted || !isLoggedIn || !isListening) {
+      return
+    }
 
     const timer = setTimeout(() => {
       setShowVoiceHelp(true)
     }, 10000) // 10 saniye
 
     return () => clearTimeout(timer)
-  }, [isMounted, isLoggedIn])
+  }, [isMounted, isLoggedIn, isListening])
 
   // Build-safe mount kontrolü
   useEffect(() => {
