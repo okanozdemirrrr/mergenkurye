@@ -624,7 +624,7 @@ export default function KuryePage() {
         return
       }
 
-      // [Numara] bitti / teslim edildi / teslim / kapat
+      // [Numara] bitti / teslim edildi / teslim / kapat (+ ödeme yöntemi)
       if (transcript.includes('bitti') || transcript.includes('teslim') || transcript.includes('kapat')) {
         console.log('🔵 TESLİM ET komutu tetiklendi, packageId:', pkg.id, 'status:', pkg.status)
         
@@ -634,12 +634,23 @@ export default function KuryePage() {
           return
         }
         
-        // Ödeme yöntemi kontrolü
-        const paymentMethod = selectedPaymentMethods[pkg.id]
+        // Ödeme yöntemini transcript'ten algıla
+        let paymentMethod = selectedPaymentMethods[pkg.id]
+        
+        if (transcript.includes('nakit') || transcript.includes('nakıt')) {
+          paymentMethod = 'cash'
+          setSelectedPaymentMethods(prev => ({ ...prev, [pkg.id]: 'cash' }))
+          console.log('💵 Ödeme yöntemi sesli komuttan algılandı: NAKİT')
+        } else if (transcript.includes('kart') || transcript.includes('kredi')) {
+          paymentMethod = 'card'
+          setSelectedPaymentMethods(prev => ({ ...prev, [pkg.id]: 'card' }))
+          console.log('💳 Ödeme yöntemi sesli komuttan algılandı: KART')
+        }
+        
         console.log('💳 Ödeme yöntemi:', paymentMethod)
         if (!paymentMethod) {
           console.warn('⚠️ Ödeme yöntemi seçilmemiş')
-          speak('Ödeme yöntemi seçin')
+          speak('Nakit mi kart mı')
           setErrorMessage('Lütfen ödeme yöntemini seçin!')
           setTimeout(() => setErrorMessage(''), 3000)
           return
@@ -647,7 +658,7 @@ export default function KuryePage() {
         
         console.log('🔵 handleDeliver çağrılıyor...')
         await handleDeliver(pkg.id)
-        speak(`${slotNumber} teslim edildi`)
+        speak(`${slotNumber} ${paymentMethod === 'cash' ? 'nakit' : 'kart'} teslim edildi`)
         return
       }
 
