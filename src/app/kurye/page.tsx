@@ -82,48 +82,44 @@ export default function KuryePage() {
   const [voiceCommand, setVoiceCommand] = useState('')
   const [recognition, setRecognition] = useState<any>(null)
   
-  // SAYISAL ETİKETLEME (SLOT SYSTEM)
+  // SAYISAL ETİKETLEME (SLOT SYSTEM) - SABİT NUMARALANDIRMA
   const [packageSlots, setPackageSlots] = useState<{ [key: number]: number }>({}) // packageId -> slotNumber
 
-  // Boş slot bul (en küçük kullanılmayan numara)
-  const findAvailableSlot = () => {
-    const usedSlots = Object.values(packageSlots)
-    for (let i = 1; i <= 10; i++) {
-      if (!usedSlots.includes(i)) {
-        return i
-      }
-    }
-    return usedSlots.length + 1
-  }
-
-  // Paketlere slot numarası ata
+  // Paketlere SABİT slot numarası ata (en küçük boş numarayı doldur)
   useEffect(() => {
     if (packages.length === 0) {
       setPackageSlots({})
       return
     }
 
-    const newSlots: { [key: number]: number } = {}
-    const currentSlots = { ...packageSlots }
+    setPackageSlots(prevSlots => {
+      const newSlots: { [key: number]: number } = {}
+      const currentPackageIds = packages.map(p => p.id)
 
-    packages.forEach(pkg => {
-      if (currentSlots[pkg.id]) {
-        // Mevcut slot'u koru
-        newSlots[pkg.id] = currentSlots[pkg.id]
-      } else {
-        // Yeni paket için slot ata
-        const usedSlots = Object.values(newSlots)
-        for (let i = 1; i <= 10; i++) {
-          if (!usedSlots.includes(i)) {
-            newSlots[pkg.id] = i
-            break
+      // Mevcut paketlerin slot'larını koru (SABİT KALSIN)
+      currentPackageIds.forEach(pkgId => {
+        if (prevSlots[pkgId]) {
+          newSlots[pkgId] = prevSlots[pkgId]
+        }
+      })
+
+      // Yeni paketler için en küçük boş slot'u bul ve ata
+      currentPackageIds.forEach(pkgId => {
+        if (!newSlots[pkgId]) {
+          const usedSlots = Object.values(newSlots)
+          // En küçük boş numarayı bul (1-10 arası)
+          for (let i = 1; i <= 10; i++) {
+            if (!usedSlots.includes(i)) {
+              newSlots[pkgId] = i
+              break
+            }
           }
         }
-      }
-    })
+      })
 
-    setPackageSlots(newSlots)
-  }, [packages.map(p => p.id).join(',')])
+      return newSlots
+    })
+  }, [packages.map(p => p.id).sort().join(',')])
 
   // Build-safe mount kontrolü
   useEffect(() => {
