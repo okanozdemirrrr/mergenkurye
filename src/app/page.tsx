@@ -3415,11 +3415,11 @@ export default function Home() {
                             🎯 GENEL TOPLAM (Beklenen)
                           </span>
                           <span className="text-3xl font-black text-purple-700 dark:text-purple-300">
-                            {(calculateCashSummary(selectedCourierOrders).cashTotal + calculateCashSummary(selectedCourierOrders).cardTotal + courierDebts.reduce((sum, d) => sum + d.remaining_amount, 0)).toFixed(2)} ₺
+                            {(calculateCashSummary(selectedCourierOrders).grandTotal + courierDebts.reduce((sum, d) => sum + d.remaining_amount, 0)).toFixed(2)} ₺
                           </span>
                         </div>
                         <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
-                          Seçilen tarih aralığı nakit + Kart + Geçmiş borçlar
+                          Seçilen tarih aralığı (settled_at NULL) + Geçmiş borçlar
                         </p>
                         <p className="text-xs text-purple-700 dark:text-purple-500 mt-2 font-medium">
                           ⚡ Gün sonu alındığında bu değer sıfırlanır
@@ -3447,7 +3447,7 @@ export default function Home() {
                     {endOfDayAmount && !isNaN(parseFloat(endOfDayAmount)) && (() => {
                       const summary = calculateCashSummary(selectedCourierOrders)
                       const totalOldDebt = courierDebts.reduce((sum, d) => sum + d.remaining_amount, 0)
-                      const grandTotal = summary.cashTotal + summary.cardTotal + totalOldDebt
+                      const grandTotal = summary.grandTotal + totalOldDebt
                       const received = parseFloat(endOfDayAmount)
                       const difference = received - grandTotal
                       
