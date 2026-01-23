@@ -581,12 +581,12 @@ export default function KuryePage() {
 
     // SAYISAL KOMUTLAR - Slot numarasıyla paket bul
     if (slotNumber) {
-      console.log('📦 Aktif paketler:', packages.filter(p => p.status !== 'delivered').map(p => ({ id: p.id, slot: p.slot_number, customer: p.customer_name })))
+      console.log('📦 Aktif paketler:', packages.filter(p => p.status !== 'delivered').map(p => ({ id: p.id, slot: p.slot_number, customer: p.customer_name, status: p.status })))
       
       // Slot numarasından paketi bul (slot_number field'ını kullan)
       const pkg = packages.find(p => p.slot_number === slotNumber && p.status !== 'delivered')
       
-      console.log('📦 Bulunan paket:', pkg)
+      console.log('📦 Bulunan paket:', pkg ? { id: pkg.id, slot: pkg.slot_number, status: pkg.status } : null)
 
       if (!pkg) {
         console.warn('⚠️ Paket bulunamadı, slot:', slotNumber)
@@ -598,11 +598,13 @@ export default function KuryePage() {
 
       // [Numara] kabul / onayla / tamam
       if (transcript.includes('kabul') || transcript.includes('onayla') || transcript.includes('tamam')) {
-        console.log('🟢 KABUL komutu tetiklendi, packageId:', pkg.id)
+        console.log('🟢 KABUL komutu tetiklendi, packageId:', pkg.id, 'status:', pkg.status)
         if (pkg.status === 'assigned' || pkg.status === 'waiting') {
+          console.log('🟢 handleAcceptPackage çağrılıyor...')
           await handleAcceptPackage(pkg.id)
           speak(`${slotNumber} kabul edildi`)
         } else {
+          console.log('⚠️ Paket zaten kabul edilmiş, mevcut status:', pkg.status)
           speak('Zaten kabul edildi')
         }
         return
@@ -610,11 +612,13 @@ export default function KuryePage() {
 
       // [Numara] aldım / paket bende / teslim al
       if (transcript.includes('aldım') || transcript.includes('bende') || transcript.includes('teslim al')) {
-        console.log('🟡 TESLIM AL komutu tetiklendi, packageId:', pkg.id)
-        if (pkg.status === 'accepted') {
+        console.log('🟡 TESLIM AL komutu tetiklendi, packageId:', pkg.id, 'status:', pkg.status)
+        if (pkg.status === 'picking_up') {
+          console.log('🟡 handleUpdateStatus çağrılıyor...')
           await handleUpdateStatus(pkg.id, 'on_the_way', { picked_up_at: new Date().toISOString() })
           speak(`${slotNumber} alındı`)
         } else {
+          console.log('⚠️ Paket picking_up durumunda değil, mevcut status:', pkg.status)
           speak('Önce kabul edin')
         }
         return
@@ -622,15 +626,17 @@ export default function KuryePage() {
 
       // [Numara] bitti / teslim edildi / teslim / kapat
       if (transcript.includes('bitti') || transcript.includes('teslim') || transcript.includes('kapat')) {
-        console.log('🔵 TESLİM ET komutu tetiklendi, packageId:', pkg.id)
+        console.log('🔵 TESLİM ET komutu tetiklendi, packageId:', pkg.id, 'status:', pkg.status)
         
         if (pkg.status !== 'on_the_way') {
+          console.log('⚠️ Paket on_the_way durumunda değil, mevcut status:', pkg.status)
           speak('Önce paketi alın')
           return
         }
         
         // Ödeme yöntemi kontrolü
         const paymentMethod = selectedPaymentMethods[pkg.id]
+        console.log('💳 Ödeme yöntemi:', paymentMethod)
         if (!paymentMethod) {
           console.warn('⚠️ Ödeme yöntemi seçilmemiş')
           speak('Ödeme yöntemi seçin')
@@ -639,6 +645,7 @@ export default function KuryePage() {
           return
         }
         
+        console.log('🔵 handleDeliver çağrılıyor...')
         await handleDeliver(pkg.id)
         speak(`${slotNumber} teslim edildi`)
         return
