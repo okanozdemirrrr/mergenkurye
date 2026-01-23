@@ -540,7 +540,8 @@ export default function KuryePage() {
   }
 
   const handleVoiceCommand = async (command: string) => {
-    console.log('Sesli komut:', command)
+    const transcript = command.toLowerCase().trim()
+    console.log('🎤 SESLİ KOMUT ALINDI:', transcript)
 
     // Komut işleme başladı - recognition'ı durdur ve idle moda geç
     if (recognition && isListening) {
@@ -561,81 +562,130 @@ export default function KuryePage() {
 
     let slotNumber: number | null = null
     for (const [word, num] of Object.entries(numberWords)) {
-      if (command.includes(word)) {
+      if (transcript.includes(word)) {
         slotNumber = num
+        console.log('🔢 Slot numarası tespit edildi:', slotNumber)
         break
       }
     }
 
-    // Ultra-kısa sayısal komutlar
+    // SAYISAL KOMUTLAR - Slot numarasıyla paket bul
     if (slotNumber) {
+      console.log('📦 Mevcut packageSlots:', packageSlots)
+      console.log('📦 Mevcut packages:', packages.map(p => ({ id: p.id, slot: packageSlots[p.id] })))
+      
+      // Slot numarasından package ID'yi bul
       const packageId = Object.keys(packageSlots).find(
         key => packageSlots[parseInt(key)] === slotNumber
       )
+      
+      console.log('🔍 Bulunan packageId:', packageId)
+      
       const pkg = packageId ? packages.find(p => p.id === parseInt(packageId)) : null
+      
+      console.log('📦 Bulunan paket:', pkg)
 
       if (!pkg) {
+        console.warn('⚠️ Paket bulunamadı, slot:', slotNumber)
         speak(`${slotNumber} bulunamadı`)
         return
       }
 
-      // [Numara] kabul / onayla / tamam - Örn: "bir kabul"
-      if (command.includes('kabul') || command.includes('onayla') || command.includes('tamam')) {
+      console.log('✅ İşlem yapılacak paket:', { id: pkg.id, slot: slotNumber, customer: pkg.customer_name })
+
+      // [Numara] kabul / onayla / tamam
+      if (transcript.includes('kabul') || transcript.includes('onayla') || transcript.includes('tamam')) {
+        console.log('🟢 KABUL komutu tetiklendi, packageId:', pkg.id)
         await handleAcceptPackage(pkg.id)
         speak(`${slotNumber} kabul edildi`)
         return
       }
 
-      // [Numara] aldım / paket bende / teslim al - Örn: "iki aldım"
-      if (command.includes('aldım') || command.includes('bende') || command.includes('teslim al')) {
+      // [Numara] aldım / paket bende / teslim al
+      if (transcript.includes('aldım') || transcript.includes('bende') || transcript.includes('teslim al')) {
+        console.log('🟡 TESLIM AL komutu tetiklendi, packageId:', pkg.id)
         await handleUpdateStatus(pkg.id, 'on_the_way', { picked_up_at: new Date().toISOString() })
         speak(`${slotNumber} alındı`)
         return
       }
 
-      // [Numara] bitti / teslim edildi / teslim / kapat - Örn: "üç bitti"
-      if (command.includes('bitti') || command.includes('teslim') || command.includes('kapat')) {
+      // [Numara] bitti / teslim edildi / teslim / kapat
+      if (transcript.includes('bitti') || transcript.includes('teslim') || transcript.includes('kapat')) {
+        console.log('🔵 TESLİM ET komutu tetiklendi, packageId:', pkg.id)
+        
+        // Ödeme yöntemi kontrolü
+        const paymentMethod = selectedPaymentMethods[pkg.id]
+        if (!paymentMethod) {
+          console.warn('⚠️ Ödeme yöntemi seçilmemiş')
+          speak('Ödeme yöntemi seçin')
+          setErrorMessage('Lütfen ödeme yöntemini seçin!')
+          setTimeout(() => setErrorMessage(''), 3000)
+          return
+        }
+        
         await handleDeliver(pkg.id)
         speak(`${slotNumber} teslim edildi`)
         return
       }
 
-      // [Numara] dükkan / restoran / işletme - Örn: "dört dükkan"
-      if (command.includes('dükkan') || command.includes('restoran') || command.includes('işletme')) {
+      // [Numara] dükkan / restoran / işletme
+      if (transcript.includes('dükkan') || transcript.includes('restoran') || transcript.includes('işletme')) {
+        console.log('🏪 DÜKKAN ARA komutu tetiklendi')
+        console.log('📞 Restoran bilgisi:', pkg.restaurant)
+        
         if (pkg.restaurant?.phone) {
-          window.location.href = `tel:${pkg.restaurant.phone}`
+          const phoneNumber = pkg.restaurant.phone
+          console.log('📞 Aranacak numara:', phoneNumber)
+          window.location.href = `tel:${phoneNumber}`
           speak(`${slotNumber} dükkan aranıyor`)
         } else {
+          console.warn('⚠️ Restoran telefonu yok')
           speak('Telefon yok')
         }
         return
       }
 
-      // [Numara] müşteri / kişi / ara - Örn: "beş müşteri"
-      if (command.includes('müşteri') || command.includes('kişi') || command.includes('ara')) {
+      // [Numara] müşteri / kişi / ara
+      if (transcript.includes('müşteri') || transcript.includes('kişi') || transcript.includes('ara')) {
+        console.log('📞 MÜŞTERİ ARA komutu tetiklendi')
+        console.log('📞 Müşteri telefonu:', pkg.customer_phone)
+        
         if (pkg.customer_phone) {
+          console.log('📞 Aranacak numara:', pkg.customer_phone)
           window.location.href = `tel:${pkg.customer_phone}`
           speak(`${slotNumber} müşteri aranıyor`)
         } else {
+          console.warn('⚠️ Müşteri telefonu yok')
           speak('Telefon yok')
         }
         return
       }
 
-      // [Numara] konum / yol / harita / navigasyon - Örn: "altı konum"
-      if (command.includes('konum') || command.includes('yol') || command.includes('harita') || command.includes('navigasyon')) {
+      // [Numara] konum / yol / harita / navigasyon
+      if (transcript.includes('konum') || transcript.includes('yol') || transcript.includes('harita') || transcript.includes('navigasyon')) {
+        console.log('🗺️ NAVİGASYON komutu tetiklendi')
+        console.log('📍 Adres:', pkg.delivery_address)
+        
         const address = encodeURIComponent(pkg.delivery_address)
-        window.open(`https://www.google.com/maps/search/?api=1&query=${address}`, '_blank')
+        const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${address}`
+        console.log('🗺️ Maps URL:', mapsUrl)
+        
+        window.open(mapsUrl, '_blank')
         speak(`${slotNumber} navigasyon açılıyor`)
         return
       }
     }
 
-    // Genel komutlar (numarasız) - fallback
-    if (command.includes('kabul') || command.includes('onayla') || command.includes('tamam')) {
+    // GENEL KOMUTLAR (numarasız) - İlk aktif paketi kullan
+    console.log('🔄 Genel komut modu (numarasız)')
+    
+    // Kabul
+    if (transcript.includes('kabul') || transcript.includes('onayla') || transcript.includes('tamam')) {
       const pendingPackage = packages.find(pkg => 
         pkg.status === 'assigned' || pkg.status === 'waiting'
       )
+      console.log('🟢 Genel KABUL komutu, bulunan paket:', pendingPackage)
+      
       if (pendingPackage) {
         await handleAcceptPackage(pendingPackage.id)
         speak('Kabul edildi')
@@ -645,9 +695,19 @@ export default function KuryePage() {
       return
     }
 
-    if (command.includes('bitti') || command.includes('teslim') || command.includes('kapat')) {
+    // Teslim Et
+    if (transcript.includes('bitti') || transcript.includes('teslim') || transcript.includes('kapat')) {
       const activePackage = packages.find(pkg => pkg.status !== 'delivered')
+      console.log('🔵 Genel TESLİM komutu, bulunan paket:', activePackage)
+      
       if (activePackage) {
+        const paymentMethod = selectedPaymentMethods[activePackage.id]
+        if (!paymentMethod) {
+          speak('Ödeme yöntemi seçin')
+          setErrorMessage('Lütfen ödeme yöntemini seçin!')
+          setTimeout(() => setErrorMessage(''), 3000)
+          return
+        }
         await handleDeliver(activePackage.id)
         speak('Teslim edildi')
       } else {
@@ -656,8 +716,11 @@ export default function KuryePage() {
       return
     }
 
-    if (command.includes('müşteri') || command.includes('kişi')) {
+    // Müşteri Ara
+    if (transcript.includes('müşteri') || transcript.includes('kişi')) {
       const activePackage = packages.find(pkg => pkg.status !== 'delivered')
+      console.log('📞 Genel MÜŞTERİ ARA komutu, bulunan paket:', activePackage)
+      
       if (activePackage && activePackage.customer_phone) {
         window.location.href = `tel:${activePackage.customer_phone}`
         speak('Müşteri aranıyor')
@@ -667,8 +730,11 @@ export default function KuryePage() {
       return
     }
 
-    if (command.includes('dükkan') || command.includes('restoran') || command.includes('işletme')) {
+    // Dükkan Ara
+    if (transcript.includes('dükkan') || transcript.includes('restoran') || transcript.includes('işletme')) {
       const activePackage = packages.find(pkg => pkg.status !== 'delivered')
+      console.log('🏪 Genel DÜKKAN ARA komutu, bulunan paket:', activePackage)
+      
       if (activePackage && activePackage.restaurant?.phone) {
         window.location.href = `tel:${activePackage.restaurant.phone}`
         speak('Dükkan aranıyor')
@@ -678,8 +744,11 @@ export default function KuryePage() {
       return
     }
 
-    if (command.includes('konum') || command.includes('yol') || command.includes('harita') || command.includes('navigasyon')) {
+    // Navigasyon
+    if (transcript.includes('konum') || transcript.includes('yol') || transcript.includes('harita') || transcript.includes('navigasyon')) {
       const activePackage = packages.find(pkg => pkg.status !== 'delivered')
+      console.log('🗺️ Genel NAVİGASYON komutu, bulunan paket:', activePackage)
+      
       if (activePackage) {
         const address = encodeURIComponent(activePackage.delivery_address)
         window.open(`https://www.google.com/maps/search/?api=1&query=${address}`, '_blank')
@@ -690,8 +759,11 @@ export default function KuryePage() {
       return
     }
 
-    if (command.includes('sıra') || command.includes('nere') || command.includes('adres')) {
+    // Adres Sorgula
+    if (transcript.includes('sıra') || transcript.includes('nere') || transcript.includes('adres')) {
       const activePackage = packages.find(pkg => pkg.status !== 'delivered')
+      console.log('📍 ADRES SORGULA komutu, bulunan paket:', activePackage)
+      
       if (activePackage) {
         const address = activePackage.delivery_address
         const amount = activePackage.amount
@@ -702,6 +774,7 @@ export default function KuryePage() {
       return
     }
 
+    console.warn('⚠️ Komut anlaşılamadı:', transcript)
     speak('Anlaşılamadı')
   }
 
