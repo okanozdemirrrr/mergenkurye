@@ -89,12 +89,21 @@ export default function KuryePage() {
   const [voiceCommand, setVoiceCommand] = useState('')
   const [recognition, setRecognition] = useState<any>(null)
   const [showVoiceHelp, setShowVoiceHelp] = useState(false) // Sesli komut yardım pop-up'ı
+  const voiceTimeoutRef = useRef<NodeJS.Timeout | null>(null) // Timeout referansı
   
   // SCROLL POZİSYONU KORUMA
   const scrollPositionRef = useRef<{ [key: string]: number }>({})
   
+  // PACKAGES REF - Sesli komutlar için güncel state
+  const packagesRef = useRef<Package[]>([])
+  
   // SAYISAL ETİKETLEME (SLOT SYSTEM) - SABİT NUMARALANDIRMA
   const [packageSlots, setPackageSlots] = useState<{ [key: number]: number }>({}) // packageId -> slotNumber
+
+  // Packages değiştiğinde ref'i güncelle
+  useEffect(() => {
+    packagesRef.current = packages
+  }, [packages])
 
   // Paketlere SABİT slot numarası ata (en küçük boş numarayı doldur)
   useEffect(() => {
@@ -454,13 +463,30 @@ export default function KuryePage() {
 
     const recognitionInstance = new SpeechRecognition()
     recognitionInstance.lang = 'tr-TR'
-    recognitionInstance.continuous = false
-    recognitionInstance.interimResults = false
+    recognitionInstance.continuous = false // Tek cümle sonrası otomatik dur
+    recognitionInstance.interimResults = true // Cümle bitmeden algılamaya başla
+    recognitionInstance.maxAlternatives = 1
 
     recognitionInstance.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript.toLowerCase()
-      setVoiceCommand(transcript)
-      handleVoiceCommand(transcript)
+      const last = event.results.length - 1
+      const result = event.results[last]
+      
+      // Final result (kesin sonuç) geldiğinde işle
+      if (result.isFinal) {
+        const transcript = result[0].transcript.toLowerCase()
+        console.log('🎤 Final transcript:', transcript)
+        setVoiceCommand(transcript)
+        
+        // Komut algılandı, hemen durdur ve işle
+        recognitionInstance.abort() // Zorla durdur
+        setIsListening(false)
+        handleVoiceCommand(transcript)
+      } else {
+        // Interim result (geçici sonuç) - sadece log
+        const transcript = result[0].transcript.toLowerCase()
+        console.log('🎤 Interim transcript:', transcript)
+        setVoiceCommand(transcript)
+      }
     }
 
     recognitionInstance.onerror = (event: any) => {
@@ -469,10 +495,14 @@ export default function KuryePage() {
       if (event.error === 'not-allowed') {
         setErrorMessage('Mikrofon izni gerekli')
         setTimeout(() => setErrorMessage(''), 3000)
+      } else if (event.error === 'aborted') {
+        // Abort normal, hata değil
+        console.log('🛑 Recognition aborted (normal)')
       }
     }
 
     recognitionInstance.onend = () => {
+      console.log('🛑 Recognition ended')
       setIsListening(false)
     }
 
@@ -492,7 +522,7 @@ export default function KuryePage() {
 
     return () => {
       if (recognitionInstance) {
-        recognitionInstance.stop()
+        recognitionInstance.abort()
       }
     }
   }, [isMounted])
@@ -529,9 +559,17 @@ export default function KuryePage() {
     if (!recognition) return
 
     if (isListening) {
-      recognition.stop()
+      // Dinleme durduruluyor
+      recognition.abort()
       setIsListening(false)
+      
+      // Timeout'u temizle
+      if (voiceTimeoutRef.current) {
+        clearTimeout(voiceTimeoutRef.current)
+        voiceTimeoutRef.current = null
+      }
     } else {
+      // Dinleme başlatılıyor
       try {
         recognition.start()
         setIsListening(true)
@@ -541,6 +579,17 @@ export default function KuryePage() {
         if ('mediaSession' in navigator) {
           navigator.mediaSession.playbackState = 'paused'
         }
+        
+        // 6 saniye sonra otomatik kapat (PC için)
+        voiceTimeoutRef.current = setTimeout(() => {
+          if (recognition && isListening) {
+            console.log('⏱️ 6 saniye timeout - otomatik kapatılıyor')
+            recognition.abort()
+            setIsListening(false)
+            speak('Zaman aşımı')
+          }
+        }, 6000)
+        
       } catch (error) {
         console.error('Ses tanıma başlatılamadı:', error)
         setErrorMessage('Mikrofon başlatılamadı')
@@ -553,9 +602,15 @@ export default function KuryePage() {
     const transcript = command.toLowerCase().trim()
     console.log('🎤 SESLİ KOMUT ALINDI:', transcript)
 
-    // Komut işleme başladı - recognition'ı durdur ve idle moda geç
+    // Timeout'u temizle
+    if (voiceTimeoutRef.current) {
+      clearTimeout(voiceTimeoutRef.current)
+      voiceTimeoutRef.current = null
+    }
+
+    // Komut işleme başladı - recognition'ı zorla durdur ve idle moda geç
     if (recognition && isListening) {
-      recognition.stop()
+      recognition.abort() // Zorla durdur
       setIsListening(false)
     }
 
@@ -574,17 +629,21 @@ export default function KuryePage() {
     for (const [word, num] of Object.entries(numberWords)) {
       if (transcript.includes(word)) {
         slotNumber = num
-        console.log('🔢 Slot numarası tespit edildi:', slotNumber)
+        console.log('� Slot numarası tespit edildi:', slotNumber)
         break
       }
     }
 
+    // REF'ten güncel paketleri al
+    const currentPackages = packagesRef.current
+    console.log('📦 Ref\'ten alınan paket sayısı:', currentPackages.length)
+
     // SAYISAL KOMUTLAR - Slot numarasıyla paket bul
     if (slotNumber) {
-      console.log('📦 Aktif paketler:', packages.filter(p => p.status !== 'delivered').map(p => ({ id: p.id, slot: p.slot_number, customer: p.customer_name, status: p.status })))
+      console.log('📦 Aktif paketler:', currentPackages.filter(p => p.status !== 'delivered').map(p => ({ id: p.id, slot: p.slot_number, customer: p.customer_name, status: p.status })))
       
       // Slot numarasından paketi bul (slot_number field'ını kullan)
-      const pkg = packages.find(p => p.slot_number === slotNumber && p.status !== 'delivered')
+      const pkg = currentPackages.find(p => p.slot_number === slotNumber && p.status !== 'delivered')
       
       console.log('📦 Bulunan paket:', pkg ? { id: pkg.id, slot: pkg.slot_number, status: pkg.status } : null)
 
@@ -715,7 +774,7 @@ export default function KuryePage() {
     
     // Kabul
     if (transcript.includes('kabul') || transcript.includes('onayla') || transcript.includes('tamam')) {
-      const pendingPackage = packages.find(pkg => 
+      const pendingPackage = currentPackages.find(pkg => 
         pkg.status === 'assigned' || pkg.status === 'waiting'
       )
       console.log('🟢 Genel KABUL komutu, bulunan paket:', pendingPackage)
@@ -729,21 +788,33 @@ export default function KuryePage() {
       return
     }
 
-    // Teslim Et
+    // Teslim Et (genel komut - numarasız)
     if (transcript.includes('bitti') || transcript.includes('teslim') || transcript.includes('kapat')) {
-      const activePackage = packages.find(pkg => pkg.status === 'on_the_way')
+      const activePackage = currentPackages.find(pkg => pkg.status === 'on_the_way')
       console.log('🔵 Genel TESLİM komutu, bulunan paket:', activePackage)
       
       if (activePackage) {
-        const paymentMethod = selectedPaymentMethods[activePackage.id]
+        // Ödeme yöntemini transcript'ten algıla
+        let paymentMethod = selectedPaymentMethods[activePackage.id]
+        
+        if (transcript.includes('nakit') || transcript.includes('nakıt')) {
+          paymentMethod = 'cash'
+          setSelectedPaymentMethods(prev => ({ ...prev, [activePackage.id]: 'cash' }))
+          console.log('💵 Ödeme yöntemi sesli komuttan algılandı: NAKİT')
+        } else if (transcript.includes('kart') || transcript.includes('kredi')) {
+          paymentMethod = 'card'
+          setSelectedPaymentMethods(prev => ({ ...prev, [activePackage.id]: 'card' }))
+          console.log('💳 Ödeme yöntemi sesli komuttan algılandı: KART')
+        }
+        
         if (!paymentMethod) {
-          speak('Ödeme yöntemi seçin')
+          speak('Nakit mi kart mı')
           setErrorMessage('Lütfen ödeme yöntemini seçin!')
           setTimeout(() => setErrorMessage(''), 3000)
           return
         }
         await handleDeliver(activePackage.id)
-        speak('Teslim edildi')
+        speak(`${paymentMethod === 'cash' ? 'Nakit' : 'Kart'} teslim edildi`)
       } else {
         speak('Paket yok')
       }
@@ -752,7 +823,7 @@ export default function KuryePage() {
 
     // Müşteri Ara
     if (transcript.includes('müşteri') || transcript.includes('kişi')) {
-      const activePackage = packages.find(pkg => pkg.status !== 'delivered')
+      const activePackage = currentPackages.find(pkg => pkg.status !== 'delivered')
       console.log('📞 Genel MÜŞTERİ ARA komutu, bulunan paket:', activePackage)
       
       if (activePackage && activePackage.customer_phone) {
@@ -766,7 +837,7 @@ export default function KuryePage() {
 
     // Dükkan Ara
     if (transcript.includes('dükkan') || transcript.includes('restoran') || transcript.includes('işletme')) {
-      const activePackage = packages.find(pkg => pkg.status !== 'delivered')
+      const activePackage = currentPackages.find(pkg => pkg.status !== 'delivered')
       console.log('🏪 Genel DÜKKAN ARA komutu, bulunan paket:', activePackage)
       
       if (activePackage && activePackage.restaurant?.phone) {
@@ -780,7 +851,7 @@ export default function KuryePage() {
 
     // Navigasyon
     if (transcript.includes('konum') || transcript.includes('yol') || transcript.includes('harita') || transcript.includes('navigasyon')) {
-      const activePackage = packages.find(pkg => pkg.status !== 'delivered')
+      const activePackage = currentPackages.find(pkg => pkg.status !== 'delivered')
       console.log('🗺️ Genel NAVİGASYON komutu, bulunan paket:', activePackage)
       
       if (activePackage) {
@@ -795,7 +866,7 @@ export default function KuryePage() {
 
     // Adres Sorgula
     if (transcript.includes('sıra') || transcript.includes('nere') || transcript.includes('adres')) {
-      const activePackage = packages.find(pkg => pkg.status !== 'delivered')
+      const activePackage = currentPackages.find(pkg => pkg.status !== 'delivered')
       console.log('📍 ADRES SORGULA komutu, bulunan paket:', activePackage)
       
       if (activePackage) {
@@ -1296,6 +1367,22 @@ export default function KuryePage() {
             {/* Mikrofon Butonu */}
             <button
               onClick={toggleVoiceRecognition}
+              onMouseUp={() => {
+                // PC'de mouse bırakıldığında zorla durdur
+                if (isListening && recognition) {
+                  console.log('🖱️ Mouse released - forcing stop')
+                  recognition.abort()
+                  setIsListening(false)
+                }
+              }}
+              onTouchEnd={() => {
+                // Mobilde dokunma bittiğinde zorla durdur
+                if (isListening && recognition) {
+                  console.log('👆 Touch released - forcing stop')
+                  recognition.abort()
+                  setIsListening(false)
+                }
+              }}
               className={`w-16 h-16 rounded-full shadow-2xl transition-all duration-300 flex items-center justify-center text-2xl ${
                 isListening 
                   ? 'bg-red-600 animate-pulse' 
