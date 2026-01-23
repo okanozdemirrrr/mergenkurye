@@ -58,6 +58,13 @@ export default function KuryePage() {
   const [showMenu, setShowMenu] = useState(false) // Hamburger menü
   const [activeTab, setActiveTab] = useState<'packages' | 'history' | 'earnings'>('packages') // Aktif sekme
   const [todayDeliveredPackages, setTodayDeliveredPackages] = useState<Package[]>([]) // Bugünkü teslim edilenler
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  
+  // SESLİ KOMUT STATE'LERİ
+  const [isListening, setIsListening] = useState(false)
+  const [voiceCommand, setVoiceCommand] = useState('')
+  const [recognition, setRecognition] = useState<any>(null)
 
   // Build-safe mount kontrolü
   useEffect(() => {
@@ -353,6 +360,205 @@ export default function KuryePage() {
     }
   }
 
+  // SESLİ KOMUT FONKSİYONLARI
+  useEffect(() => {
+    if (typeof window === 'undefined' || !isMounted) return
+
+    // Web Speech API desteği kontrolü
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SpeechRecognition) {
+      console.warn('Tarayıcı ses tanıma desteklemiyor')
+      return
+    }
+
+    const recognitionInstance = new SpeechRecognition()
+    recognitionInstance.lang = 'tr-TR'
+    recognitionInstance.continuous = false
+    recognitionInstance.interimResults = false
+
+    recognitionInstance.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript.toLowerCase()
+      setVoiceCommand(transcript)
+      handleVoiceCommand(transcript)
+    }
+
+    recognitionInstance.onerror = (event: any) => {
+      console.error('Ses tanıma hatası:', event.error)
+      setIsListening(false)
+      if (event.error === 'not-allowed') {
+        setErrorMessage('Mikrofon izni gerekli')
+        setTimeout(() => setErrorMessage(''), 3000)
+      }
+    }
+
+    recognitionInstance.onend = () => {
+      setIsListening(false)
+    }
+
+    setRecognition(recognitionInstance)
+
+    // Media Session API - Bluetooth/Interkom kontrolleri
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.setActionHandler('pause', () => {
+        toggleVoiceRecognition()
+      })
+      navigator.mediaSession.setActionHandler('play', () => {
+        if (isListening) {
+          toggleVoiceRecognition()
+        }
+      })
+    }
+
+    return () => {
+      if (recognitionInstance) {
+        recognitionInstance.stop()
+      }
+    }
+  }, [isMounted])
+
+  const playBeep = () => {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+    const oscillator = audioContext.createOscillator()
+    const gainNode = audioContext.createGain()
+    
+    oscillator.connect(gainNode)
+    gainNode.connect(audioContext.destination)
+    
+    oscillator.frequency.value = 800
+    oscillator.type = 'sine'
+    
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime)
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1)
+    
+    oscillator.start(audioContext.currentTime)
+    oscillator.stop(audioContext.currentTime + 0.1)
+  }
+
+  const speak = (text: string) => {
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(text)
+      utterance.lang = 'tr-TR'
+      utterance.rate = 1.0
+      utterance.pitch = 1.0
+      window.speechSynthesis.speak(utterance)
+    }
+  }
+
+  const toggleVoiceRecognition = () => {
+    if (!recognition) return
+
+    if (isListening) {
+      recognition.stop()
+      setIsListening(false)
+    } else {
+      try {
+        recognition.start()
+        setIsListening(true)
+        playBeep()
+        
+        // Müziği sustur (Audio Focus)
+        if ('mediaSession' in navigator) {
+          navigator.mediaSession.playbackState = 'paused'
+        }
+      } catch (error) {
+        console.error('Ses tanıma başlatılamadı:', error)
+        setErrorMessage('Mikrofon başlatılamadı')
+        setTimeout(() => setErrorMessage(''), 3000)
+      }
+    }
+  }
+
+  const handleVoiceCommand = async (command: string) => {
+    console.log('Sesli komut:', command)
+
+    // Müziği tekrar başlat
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.playbackState = 'playing'
+    }
+
+    // Komut: Paketi teslim et
+    if (command.includes('teslim') || command.includes('teslimat')) {
+      const activePackage = packages.find(pkg => pkg.status !== 'delivered')
+      if (activePackage) {
+        await handleDeliver(activePackage.id)
+        speak('Paket teslim edildi')
+      } else {
+        speak('Aktif paket bulunamadı')
+      }
+      return
+    }
+
+    // Komut: Müşteriyi ara
+    if (command.includes('ara') || command.includes('müşteri')) {
+      const activePackage = packages.find(pkg => pkg.status !== 'delivered')
+      if (activePackage && activePackage.customer_phone) {
+        window.location.href = `tel:${activePackage.customer_phone}`
+        speak('Müşteri aranıyor')
+      } else {
+        speak('Telefon numarası bulunamadı')
+      }
+      return
+    }
+
+    // Komut: Sıradaki / Neresi
+    if (command.includes('sıra') || command.includes('nere') || command.includes('adres')) {
+      const activePackage = packages.find(pkg => pkg.status !== 'delivered')
+      if (activePackage) {
+        const address = activePackage.delivery_address
+        const amount = activePackage.amount
+        speak(`Sıradaki adres: ${address}. Tutar: ${amount} lira`)
+      } else {
+        speak('Aktif paket bulunamadı')
+      }
+      return
+    }
+
+    speak('Komut anlaşılamadı')
+  }
+
+  const handleDeliver = async (packageId: number) => {
+    const paymentMethod = selectedPaymentMethods[packageId]
+    if (!paymentMethod) {
+      setErrorMessage('Lütfen ödeme yöntemini seçin!')
+      setTimeout(() => setErrorMessage(''), 3000)
+      return
+    }
+
+    setIsUpdating(prev => new Set(prev).add(packageId))
+
+    try {
+      const { error } = await supabase
+        .from('packages')
+        .update({
+          status: 'delivered',
+          delivered_at: new Date().toISOString(),
+          payment_method: paymentMethod
+        })
+        .eq('id', packageId)
+
+      if (error) throw error
+
+      setSuccessMessage('✅ Paket teslim edildi!')
+      setTimeout(() => setSuccessMessage(''), 2000)
+
+      await fetchPackages(false)
+      await fetchDailyStats()
+      await fetchTodayDeliveredPackages()
+      await fetchLeaderboard()
+
+    } catch (error: any) {
+      console.error('Teslim hatası:', error)
+      setErrorMessage('Teslim işlemi başarısız: ' + error.message)
+      setTimeout(() => setErrorMessage(''), 3000)
+    } finally {
+      setIsUpdating(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(packageId)
+        return newSet
+      })
+    }
+  }
+
   useEffect(() => {
     if (isLoggedIn) {
       const courierId = localStorage.getItem(LOGIN_COURIER_ID_KEY)
@@ -640,9 +846,22 @@ export default function KuryePage() {
           </div>
         )}
 
-        {/* DURUM TOGGLE - SAĞ ALT KÖŞE */}
+        {/* DURUM TOGGLE VE MİKROFON - SAĞ ALT KÖŞE */}
         {activeTab === 'packages' && (
-          <div className="fixed bottom-4 right-4 z-50">
+          <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-3">
+            {/* Mikrofon Butonu */}
+            <button
+              onClick={toggleVoiceRecognition}
+              className={`w-16 h-16 rounded-full shadow-2xl transition-all duration-300 flex items-center justify-center text-2xl ${
+                isListening 
+                  ? 'bg-red-600 animate-pulse' 
+                  : 'bg-blue-600 hover:bg-blue-700 active:scale-95'
+              }`}
+            >
+              {isListening ? '🔴' : '🎤'}
+            </button>
+            
+            {/* Durum Toggle */}
             <button
               onClick={() => updateCourierStatus('idle', !is_active)}
               disabled={statusUpdating}
