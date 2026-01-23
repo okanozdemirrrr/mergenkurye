@@ -16,6 +16,7 @@ interface Package {
   payment_method?: 'cash' | 'card' | null
   created_at?: string
   assigned_at?: string
+  accepted_at?: string
   picked_up_at?: string
   delivered_at?: string
   restaurant?: { 
@@ -806,7 +807,7 @@ export default function KuryePage() {
         .from('packages')
         .update({
           status: 'picking_up',
-          assigned_at: new Date().toISOString() // Kabul zamanı
+          accepted_at: new Date().toISOString() // Kurye kabul etti
         })
         .eq('id', packageId)
 
@@ -1615,7 +1616,7 @@ export default function KuryePage() {
                         <span className="text-slate-300">{pkg.created_at ? new Date(pkg.created_at).toLocaleDateString('tr-TR') : '-'}</span>
                       </div>
                       <div className="flex justify-between text-xs">
-                        <span className="text-slate-400">✅ Kabul Saati:</span>
+                        <span className="text-slate-400">📋 Atama Saati:</span>
                         <span className="text-blue-400">{pkg.assigned_at ? new Date(pkg.assigned_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '-'}</span>
                       </div>
                       <div className="flex justify-between text-xs">
@@ -1713,7 +1714,7 @@ export default function KuryePage() {
                 {/* Paket Listesi */}
                 <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
                   <h3 className="text-sm font-bold text-white mb-3">Teslim Edilen Paketler</h3>
-                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                  <div className="space-y-2 max-h-96 overflow-y-auto admin-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
                     {filteredPackages.length === 0 ? (
                       <div className="text-center py-8 text-slate-500">
                         <div className="text-3xl mb-2">📦</div>
@@ -1743,7 +1744,7 @@ export default function KuryePage() {
                                   📅 Sipariş: {new Date(pkg.created_at || '').toLocaleDateString('tr-TR')}
                                 </p>
                                 <p className="text-xs text-blue-400">
-                                  ✅ Kabul: {pkg.picked_up_at ? new Date(pkg.picked_up_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '-'}
+                                  ✅ Kabul: {pkg.accepted_at ? new Date(pkg.accepted_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '-'}
                                 </p>
                                 <p className="text-xs text-green-400">
                                   🚚 Teslim: {pkg.delivered_at ? new Date(pkg.delivered_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '-'}
