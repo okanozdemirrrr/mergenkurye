@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
 interface Package {
@@ -84,6 +84,9 @@ export default function KuryePage() {
   const [voiceCommand, setVoiceCommand] = useState('')
   const [recognition, setRecognition] = useState<any>(null)
   const [showVoiceHelp, setShowVoiceHelp] = useState(false) // Sesli komut yardım pop-up'ı
+  
+  // SCROLL POZİSYONU KORUMA
+  const scrollPositionRef = useRef<{ [key: string]: number }>({})
   
   // SAYISAL ETİKETLEME (SLOT SYSTEM) - SABİT NUMARALANDIRMA
   const [packageSlots, setPackageSlots] = useState<{ [key: number]: number }>({}) // packageId -> slotNumber
@@ -792,6 +795,31 @@ export default function KuryePage() {
     setFilteredPackages(filtered)
   }
 
+  // Scroll pozisyonunu kaydet
+  const saveScrollPosition = (containerId: string) => {
+    const container = document.getElementById(containerId)
+    if (container) {
+      scrollPositionRef.current[containerId] = container.scrollTop
+    }
+  }
+
+  // Scroll pozisyonunu geri yükle
+  const restoreScrollPosition = (containerId: string) => {
+    const container = document.getElementById(containerId)
+    if (container && scrollPositionRef.current[containerId] !== undefined) {
+      container.scrollTop = scrollPositionRef.current[containerId]
+    }
+  }
+
+  // Veri güncellendiğinde scroll pozisyonunu koru
+  useEffect(() => {
+    if (activeTab === 'earnings') {
+      restoreScrollPosition('earnings-scroll-container')
+    } else if (activeTab === 'history') {
+      restoreScrollPosition('history-scroll-container')
+    }
+  }, [filteredPackages, todayDeliveredPackages, activeTab])
+
   // İlk yüklemede bugünün paketlerini filtrele
   useEffect(() => {
     if (todayDeliveredPackages.length > 0) {
@@ -887,7 +915,10 @@ export default function KuryePage() {
       fetchCourierStatus()
       fetchLeaderboard()
       
-      // Supabase Realtime - Kuryeye özel paket değişikliklerini dinle
+      // REALTIME ONLY - Sadece veritabanı değişikliklerinde güncelle
+      console.log('🔴 Realtime dinleme başlatıldı - Sadece DB değişikliklerinde güncelleme yapılacak')
+      
+      // Paket değişikliklerini dinle
       const packagesChannel = supabase
         .channel(`courier-packages-${courierId}`)
         .on(
@@ -899,26 +930,37 @@ export default function KuryePage() {
             filter: `courier_id=eq.${courierId}`
           },
           (payload) => {
-            // Anında güncelle
+            console.log('📦 Paket değişikliği algılandı:', payload.eventType)
             fetchPackages(false)
             fetchDailyStats()
+            fetchTodayDeliveredPackages()
             fetchLeaderboard()
           }
         )
         .subscribe()
       
-      // SESSİZ PERİYODİK YENİLEME - 15 SANİYE
-      const interval = setInterval(() => {
-        fetchPackages(false)
-        fetchDailyStats()
-        fetchTodayDeliveredPackages()
-        fetchCourierStatus()
-        fetchLeaderboard()
-      }, 15000) // 15 saniye
+      // Kurye durumu değişikliklerini dinle
+      const courierChannel = supabase
+        .channel(`courier-status-${courierId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'couriers',
+            filter: `id=eq.${courierId}`
+          },
+          (payload) => {
+            console.log('👤 Kurye durumu değişti')
+            fetchCourierStatus()
+          }
+        )
+        .subscribe()
       
       return () => {
-        clearInterval(interval)
+        console.log('🔴 Realtime dinleme durduruldu')
         supabase.removeChannel(packagesChannel)
+        supabase.removeChannel(courierChannel)
       }
     }
   }, [isLoggedIn])
@@ -1714,7 +1756,12 @@ export default function KuryePage() {
                 {/* Paket Listesi */}
                 <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
                   <h3 className="text-sm font-bold text-white mb-3">Teslim Edilen Paketler</h3>
-                  <div className="space-y-2 max-h-96 overflow-y-auto admin-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
+                  <div 
+                    id="earnings-scroll-container"
+                    className="space-y-2 max-h-96 overflow-y-auto admin-scrollbar" 
+                    style={{ WebkitOverflowScrolling: 'touch' }}
+                    onScroll={() => saveScrollPosition('earnings-scroll-container')}
+                  >
                     {filteredPackages.length === 0 ? (
                       <div className="text-center py-8 text-slate-500">
                         <div className="text-3xl mb-2">📦</div>

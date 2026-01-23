@@ -1335,17 +1335,19 @@ export default function Home() {
     }
   }, [isLoggedIn])
 
-  // Realtime + Sessiz Periyodik Yenileme
+  // REALTIME ONLY - Sadece veritabanı değişikliklerinde güncelle
   useEffect(() => {
     if (!isLoggedIn || !isMounted) return
+
+    console.log('🔴 Admin Realtime dinleme başlatıldı - Sadece DB değişikliklerinde güncelleme yapılacak')
 
     const channel = supabase
       .channel('admin-realtime-monitor')
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'packages' },
-        () => {
-          // Yeni paket - Sessiz yenileme (loading yok)
+        (payload) => {
+          console.log('📦 Yeni paket eklendi')
           fetchPackages(false)
           fetchCouriers(false)
           fetchDeliveredPackages()
@@ -1354,8 +1356,18 @@ export default function Home() {
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'packages' },
-        () => {
-          // Güncelleme - Sessiz yenileme (loading yok)
+        (payload) => {
+          console.log('📦 Paket güncellendi')
+          fetchPackages(false)
+          fetchCouriers(false)
+          fetchDeliveredPackages()
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'packages' },
+        (payload) => {
+          console.log('📦 Paket silindi')
           fetchPackages(false)
           fetchCouriers(false)
           fetchDeliveredPackages()
@@ -1364,22 +1376,23 @@ export default function Home() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'couriers' },
-        () => {
-          // Kurye değişikliği - Sessiz yenileme
+        (payload) => {
+          console.log('👤 Kurye değişikliği')
           fetchCouriers(false)
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'restaurants' },
+        (payload) => {
+          console.log('🏪 Restoran değişikliği')
+          fetchRestaurants()
         }
       )
       .subscribe()
 
-    // SESSİZ PERİYODİK YENİLEME - 15 SANİYE - KULLANICI HİÇBİR ŞEY FARK ETMEZ
-    const interval = setInterval(() => {
-      fetchPackages(false) // isInitialLoad = false, loading gösterme
-      fetchCouriers(false)
-      fetchDeliveredPackages()
-    }, 15000) // 15 saniye
-
     return () => {
-      clearInterval(interval)
+      console.log('🔴 Admin Realtime dinleme durduruldu')
       supabase.removeChannel(channel)
     }
   }, [isLoggedIn, isMounted])

@@ -404,12 +404,36 @@ export default function RestoranPage() {
     fetchRestaurants()
   }, [])
 
+  // REALTIME ONLY - Sadece veritabanı değişikliklerinde güncelle
   useEffect(() => {
     if (isLoggedIn && selectedRestaurantId) {
+      // İlk yükleme
       fetchPackages()
-      // SESSİZ PERİYODİK YENİLEME - 15 SANİYE
-      const interval = setInterval(fetchPackages, 15000) // 15 saniye
-      return () => clearInterval(interval)
+      
+      console.log('🔴 Restoran Realtime dinleme başlatıldı - Sadece DB değişikliklerinde güncelleme yapılacak')
+      
+      // Restoran paketlerini dinle
+      const channel = supabase
+        .channel(`restaurant-packages-${selectedRestaurantId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'packages',
+            filter: `restaurant_id=eq.${selectedRestaurantId}`
+          },
+          (payload) => {
+            console.log('📦 Paket değişikliği algılandı:', payload.eventType)
+            fetchPackages()
+          }
+        )
+        .subscribe()
+      
+      return () => {
+        console.log('🔴 Restoran Realtime dinleme durduruldu')
+        supabase.removeChannel(channel)
+      }
     }
   }, [isLoggedIn, selectedRestaurantId, dateFilter])
 
