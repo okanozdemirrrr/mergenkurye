@@ -2329,24 +2329,33 @@ export default function Home() {
       )}
 
     <div className={`min-h-screen ${darkMode ? 'bg-slate-50 dark:bg-slate-900' : 'bg-white'}`}>
-      {/* Hamburger Menü Butonu - Sol Üst */}
-      <button 
-        onClick={() => setShowMenu(!showMenu)} 
-        className="fixed top-4 left-4 z-50 bg-slate-800 hover:bg-slate-700 text-white p-3 rounded-lg shadow-lg transition-colors"
-      >
-        <div className="space-y-1.5">
-          <div className="w-6 h-0.5 bg-white"></div>
-          <div className="w-6 h-0.5 bg-white"></div>
-          <div className="w-6 h-0.5 bg-white"></div>
-        </div>
-      </button>
+      {/* Hamburger Menü Butonu ve Logo - Sol Üst */}
+      <div className="fixed top-4 left-4 z-50 flex items-center gap-3">
+        <button 
+          onClick={() => setShowMenu(!showMenu)} 
+          className="bg-slate-800 hover:bg-slate-700 text-white p-3 rounded-lg shadow-lg transition-colors"
+        >
+          <div className="space-y-1.5">
+            <div className="w-6 h-0.5 bg-white"></div>
+            <div className="w-6 h-0.5 bg-white"></div>
+            <div className="w-6 h-0.5 bg-white"></div>
+          </div>
+        </button>
+        
+        {/* Logo */}
+        <img 
+          src="/logo.png" 
+          alt="Logo" 
+          className="w-12 h-12"
+        />
+      </div>
 
       {/* Modern Admin Panel Başlık ve Dark Mode Toggle - Sağ Üst */}
-      <div className="fixed top-4 right-4 z-50 flex items-center gap-4">
-        {/* Modern Admin Panel Başlık */}
-        <div className="bg-gradient-to-r from-slate-800 to-slate-900 px-6 py-3 rounded-xl shadow-2xl border border-slate-700">
-          <h1 className="text-2xl font-black tracking-wider bg-gradient-to-r from-orange-400 via-orange-500 to-orange-600 bg-clip-text text-transparent flex items-center gap-2">
-            <span className="text-orange-500">⚡</span>
+      <div className="fixed -top-12 right-4 z-50 flex items-center gap-3">
+        {/* Modern Admin Panel Başlık - Küçültülmüş */}
+        <div className="bg-gradient-to-r from-slate-800 to-slate-900 px-4 py-2 rounded-lg shadow-xl border border-slate-700">
+          <h1 className="text-lg font-black tracking-wider bg-gradient-to-r from-orange-400 via-orange-500 to-orange-600 bg-clip-text text-transparent flex items-center gap-1.5">
+            <span className="text-orange-500 text-base">⚡</span>
             ADMIN PANEL
           </h1>
         </div>
@@ -2354,10 +2363,10 @@ export default function Home() {
         {/* Dark Mode Toggle */}
         <button
           onClick={() => setDarkMode(!darkMode)}
-          className="bg-slate-800 hover:bg-slate-700 text-white p-3 rounded-xl shadow-lg transition-all hover:scale-105 active:scale-95"
+          className="bg-slate-800 hover:bg-slate-700 text-white p-2.5 rounded-lg shadow-lg transition-all hover:scale-105 active:scale-95"
           title={darkMode ? 'Gündüz Modu' : 'Gece Modu'}
         >
-          <span className="text-xl">{darkMode ? '☀️' : '🌙'}</span>
+          <span className="text-lg">{darkMode ? '☀️' : '🌙'}</span>
         </button>
       </div>
 
@@ -2643,10 +2652,7 @@ export default function Home() {
       <div className="sticky top-0 z-30 bg-white dark:bg-slate-800 shadow-lg border-b border-slate-200 dark:border-slate-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-center items-center h-16">
-            {/* Title - Ortada */}
-            <h1 className="text-3xl font-black tracking-wider bg-gradient-to-r from-gray-200 to-gray-500 bg-clip-text text-transparent" style={{fontFamily: 'Orbitron, sans-serif'}}>
-              ADMIN PANEL
-            </h1>
+            {/* Eski başlık kaldırıldı - Yeni başlık sağ üstte */}
           </div>
         </div>
       </div>
