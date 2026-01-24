@@ -1349,18 +1349,30 @@ export default function Home() {
   }, [isLoggedIn])
 
   // REALTIME ONLY - Sadece veritabanı değişikliklerinde güncelle
+  // ⚠️ ÖNEMLİ: Supabase Dashboard -> Database -> Replication -> 'packages', 'couriers', 'restaurants' tablolarını işaretleyin!
+  // Detaylı kurulum için: SUPABASE_REALTIME_KURULUM.md dosyasına bakın
   useEffect(() => {
     if (!isLoggedIn || !isMounted) return
 
-    console.log('🔴 Admin Realtime dinleme başlatıldı - Sadece DB değişikliklerinde güncelleme yapılacak')
+    console.log('🔴 Admin Realtime dinleme başlatıldı - Canlı yayın modu aktif')
 
     const channel = supabase
-      .channel('admin-realtime-monitor')
+      .channel('admin-realtime-all-events', {
+        config: {
+          broadcast: { self: true },
+          presence: { key: 'admin' }
+        }
+      })
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'packages' },
+        { 
+          event: '*', // Tüm olaylar (INSERT, UPDATE, DELETE)
+          schema: 'public', 
+          table: 'packages' 
+        },
         (payload) => {
-          console.log('📦 Yeni paket eklendi')
+          console.log('📦 Paket değişikliği:', payload.eventType, payload)
+          // State'i güncelle - sayfa yenileme YOK!
           fetchPackages(false)
           fetchCouriers(false)
           fetchDeliveredPackages()
@@ -1368,41 +1380,47 @@ export default function Home() {
       )
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'packages' },
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'couriers' 
+        },
         (payload) => {
-          console.log('📦 Paket güncellendi')
-          fetchPackages(false)
-          fetchCouriers(false)
-          fetchDeliveredPackages()
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'DELETE', schema: 'public', table: 'packages' },
-        (payload) => {
-          console.log('📦 Paket silindi')
-          fetchPackages(false)
-          fetchCouriers(false)
-          fetchDeliveredPackages()
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'couriers' },
-        (payload) => {
-          console.log('👤 Kurye değişikliği')
+          console.log('👤 Kurye değişikliği:', payload.eventType)
           fetchCouriers(false)
         }
       )
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'restaurants' },
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'restaurants' 
+        },
         (payload) => {
-          console.log('🏪 Restoran değişikliği')
+          console.log('🏪 Restoran değişikliği:', payload.eventType)
           fetchRestaurants()
         }
       )
-      .subscribe()
+      .subscribe((status, err) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Admin Realtime bağlantısı kuruldu')
+        }
+        if (status === 'CHANNEL_ERROR') {
+          console.error('❌ Realtime bağlantı hatası:', err)
+          // 5 saniye sonra yeniden bağlan
+          setTimeout(() => {
+            console.log('🔄 Realtime yeniden bağlanıyor...')
+            channel.subscribe()
+          }, 5000)
+        }
+        if (status === 'TIMED_OUT') {
+          console.warn('⏱️ Realtime zaman aşımı, yeniden bağlanıyor...')
+          setTimeout(() => {
+            channel.subscribe()
+          }, 5000)
+        }
+      })
 
     return () => {
       console.log('🔴 Admin Realtime dinleme durduruldu')

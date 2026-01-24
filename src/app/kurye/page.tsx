@@ -556,22 +556,37 @@ export default function KuryePage() {
       utterance.pitch = 1.1 // Daha nazik ve profesyonel ton
       utterance.volume = 1.0
       
-      // Türkçe kadın sesini seç
-      const voices = window.speechSynthesis.getVoices()
-      const turkishFemaleVoice = voices.find(voice => 
-        voice.lang.startsWith('tr') && voice.name.toLowerCase().includes('female')
-      ) || voices.find(voice => 
-        voice.lang.startsWith('tr') && !voice.name.toLowerCase().includes('male')
-      ) || voices.find(voice => 
-        voice.lang.startsWith('tr')
-      )
-      
-      if (turkishFemaleVoice) {
-        utterance.voice = turkishFemaleVoice
-        console.log('🎙️ Seçilen ses:', turkishFemaleVoice.name)
+      // Sesleri yükle ve Türkçe kadın sesini seç
+      const setVoiceAndSpeak = () => {
+        const voices = window.speechSynthesis.getVoices()
+        console.log('🎙️ Mevcut sesler:', voices.map(v => ({ name: v.name, lang: v.lang })))
+        
+        // Türkçe kadın sesi ara (öncelik sırasına göre)
+        const turkishFemaleVoice = 
+          voices.find(voice => voice.lang === 'tr-TR' && voice.name.includes('Filiz')) || // Google Türkçe kadın
+          voices.find(voice => voice.lang === 'tr-TR' && voice.name.includes('Yelda')) || // Microsoft Türkçe kadın
+          voices.find(voice => voice.lang === 'tr-TR' && voice.name.includes('Female')) ||
+          voices.find(voice => voice.lang === 'tr-TR' && !voice.name.includes('Male')) ||
+          voices.find(voice => voice.lang.startsWith('tr'))
+        
+        if (turkishFemaleVoice) {
+          utterance.voice = turkishFemaleVoice
+          console.log('🎙️ Seçilen ses:', turkishFemaleVoice.name, turkishFemaleVoice.lang)
+        } else {
+          console.warn('⚠️ Türkçe kadın sesi bulunamadı, varsayılan ses kullanılıyor')
+        }
+        
+        window.speechSynthesis.speak(utterance)
       }
       
-      window.speechSynthesis.speak(utterance)
+      // Sesler yüklenmişse hemen kullan, yoksa yüklenene kadar bekle
+      if (window.speechSynthesis.getVoices().length > 0) {
+        setVoiceAndSpeak()
+      } else {
+        window.speechSynthesis.onvoiceschanged = () => {
+          setVoiceAndSpeak()
+        }
+      }
     }
   }
 
@@ -914,7 +929,7 @@ export default function KuryePage() {
     }
 
     console.warn('⚠️ Komut anlaşılamadı:', transcript)
-    speak('Anlaşılamadı')
+    // Sessizce geç, kullanıcıyı rahatsız etme
   }
 
   // Tarih aralığına göre paketleri filtrele - DÜZELTİLDİ
@@ -1105,30 +1120,54 @@ export default function KuryePage() {
       fetchLeaderboard()
       fetchUnsettledAmount() // Verilecek hesabı çek
       
-      // REALTIME ONLY - Sadece veritabanı değişikliklerinde güncelle
-      console.log('🔴 Realtime dinleme başlatıldı - Sadece DB değişikliklerinde güncelleme yapılacak')
+      // REALTIME ONLY - Canlı yayın modu
+      // ⚠️ ÖNEMLİ: Supabase Dashboard -> Database -> Replication -> 'packages' tablosunu işaretleyin!
+      console.log('🔴 Kurye Realtime dinleme başlatıldı - Canlı yayın modu aktif')
+      console.log('📍 Dinlenen kurye ID:', courierId)
       
-      // Paket değişikliklerini dinle
+      // Paket değişikliklerini dinle (sadece bu kuryenin paketleri)
       const packagesChannel = supabase
-        .channel(`courier-packages-${courierId}`)
+        .channel(`courier-packages-${courierId}`, {
+          config: {
+            broadcast: { self: true }
+          }
+        })
         .on(
           'postgres_changes',
           {
-            event: '*',
+            event: '*', // Tüm olaylar
             schema: 'public',
             table: 'packages',
-            filter: `courier_id=eq.${courierId}`
+            filter: `courier_id=eq.${courierId}` // Sadece bu kuryenin paketleri
           },
           (payload) => {
-            console.log('📦 Paket değişikliği algılandı:', payload.eventType)
+            console.log('📦 Paket değişikliği algılandı:', payload.eventType, 'ID:', payload.new?.id || payload.old?.id)
+            // State'i güncelle - sayfa yenileme YOK!
             fetchPackages(false)
             fetchDailyStats()
             fetchTodayDeliveredPackages()
             fetchLeaderboard()
-            fetchUnsettledAmount() // Verilecek hesabı güncelle
+            fetchUnsettledAmount()
           }
         )
-        .subscribe()
+        .subscribe((status, err) => {
+          if (status === 'SUBSCRIBED') {
+            console.log('✅ Kurye Realtime bağlantısı kuruldu')
+          }
+          if (status === 'CHANNEL_ERROR') {
+            console.error('❌ Realtime bağlantı hatası:', err)
+            setTimeout(() => {
+              console.log('🔄 Realtime yeniden bağlanıyor...')
+              packagesChannel.subscribe()
+            }, 5000)
+          }
+          if (status === 'TIMED_OUT') {
+            console.warn('⏱️ Realtime zaman aşımı, yeniden bağlanıyor...')
+            setTimeout(() => {
+              packagesChannel.subscribe()
+            }, 5000)
+          }
+        })
       
       // Kurye durumu değişikliklerini dinle
       const courierChannel = supabase
@@ -1142,11 +1181,32 @@ export default function KuryePage() {
             filter: `id=eq.${courierId}`
           },
           (payload) => {
-            console.log('👤 Kurye durumu değişti')
-            fetchCourierStatus()
+            // Sadece status veya is_active değiştiğinde güncelle
+            const oldRecord = payload.old as any
+            const newRecord = payload.new as any
+            
+            if (oldRecord && newRecord) {
+              const statusChanged = oldRecord.status !== newRecord.status
+              const activeChanged = oldRecord.is_active !== newRecord.is_active
+              
+              if (statusChanged || activeChanged) {
+                console.log('👤 Kurye durumu değişti:', { 
+                  status: statusChanged ? `${oldRecord.status} → ${newRecord.status}` : 'değişmedi',
+                  is_active: activeChanged ? `${oldRecord.is_active} → ${newRecord.is_active}` : 'değişmedi'
+                })
+                fetchCourierStatus()
+              }
+            } else {
+              console.log('👤 Kurye durumu güncellendi')
+              fetchCourierStatus()
+            }
           }
         )
-        .subscribe()
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            console.log('✅ Kurye durumu Realtime bağlantısı kuruldu')
+          }
+        })
       
       return () => {
         console.log('🔴 Realtime dinleme durduruldu')

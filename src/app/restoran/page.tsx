@@ -404,31 +404,54 @@ export default function RestoranPage() {
     fetchRestaurants()
   }, [])
 
-  // REALTIME ONLY - Sadece veritabanı değişikliklerinde güncelle
+  // REALTIME ONLY - Canlı yayın modu
   useEffect(() => {
     if (isLoggedIn && selectedRestaurantId) {
       // İlk yükleme
       fetchPackages()
       
-      console.log('🔴 Restoran Realtime dinleme başlatıldı - Sadece DB değişikliklerinde güncelleme yapılacak')
+      console.log('🔴 Restoran Realtime dinleme başlatıldı - Canlı yayın modu aktif')
+      console.log('📍 Dinlenen restoran ID:', selectedRestaurantId)
       
-      // Restoran paketlerini dinle
+      // Restoran paketlerini dinle (sadece bu restoranın paketleri)
       const channel = supabase
-        .channel(`restaurant-packages-${selectedRestaurantId}`)
+        .channel(`restaurant-packages-${selectedRestaurantId}`, {
+          config: {
+            broadcast: { self: true }
+          }
+        })
         .on(
           'postgres_changes',
           {
-            event: '*',
+            event: '*', // Tüm olaylar
             schema: 'public',
             table: 'packages',
-            filter: `restaurant_id=eq.${selectedRestaurantId}`
+            filter: `restaurant_id=eq.${selectedRestaurantId}` // Sadece bu restoranın paketleri
           },
           (payload) => {
-            console.log('📦 Paket değişikliği algılandı:', payload.eventType)
+            console.log('📦 Paket değişikliği algılandı:', payload.eventType, 'ID:', payload.new?.id || payload.old?.id)
+            // State'i güncelle - sayfa yenileme YOK!
             fetchPackages()
           }
         )
-        .subscribe()
+        .subscribe((status, err) => {
+          if (status === 'SUBSCRIBED') {
+            console.log('✅ Restoran Realtime bağlantısı kuruldu')
+          }
+          if (status === 'CHANNEL_ERROR') {
+            console.error('❌ Realtime bağlantı hatası:', err)
+            setTimeout(() => {
+              console.log('🔄 Realtime yeniden bağlanıyor...')
+              channel.subscribe()
+            }, 5000)
+          }
+          if (status === 'TIMED_OUT') {
+            console.warn('⏱️ Realtime zaman aşımı, yeniden bağlanıyor...')
+            setTimeout(() => {
+              channel.subscribe()
+            }, 5000)
+          }
+        })
       
       return () => {
         console.log('🔴 Restoran Realtime dinleme durduruldu')
