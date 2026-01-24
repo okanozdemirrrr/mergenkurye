@@ -91,6 +91,10 @@ export default function Home() {
   const [showNotificationPopup, setShowNotificationPopup] = useState(false)
   const [newOrderDetails, setNewOrderDetails] = useState<Package | null>(null)
   const [dateFilter, setDateFilter] = useState<'today' | 'week' | 'month' | 'all'>('all')
+  
+  // Geçmiş Siparişler Sayfalama
+  const [historyCurrentPage, setHistoryCurrentPage] = useState(1)
+  const HISTORY_ITEMS_PER_PAGE = 30
   const [courierStartDate, setCourierStartDate] = useState('')
   const [courierEndDate, setCourierEndDate] = useState('')
   const [showMenu, setShowMenu] = useState(false)
@@ -1356,6 +1360,28 @@ export default function Home() {
 
     console.log('🔴 Admin Realtime dinleme başlatıldı - Canlı yayın modu aktif')
 
+    // Realtime callback fonksiyonları - her zaman güncel state'e erişmek için burada tanımla
+    const handlePackageChange = async (payload: any) => {
+      console.log('📦 Paket değişikliği:', payload.eventType, 'ID:', payload.new?.id || payload.old?.id)
+      // State'i güncelle - sayfa yenileme YOK!
+      await fetchPackages(false)
+      await fetchCouriers(false)
+      await fetchDeliveredPackages()
+      console.log('✅ Admin state güncellendi (packages)')
+    }
+
+    const handleCourierChange = async (payload: any) => {
+      console.log('👤 Kurye değişikliği:', payload.eventType)
+      await fetchCouriers(false)
+      console.log('✅ Admin state güncellendi (couriers)')
+    }
+
+    const handleRestaurantChange = async (payload: any) => {
+      console.log('🏪 Restoran değişikliği:', payload.eventType)
+      await fetchRestaurants()
+      console.log('✅ Admin state güncellendi (restaurants)')
+    }
+
     const channel = supabase
       .channel('admin-realtime-all-events', {
         config: {
@@ -1370,13 +1396,7 @@ export default function Home() {
           schema: 'public', 
           table: 'packages' 
         },
-        (payload) => {
-          console.log('📦 Paket değişikliği:', payload.eventType, payload)
-          // State'i güncelle - sayfa yenileme YOK!
-          fetchPackages(false)
-          fetchCouriers(false)
-          fetchDeliveredPackages()
-        }
+        handlePackageChange
       )
       .on(
         'postgres_changes',
@@ -1385,10 +1405,7 @@ export default function Home() {
           schema: 'public', 
           table: 'couriers' 
         },
-        (payload) => {
-          console.log('👤 Kurye değişikliği:', payload.eventType)
-          fetchCouriers(false)
-        }
+        handleCourierChange
       )
       .on(
         'postgres_changes',
@@ -1397,10 +1414,7 @@ export default function Home() {
           schema: 'public', 
           table: 'restaurants' 
         },
-        (payload) => {
-          console.log('🏪 Restoran değişikliği:', payload.eventType)
-          fetchRestaurants()
-        }
+        handleRestaurantChange
       )
       .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
@@ -1749,11 +1763,14 @@ export default function Home() {
             <img 
               src="/logo.png" 
               alt="Logo" 
-              className="w-64 h-64 mx-auto mb-4"
+              className="w-64 h-64 mx-auto mb-6"
             />
-            <h1 className="text-2xl font-bold text-white mb-2">
-              Admin Girişi
-            </h1>
+            <div className="bg-gradient-to-r from-slate-800 to-slate-900 px-6 py-3 rounded-xl border border-slate-700 inline-block mb-2">
+              <h1 className="text-2xl font-black tracking-wider bg-gradient-to-r from-orange-400 via-orange-500 to-orange-600 bg-clip-text text-transparent flex items-center justify-center gap-2">
+                <span className="text-orange-500">⚡</span>
+                ADMIN GİRİŞİ
+              </h1>
+            </div>
           </div>
           <input 
             type="text" 
@@ -2324,20 +2341,24 @@ export default function Home() {
         </div>
       </button>
 
-      {/* Logo ve Dark Mode Toggle - Sağ Üst */}
-      <div className="fixed -top-10 right-4 z-50 flex items-center gap-3">
+      {/* Modern Admin Panel Başlık ve Dark Mode Toggle - Sağ Üst */}
+      <div className="fixed top-4 right-4 z-50 flex items-center gap-4">
+        {/* Modern Admin Panel Başlık */}
+        <div className="bg-gradient-to-r from-slate-800 to-slate-900 px-6 py-3 rounded-xl shadow-2xl border border-slate-700">
+          <h1 className="text-2xl font-black tracking-wider bg-gradient-to-r from-orange-400 via-orange-500 to-orange-600 bg-clip-text text-transparent flex items-center gap-2">
+            <span className="text-orange-500">⚡</span>
+            ADMIN PANEL
+          </h1>
+        </div>
+        
+        {/* Dark Mode Toggle */}
         <button
           onClick={() => setDarkMode(!darkMode)}
-          className="bg-slate-800 hover:bg-slate-700 text-white p-2 rounded-lg shadow-lg transition-colors"
+          className="bg-slate-800 hover:bg-slate-700 text-white p-3 rounded-xl shadow-lg transition-all hover:scale-105 active:scale-95"
           title={darkMode ? 'Gündüz Modu' : 'Gece Modu'}
         >
-          {darkMode ? '☀️' : '🌙'}
+          <span className="text-xl">{darkMode ? '☀️' : '🌙'}</span>
         </button>
-        <img 
-          src="/logo.png" 
-          alt="Logo" 
-          className="w-36 h-36"
-        />
       </div>
 
       {/* Açılır Menü */}
@@ -2357,9 +2378,13 @@ export default function Home() {
                 <img 
                   src="/logo.png" 
                   alt="Logo" 
-                  className="w-24 h-24 mx-auto mb-3"
+                  className="w-32 h-32 mx-auto mb-4"
                 />
-                <h2 className="text-xl font-bold text-white">Admin Panel</h2>
+                <div className="bg-gradient-to-r from-slate-800 to-slate-900 px-4 py-2 rounded-lg border border-slate-700 inline-block">
+                  <h2 className="text-lg font-black tracking-wider bg-gradient-to-r from-orange-400 to-orange-600 bg-clip-text text-transparent">
+                    ADMIN PANEL
+                  </h2>
+                </div>
               </div>
 
               {/* Menü Seçenekleri */}
@@ -2893,13 +2918,120 @@ export default function Home() {
     
     const filteredHistory = getFilteredHistory()
     
-    // Toplam tutar hesapla (filtrelenmiş veriden)
+    // Toplam tutar hesapla (filtrelenmiş TÜM veriden - sadece mevcut sayfa değil)
     const totalAmount = filteredHistory.reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
     const cashAmount = filteredHistory.filter(p => p.payment_method === 'cash').reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
     const cardAmount = filteredHistory.filter(p => p.payment_method === 'card').reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
 
+    // Sayfalama hesaplamaları
+    const totalPages = Math.ceil(filteredHistory.length / HISTORY_ITEMS_PER_PAGE)
+    const startIndex = (historyCurrentPage - 1) * HISTORY_ITEMS_PER_PAGE
+    const endIndex = startIndex + HISTORY_ITEMS_PER_PAGE
+    const currentPageData = filteredHistory.slice(startIndex, endIndex)
+
+    // Sayfa değiştirme fonksiyonu
+    const handlePageChange = (newPage: number) => {
+      setHistoryCurrentPage(newPage)
+      // Yumuşak scroll to top
+      const container = document.getElementById('history-container')
+      if (container) {
+        container.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    }
+
+    // Sayfa butonları oluştur
+    const renderPageButtons = () => {
+      const buttons = []
+      const maxVisibleButtons = 7
+      
+      if (totalPages <= maxVisibleButtons) {
+        // Tüm sayfaları göster
+        for (let i = 1; i <= totalPages; i++) {
+          buttons.push(
+            <button
+              key={i}
+              onClick={() => handlePageChange(i)}
+              className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                historyCurrentPage === i
+                  ? 'bg-blue-600 text-white shadow-lg scale-105'
+                  : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'
+              }`}
+            >
+              {i}
+            </button>
+          )
+        }
+      } else {
+        // İlk sayfa
+        buttons.push(
+          <button
+            key={1}
+            onClick={() => handlePageChange(1)}
+            className={`px-4 py-2 rounded-lg font-medium transition-all ${
+              historyCurrentPage === 1
+                ? 'bg-blue-600 text-white shadow-lg scale-105'
+                : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'
+            }`}
+          >
+            1
+          </button>
+        )
+
+        // Başlangıç elipsis
+        if (historyCurrentPage > 3) {
+          buttons.push(
+            <span key="start-ellipsis" className="px-2 text-slate-500">...</span>
+          )
+        }
+
+        // Ortadaki sayfalar
+        const startPage = Math.max(2, historyCurrentPage - 1)
+        const endPage = Math.min(totalPages - 1, historyCurrentPage + 1)
+        
+        for (let i = startPage; i <= endPage; i++) {
+          buttons.push(
+            <button
+              key={i}
+              onClick={() => handlePageChange(i)}
+              className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                historyCurrentPage === i
+                  ? 'bg-blue-600 text-white shadow-lg scale-105'
+                  : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'
+              }`}
+            >
+              {i}
+            </button>
+          )
+        }
+
+        // Bitiş elipsis
+        if (historyCurrentPage < totalPages - 2) {
+          buttons.push(
+            <span key="end-ellipsis" className="px-2 text-slate-500">...</span>
+          )
+        }
+
+        // Son sayfa
+        buttons.push(
+          <button
+            key={totalPages}
+            onClick={() => handlePageChange(totalPages)}
+            className={`px-4 py-2 rounded-lg font-medium transition-all ${
+              historyCurrentPage === totalPages
+                ? 'bg-blue-600 text-white shadow-lg scale-105'
+                : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'
+            }`}
+          >
+            {totalPages}
+          </button>
+        )
+      }
+
+      return buttons
+    }
+
     return (
-      <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
+      <div id="history-container" className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">📋 Geçmiş Siparişler</h2>
           
@@ -2910,7 +3042,10 @@ export default function Home() {
             </label>
             <select
               value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value as any)}
+              onChange={(e) => {
+                setDateFilter(e.target.value as any)
+                setHistoryCurrentPage(1) // Filtre değiştiğinde sayfa 1'e dön
+              }}
               className="px-4 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="today">📅 Son 24 Saat</option>
@@ -2921,11 +3056,14 @@ export default function Home() {
           </div>
         </div>
 
-        {/* İstatistikler */}
+        {/* İstatistikler - TÜM filtrelenmiş veriden hesaplanıyor */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl">
             <div className="text-sm text-blue-600 dark:text-blue-400 font-medium">Toplam Sipariş</div>
             <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">{filteredHistory.length}</div>
+            <div className="text-xs text-slate-500 mt-1">
+              Sayfa {historyCurrentPage} / {totalPages || 1}
+            </div>
           </div>
           <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl">
             <div className="text-sm text-green-600 dark:text-green-400 font-medium">Toplam Tutar</div>
@@ -2955,14 +3093,14 @@ export default function Home() {
               </tr>
             </thead>
             <tbody>
-              {filteredHistory.length === 0 ? (
+              {currentPageData.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="text-center py-8 text-slate-500">
                     Bu tarih aralığında sipariş bulunamadı.
                   </td>
                 </tr>
               ) : (
-                filteredHistory.map(pkg => (
+                currentPageData.map(pkg => (
                   <tr key={pkg.id} className="border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50">
                     <td className="py-3 px-4">
                       <span className="font-bold text-blue-600 dark:text-blue-400">
@@ -3001,6 +3139,39 @@ export default function Home() {
             </tbody>
           </table>
         </div>
+
+        {/* Sayfalama Butonları */}
+        {totalPages > 1 && (
+          <div className="mt-6 flex justify-center items-center gap-2 flex-wrap">
+            {/* Önceki Sayfa */}
+            <button
+              onClick={() => handlePageChange(Math.max(1, historyCurrentPage - 1))}
+              disabled={historyCurrentPage === 1}
+              className="px-4 py-2 rounded-lg font-medium transition-all bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              ← Önceki
+            </button>
+
+            {/* Sayfa Numaraları */}
+            {renderPageButtons()}
+
+            {/* Sonraki Sayfa */}
+            <button
+              onClick={() => handlePageChange(Math.min(totalPages, historyCurrentPage + 1))}
+              disabled={historyCurrentPage === totalPages}
+              className="px-4 py-2 rounded-lg font-medium transition-all bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Sonraki →
+            </button>
+          </div>
+        )}
+
+        {/* Sayfa Bilgisi */}
+        {totalPages > 1 && (
+          <div className="mt-4 text-center text-sm text-slate-500">
+            Gösterilen: {startIndex + 1}-{Math.min(endIndex, filteredHistory.length)} / Toplam: {filteredHistory.length} sipariş
+          </div>
+        )}
       </div>
     )
   }

@@ -413,6 +413,14 @@ export default function RestoranPage() {
       console.log('🔴 Restoran Realtime dinleme başlatıldı - Canlı yayın modu aktif')
       console.log('📍 Dinlenen restoran ID:', selectedRestaurantId)
       
+      // Realtime callback fonksiyonu - her zaman güncel state'e erişmek için burada tanımla
+      const handlePackageChange = async (payload: any) => {
+        console.log('📦 Paket değişikliği algılandı:', payload.eventType, 'ID:', payload.new?.id || payload.old?.id)
+        // State'i güncelle - sayfa yenileme YOK!
+        await fetchPackages()
+        console.log('✅ Restoran state güncellendi (packages)')
+      }
+      
       // Restoran paketlerini dinle (sadece bu restoranın paketleri)
       const channel = supabase
         .channel(`restaurant-packages-${selectedRestaurantId}`, {
@@ -428,11 +436,7 @@ export default function RestoranPage() {
             table: 'packages',
             filter: `restaurant_id=eq.${selectedRestaurantId}` // Sadece bu restoranın paketleri
           },
-          (payload) => {
-            console.log('📦 Paket değişikliği algılandı:', payload.eventType, 'ID:', payload.new?.id || payload.old?.id)
-            // State'i güncelle - sayfa yenileme YOK!
-            fetchPackages()
-          }
+          handlePackageChange
         )
         .subscribe((status, err) => {
           if (status === 'SUBSCRIBED') {
@@ -500,7 +504,7 @@ export default function RestoranPage() {
       if (!formData.deliveryAddress.trim()) {
         throw new Error('Teslimat adresi gereklidir')
       }
-      if (!formData.packageAmount.trim() || parseFloat(formData.packageAmount) <= 0) {
+      if (!formData.packageAmount.trim() || parseFloat(formData.packageAmount) < 0) {
         throw new Error('Geçerli bir paket tutarı giriniz')
       }
       if (!selectedRestaurantId) {

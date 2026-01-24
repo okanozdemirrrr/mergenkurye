@@ -19,6 +19,8 @@ interface Package {
   accepted_at?: string
   picked_up_at?: string
   delivered_at?: string
+  latitude?: number | null
+  longitude?: number | null
   restaurant?: { 
     name: string
     phone?: string
@@ -342,6 +344,55 @@ export default function KuryePage() {
       
       console.error('❌ Kurye durumu alınamadı:', error)
       setErrorMessage('Kurye durumu alınamadı: ' + error.message)
+    }
+  }
+
+  // AKILLI NAVİGASYON - Koordinat veya Adres Bazlı
+  const handleOpenNavigation = (pkg: Package) => {
+    console.log('🗺️ Navigasyon açılıyor:', { 
+      latitude: pkg.latitude, 
+      longitude: pkg.longitude, 
+      address: pkg.delivery_address 
+    })
+
+    // Koordinat varsa hassas navigasyon kullan
+    if (pkg.latitude && pkg.longitude) {
+      const lat = pkg.latitude
+      const lng = pkg.longitude
+      
+      // Cihaz tespiti
+      const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera
+      const isIOS = /iPad|iPhone|iPod/.test(userAgent) && !(window as any).MSStream
+      const isAndroid = /android/i.test(userAgent)
+      
+      console.log('📱 Cihaz:', { isIOS, isAndroid })
+      
+      if (isIOS) {
+        // iOS - Apple Maps
+        const appleMapsUrl = `maps://maps.apple.com/?q=${lat},${lng}&dirflg=d`
+        console.log('🍎 Apple Maps URL:', appleMapsUrl)
+        window.location.href = appleMapsUrl
+        
+        // Fallback: Apple Maps açılmazsa Google Maps'e yönlendir
+        setTimeout(() => {
+          const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
+          window.open(googleMapsUrl, '_blank')
+        }, 1500)
+      } else {
+        // Android / Web - Google Maps
+        const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
+        console.log('🤖 Google Maps URL:', googleMapsUrl)
+        window.open(googleMapsUrl, '_blank')
+      }
+      
+      console.log('✅ Koordinat bazlı navigasyon başlatıldı')
+    } else {
+      // Koordinat yoksa adres bazlı navigasyon
+      console.warn('⚠️ Koordinat bulunamadı, adres bazlı navigasyon kullanılıyor')
+      const address = encodeURIComponent(pkg.delivery_address)
+      const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${address}`
+      console.log('🗺️ Adres bazlı Maps URL:', mapsUrl)
+      window.open(mapsUrl, '_blank')
     }
   }
 
@@ -806,13 +857,7 @@ export default function KuryePage() {
       // [Numara] konum / yol / harita / navigasyon
       if (transcript.includes('konum') || transcript.includes('yol') || transcript.includes('harita') || transcript.includes('navigasyon')) {
         console.log('🗺️ NAVİGASYON komutu tetiklendi')
-        console.log('📍 Adres:', pkg.delivery_address)
-        
-        const address = encodeURIComponent(pkg.delivery_address)
-        const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${address}`
-        console.log('🗺️ Maps URL:', mapsUrl)
-        
-        window.open(mapsUrl, '_blank')
+        handleOpenNavigation(pkg)
         speak('Navigasyon açılıyor. Güvenli sürüşler')
         return
       }
@@ -904,8 +949,7 @@ export default function KuryePage() {
       console.log('🗺️ Genel NAVİGASYON komutu, bulunan paket:', activePackage)
       
       if (activePackage) {
-        const address = encodeURIComponent(activePackage.delivery_address)
-        window.open(`https://www.google.com/maps/search/?api=1&query=${address}`, '_blank')
+        handleOpenNavigation(activePackage)
         speak('Navigasyon açılıyor')
       } else {
         speak('Paket yok')
@@ -1125,6 +1169,42 @@ export default function KuryePage() {
       console.log('🔴 Kurye Realtime dinleme başlatıldı - Canlı yayın modu aktif')
       console.log('📍 Dinlenen kurye ID:', courierId)
       
+      // Realtime callback fonksiyonları - her zaman güncel state'e erişmek için burada tanımla
+      const handlePackageChange = async (payload: any) => {
+        console.log('📦 Paket değişikliği algılandı:', payload.eventType, 'ID:', payload.new?.id || payload.old?.id)
+        // State'i güncelle - sayfa yenileme YOK!
+        await fetchPackages(false)
+        await fetchDailyStats()
+        await fetchTodayDeliveredPackages()
+        await fetchLeaderboard()
+        await fetchUnsettledAmount()
+        console.log('✅ Kurye state güncellendi (packages)')
+      }
+
+      const handleCourierStatusChange = async (payload: any) => {
+        // Sadece status veya is_active değiştiğinde güncelle
+        const oldRecord = payload.old as any
+        const newRecord = payload.new as any
+        
+        if (oldRecord && newRecord) {
+          const statusChanged = oldRecord.status !== newRecord.status
+          const activeChanged = oldRecord.is_active !== newRecord.is_active
+          
+          if (statusChanged || activeChanged) {
+            console.log('👤 Kurye durumu değişti:', { 
+              status: statusChanged ? `${oldRecord.status} → ${newRecord.status}` : 'değişmedi',
+              is_active: activeChanged ? `${oldRecord.is_active} → ${newRecord.is_active}` : 'değişmedi'
+            })
+            await fetchCourierStatus()
+            console.log('✅ Kurye state güncellendi (status)')
+          }
+        } else {
+          console.log('👤 Kurye durumu güncellendi')
+          await fetchCourierStatus()
+          console.log('✅ Kurye state güncellendi (status)')
+        }
+      }
+      
       // Paket değişikliklerini dinle (sadece bu kuryenin paketleri)
       const packagesChannel = supabase
         .channel(`courier-packages-${courierId}`, {
@@ -1140,15 +1220,7 @@ export default function KuryePage() {
             table: 'packages',
             filter: `courier_id=eq.${courierId}` // Sadece bu kuryenin paketleri
           },
-          (payload) => {
-            console.log('📦 Paket değişikliği algılandı:', payload.eventType, 'ID:', payload.new?.id || payload.old?.id)
-            // State'i güncelle - sayfa yenileme YOK!
-            fetchPackages(false)
-            fetchDailyStats()
-            fetchTodayDeliveredPackages()
-            fetchLeaderboard()
-            fetchUnsettledAmount()
-          }
+          handlePackageChange
         )
         .subscribe((status, err) => {
           if (status === 'SUBSCRIBED') {
@@ -1180,27 +1252,7 @@ export default function KuryePage() {
             table: 'couriers',
             filter: `id=eq.${courierId}`
           },
-          (payload) => {
-            // Sadece status veya is_active değiştiğinde güncelle
-            const oldRecord = payload.old as any
-            const newRecord = payload.new as any
-            
-            if (oldRecord && newRecord) {
-              const statusChanged = oldRecord.status !== newRecord.status
-              const activeChanged = oldRecord.is_active !== newRecord.is_active
-              
-              if (statusChanged || activeChanged) {
-                console.log('👤 Kurye durumu değişti:', { 
-                  status: statusChanged ? `${oldRecord.status} → ${newRecord.status}` : 'değişmedi',
-                  is_active: activeChanged ? `${oldRecord.is_active} → ${newRecord.is_active}` : 'değişmedi'
-                })
-                fetchCourierStatus()
-              }
-            } else {
-              console.log('👤 Kurye durumu güncellendi')
-              fetchCourierStatus()
-            }
-          }
+          handleCourierStatusChange
         )
         .subscribe((status) => {
           if (status === 'SUBSCRIBED') {
@@ -1602,13 +1654,16 @@ export default function KuryePage() {
                   {/* Navigasyon */}
                   <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
                     <h3 className="text-pink-400 font-bold mb-2 flex items-center gap-2">
-                      <span className="text-xl">🗺️</span> Navigasyon Açmak
+                      <span className="text-xl">🗺️</span> Akıllı Navigasyon Açmak
                     </h3>
                     <p className="text-slate-300 text-sm mb-2">
                       <span className="text-white font-mono bg-slate-700 px-2 py-1 rounded">6 konum</span> veya{' '}
                       <span className="text-white font-mono bg-slate-700 px-2 py-1 rounded">6 yol</span> veya{' '}
                       <span className="text-white font-mono bg-slate-700 px-2 py-1 rounded">6 harita</span> veya{' '}
                       <span className="text-white font-mono bg-slate-700 px-2 py-1 rounded">6 navigasyon</span>
+                    </p>
+                    <p className="text-xs text-pink-300 mt-2">
+                      💡 Koordinat varsa hassas GPS navigasyonu, yoksa adres bazlı yönlendirme açılır
                     </p>
                   </div>
                 </div>
@@ -1749,6 +1804,23 @@ export default function KuryePage() {
                   <div className="mb-3 p-2 bg-slate-800/50 rounded-lg">
                     <p className="text-xs text-slate-300">{pkg.delivery_address}</p>
                   </div>
+
+                  {/* AKILLI NAVİGASYON BUTONU */}
+                  {pkg.latitude && pkg.longitude ? (
+                    <button
+                      onClick={() => handleOpenNavigation(pkg)}
+                      className="w-full mb-3 py-3 sm:py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 active:from-indigo-800 active:to-purple-800 text-white text-base sm:text-lg font-bold rounded-xl transition-all shadow-lg hover:shadow-xl active:scale-95 flex items-center justify-center gap-2"
+                    >
+                      <span className="text-2xl">📍</span>
+                      <span>KONUMA GİT</span>
+                    </button>
+                  ) : (
+                    <div className="w-full mb-3 py-2 px-3 bg-slate-800/50 border border-slate-700 rounded-lg text-center">
+                      <p className="text-xs text-slate-400">
+                        📍 Koordinat bilgisi yok - Adres tarifine bakın
+                      </p>
+                    </div>
+                  )}
 
                   {/* Durum Badge */}
                   <div className="mb-3">
