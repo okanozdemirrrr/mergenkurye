@@ -1763,14 +1763,11 @@ export default function Home() {
             <img 
               src="/logo.png" 
               alt="Logo" 
-              className="w-64 h-64 mx-auto mb-6"
+              className="w-64 h-64 mx-auto mb-4"
             />
-            <div className="bg-gradient-to-r from-slate-800 to-slate-900 px-6 py-3 rounded-xl border border-slate-700 inline-block mb-2">
-              <h1 className="text-2xl font-black tracking-wider bg-gradient-to-r from-orange-400 via-orange-500 to-orange-600 bg-clip-text text-transparent flex items-center justify-center gap-2">
-                <span className="text-orange-500">⚡</span>
-                ADMIN GİRİŞİ
-              </h1>
-            </div>
+            <h1 className="text-2xl font-bold text-white mb-2">
+              Admin Girişi
+            </h1>
           </div>
           <input 
             type="text" 
@@ -2329,45 +2326,32 @@ export default function Home() {
       )}
 
     <div className={`min-h-screen ${darkMode ? 'bg-slate-50 dark:bg-slate-900' : 'bg-white'}`}>
-      {/* Hamburger Menü Butonu ve Logo - Sol Üst */}
-      <div className="fixed top-4 left-4 z-50 flex items-center gap-3">
-        <button 
-          onClick={() => setShowMenu(!showMenu)} 
-          className="bg-slate-800 hover:bg-slate-700 text-white p-3 rounded-lg shadow-lg transition-colors"
+      {/* Hamburger Menü Butonu - Sol Üst */}
+      <button 
+        onClick={() => setShowMenu(!showMenu)} 
+        className="fixed top-4 left-4 z-50 bg-slate-800 hover:bg-slate-700 text-white p-3 rounded-lg shadow-lg transition-colors"
+      >
+        <div className="space-y-1.5">
+          <div className="w-6 h-0.5 bg-white"></div>
+          <div className="w-6 h-0.5 bg-white"></div>
+          <div className="w-6 h-0.5 bg-white"></div>
+        </div>
+      </button>
+
+      {/* Logo ve Dark Mode Toggle - Sağ Üst */}
+      <div className="fixed top-4 right-4 z-50 flex items-center gap-3">
+        <button
+          onClick={() => setDarkMode(!darkMode)}
+          className="bg-slate-800 hover:bg-slate-700 text-white p-2 rounded-lg shadow-lg transition-colors"
+          title={darkMode ? 'Gündüz Modu' : 'Gece Modu'}
         >
-          <div className="space-y-1.5">
-            <div className="w-6 h-0.5 bg-white"></div>
-            <div className="w-6 h-0.5 bg-white"></div>
-            <div className="w-6 h-0.5 bg-white"></div>
-          </div>
+          {darkMode ? '☀️' : '🌙'}
         </button>
-        
-        {/* Logo */}
         <img 
           src="/logo.png" 
           alt="Logo" 
-          className="w-12 h-12"
+          className="w-36 h-36"
         />
-      </div>
-
-      {/* Modern Admin Panel Başlık ve Dark Mode Toggle - Sağ Üst */}
-      <div className="fixed -top-12 right-4 z-50 flex items-center gap-3">
-        {/* Modern Admin Panel Başlık - Küçültülmüş */}
-        <div className="bg-gradient-to-r from-slate-800 to-slate-900 px-4 py-2 rounded-lg shadow-xl border border-slate-700">
-          <h1 className="text-lg font-black tracking-wider bg-gradient-to-r from-orange-400 via-orange-500 to-orange-600 bg-clip-text text-transparent flex items-center gap-1.5">
-            <span className="text-orange-500 text-base">⚡</span>
-            ADMIN PANEL
-          </h1>
-        </div>
-        
-        {/* Dark Mode Toggle */}
-        <button
-          onClick={() => setDarkMode(!darkMode)}
-          className="bg-slate-800 hover:bg-slate-700 text-white p-2.5 rounded-lg shadow-lg transition-all hover:scale-105 active:scale-95"
-          title={darkMode ? 'Gündüz Modu' : 'Gece Modu'}
-        >
-          <span className="text-lg">{darkMode ? '☀️' : '🌙'}</span>
-        </button>
       </div>
 
       {/* Açılır Menü */}
@@ -2387,13 +2371,9 @@ export default function Home() {
                 <img 
                   src="/logo.png" 
                   alt="Logo" 
-                  className="w-32 h-32 mx-auto mb-4"
+                  className="w-24 h-24 mx-auto mb-3"
                 />
-                <div className="bg-gradient-to-r from-slate-800 to-slate-900 px-4 py-2 rounded-lg border border-slate-700 inline-block">
-                  <h2 className="text-lg font-black tracking-wider bg-gradient-to-r from-orange-400 to-orange-600 bg-clip-text text-transparent">
-                    ADMIN PANEL
-                  </h2>
-                </div>
+                <h2 className="text-xl font-bold text-white">Admin Panel</h2>
               </div>
 
               {/* Menü Seçenekleri */}
@@ -2652,7 +2632,10 @@ export default function Home() {
       <div className="sticky top-0 z-30 bg-white dark:bg-slate-800 shadow-lg border-b border-slate-200 dark:border-slate-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-center items-center h-16">
-            {/* Eski başlık kaldırıldı - Yeni başlık sağ üstte */}
+            {/* Title - Ortada */}
+            <h1 className="text-3xl font-black tracking-wider bg-gradient-to-r from-gray-200 to-gray-500 bg-clip-text text-transparent" style={{fontFamily: 'Orbitron, sans-serif'}}>
+              ADMIN PANEL
+            </h1>
           </div>
         </div>
       </div>
