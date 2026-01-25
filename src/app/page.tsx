@@ -102,6 +102,14 @@ export default function Home() {
   const [restaurantSubTab, setRestaurantSubTab] = useState<'list' | 'details' | 'debt' | 'payments'>('list')
   const [showCourierSubmenu, setShowCourierSubmenu] = useState(false)
   const [courierSubTab, setCourierSubTab] = useState<'accounts' | 'performance' | 'earnings'>('accounts')
+  const [accountsStartDate, setAccountsStartDate] = useState(() => {
+    const today = new Date()
+    return today.toISOString().split('T')[0]
+  })
+  const [accountsEndDate, setAccountsEndDate] = useState(() => {
+    const today = new Date()
+    return today.toISOString().split('T')[0]
+  })
   const [darkMode, setDarkMode] = useState(true) // Varsayılan dark mode
   const [restaurantChartFilter, setRestaurantChartFilter] = useState<'today' | 'week' | 'month'>('today')
   const [courierEarningsFilter, setCourierEarningsFilter] = useState<'today' | 'week' | 'month'>('today')
@@ -2339,7 +2347,7 @@ export default function Home() {
       </button>
 
       {/* Logo ve Dark Mode Toggle - Sağ Üst */}
-      <div className="fixed -top-10 right-4 z-50 flex items-center gap-3">
+      <div className="fixed -top-16 right-4 z-50 flex items-center gap-3">
         <button
           onClick={() => setDarkMode(!darkMode)}
           className="bg-slate-800 hover:bg-slate-700 text-white p-2 rounded-lg shadow-lg transition-colors"
@@ -2675,8 +2683,8 @@ export default function Home() {
   function LiveTrackingTab() {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          <div className="lg:col-span-3 space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+          <div className="lg:col-span-4 space-y-6">
             {/* SİPARİŞ KARTLARI */}
             <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
               <h2 className="text-2xl font-bold mb-6">� Canlı Sipariş Takibi</h2>
@@ -2823,9 +2831,9 @@ export default function Home() {
 
         {/* SAĞ PANEL: KURYELERİN DURUMU */}
         <div className="lg:col-span-1 space-y-4">
-          <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
-            <h2 className="text-lg font-bold mb-4">🚴 Kurye Durumları</h2>
-            <div className="space-y-3">
+          <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-4">
+            <h2 className="text-base font-bold mb-3">🚴 Kurye Durumları</h2>
+            <div className="space-y-2">
               {couriers.map(c => {
                 // Bu kuryenin paketlerini bul
                 const courierPackages = packages.filter(pkg => pkg.courier_id === c.id)
@@ -2833,10 +2841,10 @@ export default function Home() {
                 return (
                   <div 
                     key={c.id} 
-                    className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl border dark:border-slate-600"
+                    className="p-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg border dark:border-slate-600"
                   >
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="font-bold text-sm">{c.full_name}</span>
+                    <div className="flex justify-between items-center mb-1.5">
+                      <span className="font-bold text-xs">{c.full_name}</span>
                       <div className="text-right">
                         <span className="text-[10px] text-green-600 dark:text-green-400 block font-semibold">
                           📦 {c.todayDeliveryCount || 0} bugün
@@ -2848,9 +2856,9 @@ export default function Home() {
                     </div>
                     
                     {/* Aktiflik Durumu */}
-                    <div className="mb-2">
-                      {!c.is_active && <span className="text-[10px] bg-gray-100 text-gray-700 px-2 py-1 rounded-md font-bold">⚫ AKTİF DEĞİL</span>}
-                      {c.is_active && <span className="text-[10px] bg-green-100 text-green-700 px-2 py-1 rounded-md font-bold">🟢 AKTİF</span>}
+                    <div className="mb-1.5">
+                      {!c.is_active && <span className="text-[9px] bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded font-bold">⚫ AKTİF DEĞİL</span>}
+                      {c.is_active && <span className="text-[9px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-bold">🟢 AKTİF</span>}
                     </div>
                     
                     {/* Paket Durumları */}
@@ -3166,113 +3174,205 @@ export default function Home() {
   }
 
   function CouriersTab() {
-    // Kurye Hesapları görünümü
+    // Kurye Hesapları görünümü - PROFESYONEL MUHASEBE MODÜLÜ
     if (courierSubTab === 'accounts') {
+      // Her kurye için hak ediş hesaplama
+      const calculateCourierEarnings = (courierId: string) => {
+        if (!accountsStartDate || !accountsEndDate) return { total: 0, count: 0 }
+
+        const start = new Date(accountsStartDate)
+        start.setHours(0, 0, 0, 0)
+        const end = new Date(accountsEndDate)
+        end.setHours(23, 59, 59, 999)
+
+        // Filtrelenmiş paketler: delivered_at tarih aralığında VE settled_at NULL
+        const courierPackages = packages.filter(pkg => 
+          pkg.courier_id === courierId &&
+          pkg.status === 'delivered' &&
+          pkg.delivered_at &&
+          new Date(pkg.delivered_at) >= start &&
+          new Date(pkg.delivered_at) <= end &&
+          !pkg.settled_at // Henüz ödenmemiş
+        )
+
+        const total = courierPackages.reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
+        return { total, count: courierPackages.length }
+      }
+
+      // Hak edişi öde fonksiyonu
+      const handlePayEarnings = async (courierId: string, courierName: string) => {
+        const earnings = calculateCourierEarnings(courierId)
+        
+        if (earnings.total === 0) {
+          setErrorMessage('Ödenecek hak ediş bulunmuyor!')
+          setTimeout(() => setErrorMessage(''), 3000)
+          return
+        }
+
+        // Onay penceresi
+        const confirmed = window.confirm(
+          `${courierName} kuryesine ${earnings.total.toFixed(2)} TL hak edişi ödeme yapılıyor.\n\n` +
+          `Tarih Aralığı: ${accountsStartDate} - ${accountsEndDate}\n` +
+          `Teslimat Sayısı: ${earnings.count} adet\n\n` +
+          `Onaylıyor musunuz?`
+        )
+
+        if (!confirmed) return
+
+        try {
+          const start = new Date(accountsStartDate)
+          start.setHours(0, 0, 0, 0)
+          const end = new Date(accountsEndDate)
+          end.setHours(23, 59, 59, 999)
+
+          // Tarih aralığındaki settled_at NULL olan paketleri güncelle
+          const { error } = await supabase
+            .from('packages')
+            .update({ settled_at: new Date().toISOString() })
+            .eq('courier_id', courierId)
+            .eq('status', 'delivered')
+            .gte('delivered_at', start.toISOString())
+            .lte('delivered_at', end.toISOString())
+            .is('settled_at', null)
+
+          if (error) throw error
+
+          setSuccessMessage(`✅ ${courierName} kuryesine ${earnings.total.toFixed(2)} TL hak edişi ödendi!`)
+          setTimeout(() => setSuccessMessage(''), 3000)
+
+          // Paketleri yenile
+          fetchPackages()
+        } catch (error: any) {
+          console.error('Hak ediş ödeme hatası:', error)
+          setErrorMessage('Ödeme yapılırken hata oluştu: ' + error.message)
+          setTimeout(() => setErrorMessage(''), 5000)
+        }
+      }
+
       return (
         <>
           <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
-            <h2 className="text-2xl font-bold mb-6">👤 Kurye Hesapları</h2>
-          
-          {/* Kurye Durumu Özeti */}
-          <div className="mb-6 p-4 bg-slate-100 dark:bg-slate-700 rounded-lg">
-            <div className="font-bold mb-2">📊 Kurye Durumu Özeti:</div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">{couriers.length}</div>
-                <div className="text-xs text-slate-600 dark:text-slate-400">Toplam Kurye</div>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold">💰 Kurye Hak Edişleri</h2>
+              
+              {/* Tarih Aralığı Filtresi */}
+              <div className="flex items-center gap-3">
+                <label className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                  Tarih Aralığı:
+                </label>
+                <input
+                  type="date"
+                  value={accountsStartDate}
+                  onChange={(e) => setAccountsStartDate(e.target.value)}
+                  className="px-3 py-2 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-600 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+                <span className="text-slate-500 dark:text-slate-400 font-bold">→</span>
+                <input
+                  type="date"
+                  value={accountsEndDate}
+                  onChange={(e) => setAccountsEndDate(e.target.value)}
+                  className="px-3 py-2 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-600 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                />
               </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">{couriers.filter(c => c.is_active).length}</div>
-                <div className="text-xs text-slate-600 dark:text-slate-400">Aktif Kurye</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-red-600">{couriers.filter(c => !c.is_active).length}</div>
-                <div className="text-xs text-slate-600 dark:text-slate-400">Pasif Kurye</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-purple-600">
-                  {couriers.reduce((sum, c) => sum + (c.activePackageCount || 0), 0)}
+            </div>
+
+            {/* Bilgilendirme */}
+            <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">ℹ️</span>
+                <div className="flex-1">
+                  <p className="text-sm text-blue-900 dark:text-blue-300 font-medium mb-1">
+                    Hak Ediş Sistemi Nasıl Çalışır?
+                  </p>
+                  <ul className="text-xs text-blue-800 dark:text-blue-400 space-y-1">
+                    <li>• Seçilen tarih aralığındaki <strong>teslim edilmiş</strong> paketler listelenir</li>
+                    <li>• Sadece <strong>daha önce ödenmemiş</strong> (settled_at NULL) paketler hesaba dahil edilir</li>
+                    <li>• "Hak Edişi Öde" butonuna basıldığında paketler <strong>settled_at</strong> ile işaretlenir</li>
+                    <li>• Aynı tarih aralığı tekrar seçildiğinde ödenen paketler <strong>0 TL</strong> gösterir</li>
+                  </ul>
                 </div>
-                <div className="text-xs text-slate-600 dark:text-slate-400">Toplam Aktif Paket</div>
               </div>
             </div>
-            <div className="mt-3 text-xs text-slate-600 dark:text-slate-400 text-center">
-              Son güncelleme: {new Date().toLocaleTimeString('tr-TR')} • Otomatik güncelleme: 30 saniye
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {couriers.length === 0 ? (
-              <div className="col-span-full text-center py-8 text-slate-500">
-                <div className="text-4xl mb-2">🚫</div>
-                <div className="font-bold">Kurye bulunamadı!</div>
-                <div className="text-sm mt-2">Couriers tablosunda veri yok. SQL'i çalıştırın.</div>
-              </div>
-            ) : (
-              couriers.map(c => (
-                <div key={c.id} className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border dark:border-slate-600">
-                  <div className="flex justify-between items-start mb-3">
-                    <button
-                      onClick={() => handleCourierClick(c.id)}
-                      className="font-bold text-lg text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors cursor-pointer"
-                    >
-                      {c.full_name}
-                    </button>
-                    <div className="flex items-center gap-2">
-                      <div className={`w-3 h-3 rounded-full ${c.is_active ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                    </div>
-                  </div>
+
+            {/* Kurye Listesi */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {couriers.length === 0 ? (
+                <div className="col-span-full text-center py-8 text-slate-500">
+                  <div className="text-4xl mb-2">🚫</div>
+                  <div className="font-bold">Kurye bulunamadı!</div>
+                </div>
+              ) : (
+                couriers.map(c => {
+                  const earnings = calculateCourierEarnings(c.id)
                   
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-slate-600 dark:text-slate-400">Durum:</span>
-                      <span className={`font-medium ${
-                        c.is_active ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        {c.is_active ? 'Aktif' : 'Aktif Değil'}
-                      </span>
-                    </div>
-                    
-                    <div className="flex justify-between">
-                      <span className="text-slate-600 dark:text-slate-400">Aktif Paket:</span>
-                      <span className="font-bold text-blue-600">{c.activePackageCount || 0}</span>
-                    </div>
-                    
-                    <div className="flex justify-between">
-                      <span className="text-slate-600 dark:text-slate-400">Bugün Teslim:</span>
-                      <span className="font-bold text-green-600">{c.todayDeliveryCount || 0}</span>
-                    </div>
-                    
-                    <div className="flex justify-between">
-                      <span className="text-slate-600 dark:text-slate-400">Toplam Teslim:</span>
-                      <span className="font-bold text-purple-600">{c.deliveryCount || 0}</span>
-                    </div>
+                  return (
+                    <div key={c.id} className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-700/50 dark:to-slate-800/50 p-5 rounded-xl border-2 border-slate-200 dark:border-slate-600 shadow-lg hover:shadow-xl transition-all">
+                      {/* Kurye Başlık */}
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <h3 className="font-bold text-lg text-slate-900 dark:text-white">
+                            {c.full_name}
+                          </h3>
+                          <div className="flex items-center gap-2 mt-1">
+                            <div className={`w-2 h-2 rounded-full ${c.is_active ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                            <span className="text-xs text-slate-600 dark:text-slate-400">
+                              {c.is_active ? 'Aktif' : 'Pasif'}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xs text-slate-500 dark:text-slate-400">Teslimat</div>
+                          <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                            {earnings.count}
+                          </div>
+                        </div>
+                      </div>
 
-                    <div className="flex justify-between">
-                      <span className="text-slate-600 dark:text-slate-400">Kuryenin Borcu:</span>
-                      <span className={`font-bold ${
-                        (c.totalDebt || 0) > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
-                      }`}>
-                        {(c.totalDebt || 0).toFixed(2)} ₺
-                      </span>
-                    </div>
+                      {/* Hak Ediş Tutarı */}
+                      <div className="mb-4 p-4 bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">
+                          Ödenecek Hak Ediş
+                        </div>
+                        <div className={`text-3xl font-black ${
+                          earnings.total > 0 
+                            ? 'text-green-600 dark:text-green-400' 
+                            : 'text-slate-400 dark:text-slate-600'
+                        }`}>
+                          {earnings.total.toFixed(2)} ₺
+                        </div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                          {accountsStartDate} - {accountsEndDate}
+                        </div>
+                      </div>
 
-                    <div className="mt-3 pt-2 border-t border-slate-200 dark:border-slate-600">
+                      {/* Hak Edişi Öde Butonu */}
+                      <button
+                        onClick={() => handlePayEarnings(c.id, c.full_name)}
+                        disabled={earnings.total === 0}
+                        className={`w-full py-3 rounded-lg font-bold text-sm transition-all shadow-md ${
+                          earnings.total > 0
+                            ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white active:scale-95'
+                            : 'bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-500 cursor-not-allowed'
+                        }`}
+                      >
+                        {earnings.total > 0 ? '💸 Hak Edişi Öde' : '✓ Ödeme Yok'}
+                      </button>
+
+                      {/* Detaylı Rapor Butonu */}
                       <button
                         onClick={() => handleCourierClick(c.id)}
-                        className="w-full text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 py-2 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+                        className="w-full mt-2 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-lg text-xs font-medium hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
                       >
-                        📊 Detaylı Rapor Görüntüle
+                        📊 Detaylı Rapor
                       </button>
                     </div>
-                  </div>
-                </div>
-              ))
-            )}
+                  )
+                })
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* Kurye Detay Modalı */}
+        {/* Kurye Detay Modalı - Mevcut modal korunuyor */}
         {showCourierModal && selectedCourierId && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
             <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
