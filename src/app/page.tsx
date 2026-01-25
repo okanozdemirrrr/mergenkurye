@@ -3176,13 +3176,36 @@ export default function Home() {
   function CouriersTab() {
     // Kurye Hesapları görünümü - PROFESYONEL MUHASEBE MODÜLÜ
     if (courierSubTab === 'accounts') {
+      // Filtreleme state'i
+      const [isFiltered, setIsFiltered] = useState(false)
+      const [filteredStartDate, setFilteredStartDate] = useState('')
+      const [filteredEndDate, setFilteredEndDate] = useState('')
+
+      // Filtrele butonu handler
+      const handleFilter = () => {
+        if (!accountsStartDate || !accountsEndDate) {
+          setErrorMessage('Lütfen tarih aralığı seçin!')
+          setTimeout(() => setErrorMessage(''), 3000)
+          return
+        }
+
+        setFilteredStartDate(accountsStartDate)
+        setFilteredEndDate(accountsEndDate)
+        setIsFiltered(true)
+        setSuccessMessage('✅ Filtre uygulandı!')
+        setTimeout(() => setSuccessMessage(''), 2000)
+      }
+
       // Her kurye için hak ediş hesaplama
       const calculateCourierEarnings = (courierId: string) => {
-        if (!accountsStartDate || !accountsEndDate) return { total: 0, count: 0 }
+        // Filtreleme yapılmamışsa 0 döndür
+        if (!isFiltered || !filteredStartDate || !filteredEndDate) {
+          return { total: 0, count: 0 }
+        }
 
-        const start = new Date(accountsStartDate)
+        const start = new Date(filteredStartDate)
         start.setHours(0, 0, 0, 0)
-        const end = new Date(accountsEndDate)
+        const end = new Date(filteredEndDate)
         end.setHours(23, 59, 59, 999)
 
         // Filtrelenmiş paketler: delivered_at tarih aralığında VE settled_at NULL
@@ -3201,6 +3224,12 @@ export default function Home() {
 
       // Hak edişi öde fonksiyonu
       const handlePayEarnings = async (courierId: string, courierName: string) => {
+        if (!isFiltered) {
+          setErrorMessage('Önce tarih aralığını seçip filtreleme yapın!')
+          setTimeout(() => setErrorMessage(''), 3000)
+          return
+        }
+
         const earnings = calculateCourierEarnings(courierId)
         
         if (earnings.total === 0) {
@@ -3212,7 +3241,7 @@ export default function Home() {
         // Onay penceresi
         const confirmed = window.confirm(
           `${courierName} kuryesine ${earnings.total.toFixed(2)} TL hak edişi ödeme yapılıyor.\n\n` +
-          `Tarih Aralığı: ${accountsStartDate} - ${accountsEndDate}\n` +
+          `Tarih Aralığı: ${filteredStartDate} - ${filteredEndDate}\n` +
           `Teslimat Sayısı: ${earnings.count} adet\n\n` +
           `Onaylıyor musunuz?`
         )
@@ -3220,9 +3249,9 @@ export default function Home() {
         if (!confirmed) return
 
         try {
-          const start = new Date(accountsStartDate)
+          const start = new Date(filteredStartDate)
           start.setHours(0, 0, 0, 0)
-          const end = new Date(accountsEndDate)
+          const end = new Date(filteredEndDate)
           end.setHours(23, 59, 59, 999)
 
           // Tarih aralığındaki settled_at NULL olan paketleri güncelle
@@ -3240,8 +3269,9 @@ export default function Home() {
           setSuccessMessage(`✅ ${courierName} kuryesine ${earnings.total.toFixed(2)} TL hak edişi ödendi!`)
           setTimeout(() => setSuccessMessage(''), 3000)
 
-          // Paketleri yenile
-          fetchPackages()
+          // Paketleri yenile ve filtreyi tekrar uygula
+          await fetchPackages()
+          setIsFiltered(false) // Filtreyi sıfırla, kullanıcı tekrar filtrelemeli
         } catch (error: any) {
           console.error('Hak ediş ödeme hatası:', error)
           setErrorMessage('Ödeme yapılırken hata oluştu: ' + error.message)
