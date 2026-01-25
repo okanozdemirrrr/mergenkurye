@@ -272,7 +272,7 @@ export default function Home() {
   }
 
   // Kurye Hak Edişleri - Filtrele butonu handler
-  const handleFilter = () => {
+  const handleFilter = async () => {
     if (!accountsStartDate || !accountsEndDate) {
       setErrorMessage('Lütfen tarih aralığı seçin!')
       setTimeout(() => setErrorMessage(''), 3000)
@@ -281,9 +281,50 @@ export default function Home() {
 
     setFilteredStartDate(accountsStartDate)
     setFilteredEndDate(accountsEndDate)
+    
+    // Teslim edilmiş paketleri yeniden çek (güncel veri için)
+    await fetchDeliveredPackages()
+    
     setIsFiltered(true)
     setSuccessMessage('✅ Filtre uygulandı!')
     setTimeout(() => setSuccessMessage(''), 2000)
+  }
+
+  // Kurye Hak Edişleri - Her kurye için hak ediş hesaplama (Supabase'den direkt)
+  const calculateCourierEarningsFromDB = async (courierId: string) => {
+    if (!isFiltered || !filteredStartDate || !filteredEndDate) {
+      return { total: 0, count: 0 }
+    }
+
+    try {
+      const start = new Date(filteredStartDate)
+      start.setHours(0, 0, 0, 0)
+      const end = new Date(filteredEndDate)
+      end.setHours(23, 59, 59, 999)
+
+      // Doğrudan Supabase'den say
+      const { data, error, count } = await supabase
+        .from('packages')
+        .select('id, order_number, delivered_at, settled_at, courier_id, status', { count: 'exact' })
+        .eq('courier_id', courierId)
+        .eq('status', 'delivered')
+        .gte('delivered_at', start.toISOString())
+        .lte('delivered_at', end.toISOString())
+        .is('settled_at', null)
+
+      if (error) {
+        console.error('❌ Supabase sorgu hatası:', error)
+        throw error
+      }
+
+      const packageCount = count || data?.length || 0
+      const total = packageCount * 80
+
+      return { total, count: packageCount }
+    } catch (error) {
+      console.error('❌ Hak ediş hesaplama hatası:', error)
+      return { total: 0, count: 0 }
+    }
   }
 
   // Kurye Hak Edişleri - Her kurye için hak ediş hesaplama
@@ -299,15 +340,15 @@ export default function Home() {
     end.setHours(23, 59, 59, 999)
 
     // Filtrelenmiş paketler: delivered_at tarih aralığında VE settled_at NULL
-    // deliveredPackages state'ini kullan (teslim edilmiş paketler)
-    const courierPackages = deliveredPackages.filter(pkg => 
-      pkg.courier_id === courierId &&
-      pkg.status === 'delivered' &&
-      pkg.delivered_at &&
-      new Date(pkg.delivered_at) >= start &&
-      new Date(pkg.delivered_at) <= end &&
-      !pkg.settled_at // Henüz ödenmemiş
-    )
+    const courierPackages = deliveredPackages.filter(pkg => {
+      if (!pkg.courier_id || pkg.courier_id !== courierId) return false
+      if (pkg.status !== 'delivered') return false
+      if (!pkg.delivered_at) return false
+      if (pkg.settled_at) return false // Zaten ödenmiş
+
+      const deliveredDate = new Date(pkg.delivered_at)
+      return deliveredDate >= start && deliveredDate <= end
+    })
 
     // Hak ediş = Paket sayısı × 80 TL
     const count = courierPackages.length
