@@ -366,47 +366,31 @@ export default function Home() {
     }
 
     try {
-      // KURAL 1: Tarih kapsamını tam olarak ayarla
-      const start = new Date(filteredStartDate)
-      start.setHours(0, 0, 0, 0) // Günün başlangıcı: 00:00:00.000
-      
-      const end = new Date(filteredEndDate)
-      end.setHours(23, 59, 59, 999) // Günün sonu: 23:59:59.999
+      // KURAL 1: Zaman Aralığı Tamiri - T23:59:59.999Z ile bitiş
+      const startISO = `${filteredStartDate}T00:00:00.000Z`
+      const endISO = `${filteredEndDate}T23:59:59.999Z`
 
-      console.log('💸 ÖDEME İŞLEMİ BAŞLIYOR:', {
-        courier_name: courierName,
-        courier_id: courierId,
-        start_date: filteredStartDate,
-        end_date: filteredEndDate,
-        start_iso: start.toISOString(),
-        end_iso: end.toISOString()
-      })
+      // KURAL 3: Log Ekle
+      console.log('Sorgulanan Tarih Aralığı:', startISO, endISO)
+      console.log('Kurye:', courierName, 'ID:', courierId)
 
-      // KURAL 2: Doğrudan Supabase sorgusunda settled_at IS NULL filtresi
+      // KURAL 2: Supabase Sorgu Düzeni
       const { data: unsettledPackages, error: fetchError, count } = await supabase
         .from('packages')
         .select('id, order_number, delivered_at, settled_at', { count: 'exact' })
         .eq('courier_id', courierId)
         .eq('status', 'delivered')
-        .gte('delivered_at', start.toISOString())
-        .lte('delivered_at', end.toISOString())
-        .is('settled_at', null) // KRİTİK: Sadece ödenmemiş paketler
+        .is('settled_at', null)
+        .gte('delivered_at', startISO)
+        .lte('delivered_at', endISO)
 
       if (fetchError) throw fetchError
 
+      console.log('Bulunan Paket Sayısı:', count || 0)
+      console.log('Paketler:', unsettledPackages)
+
       const packageCount = count || 0
       const totalEarnings = packageCount * 80
-
-      console.log('💰 ÖDEME DETAYLARI:', {
-        courier_name: courierName,
-        unsettled_packages: packageCount,
-        total_earnings: totalEarnings,
-        packages: unsettledPackages?.map(p => ({
-          id: p.id,
-          order_number: p.order_number,
-          delivered_at: p.delivered_at
-        }))
-      })
 
       if (totalEarnings === 0) {
         setErrorMessage('Ödenecek hak ediş bulunmuyor!')
@@ -424,23 +408,19 @@ export default function Home() {
 
       if (!confirmed) return
 
-      // KURAL 3: Sadece settled_at NULL olan paketleri damgala
+      // Sadece settled_at NULL olan paketleri damgala
       const { error: updateError } = await supabase
         .from('packages')
         .update({ settled_at: new Date().toISOString() })
         .eq('courier_id', courierId)
         .eq('status', 'delivered')
-        .gte('delivered_at', start.toISOString())
-        .lte('delivered_at', end.toISOString())
         .is('settled_at', null)
+        .gte('delivered_at', startISO)
+        .lte('delivered_at', endISO)
 
       if (updateError) throw updateError
 
-      console.log('✅ ÖDEME TAMAMLANDI:', {
-        courier_name: courierName,
-        packages_updated: packageCount,
-        amount: totalEarnings
-      })
+      console.log('✅ ÖDEME TAMAMLANDI:', packageCount, 'paket güncellendi')
 
       setSuccessMessage(`✅ ${courierName} kuryesine ${totalEarnings.toFixed(2)} TL hak edişi ödendi!`)
       setTimeout(() => setSuccessMessage(''), 3000)
@@ -3378,54 +3358,31 @@ export default function Home() {
       const fetchEarnings = async () => {
         setLoading(true)
         try {
-          // KURAL 1: Tarih kapsamını tam olarak ayarla
-          const start = new Date(filteredStartDate)
-          start.setHours(0, 0, 0, 0) // Günün başlangıcı: 00:00:00.000
-          
-          const end = new Date(filteredEndDate)
-          end.setHours(23, 59, 59, 999) // Günün sonu: 23:59:59.999
+          // KURAL 1: Zaman Aralığı Tamiri - T23:59:59.999Z ile bitiş
+          const startISO = `${filteredStartDate}T00:00:00.000Z`
+          const endISO = `${filteredEndDate}T23:59:59.999Z`
 
-          console.log('🔍 HAK EDİŞ SORGUSU:', {
-            courier_name: courier.full_name,
-            courier_id: courier.id,
-            start_date: filteredStartDate,
-            end_date: filteredEndDate,
-            start_iso: start.toISOString(),
-            end_iso: end.toISOString()
-          })
+          // KURAL 3: Log Ekle
+          console.log('Sorgulanan Tarih Aralığı:', startISO, endISO)
+          console.log('Kurye:', courier.full_name, 'ID:', courier.id)
 
-          // KURAL 2: Doğrudan Supabase sorgusunda settled_at IS NULL filtresi
+          // KURAL 2: Supabase Sorgu Düzeni
           const { data, error, count } = await supabase
             .from('packages')
-            .select('id, order_number, delivered_at, settled_at, courier_id, status', { count: 'exact' })
+            .select('id, order_number, delivered_at, settled_at', { count: 'exact' })
             .eq('courier_id', courier.id)
             .eq('status', 'delivered')
-            .gte('delivered_at', start.toISOString())
-            .lte('delivered_at', end.toISOString())
-            .is('settled_at', null) // KRİTİK: Sadece ödenmemiş paketler
+            .is('settled_at', null)
+            .gte('delivered_at', startISO)
+            .lte('delivered_at', endISO)
 
           if (error) throw error
 
-          console.log('📦 ÖDENMEMİŞ PAKETLER (Supabase):', {
-            courier_name: courier.full_name,
-            package_count: count || 0,
-            packages: data?.map(p => ({
-              id: p.id,
-              order_number: p.order_number,
-              delivered_at: p.delivered_at,
-              settled_at: p.settled_at
-            }))
-          })
+          console.log('Bulunan Paket Sayısı:', count || 0)
+          console.log('Paketler:', data)
 
-          // KURAL 3: State'i doğru güncelle
           const packageCount = count || 0
           const total = packageCount * 80
-
-          console.log('✅ HAK EDİŞ SONUÇ:', {
-            courier_name: courier.full_name,
-            package_count: packageCount,
-            total_earnings: total
-          })
 
           setEarnings({ total, count: packageCount })
         } catch (error) {
