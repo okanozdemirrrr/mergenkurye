@@ -102,17 +102,6 @@ export default function Home() {
   const [restaurantSubTab, setRestaurantSubTab] = useState<'list' | 'details' | 'debt' | 'payments'>('list')
   const [showCourierSubmenu, setShowCourierSubmenu] = useState(false)
   const [courierSubTab, setCourierSubTab] = useState<'accounts' | 'performance' | 'earnings'>('accounts')
-  const [accountsStartDate, setAccountsStartDate] = useState(() => {
-    const today = new Date()
-    return today.toISOString().split('T')[0]
-  })
-  const [accountsEndDate, setAccountsEndDate] = useState(() => {
-    const today = new Date()
-    return today.toISOString().split('T')[0]
-  })
-  const [isFiltered, setIsFiltered] = useState(false)
-  const [filteredStartDate, setFilteredStartDate] = useState('')
-  const [filteredEndDate, setFilteredEndDate] = useState('')
   const [darkMode, setDarkMode] = useState(true) // Varsayılan dark mode
   const [restaurantChartFilter, setRestaurantChartFilter] = useState<'today' | 'week' | 'month'>('today')
   const [courierEarningsFilter, setCourierEarningsFilter] = useState<'today' | 'week' | 'month'>('today')
@@ -268,171 +257,6 @@ export default function Home() {
         console.error('Siparişler yüklenirken hata:', error)
         setErrorMessage('Siparişler yüklenirken hata: ' + error.message)
       }
-    }
-  }
-
-  // Kurye Hak Edişleri - Filtrele butonu handler
-  const handleFilter = async () => {
-    if (!accountsStartDate || !accountsEndDate) {
-      setErrorMessage('Lütfen tarih aralığı seçin!')
-      setTimeout(() => setErrorMessage(''), 3000)
-      return
-    }
-
-    setFilteredStartDate(accountsStartDate)
-    setFilteredEndDate(accountsEndDate)
-    
-    // Teslim edilmiş paketleri yeniden çek (güncel veri için)
-    await fetchDeliveredPackages()
-    
-    setIsFiltered(true)
-    setSuccessMessage('✅ Filtre uygulandı!')
-    setTimeout(() => setSuccessMessage(''), 2000)
-  }
-
-  // Kurye Hak Edişleri - Her kurye için hak ediş hesaplama (Supabase'den direkt)
-  const calculateCourierEarningsFromDB = async (courierId: string) => {
-    if (!isFiltered || !filteredStartDate || !filteredEndDate) {
-      return { total: 0, count: 0 }
-    }
-
-    try {
-      const start = new Date(filteredStartDate)
-      start.setHours(0, 0, 0, 0)
-      const end = new Date(filteredEndDate)
-      end.setHours(23, 59, 59, 999)
-
-      // Doğrudan Supabase'den say
-      const { data, error, count } = await supabase
-        .from('packages')
-        .select('id, order_number, delivered_at, settled_at, courier_id, status', { count: 'exact' })
-        .eq('courier_id', courierId)
-        .eq('status', 'delivered')
-        .gte('delivered_at', start.toISOString())
-        .lte('delivered_at', end.toISOString())
-        .is('settled_at', null)
-
-      if (error) {
-        console.error('❌ Supabase sorgu hatası:', error)
-        throw error
-      }
-
-      const packageCount = count || data?.length || 0
-      const total = packageCount * 80
-
-      return { total, count: packageCount }
-    } catch (error) {
-      console.error('❌ Hak ediş hesaplama hatası:', error)
-      return { total: 0, count: 0 }
-    }
-  }
-
-  // Kurye Hak Edişleri - Her kurye için hak ediş hesaplama
-  const calculateCourierEarnings = (courierId: string) => {
-    // Filtreleme yapılmamışsa 0 döndür
-    if (!isFiltered || !filteredStartDate || !filteredEndDate) {
-      return { total: 0, count: 0 }
-    }
-
-    const start = new Date(filteredStartDate)
-    start.setHours(0, 0, 0, 0)
-    const end = new Date(filteredEndDate)
-    end.setHours(23, 59, 59, 999)
-
-    // Filtrelenmiş paketler: delivered_at tarih aralığında VE settled_at NULL
-    const courierPackages = deliveredPackages.filter(pkg => {
-      if (!pkg.courier_id || pkg.courier_id !== courierId) return false
-      if (pkg.status !== 'delivered') return false
-      if (!pkg.delivered_at) return false
-      if (pkg.settled_at) return false // Zaten ödenmiş
-
-      const deliveredDate = new Date(pkg.delivered_at)
-      return deliveredDate >= start && deliveredDate <= end
-    })
-
-    // Hak ediş = Paket sayısı × 80 TL
-    const count = courierPackages.length
-    const total = count * 80
-
-    return { total, count }
-  }
-
-  // Kurye Hak Edişleri - Hak edişi öde fonksiyonu
-  const handlePayEarnings = async (courierId: string, courierName: string) => {
-    if (!isFiltered) {
-      setErrorMessage('Önce tarih aralığını seçip filtreleme yapın!')
-      setTimeout(() => setErrorMessage(''), 3000)
-      return
-    }
-
-    try {
-      // KURAL 1: Zaman Aralığı Tamiri - T23:59:59.999Z ile bitiş
-      const startISO = `${filteredStartDate}T00:00:00.000Z`
-      const endISO = `${filteredEndDate}T23:59:59.999Z`
-
-      // KURAL 3: Log Ekle
-      console.log('Sorgulanan Tarih Aralığı:', startISO, endISO)
-      console.log('Kurye:', courierName, 'ID:', courierId)
-
-      // KURAL 2: Supabase Sorgu Düzeni
-      const { data: unsettledPackages, error: fetchError, count } = await supabase
-        .from('packages')
-        .select('id, order_number, delivered_at, settled_at', { count: 'exact' })
-        .eq('courier_id', courierId)
-        .eq('status', 'delivered')
-        .is('settled_at', null)
-        .gte('delivered_at', startISO)
-        .lte('delivered_at', endISO)
-
-      if (fetchError) throw fetchError
-
-      console.log('Bulunan Paket Sayısı:', count || 0)
-      console.log('Paketler:', unsettledPackages)
-
-      const packageCount = count || 0
-      const totalEarnings = packageCount * 80
-
-      if (totalEarnings === 0) {
-        setErrorMessage('Ödenecek hak ediş bulunmuyor!')
-        setTimeout(() => setErrorMessage(''), 3000)
-        return
-      }
-
-      // Onay penceresi
-      const confirmed = window.confirm(
-        `${courierName} kuryesine ${totalEarnings.toFixed(2)} TL hak edişi ödeme yapılıyor.\n\n` +
-        `Tarih Aralığı: ${filteredStartDate} - ${filteredEndDate}\n` +
-        `Teslimat Sayısı: ${packageCount} adet\n\n` +
-        `Onaylıyor musunuz?`
-      )
-
-      if (!confirmed) return
-
-      // Sadece settled_at NULL olan paketleri damgala
-      const { error: updateError } = await supabase
-        .from('packages')
-        .update({ settled_at: new Date().toISOString() })
-        .eq('courier_id', courierId)
-        .eq('status', 'delivered')
-        .is('settled_at', null)
-        .gte('delivered_at', startISO)
-        .lte('delivered_at', endISO)
-
-      if (updateError) throw updateError
-
-      console.log('✅ ÖDEME TAMAMLANDI:', packageCount, 'paket güncellendi')
-
-      setSuccessMessage(`✅ ${courierName} kuryesine ${totalEarnings.toFixed(2)} TL hak edişi ödendi!`)
-      setTimeout(() => setSuccessMessage(''), 3000)
-
-      // Paketleri yenile ve filtreyi tekrar uygula
-      await fetchPackages()
-      await fetchDeliveredPackages()
-      setIsFiltered(false) // Filtreyi sıfırla, kullanıcı tekrar filtrelemeli
-    } catch (error: any) {
-      console.error('❌ Hak ediş ödeme hatası:', error)
-      setErrorMessage('Ödeme yapılırken hata oluştu: ' + error.message)
-      setTimeout(() => setErrorMessage(''), 5000)
     }
   }
 
@@ -3342,217 +3166,86 @@ export default function Home() {
   }
 
   function CouriersTab() {
-    // Kurye Kartı Component - Async veri çekimi için
-    function CourierEarningsCard({ courier }: { courier: Courier }) {
-      const [earnings, setEarnings] = useState({ total: 0, count: 0 })
-      const [loading, setLoading] = useState(false)
-
-      useEffect(() => {
-        if (isFiltered && filteredStartDate && filteredEndDate) {
-          fetchEarnings()
-        } else {
-          setEarnings({ total: 0, count: 0 })
-        }
-      }, [isFiltered, filteredStartDate, filteredEndDate, courier.id])
-
-      const fetchEarnings = async () => {
-        setLoading(true)
-        try {
-          // 1. Tarihleri "Günün Tam Başlangıcı" ve "Günün Tam Bitimi" yapıyoruz
-          const start = new Date(filteredStartDate)
-          start.setHours(0, 0, 0, 0)
-          const end = new Date(filteredEndDate)
-          end.setHours(23, 59, 59, 999)
-
-          console.log(`🔍 ${courier.full_name} için sorgu:`, start.toISOString(), end.toISOString())
-
-          // 2. SORGUNUN KRALINI YAPIYORUZ: Limit yok, tam liste çekiyoruz
-          const { data, error } = await supabase
-            .from('packages')
-            .select('id, amount, settled_at') // Gereksiz kolonları çekip şişirmiyoruz
-            .eq('courier_id', courier.id)
-            .eq('status', 'delivered')
-            .is('settled_at', null) // Sadece ödenmemişleri al
-            .gte('delivered_at', start.toISOString())
-            .lte('delivered_at', end.toISOString())
-
-          if (error) throw error
-
-          // 3. HESAPLAMA: Gelen datanın uzunluğu paket sayısıdır
-          const packageCount = data ? data.length : 0
-          const totalEarnings = packageCount * 80
-
-          console.log(`✅ Sonuç: ${packageCount} paket bulundu.`)
-
-          setEarnings({ total: totalEarnings, count: packageCount })
-        } catch (error) {
-          console.error('❌ Hakediş hatası:', error)
-          setEarnings({ total: 0, count: 0 })
-        } finally {
-          setLoading(false)
-        }
-      }
-
-      return (
-        <div className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-700/50 dark:to-slate-800/50 p-5 rounded-xl border-2 border-slate-200 dark:border-slate-600 shadow-lg hover:shadow-xl transition-all">
-          {/* Kurye Başlık */}
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <h3 className="font-bold text-lg text-slate-900 dark:text-white">
-                {courier.full_name}
-              </h3>
-              <div className="flex items-center gap-2 mt-1">
-                <div className={`w-2 h-2 rounded-full ${courier.is_active ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                <span className="text-xs text-slate-600 dark:text-slate-400">
-                  {courier.is_active ? 'Aktif' : 'Pasif'}
-                </span>
-              </div>
-            </div>
-            <div className="text-right">
-              <div className="text-xs text-slate-500 dark:text-slate-400">Teslimat</div>
-              <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                {loading ? '...' : earnings.count}
-              </div>
-            </div>
-          </div>
-
-          {/* Hak Ediş Tutarı */}
-          <div className="mb-4 p-4 bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700">
-            <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">
-              Ödenecek Hak Ediş
-            </div>
-            <div className={`text-3xl font-black ${
-              earnings.total > 0 
-                ? 'text-green-600 dark:text-green-400' 
-                : 'text-slate-400 dark:text-slate-600'
-            }`}>
-              {loading ? '...' : earnings.total.toFixed(2)} ₺
-            </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              {filteredStartDate || accountsStartDate} - {filteredEndDate || accountsEndDate}
-            </div>
-          </div>
-
-          {/* Hak Edişi Öde Butonu */}
-          <button
-            onClick={() => handlePayEarnings(courier.id, courier.full_name || '')}
-            disabled={earnings.total === 0 || loading}
-            className={`w-full py-3 rounded-lg font-bold text-sm transition-all shadow-md ${
-              earnings.total > 0 && !loading
-                ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white active:scale-95'
-                : 'bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-500 cursor-not-allowed'
-            }`}
-          >
-            {loading ? '⏳ Hesaplanıyor...' : earnings.total > 0 ? '💸 Hak Edişi Öde' : '✓ Ödeme Yok'}
-          </button>
-
-          {/* Detaylı Rapor Butonu */}
-          <button
-            onClick={() => handleCourierClick(courier.id)}
-            className="w-full mt-2 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-lg text-xs font-medium hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
-          >
-            📊 Detaylı Rapor
-          </button>
-        </div>
-      )
-    }
-
-    // Kurye Hesapları görünümü - PROFESYONEL MUHASEBE MODÜLÜ
+    // Kurye Hesapları görünümü - Basit Kurye Listesi
     if (courierSubTab === 'accounts') {
       return (
         <>
           <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold">💰 Kurye Hak Edişleri</h2>
-              
-              {/* Tarih Aralığı Filtresi */}
-              <div className="flex items-center gap-3">
-                <label className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                  Tarih Aralığı:
-                </label>
-                <input
-                  type="date"
-                  value={accountsStartDate}
-                  onChange={(e) => setAccountsStartDate(e.target.value)}
-                  className="px-3 py-2 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-600 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-                <span className="text-slate-500 dark:text-slate-400 font-bold">→</span>
-                <input
-                  type="date"
-                  value={accountsEndDate}
-                  onChange={(e) => setAccountsEndDate(e.target.value)}
-                  className="px-3 py-2 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-600 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-                <button
-                  onClick={handleFilter}
-                  className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg font-bold text-sm shadow-lg transition-all active:scale-95"
-                >
-                  🔍 Filtrele
-                </button>
-              </div>
-            </div>
-
-            {/* Filtreleme Durumu */}
-            {isFiltered && (
-              <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-                <div className="flex items-center gap-2 text-sm text-green-900 dark:text-green-300">
-                  <span className="text-lg">✅</span>
-                  <span className="font-medium">
-                    Filtre aktif: {filteredStartDate} - {filteredEndDate} arası gösteriliyor
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {!isFiltered && (
-              <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                <div className="flex items-center gap-2 text-sm text-yellow-900 dark:text-yellow-300">
-                  <span className="text-lg">⚠️</span>
-                  <span className="font-medium">
-                    Tarih aralığı seçip "Filtrele" butonuna basın
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* Bilgilendirme */}
-            <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-              <div className="flex items-start gap-3">
-                <span className="text-2xl">ℹ️</span>
-                <div className="flex-1">
-                  <p className="text-sm text-blue-900 dark:text-blue-300 font-medium mb-1">
-                    Hak Ediş Sistemi Nasıl Çalışır?
-                  </p>
-                  <ul className="text-xs text-blue-800 dark:text-blue-400 space-y-1">
-                    <li>• Tarih aralığı seçip <strong>"Filtrele"</strong> butonuna basın</li>
-                    <li>• Seçilen tarih aralığındaki <strong>teslim edilmiş</strong> paketler listelenir</li>
-                    <li>• Sadece <strong>daha önce ödenmemiş</strong> (settled_at NULL) paketler hesaba dahil edilir</li>
-                    <li>• <strong>Hak Ediş = Paket Sayısı × 80 TL</strong> formülü ile hesaplanır</li>
-                    <li>• "Hak Edişi Öde" butonuna basıldığında paketler <strong>settled_at</strong> ile işaretlenir</li>
-                    <li>• Aynı tarih aralığı tekrar seçildiğinde ödenen paketler <strong>0 TL</strong> gösterir</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            {/* Kurye Listesi */}
+            <h2 className="text-2xl font-bold mb-6">👥 Kurye Listesi</h2>
+          
+            {/* Kurye Kartları */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {couriers.length === 0 ? (
-                <div className="col-span-full text-center py-8 text-slate-500">
-                  <div className="text-4xl mb-2">🚫</div>
-                  <div className="font-bold">Kurye bulunamadı!</div>
-                </div>
-              ) : (
-                couriers.map(c => {
-                  // State'den değil, component içinde async çağrı yapacağız
-                  return <CourierEarningsCard key={c.id} courier={c} />
-                })
-              )}
-            </div>
-          </div>
+            {couriers.length === 0 ? (
+              <div className="col-span-full text-center py-8 text-slate-500">
+                <div className="text-4xl mb-2">🚫</div>
+                <div className="font-bold">Kurye bulunamadı!</div>
+              </div>
+            ) : (
+              couriers.map(courier => (
+                <div
+                  key={courier.id}
+                  onClick={() => handleCourierClick(courier.id)}
+                  className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-700/50 dark:to-slate-800/50 p-5 rounded-xl border-2 border-slate-200 dark:border-slate-600 shadow-lg hover:shadow-xl transition-all cursor-pointer hover:scale-105"
+                >
+                  {/* Kurye Başlık */}
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="font-bold text-lg text-slate-900 dark:text-white">
+                        {courier.full_name}
+                      </h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className={`w-2 h-2 rounded-full ${courier.is_active ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                        <span className="text-xs text-slate-600 dark:text-slate-400">
+                          {courier.is_active ? 'Aktif' : 'Pasif'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
 
-        {/* Kurye Detay Modalı - Mevcut modal korunuyor */}
-        {showCourierModal && selectedCourierId && (
+                  {/* İstatistikler */}
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="bg-white dark:bg-slate-900/50 p-3 rounded-lg">
+                      <div className="text-xs text-slate-500 dark:text-slate-400">Bugün</div>
+                      <div className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                        {courier.todayDeliveryCount || 0}
+                      </div>
+                    </div>
+                    <div className="bg-white dark:bg-slate-900/50 p-3 rounded-lg">
+                      <div className="text-xs text-slate-500 dark:text-slate-400">Toplam</div>
+                      <div className="text-xl font-bold text-green-600 dark:text-green-400">
+                        {courier.deliveryCount || 0}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Aktif Paketler */}
+                  <div className="bg-orange-100 dark:bg-orange-900/30 p-3 rounded-lg">
+                    <div className="text-xs text-orange-700 dark:text-orange-400 mb-1">
+                      Aktif Paketler
+                    </div>
+                    <div className="text-2xl font-black text-orange-600 dark:text-orange-400">
+                      {courier.activePackageCount || 0}
+                    </div>
+                  </div>
+
+                  {/* Detaylı Rapor Butonu */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleCourierClick(courier.id)
+                    }}
+                    className="w-full mt-4 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-lg text-xs font-medium hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+                  >
+                    📊 Detaylı Rapor
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+          {/* Kurye Detay Modalı */}
+          {showCourierModal && selectedCourierId && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
             <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
               {/* Modal Header */}
@@ -4188,7 +3881,7 @@ export default function Home() {
             </div>
           </div>
         )}
-      </>
+        </>
       )
     }
     
