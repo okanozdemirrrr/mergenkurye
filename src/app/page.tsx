@@ -2450,7 +2450,7 @@ export default function Home() {
       </button>
 
       {/* Logo ve Dark Mode Toggle - Sağ Üst */}
-      <div className="fixed -top-1 right-4 z-50 flex items-center gap-3">
+      <div className="fixed -top-10 right-4 z-50 flex items-center gap-3">
         <button
           onClick={() => setDarkMode(!darkMode)}
           className="bg-slate-800 hover:bg-slate-700 text-white p-2 rounded-lg shadow-lg transition-colors"
