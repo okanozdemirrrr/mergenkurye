@@ -3358,35 +3358,35 @@ export default function Home() {
       const fetchEarnings = async () => {
         setLoading(true)
         try {
-          // KURAL 1: Zaman Aralığı Tamiri - T23:59:59.999Z ile bitiş
-          const startISO = `${filteredStartDate}T00:00:00.000Z`
-          const endISO = `${filteredEndDate}T23:59:59.999Z`
+          // 1. Tarihleri "Günün Tam Başlangıcı" ve "Günün Tam Bitimi" yapıyoruz
+          const start = new Date(filteredStartDate)
+          start.setHours(0, 0, 0, 0)
+          const end = new Date(filteredEndDate)
+          end.setHours(23, 59, 59, 999)
 
-          // KURAL 3: Log Ekle
-          console.log('Sorgulanan Tarih Aralığı:', startISO, endISO)
-          console.log('Kurye:', courier.full_name, 'ID:', courier.id)
+          console.log(`🔍 ${courier.full_name} için sorgu:`, start.toISOString(), end.toISOString())
 
-          // KURAL 2: Supabase Sorgu Düzeni
-          const { data, error, count } = await supabase
+          // 2. SORGUNUN KRALINI YAPIYORUZ: Limit yok, tam liste çekiyoruz
+          const { data, error } = await supabase
             .from('packages')
-            .select('id, order_number, delivered_at, settled_at', { count: 'exact' })
+            .select('id, amount, settled_at') // Gereksiz kolonları çekip şişirmiyoruz
             .eq('courier_id', courier.id)
             .eq('status', 'delivered')
-            .is('settled_at', null)
-            .gte('delivered_at', startISO)
-            .lte('delivered_at', endISO)
+            .is('settled_at', null) // Sadece ödenmemişleri al
+            .gte('delivered_at', start.toISOString())
+            .lte('delivered_at', end.toISOString())
 
           if (error) throw error
 
-          console.log('Bulunan Paket Sayısı:', count || 0)
-          console.log('Paketler:', data)
+          // 3. HESAPLAMA: Gelen datanın uzunluğu paket sayısıdır
+          const packageCount = data ? data.length : 0
+          const totalEarnings = packageCount * 80
 
-          const packageCount = count || 0
-          const total = packageCount * 80
+          console.log(`✅ Sonuç: ${packageCount} paket bulundu.`)
 
-          setEarnings({ total, count: packageCount })
+          setEarnings({ total: totalEarnings, count: packageCount })
         } catch (error) {
-          console.error('❌ Hak ediş hesaplama hatası:', error)
+          console.error('❌ Hakediş hatası:', error)
           setEarnings({ total: 0, count: 0 })
         } finally {
           setLoading(false)
