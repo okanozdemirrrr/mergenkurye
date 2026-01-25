@@ -110,6 +110,9 @@ export default function Home() {
     const today = new Date()
     return today.toISOString().split('T')[0]
   })
+  const [isFiltered, setIsFiltered] = useState(false)
+  const [filteredStartDate, setFilteredStartDate] = useState('')
+  const [filteredEndDate, setFilteredEndDate] = useState('')
   const [darkMode, setDarkMode] = useState(true) // Varsayılan dark mode
   const [restaurantChartFilter, setRestaurantChartFilter] = useState<'today' | 'week' | 'month'>('today')
   const [courierEarningsFilter, setCourierEarningsFilter] = useState<'today' | 'week' | 'month'>('today')
@@ -265,6 +268,106 @@ export default function Home() {
         console.error('Siparişler yüklenirken hata:', error)
         setErrorMessage('Siparişler yüklenirken hata: ' + error.message)
       }
+    }
+  }
+
+  // Kurye Hak Edişleri - Filtrele butonu handler
+  const handleFilter = () => {
+    if (!accountsStartDate || !accountsEndDate) {
+      setErrorMessage('Lütfen tarih aralığı seçin!')
+      setTimeout(() => setErrorMessage(''), 3000)
+      return
+    }
+
+    setFilteredStartDate(accountsStartDate)
+    setFilteredEndDate(accountsEndDate)
+    setIsFiltered(true)
+    setSuccessMessage('✅ Filtre uygulandı!')
+    setTimeout(() => setSuccessMessage(''), 2000)
+  }
+
+  // Kurye Hak Edişleri - Her kurye için hak ediş hesaplama
+  const calculateCourierEarnings = (courierId: string) => {
+    // Filtreleme yapılmamışsa 0 döndür
+    if (!isFiltered || !filteredStartDate || !filteredEndDate) {
+      return { total: 0, count: 0 }
+    }
+
+    const start = new Date(filteredStartDate)
+    start.setHours(0, 0, 0, 0)
+    const end = new Date(filteredEndDate)
+    end.setHours(23, 59, 59, 999)
+
+    // Filtrelenmiş paketler: delivered_at tarih aralığında VE settled_at NULL
+    // deliveredPackages state'ini kullan (teslim edilmiş paketler)
+    const courierPackages = deliveredPackages.filter(pkg => 
+      pkg.courier_id === courierId &&
+      pkg.status === 'delivered' &&
+      pkg.delivered_at &&
+      new Date(pkg.delivered_at) >= start &&
+      new Date(pkg.delivered_at) <= end &&
+      !pkg.settled_at // Henüz ödenmemiş
+    )
+
+    const total = courierPackages.reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
+    return { total, count: courierPackages.length }
+  }
+
+  // Kurye Hak Edişleri - Hak edişi öde fonksiyonu
+  const handlePayEarnings = async (courierId: string, courierName: string) => {
+    if (!isFiltered) {
+      setErrorMessage('Önce tarih aralığını seçip filtreleme yapın!')
+      setTimeout(() => setErrorMessage(''), 3000)
+      return
+    }
+
+    const earnings = calculateCourierEarnings(courierId)
+    
+    if (earnings.total === 0) {
+      setErrorMessage('Ödenecek hak ediş bulunmuyor!')
+      setTimeout(() => setErrorMessage(''), 3000)
+      return
+    }
+
+    // Onay penceresi
+    const confirmed = window.confirm(
+      `${courierName} kuryesine ${earnings.total.toFixed(2)} TL hak edişi ödeme yapılıyor.\n\n` +
+      `Tarih Aralığı: ${filteredStartDate} - ${filteredEndDate}\n` +
+      `Teslimat Sayısı: ${earnings.count} adet\n\n` +
+      `Onaylıyor musunuz?`
+    )
+
+    if (!confirmed) return
+
+    try {
+      const start = new Date(filteredStartDate)
+      start.setHours(0, 0, 0, 0)
+      const end = new Date(filteredEndDate)
+      end.setHours(23, 59, 59, 999)
+
+      // Tarih aralığındaki settled_at NULL olan paketleri güncelle
+      const { error } = await supabase
+        .from('packages')
+        .update({ settled_at: new Date().toISOString() })
+        .eq('courier_id', courierId)
+        .eq('status', 'delivered')
+        .gte('delivered_at', start.toISOString())
+        .lte('delivered_at', end.toISOString())
+        .is('settled_at', null)
+
+      if (error) throw error
+
+      setSuccessMessage(`✅ ${courierName} kuryesine ${earnings.total.toFixed(2)} TL hak edişi ödendi!`)
+      setTimeout(() => setSuccessMessage(''), 3000)
+
+      // Paketleri yenile ve filtreyi tekrar uygula
+      await fetchPackages()
+      await fetchDeliveredPackages()
+      setIsFiltered(false) // Filtreyi sıfırla, kullanıcı tekrar filtrelemeli
+    } catch (error: any) {
+      console.error('Hak ediş ödeme hatası:', error)
+      setErrorMessage('Ödeme yapılırken hata oluştu: ' + error.message)
+      setTimeout(() => setErrorMessage(''), 5000)
     }
   }
 
@@ -3176,109 +3279,6 @@ export default function Home() {
   function CouriersTab() {
     // Kurye Hesapları görünümü - PROFESYONEL MUHASEBE MODÜLÜ
     if (courierSubTab === 'accounts') {
-      // Filtreleme state'i
-      const [isFiltered, setIsFiltered] = useState(false)
-      const [filteredStartDate, setFilteredStartDate] = useState('')
-      const [filteredEndDate, setFilteredEndDate] = useState('')
-
-      // Filtrele butonu handler
-      const handleFilter = () => {
-        if (!accountsStartDate || !accountsEndDate) {
-          setErrorMessage('Lütfen tarih aralığı seçin!')
-          setTimeout(() => setErrorMessage(''), 3000)
-          return
-        }
-
-        setFilteredStartDate(accountsStartDate)
-        setFilteredEndDate(accountsEndDate)
-        setIsFiltered(true)
-        setSuccessMessage('✅ Filtre uygulandı!')
-        setTimeout(() => setSuccessMessage(''), 2000)
-      }
-
-      // Her kurye için hak ediş hesaplama
-      const calculateCourierEarnings = (courierId: string) => {
-        // Filtreleme yapılmamışsa 0 döndür
-        if (!isFiltered || !filteredStartDate || !filteredEndDate) {
-          return { total: 0, count: 0 }
-        }
-
-        const start = new Date(filteredStartDate)
-        start.setHours(0, 0, 0, 0)
-        const end = new Date(filteredEndDate)
-        end.setHours(23, 59, 59, 999)
-
-        // Filtrelenmiş paketler: delivered_at tarih aralığında VE settled_at NULL
-        const courierPackages = packages.filter(pkg => 
-          pkg.courier_id === courierId &&
-          pkg.status === 'delivered' &&
-          pkg.delivered_at &&
-          new Date(pkg.delivered_at) >= start &&
-          new Date(pkg.delivered_at) <= end &&
-          !pkg.settled_at // Henüz ödenmemiş
-        )
-
-        const total = courierPackages.reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
-        return { total, count: courierPackages.length }
-      }
-
-      // Hak edişi öde fonksiyonu
-      const handlePayEarnings = async (courierId: string, courierName: string) => {
-        if (!isFiltered) {
-          setErrorMessage('Önce tarih aralığını seçip filtreleme yapın!')
-          setTimeout(() => setErrorMessage(''), 3000)
-          return
-        }
-
-        const earnings = calculateCourierEarnings(courierId)
-        
-        if (earnings.total === 0) {
-          setErrorMessage('Ödenecek hak ediş bulunmuyor!')
-          setTimeout(() => setErrorMessage(''), 3000)
-          return
-        }
-
-        // Onay penceresi
-        const confirmed = window.confirm(
-          `${courierName} kuryesine ${earnings.total.toFixed(2)} TL hak edişi ödeme yapılıyor.\n\n` +
-          `Tarih Aralığı: ${filteredStartDate} - ${filteredEndDate}\n` +
-          `Teslimat Sayısı: ${earnings.count} adet\n\n` +
-          `Onaylıyor musunuz?`
-        )
-
-        if (!confirmed) return
-
-        try {
-          const start = new Date(filteredStartDate)
-          start.setHours(0, 0, 0, 0)
-          const end = new Date(filteredEndDate)
-          end.setHours(23, 59, 59, 999)
-
-          // Tarih aralığındaki settled_at NULL olan paketleri güncelle
-          const { error } = await supabase
-            .from('packages')
-            .update({ settled_at: new Date().toISOString() })
-            .eq('courier_id', courierId)
-            .eq('status', 'delivered')
-            .gte('delivered_at', start.toISOString())
-            .lte('delivered_at', end.toISOString())
-            .is('settled_at', null)
-
-          if (error) throw error
-
-          setSuccessMessage(`✅ ${courierName} kuryesine ${earnings.total.toFixed(2)} TL hak edişi ödendi!`)
-          setTimeout(() => setSuccessMessage(''), 3000)
-
-          // Paketleri yenile ve filtreyi tekrar uygula
-          await fetchPackages()
-          setIsFiltered(false) // Filtreyi sıfırla, kullanıcı tekrar filtrelemeli
-        } catch (error: any) {
-          console.error('Hak ediş ödeme hatası:', error)
-          setErrorMessage('Ödeme yapılırken hata oluştu: ' + error.message)
-          setTimeout(() => setErrorMessage(''), 5000)
-        }
-      }
-
       return (
         <>
           <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
