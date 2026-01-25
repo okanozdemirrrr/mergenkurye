@@ -2347,7 +2347,7 @@ export default function Home() {
       </button>
 
       {/* Logo ve Dark Mode Toggle - Sağ Üst */}
-      <div className="fixed top-4 right-4 z-50 flex items-center gap-3">
+      <div className="fixed top-9 right-4 z-50 flex items-center gap-3">
         <button
           onClick={() => setDarkMode(!darkMode)}
           className="bg-slate-800 hover:bg-slate-700 text-white p-2 rounded-lg shadow-lg transition-colors"
@@ -3303,8 +3303,37 @@ export default function Home() {
                   onChange={(e) => setAccountsEndDate(e.target.value)}
                   className="px-3 py-2 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-600 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                 />
+                <button
+                  onClick={handleFilter}
+                  className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg font-bold text-sm shadow-lg transition-all active:scale-95"
+                >
+                  🔍 Filtrele
+                </button>
               </div>
             </div>
+
+            {/* Filtreleme Durumu */}
+            {isFiltered && (
+              <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                <div className="flex items-center gap-2 text-sm text-green-900 dark:text-green-300">
+                  <span className="text-lg">✅</span>
+                  <span className="font-medium">
+                    Filtre aktif: {filteredStartDate} - {filteredEndDate} arası gösteriliyor
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {!isFiltered && (
+              <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                <div className="flex items-center gap-2 text-sm text-yellow-900 dark:text-yellow-300">
+                  <span className="text-lg">⚠️</span>
+                  <span className="font-medium">
+                    Tarih aralığı seçip "Filtrele" butonuna basın
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Bilgilendirme */}
             <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
@@ -3315,6 +3344,7 @@ export default function Home() {
                     Hak Ediş Sistemi Nasıl Çalışır?
                   </p>
                   <ul className="text-xs text-blue-800 dark:text-blue-400 space-y-1">
+                    <li>• Tarih aralığı seçip <strong>"Filtrele"</strong> butonuna basın</li>
                     <li>• Seçilen tarih aralığındaki <strong>teslim edilmiş</strong> paketler listelenir</li>
                     <li>• Sadece <strong>daha önce ödenmemiş</strong> (settled_at NULL) paketler hesaba dahil edilir</li>
                     <li>• "Hak Edişi Öde" butonuna basıldığında paketler <strong>settled_at</strong> ile işaretlenir</li>
