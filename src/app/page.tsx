@@ -366,40 +366,46 @@ export default function Home() {
     }
 
     try {
-      // Önce gerçek paket sayısını ve tutarı hesapla
+      // KURAL 1: Tarih kapsamını tam olarak ayarla
       const start = new Date(filteredStartDate)
-      start.setHours(0, 0, 0, 0)
+      start.setHours(0, 0, 0, 0) // Günün başlangıcı: 00:00:00.000
+      
       const end = new Date(filteredEndDate)
-      end.setHours(23, 59, 59, 999)
+      end.setHours(23, 59, 59, 999) // Günün sonu: 23:59:59.999
 
       console.log('💸 ÖDEME İŞLEMİ BAŞLIYOR:', {
         courier_name: courierName,
         courier_id: courierId,
-        start: start.toISOString(),
-        end: end.toISOString()
+        start_date: filteredStartDate,
+        end_date: filteredEndDate,
+        start_iso: start.toISOString(),
+        end_iso: end.toISOString()
       })
 
-      // Tüm paketleri çek
-      const { data: allPackages, error: fetchError } = await supabase
+      // KURAL 2: Doğrudan Supabase sorgusunda settled_at IS NULL filtresi
+      const { data: unsettledPackages, error: fetchError, count } = await supabase
         .from('packages')
-        .select('id, order_number, delivered_at, settled_at')
+        .select('id, order_number, delivered_at, settled_at', { count: 'exact' })
         .eq('courier_id', courierId)
         .eq('status', 'delivered')
         .gte('delivered_at', start.toISOString())
         .lte('delivered_at', end.toISOString())
+        .is('settled_at', null) // KRİTİK: Sadece ödenmemiş paketler
 
       if (fetchError) throw fetchError
 
-      // Ödenmemiş paketleri filtrele
-      const unsettledPackages = allPackages?.filter(p => p.settled_at === null) || []
-      const packageCount = unsettledPackages.length
+      const packageCount = count || 0
       const totalEarnings = packageCount * 80
 
       console.log('💰 ÖDEME DETAYLARI:', {
         courier_name: courierName,
-        total_packages: allPackages?.length || 0,
         unsettled_packages: packageCount,
-        total_earnings: totalEarnings
+        total_earnings: totalEarnings,
+        packages: unsettledPackages?.map(p => ({
+          id: p.id,
+          order_number: p.order_number,
+          delivered_at: p.delivered_at
+        }))
       })
 
       if (totalEarnings === 0) {
@@ -418,7 +424,7 @@ export default function Home() {
 
       if (!confirmed) return
 
-      // Tarih aralığındaki settled_at NULL olan paketleri güncelle
+      // KURAL 3: Sadece settled_at NULL olan paketleri damgala
       const { error: updateError } = await supabase
         .from('packages')
         .update({ settled_at: new Date().toISOString() })
@@ -432,6 +438,7 @@ export default function Home() {
 
       console.log('✅ ÖDEME TAMAMLANDI:', {
         courier_name: courierName,
+        packages_updated: packageCount,
         amount: totalEarnings
       })
 
@@ -3371,55 +3378,47 @@ export default function Home() {
       const fetchEarnings = async () => {
         setLoading(true)
         try {
+          // KURAL 1: Tarih kapsamını tam olarak ayarla
           const start = new Date(filteredStartDate)
-          start.setHours(0, 0, 0, 0)
+          start.setHours(0, 0, 0, 0) // Günün başlangıcı: 00:00:00.000
+          
           const end = new Date(filteredEndDate)
-          end.setHours(23, 59, 59, 999)
+          end.setHours(23, 59, 59, 999) // Günün sonu: 23:59:59.999
 
           console.log('🔍 HAK EDİŞ SORGUSU:', {
             courier_name: courier.full_name,
             courier_id: courier.id,
-            start: start.toISOString(),
-            end: end.toISOString()
+            start_date: filteredStartDate,
+            end_date: filteredEndDate,
+            start_iso: start.toISOString(),
+            end_iso: end.toISOString()
           })
 
-          // ÖNCE settled_at filtresi OLMADAN tüm paketleri çek
-          const { data: allData, error: allError } = await supabase
+          // KURAL 2: Doğrudan Supabase sorgusunda settled_at IS NULL filtresi
+          const { data, error, count } = await supabase
             .from('packages')
-            .select('id, order_number, delivered_at, settled_at, courier_id, status')
+            .select('id, order_number, delivered_at, settled_at, courier_id, status', { count: 'exact' })
             .eq('courier_id', courier.id)
             .eq('status', 'delivered')
             .gte('delivered_at', start.toISOString())
             .lte('delivered_at', end.toISOString())
+            .is('settled_at', null) // KRİTİK: Sadece ödenmemiş paketler
 
-          if (allError) throw allError
+          if (error) throw error
 
-          console.log('📦 TÜM PAKETLER (settled_at filtresi YOK):', {
+          console.log('📦 ÖDENMEMİŞ PAKETLER (Supabase):', {
             courier_name: courier.full_name,
-            total_count: allData?.length || 0,
-            packages: allData?.map(p => ({
+            package_count: count || 0,
+            packages: data?.map(p => ({
               id: p.id,
               order_number: p.order_number,
               delivered_at: p.delivered_at,
-              settled_at: p.settled_at,
-              has_settled: !!p.settled_at
+              settled_at: p.settled_at
             }))
           })
 
-          // SONRA settled_at NULL olanları filtrele
-          const unsettledPackages = allData?.filter(p => p.settled_at === null) || []
-
-          console.log('💰 ÖDENMEMİŞ PAKETLER (settled_at NULL):', {
-            courier_name: courier.full_name,
-            unsettled_count: unsettledPackages.length,
-            packages: unsettledPackages.map(p => ({
-              id: p.id,
-              order_number: p.order_number,
-              delivered_at: p.delivered_at
-            }))
-          })
-
-          const packageCount = unsettledPackages.length
+          // KURAL 3: State'i doğru güncelle
+          const packageCount = count || 0
           const total = packageCount * 80
 
           console.log('✅ HAK EDİŞ SONUÇ:', {
