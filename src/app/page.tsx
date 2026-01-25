@@ -309,8 +309,11 @@ export default function Home() {
       !pkg.settled_at // Henüz ödenmemiş
     )
 
-    const total = courierPackages.reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
-    return { total, count: courierPackages.length }
+    // Hak ediş = Paket sayısı × 80 TL
+    const count = courierPackages.length
+    const total = count * 80
+
+    return { total, count }
   }
 
   // Kurye Hak Edişleri - Hak edişi öde fonksiyonu
@@ -3347,6 +3350,7 @@ export default function Home() {
                     <li>• Tarih aralığı seçip <strong>"Filtrele"</strong> butonuna basın</li>
                     <li>• Seçilen tarih aralığındaki <strong>teslim edilmiş</strong> paketler listelenir</li>
                     <li>• Sadece <strong>daha önce ödenmemiş</strong> (settled_at NULL) paketler hesaba dahil edilir</li>
+                    <li>• <strong>Hak Ediş = Paket Sayısı × 80 TL</strong> formülü ile hesaplanır</li>
                     <li>• "Hak Edişi Öde" butonuna basıldığında paketler <strong>settled_at</strong> ile işaretlenir</li>
                     <li>• Aynı tarih aralığı tekrar seçildiğinde ödenen paketler <strong>0 TL</strong> gösterir</li>
                   </ul>
