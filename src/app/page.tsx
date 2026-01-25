@@ -365,32 +365,61 @@ export default function Home() {
       return
     }
 
-    const earnings = calculateCourierEarnings(courierId)
-    
-    if (earnings.total === 0) {
-      setErrorMessage('Ödenecek hak ediş bulunmuyor!')
-      setTimeout(() => setErrorMessage(''), 3000)
-      return
-    }
-
-    // Onay penceresi
-    const confirmed = window.confirm(
-      `${courierName} kuryesine ${earnings.total.toFixed(2)} TL hak edişi ödeme yapılıyor.\n\n` +
-      `Tarih Aralığı: ${filteredStartDate} - ${filteredEndDate}\n` +
-      `Teslimat Sayısı: ${earnings.count} adet\n\n` +
-      `Onaylıyor musunuz?`
-    )
-
-    if (!confirmed) return
-
     try {
+      // Önce gerçek paket sayısını ve tutarı hesapla
       const start = new Date(filteredStartDate)
       start.setHours(0, 0, 0, 0)
       const end = new Date(filteredEndDate)
       end.setHours(23, 59, 59, 999)
 
+      console.log('💸 ÖDEME İŞLEMİ BAŞLIYOR:', {
+        courier_name: courierName,
+        courier_id: courierId,
+        start: start.toISOString(),
+        end: end.toISOString()
+      })
+
+      // Tüm paketleri çek
+      const { data: allPackages, error: fetchError } = await supabase
+        .from('packages')
+        .select('id, order_number, delivered_at, settled_at')
+        .eq('courier_id', courierId)
+        .eq('status', 'delivered')
+        .gte('delivered_at', start.toISOString())
+        .lte('delivered_at', end.toISOString())
+
+      if (fetchError) throw fetchError
+
+      // Ödenmemiş paketleri filtrele
+      const unsettledPackages = allPackages?.filter(p => p.settled_at === null) || []
+      const packageCount = unsettledPackages.length
+      const totalEarnings = packageCount * 80
+
+      console.log('💰 ÖDEME DETAYLARI:', {
+        courier_name: courierName,
+        total_packages: allPackages?.length || 0,
+        unsettled_packages: packageCount,
+        total_earnings: totalEarnings
+      })
+
+      if (totalEarnings === 0) {
+        setErrorMessage('Ödenecek hak ediş bulunmuyor!')
+        setTimeout(() => setErrorMessage(''), 3000)
+        return
+      }
+
+      // Onay penceresi
+      const confirmed = window.confirm(
+        `${courierName} kuryesine ${totalEarnings.toFixed(2)} TL hak edişi ödeme yapılıyor.\n\n` +
+        `Tarih Aralığı: ${filteredStartDate} - ${filteredEndDate}\n` +
+        `Teslimat Sayısı: ${packageCount} adet\n\n` +
+        `Onaylıyor musunuz?`
+      )
+
+      if (!confirmed) return
+
       // Tarih aralığındaki settled_at NULL olan paketleri güncelle
-      const { error } = await supabase
+      const { error: updateError } = await supabase
         .from('packages')
         .update({ settled_at: new Date().toISOString() })
         .eq('courier_id', courierId)
@@ -399,9 +428,14 @@ export default function Home() {
         .lte('delivered_at', end.toISOString())
         .is('settled_at', null)
 
-      if (error) throw error
+      if (updateError) throw updateError
 
-      setSuccessMessage(`✅ ${courierName} kuryesine ${earnings.total.toFixed(2)} TL hak edişi ödendi!`)
+      console.log('✅ ÖDEME TAMAMLANDI:', {
+        courier_name: courierName,
+        amount: totalEarnings
+      })
+
+      setSuccessMessage(`✅ ${courierName} kuryesine ${totalEarnings.toFixed(2)} TL hak edişi ödendi!`)
       setTimeout(() => setSuccessMessage(''), 3000)
 
       // Paketleri yenile ve filtreyi tekrar uygula
@@ -409,7 +443,7 @@ export default function Home() {
       await fetchDeliveredPackages()
       setIsFiltered(false) // Filtreyi sıfırla, kullanıcı tekrar filtrelemeli
     } catch (error: any) {
-      console.error('Hak ediş ödeme hatası:', error)
+      console.error('❌ Hak ediş ödeme hatası:', error)
       setErrorMessage('Ödeme yapılırken hata oluştu: ' + error.message)
       setTimeout(() => setErrorMessage(''), 5000)
     }
@@ -3321,6 +3355,152 @@ export default function Home() {
   }
 
   function CouriersTab() {
+    // Kurye Kartı Component - Async veri çekimi için
+    function CourierEarningsCard({ courier }: { courier: Courier }) {
+      const [earnings, setEarnings] = useState({ total: 0, count: 0 })
+      const [loading, setLoading] = useState(false)
+
+      useEffect(() => {
+        if (isFiltered && filteredStartDate && filteredEndDate) {
+          fetchEarnings()
+        } else {
+          setEarnings({ total: 0, count: 0 })
+        }
+      }, [isFiltered, filteredStartDate, filteredEndDate, courier.id])
+
+      const fetchEarnings = async () => {
+        setLoading(true)
+        try {
+          const start = new Date(filteredStartDate)
+          start.setHours(0, 0, 0, 0)
+          const end = new Date(filteredEndDate)
+          end.setHours(23, 59, 59, 999)
+
+          console.log('🔍 HAK EDİŞ SORGUSU:', {
+            courier_name: courier.full_name,
+            courier_id: courier.id,
+            start: start.toISOString(),
+            end: end.toISOString()
+          })
+
+          // ÖNCE settled_at filtresi OLMADAN tüm paketleri çek
+          const { data: allData, error: allError } = await supabase
+            .from('packages')
+            .select('id, order_number, delivered_at, settled_at, courier_id, status')
+            .eq('courier_id', courier.id)
+            .eq('status', 'delivered')
+            .gte('delivered_at', start.toISOString())
+            .lte('delivered_at', end.toISOString())
+
+          if (allError) throw allError
+
+          console.log('📦 TÜM PAKETLER (settled_at filtresi YOK):', {
+            courier_name: courier.full_name,
+            total_count: allData?.length || 0,
+            packages: allData?.map(p => ({
+              id: p.id,
+              order_number: p.order_number,
+              delivered_at: p.delivered_at,
+              settled_at: p.settled_at,
+              has_settled: !!p.settled_at
+            }))
+          })
+
+          // SONRA settled_at NULL olanları filtrele
+          const unsettledPackages = allData?.filter(p => p.settled_at === null) || []
+
+          console.log('💰 ÖDENMEMİŞ PAKETLER (settled_at NULL):', {
+            courier_name: courier.full_name,
+            unsettled_count: unsettledPackages.length,
+            packages: unsettledPackages.map(p => ({
+              id: p.id,
+              order_number: p.order_number,
+              delivered_at: p.delivered_at
+            }))
+          })
+
+          const packageCount = unsettledPackages.length
+          const total = packageCount * 80
+
+          console.log('✅ HAK EDİŞ SONUÇ:', {
+            courier_name: courier.full_name,
+            package_count: packageCount,
+            total_earnings: total
+          })
+
+          setEarnings({ total, count: packageCount })
+        } catch (error) {
+          console.error('❌ Hak ediş hesaplama hatası:', error)
+          setEarnings({ total: 0, count: 0 })
+        } finally {
+          setLoading(false)
+        }
+      }
+
+      return (
+        <div className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-700/50 dark:to-slate-800/50 p-5 rounded-xl border-2 border-slate-200 dark:border-slate-600 shadow-lg hover:shadow-xl transition-all">
+          {/* Kurye Başlık */}
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h3 className="font-bold text-lg text-slate-900 dark:text-white">
+                {courier.full_name}
+              </h3>
+              <div className="flex items-center gap-2 mt-1">
+                <div className={`w-2 h-2 rounded-full ${courier.is_active ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                <span className="text-xs text-slate-600 dark:text-slate-400">
+                  {courier.is_active ? 'Aktif' : 'Pasif'}
+                </span>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-xs text-slate-500 dark:text-slate-400">Teslimat</div>
+              <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                {loading ? '...' : earnings.count}
+              </div>
+            </div>
+          </div>
+
+          {/* Hak Ediş Tutarı */}
+          <div className="mb-4 p-4 bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700">
+            <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">
+              Ödenecek Hak Ediş
+            </div>
+            <div className={`text-3xl font-black ${
+              earnings.total > 0 
+                ? 'text-green-600 dark:text-green-400' 
+                : 'text-slate-400 dark:text-slate-600'
+            }`}>
+              {loading ? '...' : earnings.total.toFixed(2)} ₺
+            </div>
+            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              {filteredStartDate || accountsStartDate} - {filteredEndDate || accountsEndDate}
+            </div>
+          </div>
+
+          {/* Hak Edişi Öde Butonu */}
+          <button
+            onClick={() => handlePayEarnings(courier.id, courier.full_name || '')}
+            disabled={earnings.total === 0 || loading}
+            className={`w-full py-3 rounded-lg font-bold text-sm transition-all shadow-md ${
+              earnings.total > 0 && !loading
+                ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white active:scale-95'
+                : 'bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-500 cursor-not-allowed'
+            }`}
+          >
+            {loading ? '⏳ Hesaplanıyor...' : earnings.total > 0 ? '💸 Hak Edişi Öde' : '✓ Ödeme Yok'}
+          </button>
+
+          {/* Detaylı Rapor Butonu */}
+          <button
+            onClick={() => handleCourierClick(courier.id)}
+            className="w-full mt-2 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-lg text-xs font-medium hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+          >
+            📊 Detaylı Rapor
+          </button>
+        </div>
+      )
+    }
+
     // Kurye Hesapları görünümü - PROFESYONEL MUHASEBE MODÜLÜ
     if (courierSubTab === 'accounts') {
       return (
@@ -3408,70 +3588,8 @@ export default function Home() {
                 </div>
               ) : (
                 couriers.map(c => {
-                  const earnings = calculateCourierEarnings(c.id)
-                  
-                  return (
-                    <div key={c.id} className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-700/50 dark:to-slate-800/50 p-5 rounded-xl border-2 border-slate-200 dark:border-slate-600 shadow-lg hover:shadow-xl transition-all">
-                      {/* Kurye Başlık */}
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <h3 className="font-bold text-lg text-slate-900 dark:text-white">
-                            {c.full_name}
-                          </h3>
-                          <div className="flex items-center gap-2 mt-1">
-                            <div className={`w-2 h-2 rounded-full ${c.is_active ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                            <span className="text-xs text-slate-600 dark:text-slate-400">
-                              {c.is_active ? 'Aktif' : 'Pasif'}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-xs text-slate-500 dark:text-slate-400">Teslimat</div>
-                          <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                            {earnings.count}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Hak Ediş Tutarı */}
-                      <div className="mb-4 p-4 bg-white dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700">
-                        <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">
-                          Ödenecek Hak Ediş
-                        </div>
-                        <div className={`text-3xl font-black ${
-                          earnings.total > 0 
-                            ? 'text-green-600 dark:text-green-400' 
-                            : 'text-slate-400 dark:text-slate-600'
-                        }`}>
-                          {earnings.total.toFixed(2)} ₺
-                        </div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                          {accountsStartDate} - {accountsEndDate}
-                        </div>
-                      </div>
-
-                      {/* Hak Edişi Öde Butonu */}
-                      <button
-                        onClick={() => handlePayEarnings(c.id, c.full_name)}
-                        disabled={earnings.total === 0}
-                        className={`w-full py-3 rounded-lg font-bold text-sm transition-all shadow-md ${
-                          earnings.total > 0
-                            ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white active:scale-95'
-                            : 'bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-500 cursor-not-allowed'
-                        }`}
-                      >
-                        {earnings.total > 0 ? '💸 Hak Edişi Öde' : '✓ Ödeme Yok'}
-                      </button>
-
-                      {/* Detaylı Rapor Butonu */}
-                      <button
-                        onClick={() => handleCourierClick(c.id)}
-                        className="w-full mt-2 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-lg text-xs font-medium hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
-                      >
-                        📊 Detaylı Rapor
-                      </button>
-                    </div>
-                  )
+                  // State'den değil, component içinde async çağrı yapacağız
+                  return <CourierEarningsCard key={c.id} courier={c} />
                 })
               )}
             </div>
