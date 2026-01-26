@@ -1449,6 +1449,28 @@ export default function Home() {
       
       console.log('📦 Paket değişikliği:', payload.eventType, 'ID:', payload.new?.id || payload.old?.id)
       
+      // 🔒 ÇELİK KİLİT: Eğer paket kurye atanmışsa ve ajan boş veri gönderiyorsa IGNORE et
+      if (payload.eventType === 'UPDATE' && payload.new) {
+        const newData = payload.new
+        const oldData = payload.old
+        
+        // Eğer eski veri kurye atanmışsa ve yeni veri kurye boşsa → AJAN EZİYOR, IGNORE ET!
+        if (oldData?.courier_id && !newData.courier_id) {
+          console.log('🛡️ ÇELİK KİLİT: Ajan kurye atanmış paketi silmeye çalışıyor, IGNORE edildi!')
+          console.log('   Old courier_id:', oldData.courier_id)
+          console.log('   New courier_id:', newData.courier_id)
+          return // Realtime güncellemeyi IGNORE et
+        }
+        
+        // Eğer eski veri assigned ise ve yeni veri pending ise → AJAN EZİYOR, IGNORE ET!
+        if (oldData?.status === 'assigned' && newData.status === 'pending') {
+          console.log('🛡️ ÇELİK KİLİT: Ajan assigned paketi pending yapmaya çalışıyor, IGNORE edildi!')
+          console.log('   Old status:', oldData.status)
+          console.log('   New status:', newData.status)
+          return // Realtime güncellemeyi IGNORE et
+        }
+      }
+      
       // State'i güncelle - sayfa yenileme YOK!
       await fetchPackages(false)
       await fetchCouriers(false)
