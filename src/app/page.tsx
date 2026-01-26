@@ -212,10 +212,25 @@ export default function Home() {
         .in('status', ['pending', 'waiting', 'assigned', 'picking_up', 'on_the_way'])
         .gte('created_at', todayStart.toISOString())
         .order('created_at', { ascending: false })
+      
+      // 🔒 ÇELİK KİLİT: Kuryeye atanmış paketleri filtrele (sadece atanmamış olanları göster)
+      // Agent'ın güncellemelerinden korunmak için
+      const filteredData = (data || []).filter((pkg: any) => {
+        // Eğer paket kuryeye atanmışsa (courier_id varsa) ve durum assigned/picking_up/on_the_way ise
+        // Bu paketleri admin panelinde gösterme (zaten kuryeye atanmış)
+        if (pkg.courier_id && ['assigned', 'picking_up', 'on_the_way'].includes(pkg.status)) {
+          return false
+        }
+        // Eğer paket locked_by: 'courier' ise, agent güncellemelerinden korunmuş demektir
+        if (pkg.locked_by === 'courier') {
+          return false
+        }
+        return true
+      })
 
       if (error) throw error
 
-      const transformedData = (data || []).map((pkg: any) => ({
+      const transformedData = filteredData.map((pkg: any) => ({
         ...pkg,
         restaurant: Array.isArray(pkg.restaurants) && pkg.restaurants.length > 0 
           ? pkg.restaurants[0] 
@@ -1358,16 +1373,17 @@ export default function Home() {
           setSuccessMessage('✅ Kurye Atandı ve Kilitlendi!')
           setTimeout(() => setSuccessMessage(''), 2000)
           
+          // Realtime listener'a bildir - kendi update'imizi ignore etmesi için
+          if (typeof window !== 'undefined' && (window as any).__adminLastUpdateTime) {
+            (window as any).__adminLastUpdateTime()
+          }
+          
           // Arka planda listeyi yenile (optimistic update zaten yapıldı)
+          // Ancak fetchPackages artık assigned paketleri filtreleyeceği için bu paket listede görünmeyecek
           await Promise.all([
             fetchPackages(false),
             fetchCouriers(false)
           ])
-          
-          // Realtime listener'a bildir
-          if (typeof window !== 'undefined' && (window as any).__adminLastUpdateTime) {
-            (window as any).__adminLastUpdateTime()
-          }
         } catch (error: any) {
           console.error('❌ Kurye atama hatası:', error)
           
@@ -1461,6 +1477,15 @@ export default function Home() {
         const newData = payload.new
         const oldData = payload.old
         
+        // 🔒 EN ÖNEMLİ KORUMA: Eğer paket locked_by: 'courier' ise → AJAN DOKUNMASIN!
+        if (oldData?.locked_by === 'courier' || newData.locked_by === 'courier') {
+          console.log('🛡️ ÇELİK KİLİT: Paket kurye kilidi altında, agent güncellemesi IGNORE edildi!')
+          console.log('   Old locked_by:', oldData?.locked_by)
+          console.log('   New locked_by:', newData.locked_by)
+          console.log('   Package ID:', newData.id)
+          return // Realtime güncellemeyi IGNORE et
+        }
+        
         // Eğer eski veri kurye atanmışsa ve yeni veri kurye boşsa → AJAN EZİYOR, IGNORE ET!
         if (oldData?.courier_id && !newData.courier_id) {
           console.log('🛡️ ÇELİK KİLİT: Ajan kurye atanmış paketi silmeye çalışıyor, IGNORE edildi!')
@@ -1469,12 +1494,26 @@ export default function Home() {
           return // Realtime güncellemeyi IGNORE et
         }
         
-        // Eğer eski veri assigned ise ve yeni veri pending ise → AJAN EZİYOR, IGNORE ET!
-        if (oldData?.status === 'assigned' && newData.status === 'pending') {
-          console.log('🛡️ ÇELİK KİLİT: Ajan assigned paketi pending yapmaya çalışıyor, IGNORE edildi!')
+        // Eğer eski veri assigned/picking_up/on_the_way ise ve yeni veri pending/waiting ise → AJAN EZİYOR, IGNORE ET!
+        const assignedStatuses = ['assigned', 'picking_up', 'on_the_way']
+        const pendingStatuses = ['pending', 'waiting']
+        if (assignedStatuses.includes(oldData?.status) && pendingStatuses.includes(newData.status)) {
+          console.log('🛡️ ÇELİK KİLİT: Ajan atanmış paketi pending yapmaya çalışıyor, IGNORE edildi!')
           console.log('   Old status:', oldData.status)
           console.log('   New status:', newData.status)
+          console.log('   Old courier_id:', oldData?.courier_id)
+          console.log('   New courier_id:', newData.courier_id)
           return // Realtime güncellemeyi IGNORE et
+        }
+        
+        // Eğer paket courier_id'ye sahipse ve agent status'ü değiştirmeye çalışıyorsa → IGNORE ET!
+        if (oldData?.courier_id && oldData?.courier_id === newData.courier_id) {
+          // Aynı courier_id var ama status değişiyor - bu normal olabilir (kurye durumu güncelliyor)
+          // Ancak eğer assigned -> pending gibi geri dönüş varsa engelle
+          if (assignedStatuses.includes(oldData.status) && pendingStatuses.includes(newData.status)) {
+            console.log('🛡️ ÇELİK KİLİT: Ajan kuryeye atanmış paketi geri pending yapmaya çalışıyor, IGNORE edildi!')
+            return
+          }
         }
       }
       
