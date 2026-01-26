@@ -1,4 +1,4 @@
-# 🔒 ÇELİK KİLİT SİSTEMİ KURULUM KILAVUZU
+rt 2z6s# 🔒 ÇELİK KİLİT SİSTEMİ KURULUM KILAVUZU
 
 ## SORUN
 

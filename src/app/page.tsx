@@ -198,7 +198,7 @@ export default function Home() {
 
   const fetchPackages = async (isInitialLoad = false) => {
     if (isInitialLoad) {
-      setErrorMessage('') // Sadece ilk yüklemede hataları temizle
+      setErrorMessage('')
     }
     
     try {
@@ -206,31 +206,17 @@ export default function Home() {
       const todayStart = new Date()
       todayStart.setHours(0, 0, 0, 0)
 
+      // Sadece kurye atanmamış paketleri çek
       const { data, error } = await supabase
         .from('packages')
         .select('*, restaurants(*)')
-        .in('status', ['pending', 'waiting', 'assigned', 'picking_up', 'on_the_way'])
+        .is('courier_id', null)
         .gte('created_at', todayStart.toISOString())
         .order('created_at', { ascending: false })
       
-      // 🔒 ÇELİK KİLİT: Kuryeye atanmış paketleri filtrele (sadece atanmamış olanları göster)
-      // Agent'ın güncellemelerinden korunmak için
-      const filteredData = (data || []).filter((pkg: any) => {
-        // Eğer paket kuryeye atanmışsa (courier_id varsa) ve durum assigned/picking_up/on_the_way ise
-        // Bu paketleri admin panelinde gösterme (zaten kuryeye atanmış)
-        if (pkg.courier_id && ['assigned', 'picking_up', 'on_the_way'].includes(pkg.status)) {
-          return false
-        }
-        // Eğer paket locked_by: 'courier' ise, agent güncellemelerinden korunmuş demektir
-        if (pkg.locked_by === 'courier') {
-          return false
-        }
-        return true
-      })
-
       if (error) throw error
 
-      const transformedData = filteredData.map((pkg: any) => ({
+      const transformedData = (data || []).map((pkg: any) => ({
         ...pkg,
         restaurant: Array.isArray(pkg.restaurants) && pkg.restaurants.length > 0 
           ? pkg.restaurants[0] 
@@ -1307,123 +1293,58 @@ export default function Home() {
   // fetchCourierStatuses fonksiyonu kaldırıldı - artık fetchCouriers'da tüm bilgiler geliyor
 
   const handleAssignCourier = async (packageId: number) => {
-    setSelectedCouriers(currentState => {
-      const courierId = currentState[packageId];
+    const courierId = selectedCouriers[packageId]
+    
+    if (!courierId) {
+      setNotificationMessage('⚠️ Lütfen önce bir kurye seçin!')
+      setTimeout(() => setNotificationMessage(''), 2000)
+      return
+    }
+    
+    setAssigningIds(prev => new Set(prev).add(packageId))
+    
+    // Optimistic update: Paketi hemen listeden kaldır
+    setPackages(prev => prev.filter(pkg => pkg.id !== packageId))
+    setCouriers(prev => prev.map(c => 
+      c.id === courierId 
+        ? { ...c, activePackageCount: (c.activePackageCount || 0) + 1 }
+        : c
+    ))
+    
+    try {
+      const { error } = await supabase
+        .from('packages')
+        .update({
+          courier_id: courierId,
+          status: 'assigned',
+          assigned_at: new Date().toISOString()
+        })
+        .eq('id', packageId)
       
-      if (!courierId) {
-        setNotificationMessage('⚠️ Lütfen önce bir kurye seçin!')
-        setTimeout(() => setNotificationMessage(''), 2000)
-        return currentState;
-      }
+      if (error) throw error
       
-      // Butonu hemen disabled yap (loading durumu - "Atanıyor..." gösterilecek)
-      setAssigningIds(prev => new Set(prev).add(packageId));
+      setSuccessMessage('✅ Kurye Atandı!')
+      setTimeout(() => setSuccessMessage(''), 2000)
       
-      // 🔒 ADMİN ZIRHI: OPTİMİSTİK GÜNCELLEME - Paketi hemen listeden kaldır
-      setPackages(prev => prev.filter(pkg => pkg.id !== packageId));
+      await Promise.all([
+        fetchPackages(false),
+        fetchCouriers(false)
+      ])
+    } catch (error: any) {
+      console.error('Kurye atama hatası:', error)
+      setErrorMessage('❌ Atama Yapılamadı: ' + error.message)
+      setTimeout(() => setErrorMessage(''), 3000)
       
-      // Kurye sayılarını hemen güncelle (optimistic)
-      setCouriers(prev => prev.map(c => 
-        c.id === courierId 
-          ? { ...c, activePackageCount: (c.activePackageCount || 0) + 1 }
-          : c
-      ));
-      
-      // Async işlemi başlat
-      (async () => {
-        try {
-          console.log('🔒 ADMİN ZIRHLI ATAMA başlıyor:', { packageId, courierId })
-          
-          // OPTİMİSTİK LOCKİNG: Sadece status='pending' veya 'waiting' olan paketlere kurye ata
-          const { data, error } = await supabase
-            .from('packages')
-            .update({
-              courier_id: courierId,
-              status: 'assigned',
-              locked_by: 'courier',
-              assigned_at: new Date().toISOString()
-            })
-            .eq('id', packageId)
-            .in('status', ['pending', 'waiting'])
-            .select()
-          
-          if (error) throw error
-          
-          // GÜVENLİK KALKANI ÇALIŞTI: Paket zaten atanmış
-          if (!data || data.length === 0) {
-            console.log('🛡️ Güvenlik kalkanı çalıştı: Paket zaten atanmış')
-            
-            // YEŞİL BAŞARI MESAJI (hata değil, güvenlik başarısı)
-            setSuccessMessage('✅ Sipariş Zaten Atanmış')
-            setTimeout(() => setSuccessMessage(''), 2000)
-            
-            // Listeyi yenile (gerçek durumu göster)
-            await Promise.all([
-              fetchPackages(false),
-              fetchCouriers(false)
-            ])
-            
-            return
-          }
-          
-          console.log('✅ ADMİN ZIRHLI ATAMA başarılı:', data[0])
-          console.log('🔒 Paket artık ÇELİK KİLİT altında - Ajan dokunamaz!')
-          
-          // Başarı mesajı
-          setSuccessMessage('✅ Kurye Atandı ve Kilitlendi!')
-          setTimeout(() => setSuccessMessage(''), 2000)
-          
-          // Realtime listener'a bildir - kendi update'imizi ignore etmesi için
-          if (typeof window !== 'undefined' && (window as any).__adminLastUpdateTime) {
-            (window as any).__adminLastUpdateTime()
-          }
-          
-          // Arka planda listeyi yenile (optimistic update zaten yapıldı)
-          // Ancak fetchPackages artık assigned paketleri filtreleyeceği için bu paket listede görünmeyecek
-          await Promise.all([
-            fetchPackages(false),
-            fetchCouriers(false)
-          ])
-        } catch (error: any) {
-          console.error('❌ Kurye atama hatası:', error)
-          
-          // Hata mesajını analiz et
-          const errorMsg = error.message?.toLowerCase() || ''
-          
-          // Eğer 'atanmış' veya 'durumu değişmiş' içeriyorsa → YEŞİL BAŞARI MESAJI
-          if (errorMsg.includes('atanmış') || 
-              errorMsg.includes('assigned') || 
-              errorMsg.includes('durumu değişmiş') ||
-              errorMsg.includes('yolda') ||
-              errorMsg.includes('locked') ||
-              errorMsg.includes('çelik kilit')) {
-            
-            console.log('🛡️ Güvenlik kalkanı çalıştı (catch bloğu)')
-            
-            // YEŞİL BAŞARI MESAJI
-            setSuccessMessage('✅ Sipariş Zaten Atanmış')
-            setTimeout(() => setSuccessMessage(''), 2000)
-          } else {
-            // Gerçek hata (network, permission vb.) - KIRMIZI HATA
-            setErrorMessage('❌ Atama Yapılamadı: ' + error.message)
-            setTimeout(() => setErrorMessage(''), 3000)
-            
-            // Optimistic update'i geri al (paket tekrar listeye dönecek)
-            await fetchPackages(false)
-            await fetchCouriers(false)
-          }
-        } finally { 
-          // Butonu tekrar aktif et (loading bitir)
-          setAssigningIds(prev => { 
-            const n = new Set(prev)
-            n.delete(packageId)
-            return n
-          })
-        }
-      })();
-      
-      return currentState;
-    });
+      // Hata durumunda listeyi yenile
+      await fetchPackages(false)
+      await fetchCouriers(false)
+    } finally {
+      setAssigningIds(prev => {
+        const n = new Set(prev)
+        n.delete(packageId)
+        return n
+      })
+    }
   }
 
   useEffect(() => {
@@ -1453,75 +1374,18 @@ export default function Home() {
     let lastUpdateTime = 0
     const UPDATE_DEBOUNCE = 1000 // 1 saniye içindeki tekrar güncellemeleri engelle
 
-    // Realtime callback fonksiyonları - her zaman güncel state'e erişmek için burada tanımla
     const handlePackageChange = async (payload: any) => {
       const now = Date.now()
       
-      // Kendi update'imizden hemen sonra gelen değişiklikleri engelle
       if (now - lastUpdateTime < UPDATE_DEBOUNCE) {
-        console.log('⏭️ Kendi update, atlanıyor...')
         return
       }
       
-      console.log('📦 Paket değişikliği:', payload.eventType, 'ID:', payload.new?.id || payload.old?.id)
+      console.log('📦 Paket değişikliği:', payload.eventType)
       
-      // 🔒 ÇELİK KİLİT: INSERT olaylarını IGNORE et (Ajan yeni paket ekliyor)
-      if (payload.eventType === 'INSERT') {
-        console.log('🛡️ ÇELİK KİLİT: Yeni paket INSERT edildi, 2 saniye bekle...')
-        // 2 saniye bekle (Ajan duplicate kontrolü yapsın)
-        await new Promise(resolve => setTimeout(resolve, 2000))
-      }
-      
-      // 🔒 ÇELİK KİLİT: Eğer paket kurye atanmışsa ve ajan boş veri gönderiyorsa IGNORE et
-      if (payload.eventType === 'UPDATE' && payload.new) {
-        const newData = payload.new
-        const oldData = payload.old
-        
-        // 🔒 EN ÖNEMLİ KORUMA: Eğer paket locked_by: 'courier' ise → AJAN DOKUNMASIN!
-        if (oldData?.locked_by === 'courier' || newData.locked_by === 'courier') {
-          console.log('🛡️ ÇELİK KİLİT: Paket kurye kilidi altında, agent güncellemesi IGNORE edildi!')
-          console.log('   Old locked_by:', oldData?.locked_by)
-          console.log('   New locked_by:', newData.locked_by)
-          console.log('   Package ID:', newData.id)
-          return // Realtime güncellemeyi IGNORE et
-        }
-        
-        // Eğer eski veri kurye atanmışsa ve yeni veri kurye boşsa → AJAN EZİYOR, IGNORE ET!
-        if (oldData?.courier_id && !newData.courier_id) {
-          console.log('🛡️ ÇELİK KİLİT: Ajan kurye atanmış paketi silmeye çalışıyor, IGNORE edildi!')
-          console.log('   Old courier_id:', oldData.courier_id)
-          console.log('   New courier_id:', newData.courier_id)
-          return // Realtime güncellemeyi IGNORE et
-        }
-        
-        // Eğer eski veri assigned/picking_up/on_the_way ise ve yeni veri pending/waiting ise → AJAN EZİYOR, IGNORE ET!
-        const assignedStatuses = ['assigned', 'picking_up', 'on_the_way']
-        const pendingStatuses = ['pending', 'waiting']
-        if (assignedStatuses.includes(oldData?.status) && pendingStatuses.includes(newData.status)) {
-          console.log('🛡️ ÇELİK KİLİT: Ajan atanmış paketi pending yapmaya çalışıyor, IGNORE edildi!')
-          console.log('   Old status:', oldData.status)
-          console.log('   New status:', newData.status)
-          console.log('   Old courier_id:', oldData?.courier_id)
-          console.log('   New courier_id:', newData.courier_id)
-          return // Realtime güncellemeyi IGNORE et
-        }
-        
-        // Eğer paket courier_id'ye sahipse ve agent status'ü değiştirmeye çalışıyorsa → IGNORE ET!
-        if (oldData?.courier_id && oldData?.courier_id === newData.courier_id) {
-          // Aynı courier_id var ama status değişiyor - bu normal olabilir (kurye durumu güncelliyor)
-          // Ancak eğer assigned -> pending gibi geri dönüş varsa engelle
-          if (assignedStatuses.includes(oldData.status) && pendingStatuses.includes(newData.status)) {
-            console.log('🛡️ ÇELİK KİLİT: Ajan kuryeye atanmış paketi geri pending yapmaya çalışıyor, IGNORE edildi!')
-            return
-          }
-        }
-      }
-      
-      // State'i güncelle - sayfa yenileme YOK!
       await fetchPackages(false)
       await fetchCouriers(false)
       await fetchDeliveredPackages()
-      console.log('✅ Admin state güncellendi (packages)')
     }
 
     const handleCourierChange = async (payload: any) => {
