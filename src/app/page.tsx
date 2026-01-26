@@ -1321,6 +1321,7 @@ export default function Home() {
             .update({
               courier_id: courierId,
               status: 'assigned',
+              locked_by: 'courier', // KRİTİK: Paketi kuryeye kilitle
               assigned_at: new Date().toISOString()
             })
             .eq('id', packageId)
