@@ -1312,6 +1312,25 @@ export default function Home() {
         (window as any).__adminLastUpdateTime = () => now
       }
       
+      // Önce paketi kontrol et
+      const { data: checkData, error: checkError } = await supabase
+        .from('packages')
+        .select('id, courier_id, status')
+        .eq('id', packageId)
+        .single()
+      
+      if (checkError) {
+        console.error('❌ Paket kontrol hatası:', checkError)
+        throw new Error('Paket bulunamadı: ' + checkError.message)
+      }
+      
+      console.log('📦 Paket mevcut durumu:', checkData)
+      
+      if (checkData.courier_id) {
+        throw new Error('Bu paket zaten başka bir kuryeye atanmış!')
+      }
+      
+      // Kurye ata
       const { data, error } = await supabase
         .from('packages')
         .update({
@@ -1322,10 +1341,14 @@ export default function Home() {
         .eq('id', packageId)
         .select()
       
-      if (error) throw error
+      if (error) {
+        console.error('❌ UPDATE hatası:', error)
+        throw error
+      }
       
       if (!data || data.length === 0) {
-        throw new Error('Paket bulunamadı veya güncellenemedi')
+        console.error('❌ UPDATE 0 satır döndürdü')
+        throw new Error('Güncelleme başarısız - trigger veya constraint engelliyor olabilir')
       }
       
       console.log('✅ Kurye atama başarılı:', data[0])
@@ -1352,7 +1375,7 @@ export default function Home() {
     } catch (error: any) {
       console.error('❌ Kurye atama hatası:', error)
       setErrorMessage('❌ Atama Yapılamadı: ' + error.message)
-      setTimeout(() => setErrorMessage(''), 3000)
+      setTimeout(() => setErrorMessage(''), 5000)
       
       // Hata durumunda listeyi yenile
       await fetchPackages(false)
