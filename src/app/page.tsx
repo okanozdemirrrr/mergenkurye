@@ -2814,7 +2814,7 @@ export default function Home() {
             ) : (
               packages.map(pkg => (
                 <div key={pkg.id} className={`bg-white dark:bg-slate-800 p-3 rounded-lg border-l-4 shadow-sm ${
-                  pkg.status === 'waiting' ? 'border-l-yellow-500' :
+                  pkg.status === 'pending' || pkg.status === 'waiting' ? 'border-l-yellow-500' :
                   pkg.status === 'assigned' ? 'border-l-blue-500' :
                   pkg.status === 'picking_up' ? 'border-l-orange-500' :
                   'border-l-red-500'
@@ -2843,12 +2843,12 @@ export default function Home() {
                   {/* Durum Rozeti */}
                   <div className="mb-2">
                     <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                      pkg.status === 'waiting' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                      pkg.status === 'pending' || pkg.status === 'waiting' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
                       pkg.status === 'assigned' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
                       pkg.status === 'picking_up' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
                       'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                     }`}>
-                      {pkg.status === 'waiting' ? '⏳ Bekliyor' : 
+                      {pkg.status === 'pending' || pkg.status === 'waiting' ? '⏳ Kurye Bekliyor' : 
                        pkg.status === 'assigned' ? '👤 Atandı' :
                        pkg.status === 'picking_up' ? '🏃 Alınıyor' : '🚗 Yolda'}
                     </span>
@@ -2894,7 +2894,7 @@ export default function Home() {
                   </div>
 
                   {/* Kurye Atama */}
-                  {pkg.status === 'waiting' && (
+                  {(pkg.status === 'pending' || pkg.status === 'waiting') && !pkg.courier_id && (
                     <div className="border-t border-slate-200 dark:border-slate-600 pt-2 space-y-2">
                       <select 
                         value={selectedCouriers[pkg.id] || ''}
@@ -2929,7 +2929,7 @@ export default function Home() {
                   )}
 
                   {/* Atanmış Kurye Bilgisi */}
-                  {pkg.status !== 'waiting' && pkg.courier_id && (
+                  {pkg.courier_id && (pkg.status === 'assigned' || pkg.status === 'picking_up' || pkg.status === 'on_the_way') && (
                     <div className="border-t border-slate-200 dark:border-slate-600 pt-2">
                       <div className="flex items-center justify-center">
                         <span className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 px-2 py-1 rounded text-xs font-medium">
@@ -2983,11 +2983,13 @@ export default function Home() {
                         {courierPackages.map(pkg => (
                           <div key={pkg.id} className="text-[10px] flex items-center gap-1">
                             <span className={`px-2 py-0.5 rounded-full font-semibold ${
+                              pkg.status === 'pending' || pkg.status === 'waiting' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
                               pkg.status === 'assigned' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
                               pkg.status === 'picking_up' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
                               'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                             }`}>
-                              {pkg.status === 'assigned' ? '👤 Atandı' :
+                              {pkg.status === 'pending' || pkg.status === 'waiting' ? '⏳ Bekliyor' :
+                               pkg.status === 'assigned' ? '👤 Atandı' :
                                pkg.status === 'picking_up' ? '🏃 Alıyor' : '🚗 Yolda'}
                             </span>
                             <span className="text-slate-600 dark:text-slate-400 truncate">
