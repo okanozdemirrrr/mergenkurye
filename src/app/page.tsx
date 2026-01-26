@@ -1303,16 +1303,16 @@ export default function Home() {
     
     setAssigningIds(prev => new Set(prev).add(packageId))
     
-    // Optimistic update: Paketi hemen listeden kaldır
-    setPackages(prev => prev.filter(pkg => pkg.id !== packageId))
-    setCouriers(prev => prev.map(c => 
-      c.id === courierId 
-        ? { ...c, activePackageCount: (c.activePackageCount || 0) + 1 }
-        : c
-    ))
-    
     try {
-      const { error } = await supabase
+      console.log('🔄 Kurye atama başlıyor:', { packageId, courierId })
+      
+      // Realtime listener'ı geçici olarak devre dışı bırak
+      const now = Date.now()
+      if (typeof window !== 'undefined') {
+        (window as any).__adminLastUpdateTime = () => now
+      }
+      
+      const { data, error } = await supabase
         .from('packages')
         .update({
           courier_id: courierId,
@@ -1320,18 +1320,37 @@ export default function Home() {
           assigned_at: new Date().toISOString()
         })
         .eq('id', packageId)
+        .select()
       
       if (error) throw error
+      
+      if (!data || data.length === 0) {
+        throw new Error('Paket bulunamadı veya güncellenemedi')
+      }
+      
+      console.log('✅ Kurye atama başarılı:', data[0])
+      
+      // Veritabanından gelen kesin veriyle state'i güncelle
+      setPackages(prev => prev.filter(pkg => pkg.id !== packageId))
+      setCouriers(prev => prev.map(c => 
+        c.id === courierId 
+          ? { ...c, activePackageCount: (c.activePackageCount || 0) + 1 }
+          : c
+      ))
       
       setSuccessMessage('✅ Kurye Atandı!')
       setTimeout(() => setSuccessMessage(''), 2000)
       
-      await Promise.all([
-        fetchPackages(false),
-        fetchCouriers(false)
-      ])
+      // 500ms sonra listeyi yenile (Realtime'dan önce)
+      setTimeout(async () => {
+        await Promise.all([
+          fetchPackages(false),
+          fetchCouriers(false)
+        ])
+      }, 500)
+      
     } catch (error: any) {
-      console.error('Kurye atama hatası:', error)
+      console.error('❌ Kurye atama hatası:', error)
       setErrorMessage('❌ Atama Yapılamadı: ' + error.message)
       setTimeout(() => setErrorMessage(''), 3000)
       
@@ -1378,11 +1397,20 @@ export default function Home() {
       const now = Date.now()
       
       if (now - lastUpdateTime < UPDATE_DEBOUNCE) {
+        console.log('⏭️ Kendi update, atlanıyor...')
         return
       }
       
-      console.log('📦 Paket değişikliği:', payload.eventType)
+      console.log('📦 Paket değişikliği:', payload.eventType, 'ID:', payload.new?.id || payload.old?.id)
       
+      // UPDATE olayında: Eğer courier_id atandıysa, bu paketi listeden çıkar
+      if (payload.eventType === 'UPDATE' && payload.new?.courier_id) {
+        console.log('✅ Paket kuryeye atandı, listeden çıkarılıyor:', payload.new.id)
+        setPackages(prev => prev.filter(pkg => pkg.id !== payload.new.id))
+        return
+      }
+      
+      // Diğer durumlar için listeyi yenile
       await fetchPackages(false)
       await fetchCouriers(false)
       await fetchDeliveredPackages()
