@@ -4,18 +4,25 @@
 
 ### 1. Admin Panel (Frontend)
 
+**Status Filter Güncellendi:**
+```typescript
+// Agent 'pending' status kullanıyor, admin panel bunu da görmeli
+.in('status', ['pending', 'waiting', 'assigned', 'picking_up', 'on_the_way'])
+```
+
 **Optimistic Locking Eklendi:**
 ```typescript
-// Sadece status='waiting' olan paketlere kurye ata
+// Sadece status='pending' veya 'waiting' olan paketlere kurye ata
 const { data, error } = await supabase
   .from('packages')
   .update({
     courier_id: courierId,
     status: 'assigned',
+    locked_by: 'courier',
     assigned_at: new Date().toISOString()
   })
   .eq('id', packageId)
-  .eq('status', 'waiting') // KRİTİK: Sadece waiting durumundaysa güncelle
+  .in('status', ['pending', 'waiting']) // KRİTİK: Agent 'pending', manuel 'waiting' kullanır
   .select()
 
 // Eğer hiçbir satır güncellenmemişse, paket zaten atanmış demektir
@@ -86,7 +93,7 @@ npm run build
 ### Senaryo 1: Normal Kurye Atama
 
 ```
-1. Agent yeni sipariş oluşturur → status='waiting', locked_by='agent'
+1. Agent yeni sipariş oluşturur → status='pending', locked_by='agent'
 2. Admin kurye atar → status='assigned', locked_by='courier' (otomatik)
 3. Kurye siparişi alır → status='picking_up'
 4. Kurye teslim eder → status='delivered'
@@ -95,8 +102,8 @@ npm run build
 ### Senaryo 2: Çakışma Önleme
 
 ```
-1. Admin A kurye atar → UPDATE ... WHERE status='waiting'
-2. Admin B aynı anda kurye atar → UPDATE ... WHERE status='waiting'
+1. Admin A kurye atar → UPDATE ... WHERE status IN ('pending', 'waiting')
+2. Admin B aynı anda kurye atar → UPDATE ... WHERE status IN ('pending', 'waiting')
 3. Sadece biri başarılı olur (Optimistic Locking)
 4. Diğeri hata alır: "Bu sipariş zaten atanmış!"
 ```

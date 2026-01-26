@@ -209,7 +209,7 @@ export default function Home() {
       const { data, error } = await supabase
         .from('packages')
         .select('*, restaurants(*)')
-        .in('status', ['waiting', 'assigned', 'picking_up', 'on_the_way'])
+        .in('status', ['pending', 'waiting', 'assigned', 'picking_up', 'on_the_way'])
         .gte('created_at', todayStart.toISOString())
         .order('created_at', { ascending: false })
 
@@ -1331,7 +1331,7 @@ export default function Home() {
           console.log('📦 Mevcut paket durumu:', currentPackage)
           
           // Eğer paket zaten atanmışsa, kullanıcıya bilgi ver
-          if (currentPackage.status !== 'waiting') {
+          if (currentPackage.status !== 'pending' && currentPackage.status !== 'waiting') {
             console.log('⚠️ Paket zaten atanmış:', {
               current_status: currentPackage.status,
               current_courier: currentPackage.courier_id,
@@ -1349,7 +1349,7 @@ export default function Home() {
             return
           }
           
-          // OPTİMİSTİK LOCKİNG: Sadece status='waiting' olan paketlere kurye ata
+          // OPTİMİSTİK LOCKİNG: Sadece status='pending' veya 'waiting' olan paketlere kurye ata
           const { data, error } = await supabase
             .from('packages')
             .update({
@@ -1359,7 +1359,7 @@ export default function Home() {
               assigned_at: new Date().toISOString()
             })
             .eq('id', packageId)
-            .eq('status', 'waiting')
+            .in('status', ['pending', 'waiting'])
             .select()
           
           if (error) throw error
