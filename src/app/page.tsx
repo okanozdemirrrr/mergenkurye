@@ -1296,9 +1296,13 @@ export default function Home() {
       const courierId = currentState[packageId];
       
       if (!courierId) {
-        alert('Lütfen önce bir kurye seçin!');
+        setErrorMessage('⚠️ Lütfen önce bir kurye seçin!')
+        setTimeout(() => setErrorMessage(''), 2000)
         return currentState;
       }
+      
+      // Butonu hemen disabled yap
+      setAssigningIds(prev => new Set(prev).add(packageId));
       
       // OPTİMİSTİK GÜNCELLEME - UI'ı hemen güncelle
       setPackages(prev => prev.map(pkg => 
@@ -1310,8 +1314,6 @@ export default function Home() {
       // Async işlemi başlat
       (async () => {
         try {
-          setAssigningIds(prev => new Set(prev).add(packageId));
-          
           console.log('🔒 Kurye atama başlıyor:', { packageId, courierId })
           
           // OPTİMİSTİK LOCKİNG: Sadece status='waiting' olan paketlere kurye ata
@@ -1332,30 +1334,49 @@ export default function Home() {
           
           // Eğer hiçbir satır güncellenmemişse, paket zaten atanmış demektir
           if (!data || data.length === 0) {
-            throw new Error('Bu sipariş zaten başka bir kuryeye atanmış veya durumu değişmiş!')
+            // Kullanıcı dostu mesaj
+            setNotificationMessage('ℹ️ Bu sipariş zaten yolda veya başka bir kuryeye atanmış!')
+            setTimeout(() => setNotificationMessage(''), 3000)
+            
+            // Listeyi hemen yenile
+            console.log('🔄 Liste yenileniyor...')
+            await fetchPackages(false)
+            await fetchCouriers(false)
+            return
           }
           
           console.log('✅ Kurye başarıyla atandı:', data[0])
+          
+          setSuccessMessage('✅ Kurye başarıyla atandı!')
+          setTimeout(() => setSuccessMessage(''), 2000)
+          
+          // Listeyi yenile (atanan paket listeden düşecek)
+          await fetchPackages(false); 
+          await fetchCouriers(false);
           
           // Realtime listener'a kendi update'imizi yaptığımızı bildir
           if (typeof window !== 'undefined' && (window as any).__adminLastUpdateTime) {
             (window as any).__adminLastUpdateTime()
           }
-          
-          setSuccessMessage('✅ Kurye atandı!')
-          setTimeout(() => setSuccessMessage(''), 2000)
-          
-          // Sessiz yenileme - loading yok
-          fetchPackages(false); 
-          fetchCouriers(false);
         } catch (error: any) {
           console.error('❌ Kurye atama hatası:', error)
-          setErrorMessage(error.message || 'Kurye atanamadı!')
-          setTimeout(() => setErrorMessage(''), 3000)
           
-          // Hata durumunda geri al
-          fetchPackages(false);
+          // Hata mesajını kullanıcı dostu yap
+          const errorMsg = error.message?.toLowerCase() || ''
+          if (errorMsg.includes('atanmış') || errorMsg.includes('assigned')) {
+            setNotificationMessage('ℹ️ Bu sipariş zaten yolda veya başka bir kuryeye atanmış!')
+          } else {
+            setErrorMessage('❌ Kurye atanamadı: ' + error.message)
+          }
+          setTimeout(() => {
+            setErrorMessage('')
+            setNotificationMessage('')
+          }, 3000)
+          
+          // Hata durumunda listeyi yenile (gerçek durumu göster)
+          await fetchPackages(false);
         } finally { 
+          // Butonu tekrar aktif et
           setAssigningIds(prev => { const n = new Set(prev); n.delete(packageId); return n });
         }
       })();
