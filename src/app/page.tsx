@@ -1449,6 +1449,13 @@ export default function Home() {
       
       console.log('📦 Paket değişikliği:', payload.eventType, 'ID:', payload.new?.id || payload.old?.id)
       
+      // 🔒 ÇELİK KİLİT: INSERT olaylarını IGNORE et (Ajan yeni paket ekliyor)
+      if (payload.eventType === 'INSERT') {
+        console.log('🛡️ ÇELİK KİLİT: Yeni paket INSERT edildi, 2 saniye bekle...')
+        // 2 saniye bekle (Ajan duplicate kontrolü yapsın)
+        await new Promise(resolve => setTimeout(resolve, 2000))
+      }
+      
       // 🔒 ÇELİK KİLİT: Eğer paket kurye atanmışsa ve ajan boş veri gönderiyorsa IGNORE et
       if (payload.eventType === 'UPDATE' && payload.new) {
         const newData = payload.new
