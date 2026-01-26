@@ -1296,12 +1296,12 @@ export default function Home() {
       const courierId = currentState[packageId];
       
       if (!courierId) {
-        setErrorMessage('⚠️ Lütfen önce bir kurye seçin!')
-        setTimeout(() => setErrorMessage(''), 2000)
+        setNotificationMessage('⚠️ Lütfen önce bir kurye seçin!')
+        setTimeout(() => setNotificationMessage(''), 2000)
         return currentState;
       }
       
-      // Butonu hemen disabled yap
+      // Butonu hemen disabled yap (loading durumu)
       setAssigningIds(prev => new Set(prev).add(packageId));
       
       // OPTİMİSTİK GÜNCELLEME - UI'ı hemen güncelle
@@ -1317,67 +1317,80 @@ export default function Home() {
           console.log('🔒 Kurye atama başlıyor:', { packageId, courierId })
           
           // OPTİMİSTİK LOCKİNG: Sadece status='waiting' olan paketlere kurye ata
-          // Bu sayede agent veya başka bir admin aynı anda atama yapamaz
           const { data, error } = await supabase
             .from('packages')
             .update({
               courier_id: courierId,
               status: 'assigned',
-              locked_by: 'courier', // KRİTİK: Paketi kuryeye kilitle
+              locked_by: 'courier',
               assigned_at: new Date().toISOString()
             })
             .eq('id', packageId)
-            .eq('status', 'waiting') // KRİTİK: Sadece waiting durumundaysa güncelle
+            .eq('status', 'waiting')
             .select()
           
           if (error) throw error
           
-          // Eğer hiçbir satır güncellenmemişse, paket zaten atanmış demektir
+          // GÜVENLİK KALKANI ÇALIŞTI: Paket zaten atanmış
           if (!data || data.length === 0) {
-            // Kullanıcı dostu mesaj
-            setNotificationMessage('ℹ️ Bu sipariş zaten yolda veya başka bir kuryeye atanmış!')
-            setTimeout(() => setNotificationMessage(''), 3000)
+            console.log('🛡️ Güvenlik kalkanı çalıştı: Paket zaten atanmış')
             
-            // Listeyi hemen yenile
-            console.log('🔄 Liste yenileniyor...')
+            // Pozitif bilgi mesajı (hata değil, güvenlik başarısı)
+            setSuccessMessage('✅ Güvenlik kontrolü: Bu sipariş zaten yolda!')
+            setTimeout(() => setSuccessMessage(''), 3000)
+            
+            // UI'ı gerçek duruma göre güncelle
+            console.log('🔄 Liste güncelleniyor...')
             await fetchPackages(false)
             await fetchCouriers(false)
+            
             return
           }
           
           console.log('✅ Kurye başarıyla atandı:', data[0])
           
+          // Başarı mesajı
           setSuccessMessage('✅ Kurye başarıyla atandı!')
           setTimeout(() => setSuccessMessage(''), 2000)
           
-          // Listeyi yenile (atanan paket listeden düşecek)
-          await fetchPackages(false); 
-          await fetchCouriers(false);
+          // Listeyi yenile (atanan paket listeden düşecek çünkü status='assigned')
+          await fetchPackages(false)
+          await fetchCouriers(false)
           
-          // Realtime listener'a kendi update'imizi yaptığımızı bildir
+          // Realtime listener'a bildir
           if (typeof window !== 'undefined' && (window as any).__adminLastUpdateTime) {
             (window as any).__adminLastUpdateTime()
           }
         } catch (error: any) {
           console.error('❌ Kurye atama hatası:', error)
           
-          // Hata mesajını kullanıcı dostu yap
+          // Hata mesajını analiz et
           const errorMsg = error.message?.toLowerCase() || ''
-          if (errorMsg.includes('atanmış') || errorMsg.includes('assigned')) {
-            setNotificationMessage('ℹ️ Bu sipariş zaten yolda veya başka bir kuryeye atanmış!')
-          } else {
-            setErrorMessage('❌ Kurye atanamadı: ' + error.message)
-          }
-          setTimeout(() => {
-            setErrorMessage('')
-            setNotificationMessage('')
-          }, 3000)
           
-          // Hata durumunda listeyi yenile (gerçek durumu göster)
-          await fetchPackages(false);
+          // Eğer 'atanmış' veya 'durumu değişmiş' içeriyorsa → Güvenlik başarısı
+          if (errorMsg.includes('atanmış') || 
+              errorMsg.includes('assigned') || 
+              errorMsg.includes('durumu değişmiş') ||
+              errorMsg.includes('yolda')) {
+            
+            console.log('🛡️ Güvenlik kalkanı çalıştı (catch bloğu)')
+            setSuccessMessage('✅ Güvenlik kontrolü: Bu sipariş zaten yolda!')
+            setTimeout(() => setSuccessMessage(''), 3000)
+          } else {
+            // Gerçek hata (network, permission vb.)
+            setErrorMessage('❌ Atama yapılamadı: ' + error.message)
+            setTimeout(() => setErrorMessage(''), 3000)
+          }
+          
+          // Her durumda listeyi yenile (gerçek durumu göster)
+          await fetchPackages(false)
         } finally { 
-          // Butonu tekrar aktif et
-          setAssigningIds(prev => { const n = new Set(prev); n.delete(packageId); return n });
+          // Butonu tekrar aktif et (loading bitir)
+          setAssigningIds(prev => { 
+            const n = new Set(prev)
+            n.delete(packageId)
+            return n
+          })
         }
       })();
       
