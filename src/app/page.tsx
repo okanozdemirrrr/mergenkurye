@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from './lib/supabase'
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts'
 
 interface Restaurant {
   id: number | string
@@ -1312,20 +1312,46 @@ export default function Home() {
         try {
           setAssigningIds(prev => new Set(prev).add(packageId));
           
-          const { error } = await supabase.from('packages').update({
-            courier_id: courierId,
-            status: 'assigned',
-            assigned_at: new Date().toISOString()
-          }).eq('id', packageId);
+          console.log('🔒 Kurye atama başlıyor:', { packageId, courierId })
           
-          if (error) throw error;
+          // OPTİMİSTİK LOCKİNG: Sadece status='waiting' olan paketlere kurye ata
+          // Bu sayede agent veya başka bir admin aynı anda atama yapamaz
+          const { data, error } = await supabase
+            .from('packages')
+            .update({
+              courier_id: courierId,
+              status: 'assigned',
+              assigned_at: new Date().toISOString()
+            })
+            .eq('id', packageId)
+            .eq('status', 'waiting') // KRİTİK: Sadece waiting durumundaysa güncelle
+            .select()
           
-          setSuccessMessage('Kurye atandı!');
+          if (error) throw error
+          
+          // Eğer hiçbir satır güncellenmemişse, paket zaten atanmış demektir
+          if (!data || data.length === 0) {
+            throw new Error('Bu sipariş zaten başka bir kuryeye atanmış veya durumu değişmiş!')
+          }
+          
+          console.log('✅ Kurye başarıyla atandı:', data[0])
+          
+          // Realtime listener'a kendi update'imizi yaptığımızı bildir
+          if (typeof window !== 'undefined' && (window as any).__adminLastUpdateTime) {
+            (window as any).__adminLastUpdateTime()
+          }
+          
+          setSuccessMessage('✅ Kurye atandı!')
+          setTimeout(() => setSuccessMessage(''), 2000)
+          
           // Sessiz yenileme - loading yok
           fetchPackages(false); 
           fetchCouriers(false);
-        } catch (error: any) { 
-          setErrorMessage(error.message);
+        } catch (error: any) {
+          console.error('❌ Kurye atama hatası:', error)
+          setErrorMessage(error.message || 'Kurye atanamadı!')
+          setTimeout(() => setErrorMessage(''), 3000)
+          
           // Hata durumunda geri al
           fetchPackages(false);
         } finally { 
@@ -1360,9 +1386,22 @@ export default function Home() {
 
     console.log('🔴 Admin Realtime dinleme başlatıldı - Canlı yayın modu aktif')
 
+    // Son güncelleme zamanını takip et (kendi update'lerini tekrar tetiklememek için)
+    let lastUpdateTime = 0
+    const UPDATE_DEBOUNCE = 1000 // 1 saniye içindeki tekrar güncellemeleri engelle
+
     // Realtime callback fonksiyonları - her zaman güncel state'e erişmek için burada tanımla
     const handlePackageChange = async (payload: any) => {
+      const now = Date.now()
+      
+      // Kendi update'imizden hemen sonra gelen değişiklikleri engelle
+      if (now - lastUpdateTime < UPDATE_DEBOUNCE) {
+        console.log('⏭️ Kendi update, atlanıyor...')
+        return
+      }
+      
       console.log('📦 Paket değişikliği:', payload.eventType, 'ID:', payload.new?.id || payload.old?.id)
+      
       // State'i güncelle - sayfa yenileme YOK!
       await fetchPackages(false)
       await fetchCouriers(false)
@@ -1382,10 +1421,17 @@ export default function Home() {
       console.log('✅ Admin state güncellendi (restaurants)')
     }
 
+    // Global olarak erişilebilir hale getir (handleAssignCourier'dan çağrılabilmesi için)
+    if (typeof window !== 'undefined') {
+      (window as any).__adminLastUpdateTime = () => {
+        lastUpdateTime = Date.now()
+      }
+    }
+
     const channel = supabase
       .channel('admin-realtime-all-events', {
         config: {
-          broadcast: { self: true },
+          broadcast: { self: false }, // KRİTİK: Kendi update'lerimizi dinleme
           presence: { key: 'admin' }
         }
       })
@@ -3882,6 +3928,256 @@ export default function Home() {
           </div>
         )}
         </>
+      )
+    }
+
+    // Kurye Performansları görünümü
+    if (courierSubTab === 'performance') {
+      const [selectedCourierId, setSelectedPerformanceCourierId] = useState<string>('')
+      const [performanceData, setPerformanceData] = useState<{ date: string; count: number }[]>([])
+      const [loadingPerformance, setLoadingPerformance] = useState(false)
+
+      // Kurye seçildiğinde son 30 günlük performansı çek
+      useEffect(() => {
+        if (selectedCourierId) {
+          fetchCourierPerformance(selectedCourierId)
+        }
+      }, [selectedCourierId])
+
+      const fetchCourierPerformance = async (courierId: string) => {
+        setLoadingPerformance(true)
+        try {
+          // Son 30 gün (bugün dahil)
+          const endDate = new Date()
+          endDate.setHours(23, 59, 59, 999)
+          
+          const startDate = new Date()
+          startDate.setDate(startDate.getDate() - 29) // Bugün + 29 gün önce = 30 gün
+          startDate.setHours(0, 0, 0, 0)
+
+          console.log('📊 Performans sorgusu:', {
+            courier_id: courierId,
+            start: startDate.toISOString(),
+            end: endDate.toISOString()
+          })
+
+          // Tüm delivered paketleri çek
+          const { data, error } = await supabase
+            .from('packages')
+            .select('delivered_at')
+            .eq('courier_id', courierId)
+            .eq('status', 'delivered')
+            .gte('delivered_at', startDate.toISOString())
+            .lte('delivered_at', endDate.toISOString())
+            .order('delivered_at', { ascending: true })
+
+          if (error) throw error
+
+          console.log('📦 Çekilen paket sayısı:', data?.length || 0)
+
+          // Günlere göre grupla
+          const dailyData: { [key: string]: number } = {}
+          
+          // Son 30 günün tüm tarihlerini oluştur (0 paket olanlar için)
+          for (let i = 0; i < 30; i++) {
+            const date = new Date()
+            date.setDate(date.getDate() - (29 - i))
+            const dateKey = date.toISOString().split('T')[0]
+            dailyData[dateKey] = 0
+          }
+
+          // Paketleri günlere göre say
+          data?.forEach(pkg => {
+            if (pkg.delivered_at) {
+              const dateKey = pkg.delivered_at.split('T')[0]
+              if (dailyData.hasOwnProperty(dateKey)) {
+                dailyData[dateKey]++
+              }
+            }
+          })
+
+          // Grafik için formatlı veri oluştur
+          const chartData = Object.keys(dailyData)
+            .sort()
+            .map(dateKey => {
+              const date = new Date(dateKey)
+              const formattedDate = `${date.getDate()} ${date.toLocaleDateString('tr-TR', { month: 'short' })}`
+              return {
+                date: formattedDate,
+                count: dailyData[dateKey]
+              }
+            })
+
+          console.log('📈 Grafik verisi:', chartData)
+          setPerformanceData(chartData)
+        } catch (error) {
+          console.error('❌ Performans verisi çekilirken hata:', error)
+          setPerformanceData([])
+        } finally {
+          setLoadingPerformance(false)
+        }
+      }
+
+      return (
+        <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
+          <h2 className="text-2xl font-bold mb-6">📊 Kurye Performansları</h2>
+
+          {/* Kurye Seçim Dropdown */}
+          <div className="mb-8">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Performansını görüntülemek istediğiniz kuryeyi seçin
+            </label>
+            <select
+              value={selectedCourierId}
+              onChange={(e) => setSelectedPerformanceCourierId(e.target.value)}
+              className="w-full max-w-md px-4 py-3 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white rounded-xl border-2 border-slate-300 dark:border-slate-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-base font-medium"
+            >
+              <option value="">-- Kurye Seçin --</option>
+              {couriers.map(courier => (
+                <option key={courier.id} value={courier.id}>
+                  {courier.full_name} {courier.is_active ? '✓' : '(Pasif)'}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Grafik Alanı */}
+          {!selectedCourierId && (
+            <div className="text-center py-16 text-slate-500 dark:text-slate-400">
+              <div className="text-6xl mb-4">📈</div>
+              <p className="text-lg font-medium">Lütfen bir kurye seçin</p>
+              <p className="text-sm mt-2">Seçilen kuryenin son 30 günlük performansı burada görünecek</p>
+            </div>
+          )}
+
+          {selectedCourierId && loadingPerformance && (
+            <div className="text-center py-16">
+              <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-slate-500 dark:text-slate-400">Performans verileri yükleniyor...</p>
+            </div>
+          )}
+
+          {selectedCourierId && !loadingPerformance && performanceData.length > 0 && (
+            <div>
+              {/* İstatistik Kartları */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 p-4 rounded-xl border-2 border-blue-200 dark:border-blue-700">
+                  <div className="text-sm font-medium text-blue-700 dark:text-blue-400 mb-1">
+                    Toplam Teslimat (30 Gün)
+                  </div>
+                  <div className="text-3xl font-black text-blue-600 dark:text-blue-300">
+                    {performanceData.reduce((sum, d) => sum + d.count, 0)}
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30 p-4 rounded-xl border-2 border-green-200 dark:border-green-700">
+                  <div className="text-sm font-medium text-green-700 dark:text-green-400 mb-1">
+                    Günlük Ortalama
+                  </div>
+                  <div className="text-3xl font-black text-green-600 dark:text-green-300">
+                    {(performanceData.reduce((sum, d) => sum + d.count, 0) / 30).toFixed(1)}
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/30 p-4 rounded-xl border-2 border-purple-200 dark:border-purple-700">
+                  <div className="text-sm font-medium text-purple-700 dark:text-purple-400 mb-1">
+                    En Yüksek Günlük
+                  </div>
+                  <div className="text-3xl font-black text-purple-600 dark:text-purple-300">
+                    {Math.max(...performanceData.map(d => d.count))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Çizgi Grafik */}
+              <div className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-xl border-2 border-slate-200 dark:border-slate-700">
+                <h3 className="text-lg font-bold mb-4 text-slate-900 dark:text-white">
+                  Son 30 Günlük Performans Trendi
+                </h3>
+                <ResponsiveContainer width="100%" height={400}>
+                  <LineChart data={performanceData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
+                    <XAxis 
+                      dataKey="date" 
+                      stroke="#9CA3AF"
+                      tick={{ fill: '#9CA3AF', fontSize: 12 }}
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis 
+                      stroke="#9CA3AF"
+                      tick={{ fill: '#9CA3AF', fontSize: 12 }}
+                      label={{ value: 'Paket Sayısı', angle: -90, position: 'insideLeft', fill: '#9CA3AF' }}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: darkMode ? '#1e293b' : '#ffffff',
+                        border: '2px solid #3b82f6',
+                        borderRadius: '8px',
+                        color: darkMode ? '#ffffff' : '#000000'
+                      }}
+                      labelStyle={{ color: darkMode ? '#ffffff' : '#000000', fontWeight: 'bold' }}
+                    />
+                    <Legend 
+                      wrapperStyle={{ paddingTop: '20px' }}
+                      iconType="line"
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="count" 
+                      name="Teslimat Sayısı"
+                      stroke="#3b82f6" 
+                      strokeWidth={3}
+                      dot={{ fill: '#3b82f6', r: 4 }}
+                      activeDot={{ r: 6, fill: '#2563eb' }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Detaylı Tablo */}
+              <div className="mt-6 bg-white dark:bg-slate-800 rounded-xl border-2 border-slate-200 dark:border-slate-700 overflow-hidden">
+                <div className="p-4 bg-slate-100 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600">
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                    📋 Günlük Detay
+                  </h3>
+                </div>
+                <div className="max-h-96 overflow-y-auto admin-scrollbar">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-slate-50 dark:bg-slate-700 border-b-2 border-slate-200 dark:border-slate-600">
+                      <tr>
+                        <th className="text-left py-3 px-4 font-semibold">Tarih</th>
+                        <th className="text-right py-3 px-4 font-semibold">Teslimat Sayısı</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {performanceData.slice().reverse().map((day, index) => (
+                        <tr 
+                          key={index}
+                          className={`border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/30 ${
+                            index % 2 === 0 ? 'bg-white dark:bg-slate-800' : 'bg-slate-50/50 dark:bg-slate-700/20'
+                          }`}
+                        >
+                          <td className="py-3 px-4 font-medium">{day.date}</td>
+                          <td className="py-3 px-4 text-right">
+                            <span className={`font-bold ${
+                              day.count > 0 
+                                ? 'text-green-600 dark:text-green-400' 
+                                : 'text-slate-400 dark:text-slate-600'
+                            }`}>
+                              {day.count}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       )
     }
     
