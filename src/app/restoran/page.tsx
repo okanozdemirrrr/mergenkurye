@@ -1082,7 +1082,7 @@ export default function RestoranPage() {
                 <div className="flex items-center justify-center gap-2 mb-1">
                   <span className="text-2xl">🍽️</span>
                   <h1 className="text-xl font-bold text-white">
-                    {restaurants.find(r => r.id === selectedRestaurantId)?.name || 'Restoran Paneli'}
+                    {restaurants.find(r => r.id === selectedRestaurantId)?.name || ''}
                   </h1>
                 </div>
                 <p className="text-sm text-slate-400 mt-1">
