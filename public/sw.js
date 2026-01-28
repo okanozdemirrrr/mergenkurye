@@ -1,4 +1,6 @@
-// Service Worker - Bildirim Sistemi
+// Service Worker - Bildirim Sistemi v2
+const CACHE_NAME = 'mergen-v1'
+
 self.addEventListener('install', (event) => {
   console.log('🔧 Service Worker yüklendi')
   self.skipWaiting()
@@ -6,7 +8,11 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   console.log('✅ Service Worker aktif')
-  event.waitUntil(clients.claim())
+  event.waitUntil(
+    clients.claim().then(() => {
+      console.log('✅ Service Worker tüm istemcileri kontrol ediyor')
+    })
+  )
 })
 
 // Bildirim tıklandığında
@@ -18,15 +24,18 @@ self.addEventListener('notificationclick', (event) => {
   // İlgili paneli ön plana getir
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      const targetUrl = event.notification.data?.url || '/'
+      
       // Zaten açık bir sekme varsa onu ön plana getir
       for (const client of clientList) {
-        if (client.url.includes(event.notification.data?.url || '/') && 'focus' in client) {
+        if (client.url.includes(targetUrl) && 'focus' in client) {
           return client.focus()
         }
       }
+      
       // Yoksa yeni sekme aç
       if (clients.openWindow) {
-        return clients.openWindow(event.notification.data?.url || '/')
+        return clients.openWindow(targetUrl)
       }
     })
   )
@@ -51,4 +60,14 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(title, options)
   )
+})
+
+// Mesaj dinle (ses çalma komutu için)
+self.addEventListener('message', (event) => {
+  console.log('📨 Service Worker mesaj aldı:', event.data)
+  
+  if (event.data && event.data.type === 'PLAY_SOUND') {
+    // Client'a ses çalma komutu gönder
+    event.ports[0].postMessage({ success: true })
+  }
 })

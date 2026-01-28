@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bildirim Sistemi Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #1e293b;
+      color: #fff;
+    }
+    .test-section {
+      background: #334155;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+    }
+    button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin: 5px;
+      font-size: 14px;
+    }
+    button:hover {
+      background: #2563eb;
+    }
+    .status {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+      background: #475569;
+    }
+    .success { background: #10b981; }
+    .error { background: #ef4444; }
+    .warning { background: #f59e0b; }
+    pre {
+      background: #1e293b;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    h2 {
+      color: #60a5fa;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔔 Bildirim Sistemi Test Paneli</h1>
+  
+  <div class="test-section">
+    <h2>1. Tarayıcı Desteği</h2>
+    <div id="browser-support"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>2. Service Worker</h2>
+    <button onclick="registerServiceWorker()">Service Worker Kaydet</button>
+    <button onclick="checkServiceWorker()">Durumu Kontrol Et</button>
+    <div id="sw-status"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>3. Bildirim İzni</h2>
+    <button onclick="requestNotificationPermission()">İzin İste</button>
+    <div id="permission-status"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>4. Ses Testi</h2>
+    <button onclick="testSound()">Ses Çal</button>
+    <div id="sound-status"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>5. Bildirim Testi</h2>
+    <button onclick="testNotification()">Test Bildirimi Gönder</button>
+    <div id="notification-status"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>6. Tam Test (Ses + Bildirim)</h2>
+    <button onclick="fullTest()">Tam Test Başlat</button>
+    <div id="full-test-status"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>📋 Konsol Logları</h2>
+    <pre id="console-logs"></pre>
+  </div>
+
+  <script>
+    const logs = [];
+    
+    function log(message, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString('tr-TR');
+      const logMessage = `[${timestamp}] ${message}`;
+      logs.push(logMessage);
+      console.log(logMessage);
+      
+      const consoleDiv = document.getElementById('console-logs');
+      consoleDiv.textContent = logs.slice(-20).join('\n');
+      consoleDiv.scrollTop = consoleDiv.scrollHeight;
+    }
+
+    // 1. Tarayıcı Desteği Kontrolü
+    function checkBrowserSupport() {
+      const support = {
+        serviceWorker: 'serviceWorker' in navigator,
+        notification: 'Notification' in window,
+        audio: typeof Audio !== 'undefined',
+        https: window.location.protocol === 'https:' || window.location.hostname === 'localhost'
+      };
+      
+      let html = '<div class="status">';
+      html += `<p>✅ Service Worker: ${support.serviceWorker ? 'Destekleniyor' : '❌ Desteklenmiyor'}</p>`;
+      html += `<p>✅ Notification API: ${support.notification ? 'Destekleniyor' : '❌ Desteklenmiyor'}</p>`;
+      html += `<p>✅ Audio API: ${support.audio ? 'Destekleniyor' : '❌ Desteklenmiyor'}</p>`;
+      html += `<p>✅ HTTPS: ${support.https ? 'Evet' : '❌ Hayır (HTTPS gerekli)'}</p>`;
+      html += `<p>📱 Tarayıcı: ${navigator.userAgent}</p>`;
+      html += '</div>';
+      
+      document.getElementById('browser-support').innerHTML = html;
+      log('Tarayıcı desteği kontrol edildi');
+    }
+
+    // 2. Service Worker Kaydet
+    async function registerServiceWorker() {
+      const statusDiv = document.getElementById('sw-status');
+      
+      if (!('serviceWorker' in navigator)) {
+        statusDiv.innerHTML = '<div class="status error">❌ Service Worker desteklenmiyor</div>';
+        log('Service Worker desteklenmiyor', 'error');
+        return;
+      }
+
+      try {
+        log('Service Worker kaydediliyor...');
+        const registration = await navigator.serviceWorker.register('/sw.js', {
+          scope: '/',
+          updateViaCache: 'none'
+        });
+        
+        log(`Service Worker kaydedildi: ${registration.scope}`);
+        
+        await navigator.serviceWorker.ready;
+        log('Service Worker hazır ve aktif');
+        
+        statusDiv.innerHTML = '<div class="status success">✅ Service Worker başarıyla kaydedildi</div>';
+      } catch (error) {
+        log(`Service Worker kayıt hatası: ${error.message}`, 'error');
+        statusDiv.innerHTML = `<div class="status error">❌ Hata: ${error.message}</div>`;
+      }
+    }
+
+    // Service Worker Durumu Kontrol Et
+    async function checkServiceWorker() {
+      const statusDiv = document.getElementById('sw-status');
+      
+      try {
+        const registration = await navigator.serviceWorker.getRegistration('/');
+        
+        if (registration) {
+          const state = registration.active ? registration.active.state : 'yok';
+          log(`Service Worker durumu: ${state}`);
+          statusDiv.innerHTML = `<div class="status success">✅ Service Worker aktif (${state})</div>`;
+        } else {
+          log('Service Worker kayıtlı değil', 'warning');
+          statusDiv.innerHTML = '<div class="status warning">⚠️ Service Worker kayıtlı değil</div>';
+        }
+      } catch (error) {
+        log(`Service Worker kontrol hatası: ${error.message}`, 'error');
+        statusDiv.innerHTML = `<div class="status error">❌ Hata: ${error.message}</div>`;
+      }
+    }
+
+    // 3. Bildirim İzni İste
+    async function requestNotificationPermission() {
+      const statusDiv = document.getElementById('permission-status');
+      
+      if (!('Notification' in window)) {
+        statusDiv.innerHTML = '<div class="status error">❌ Notification API desteklenmiyor</div>';
+        log('Notification API desteklenmiyor', 'error');
+        return;
+      }
+
+      try {
+        log(`Mevcut izin durumu: ${Notification.permission}`);
+        log('Bildirim izni isteniyor...');
+        
+        const permission = await Notification.requestPermission();
+        log(`Yeni izin durumu: ${permission}`);
+        
+        if (permission === 'granted') {
+          statusDiv.innerHTML = '<div class="status success">✅ Bildirim izni verildi</div>';
+        } else if (permission === 'denied') {
+          statusDiv.innerHTML = '<div class="status error">❌ Bildirim izni reddedildi</div>';
+        } else {
+          statusDiv.innerHTML = '<div class="status warning">⚠️ Bildirim izni belirsiz</div>';
+        }
+      } catch (error) {
+        log(`Bildirim izni hatası: ${error.message}`, 'error');
+        statusDiv.innerHTML = `<div class="status error">❌ Hata: ${error.message}</div>`;
+      }
+    }
+
+    // 4. Ses Testi
+    function testSound() {
+      const statusDiv = document.getElementById('sound-status');
+      
+      try {
+        log('Ses çalınıyor...');
+        const audio = new Audio(`/notification.mp3?t=${Date.now()}`);
+        audio.volume = 1.0;
+        
+        const playPromise = audio.play();
+        
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              log('✅ Ses başarıyla çalındı');
+              statusDiv.innerHTML = '<div class="status success">✅ Ses başarıyla çalındı</div>';
+            })
+            .catch((error) => {
+              log(`❌ Ses çalma hatası: ${error.name} - ${error.message}`, 'error');
+              statusDiv.innerHTML = `<div class="status error">❌ Hata: ${error.name}<br>${error.message}</div>`;
+              
+              if (error.name === 'NotAllowedError') {
+                statusDiv.innerHTML += '<p>💡 Çözüm: Önce sayfayla etkileşime geçin (tıklama)</p>';
+              }
+            });
+        }
+      } catch (error) {
+        log(`Ses hatası: ${error.message}`, 'error');
+        statusDiv.innerHTML = `<div class="status error">❌ Hata: ${error.message}</div>`;
+      }
+    }
+
+    // 5. Bildirim Testi
+    async function testNotification() {
+      const statusDiv = document.getElementById('notification-status');
+      
+      if (Notification.permission !== 'granted') {
+        statusDiv.innerHTML = '<div class="status warning">⚠️ Önce bildirim izni verin</div>';
+        log('Bildirim izni verilmemiş', 'warning');
+        return;
+      }
+
+      try {
+        log('Bildirim gönderiliyor...');
+        const registration = await navigator.serviceWorker.ready;
+        
+        await registration.showNotification('🧪 Test Bildirimi', {
+          body: 'Bildirim sistemi çalışıyor!',
+          icon: '/icon-192x192.png',
+          badge: '/icon-192x192.png',
+          tag: 'test',
+          requireInteraction: true,
+          vibrate: [200, 100, 200]
+        });
+        
+        log('✅ Bildirim başarıyla gönderildi');
+        statusDiv.innerHTML = '<div class="status success">✅ Bildirim başarıyla gönderildi</div>';
+      } catch (error) {
+        log(`❌ Bildirim hatası: ${error.message}`, 'error');
+        statusDiv.innerHTML = `<div class="status error">❌ Hata: ${error.message}</div>`;
+      }
+    }
+
+    // 6. Tam Test
+    async function fullTest() {
+      const statusDiv = document.getElementById('full-test-status');
+      statusDiv.innerHTML = '<div class="status">⏳ Test başlatılıyor...</div>';
+      
+      log('=== TAM TEST BAŞLADI ===');
+      
+      // 1. Service Worker
+      await registerServiceWorker();
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // 2. Bildirim İzni
+      await requestNotificationPermission();
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // 3. Ses
+      testSound();
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // 4. Bildirim
+      await testNotification();
+      
+      log('=== TAM TEST TAMAMLANDI ===');
+      statusDiv.innerHTML = '<div class="status success">✅ Tam test tamamlandı. Konsol loglarını kontrol edin.</div>';
+    }
+
+    // Sayfa yüklendiğinde tarayıcı desteğini kontrol et
+    window.addEventListener('load', () => {
+      checkBrowserSupport();
+      log('Test paneli hazır');
+    });
+  </script>
+</body>
+</html>

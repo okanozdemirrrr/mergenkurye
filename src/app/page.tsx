@@ -190,9 +190,35 @@ export default function Home() {
     if (typeof window === 'undefined') return
     
     try {
+      console.log('🔊 Ses çalınıyor...')
       const audio = new Audio(`/notification.mp3?t=${Date.now()}`)
-      audio.volume = 0.7
-      audio.play().catch((err) => console.error('Ses çalma hatası:', err))
+      audio.volume = 1.0 // Maksimum ses
+      
+      // Ses çalma promise'ini handle et
+      const playPromise = audio.play()
+      
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            console.log('✅ Bildirim sesi başarıyla çalındı')
+          })
+          .catch((err) => {
+            console.error('❌ Ses çalma hatası:', err)
+            console.error('Hata detayı:', {
+              name: err.name,
+              message: err.message,
+              code: err.code
+            })
+            
+            // Kullanıcı etkileşimi gerekiyorsa
+            if (err.name === 'NotAllowedError') {
+              console.warn('⚠️ Ses çalmak için kullanıcı etkileşimi gerekli')
+              console.warn('💡 Çözüm: Bildirimleri Aç butonuna tıklayın')
+            } else if (err.name === 'NotSupportedError') {
+              console.warn('⚠️ Tarayıcı ses formatını desteklemiyor')
+            }
+          })
+      }
     } catch (err) {
       console.error('Ses hatası:', err)
     }
@@ -201,21 +227,35 @@ export default function Home() {
   // Tarayıcı bildirimi gönder
   const sendBrowserNotification = (title: string, body: string, url: string = '/') => {
     if (typeof window === 'undefined') return
-    if (notificationPermission !== 'granted') return
+    
+    console.log('📱 Bildirim gönderiliyor:', { title, body, permission: notificationPermission })
+    
+    if (notificationPermission !== 'granted') {
+      console.warn('⚠️ Bildirim izni verilmemiş:', notificationPermission)
+      return
+    }
     
     try {
       if ('serviceWorker' in navigator && 'Notification' in window) {
         navigator.serviceWorker.ready.then((registration) => {
+          console.log('✅ Service Worker hazır, bildirim gösteriliyor')
           registration.showNotification(title, {
             body: body,
             icon: '/icon-192x192.png',
             badge: '/icon-192x192.png',
             tag: 'admin-order',
             requireInteraction: true,
-            vibrate: [200, 100, 200],
             data: { url: url }
+          }).then(() => {
+            console.log('✅ Bildirim başarıyla gösterildi')
+          }).catch((err) => {
+            console.error('❌ Bildirim gösterme hatası:', err)
           })
+        }).catch((err) => {
+          console.error('❌ Service Worker hazır değil:', err)
         })
+      } else {
+        console.warn('⚠️ Service Worker veya Notification API desteklenmiyor')
       }
     } catch (err) {
       console.error('Bildirim hatası:', err)
@@ -227,30 +267,85 @@ export default function Home() {
     if (typeof window === 'undefined') return
     
     try {
+      console.log('🔔 Bildirim sistemi başlatılıyor...')
+      console.log('📍 Tarayıcı:', navigator.userAgent)
+      console.log('📍 HTTPS:', window.location.protocol === 'https:')
+      
       // Service Worker kaydet
       if ('serviceWorker' in navigator) {
-        const registration = await navigator.serviceWorker.register('/sw.js')
-        console.log('✅ Service Worker kaydedildi:', registration)
+        try {
+          // Önce mevcut kayıtları kontrol et
+          const existingRegistration = await navigator.serviceWorker.getRegistration('/')
+          if (existingRegistration) {
+            console.log('✅ Service Worker zaten kayıtlı:', existingRegistration.scope)
+          } else {
+            console.log('📝 Service Worker kaydediliyor...')
+            const registration = await navigator.serviceWorker.register('/sw.js', { 
+              scope: '/',
+              updateViaCache: 'none' // Cache'i bypass et
+            })
+            console.log('✅ Service Worker kaydedildi:', registration.scope)
+          }
+          
+          // Service Worker'ın aktif olmasını bekle
+          await navigator.serviceWorker.ready
+          console.log('✅ Service Worker hazır ve aktif')
+        } catch (swError) {
+          console.error('❌ Service Worker kayıt hatası:', swError)
+          setErrorMessage('Service Worker kaydedilemedi. HTTPS bağlantısı gerekli olabilir.')
+          setTimeout(() => setErrorMessage(''), 5000)
+          return
+        }
+      } else {
+        console.error('❌ Service Worker desteklenmiyor')
+        setErrorMessage('Tarayıcınız Service Worker desteklemiyor')
+        setTimeout(() => setErrorMessage(''), 3000)
+        return
       }
       
       // Bildirim izni al
       if ('Notification' in window) {
+        console.log('📱 Bildirim izni isteniyor...')
+        console.log('📱 Mevcut izin durumu:', Notification.permission)
+        
         const permission = await Notification.requestPermission()
+        console.log('📱 Yeni izin durumu:', permission)
         setNotificationPermission(permission)
         
         if (permission === 'granted') {
-          setSuccessMessage('✅ Bildirimler aktif edildi!')
-          setTimeout(() => setSuccessMessage(''), 2000)
+          setSuccessMessage('✅ Bildirimler ve sesler aktif!')
+          setTimeout(() => setSuccessMessage(''), 3000)
           setShowNotificationButton(false)
+          
+          // Test bildirimi gönder
+          console.log('🧪 Test bildirimi gönderiliyor...')
+          sendBrowserNotification(
+            '✅ Bildirimler Aktif',
+            'Yeni siparişler için bildirim alacaksınız',
+            '/'
+          )
+          
+          // Test sesi çal
+          console.log('🧪 Test sesi çalınıyor...')
+          playNotificationSound()
+        } else if (permission === 'denied') {
+          console.error('❌ Bildirim izni reddedildi')
+          setErrorMessage('❌ Bildirim izni reddedildi. Tarayıcı ayarlarından izin verebilirsiniz.')
+          setTimeout(() => setErrorMessage(''), 5000)
         } else {
-          setErrorMessage('❌ Bildirim izni reddedildi')
+          console.warn('⚠️ Bildirim izni belirsiz:', permission)
+          setErrorMessage('Bildirim izni alınamadı')
           setTimeout(() => setErrorMessage(''), 3000)
         }
+      } else {
+        console.error('❌ Notification API desteklenmiyor')
+        setErrorMessage('❌ Tarayıcınız bildirimleri desteklemiyor')
+        setTimeout(() => setErrorMessage(''), 3000)
       }
     } catch (err) {
-      console.error('Bildirim aktifleştirme hatası:', err)
-      setErrorMessage('Bildirim sistemi başlatılamadı')
-      setTimeout(() => setErrorMessage(''), 3000)
+      console.error('❌ Bildirim aktifleştirme hatası:', err)
+      setErrorMessage('Bildirim sistemi başlatılamadı: ' + (err as Error).message)
+      setTimeout(() => setErrorMessage(''), 5000)
     }
   }
 
@@ -258,14 +353,22 @@ export default function Home() {
   useEffect(() => {
     if (typeof window === 'undefined' || !isLoggedIn) return
     
+    console.log('🔍 Bildirim izni kontrol ediliyor...')
+    
     if ('Notification' in window) {
       const currentPermission = Notification.permission
       setNotificationPermission(currentPermission)
+      console.log('📱 Mevcut bildirim izni:', currentPermission)
       
       // İzin verilmemişse butonu göster
-      if (currentPermission === 'default') {
+      if (currentPermission === 'default' || currentPermission === 'denied') {
         setShowNotificationButton(true)
+        console.log('🔔 Bildirim butonu gösteriliyor')
+      } else {
+        console.log('✅ Bildirim izni zaten verilmiş')
       }
+    } else {
+      console.warn('⚠️ Tarayıcı bildirimleri desteklemiyor')
     }
   }, [isLoggedIn])
 
