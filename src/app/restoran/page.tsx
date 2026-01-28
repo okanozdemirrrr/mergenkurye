@@ -1073,22 +1073,24 @@ export default function RestoranPage() {
         {/* SOL PANEL - YENİ SİPARİŞ FORMU */}
         <div className="lg:col-span-2">
           <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
-            {/* Başlık */}
-            <div className="flex justify-center items-center mb-6 -mt-8">
-              <div className="text-center">
-                <img 
-                  src="/logo.png" 
-                  alt="Logo" 
-                  className="w-52 h-52 mx-auto mb-2"
-                />
-                <h1 className="text-3xl font-black text-white uppercase tracking-tighter mb-1">
-                  {restaurants.find(r => r.id === selectedRestaurantId)?.name || 'RESTORAN PANELİ'}
-                </h1>
-                <p className="text-sm text-slate-400 mt-1">
-                  Yeni Sipariş
-                </p>
-              </div>
-            </div>
+            {/* Logo ve Başlık Kısmı */}
+<div className="flex justify-center items-center mb-6 -mt-8">
+  <div className="text-center">
+    <img 
+      src="/logo.png" 
+      alt="Logo" 
+      className="w-52 h-52 mx-auto mb-2"
+    />
+    {/* Kiro'nun 'RESTORAN PANELİ' yazdığı yeri bu satırla değiştiriyoruz */}
+    <h1 className="text-3xl font-black text-white uppercase tracking-tighter">
+      {restaurants.find(r => r.id === selectedRestaurantId)?.name || 'RESTORAN PANELİ'}
+    </h1>
+    
+    <p className="text-sm text-slate-400 mt-1">
+      Yeni Sipariş Kayıt Ekranı
+    </p>
+  </div>
+</div>
 
             {/* Başarı Mesajı */}
             {successMessage && (
