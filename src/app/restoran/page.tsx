@@ -272,6 +272,11 @@ export default function RestoranPage() {
       if (loggedIn === 'true' && loggedRestaurantId) {
         setIsLoggedIn(true)
         setSelectedRestaurantId(loggedRestaurantId)
+        
+        // Oturum bilgileri set edildikten sonra restoranları çek
+        setTimeout(() => {
+          fetchRestaurants()
+        }, 100) // 100ms gecikme ile veritabanı bağlantısının oturmasını bekle
       } else {
         setIsLoggedIn(false)
       }
@@ -285,8 +290,6 @@ export default function RestoranPage() {
 
   // Restoranları çek
   const fetchRestaurants = async () => {
-    setErrorMessage('')
-    
     try {
       const { data, error } = await supabase
         .from('restaurants')
@@ -296,22 +299,20 @@ export default function RestoranPage() {
       if (error) throw error
       setRestaurants(data || [])
     } catch (error: any) {
-      // İnternet hatalarını sessizce geç
+      // Tüm hataları sessizce geç - ilk yükleme sırasında kullanıcıyı rahatsız etme
       const errorMsg = error.message?.toLowerCase() || ''
-      if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
-        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
-        return
-      }
+      console.warn('⚠️ Restoranlar yüklenirken hata (sessiz):', error.message)
       
-      console.error('Restoranlar yüklenirken hata:', error.message)
-      setErrorMessage('Restoranlar yüklenirken bir hata oluştu')
-      setTimeout(() => setErrorMessage(''), 3000)
+      // Sessizce tekrar dene (retry) - 2 saniye sonra
+      setTimeout(() => {
+        fetchRestaurants()
+      }, 2000)
     }
   }
 
   // Müşteri Memnuniyeti - Google Maps'e yönlendir
   const handleCustomerSatisfaction = () => {
-    const restaurant = restaurants.find(r => r.id === selectedRestaurantId)
+    const restaurant = restaurants.find(r => String(r.id) === String(selectedRestaurantId))
     
     if (!restaurant?.maps_link) {
       setErrorMessage('Google Haritalar linkiniz henüz sisteme tanımlanmamıştır.')
@@ -407,10 +408,10 @@ export default function RestoranPage() {
     }
   }
 
-  // Sayfa yüklendiğinde restoranları çek
-  useEffect(() => {
-    fetchRestaurants()
-  }, [])
+  // Sayfa yüklendiğinde restoranları çek - KALDIRILDI (auth useEffect'te çağrılıyor)
+  // useEffect(() => {
+  //   fetchRestaurants()
+  // }, [])
 
   // REALTIME ONLY - Canlı yayın modu
   useEffect(() => {
@@ -1081,7 +1082,7 @@ export default function RestoranPage() {
                 />
                 {/* Kiro'nun 'RESTORAN PANELİ' yazdığı yeri bu satırla değiştiriyoruz */}
                 <h1 className="text-3xl font-black text-white uppercase tracking-tighter">
-                  {restaurants.find(r => r.id === selectedRestaurantId)?.name || 'RESTORAN PANELİ'}
+                  {restaurants.find(r => String(r.id) === String(selectedRestaurantId))?.name || 'RESTORAN PANELİ'}
                 </h1>
                 <p className="text-sm text-slate-400 mt-1">
                   Yeni Sipariş Kayıt Ekranı
