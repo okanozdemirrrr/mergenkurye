@@ -1930,7 +1930,7 @@ export default function Home() {
                           }`}>
                             <td className="py-3 px-4">
                               <span className="font-bold text-blue-600 dark:text-blue-400">
-                                #{order.order_number || '------'}
+                                {order.order_number || '......'}
                               </span>
                             </td>
                             <td className="py-3 px-4">
@@ -2715,7 +2715,7 @@ export default function Home() {
                   {/* Oluşturulma Saati ve Sipariş No */}
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded">
-                      #{pkg.order_number || '------'}
+                      {pkg.order_number || '......'}
                     </span>
                     <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
                       🕐 {formatTurkishTime(pkg.created_at)}
@@ -3111,7 +3111,7 @@ export default function Home() {
                   <tr key={pkg.id} className="border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50">
                     <td className="py-3 px-4">
                       <span className="font-bold text-blue-600 dark:text-blue-400">
-                        #{pkg.order_number || '------'}
+                        {pkg.order_number || '......'}
                       </span>
                     </td>
                     <td className="py-3 px-4">
@@ -3407,7 +3407,7 @@ export default function Home() {
                             }`}>
                               <td className="py-3 px-4">
                                 <span className="font-bold text-blue-600 dark:text-blue-400">
-                                  #{order.order_number || '------'}
+                                  {order.order_number || '......'}
                                 </span>
                               </td>
                               <td className="py-3 px-4">
