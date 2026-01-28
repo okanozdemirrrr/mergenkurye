@@ -1079,12 +1079,9 @@ export default function RestoranPage() {
                   alt="Logo" 
                   className="w-52 h-52 mx-auto mb-2"
                 />
-                <div className="flex items-center justify-center gap-2 mb-1">
-                  <span className="text-2xl">🍽️</span>
-                  <h1 className="text-xl font-bold text-white">
-                    {restaurants.find(r => r.id === selectedRestaurantId)?.name || ''}
-                  </h1>
-                </div>
+                <h1 className="text-3xl font-black text-white uppercase tracking-wider mb-1">
+                  {restaurants.find(r => r.id === selectedRestaurantId)?.name || 'RESTORAN PANELİ'}
+                </h1>
                 <p className="text-sm text-slate-400 mt-1">
                   Yeni Sipariş
                 </p>
