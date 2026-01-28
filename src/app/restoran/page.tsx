@@ -32,6 +32,7 @@ interface Package {
   picked_up_at?: string
   delivered_at?: string
   restaurant?: Restaurant
+  courier_name?: string
 }
 
 export default function RestoranPage() {
@@ -329,7 +330,7 @@ export default function RestoranPage() {
     try {
       let query = supabase
         .from('packages')
-        .select('*, restaurants(name)')
+        .select('*, restaurants(name), couriers(full_name)')
         .eq('restaurant_id', selectedRestaurantId)
 
       // Tarih filtresine göre sorgu ekle
@@ -357,7 +358,8 @@ export default function RestoranPage() {
       
       const transformed = (data || []).map((pkg: any) => ({
         ...pkg,
-        restaurant: pkg.restaurants
+        restaurant: pkg.restaurants,
+        courier_name: pkg.couriers?.full_name
       }))
       setPackages(transformed)
     } catch (error: any) {
@@ -1077,9 +1079,12 @@ export default function RestoranPage() {
                   alt="Logo" 
                   className="w-52 h-52 mx-auto mb-2"
                 />
-                <h1 className="text-xl font-bold text-white">
-                  {selectedRestaurant?.name}
-                </h1>
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <span className="text-2xl">🍽️</span>
+                  <h1 className="text-xl font-bold text-white">
+                    {restaurants.find(r => r.id === selectedRestaurantId)?.name || 'Restoran Paneli'}
+                  </h1>
+                </div>
                 <p className="text-sm text-slate-400 mt-1">
                   Yeni Sipariş
                 </p>
@@ -1286,7 +1291,7 @@ export default function RestoranPage() {
                   <div key={pkg.id} className="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
                     <div className="flex justify-between items-start mb-2">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <span className="text-xs font-bold text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded">
                             {pkg.order_number || 'Hazırlanıyor...'}
                           </span>
@@ -1303,6 +1308,22 @@ export default function RestoranPage() {
                              pkg.status === 'on_the_way' ? 'Yolda' : 'Teslim'}
                           </span>
                         </div>
+                        
+                        {/* Kurye Bilgisi */}
+                        {pkg.courier_id ? (
+                          <div className="mb-2">
+                            <span className="text-xs px-2 py-1 rounded font-medium bg-purple-500/20 text-purple-400 inline-flex items-center gap-1">
+                              🚴 {pkg.courier_name || 'Kurye'}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="mb-2">
+                            <span className="text-xs px-2 py-1 rounded font-medium bg-slate-600/30 text-slate-400 inline-flex items-center gap-1">
+                              ⏳ Kurye Bekleniyor
+                            </span>
+                          </div>
+                        )}
+                        
                         <h3 className="font-medium text-sm text-white">{pkg.customer_name}</h3>
                         {pkg.customer_phone && (
                           <p className="text-xs text-slate-400 mt-1">
