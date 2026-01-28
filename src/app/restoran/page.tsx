@@ -48,6 +48,10 @@ export default function RestoranPage() {
     packageAmount: '',
     content: ''
   })
+  const [coordinates, setCoordinates] = useState<{ latitude: number | null; longitude: number | null }>({
+    latitude: null,
+    longitude: null
+  })
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | null>(null)
   const [restaurants, setRestaurants] = useState<Restaurant[]>([])
   const [packages, setPackages] = useState<Package[]>([])
@@ -102,6 +106,71 @@ export default function RestoranPage() {
   useEffect(() => {
     setIsMounted(true)
   }, [])
+
+  // 🎯 MERGEN AGENT LISTENER - Eklentiden Veri Yakalama
+  useEffect(() => {
+    if (typeof window === 'undefined' || !isLoggedIn) return
+
+    console.log('🔌 Mergen Agent listener aktif - Eklentiden veri bekleniyor...')
+
+    const handleMergenMessage = (event: MessageEvent) => {
+      // Güvenlik kontrolü - Sadece Mergen Agent'tan gelen mesajları kabul et
+      if (!event.data || event.data.source !== 'mergen-extension' || event.data.type !== 'MERGEN_ORDER_DATA') {
+        return
+      }
+
+      console.log('📨 Mergen Agent\'tan veri alındı:', event.data)
+
+      const orderData = event.data.payload
+
+      // Form verilerini otomatik doldur
+      setFormData({
+        customerName: orderData.customer || '',
+        customerPhone: orderData.phone || '',
+        deliveryAddress: orderData.address || '',
+        packageAmount: orderData.amount ? String(orderData.amount) : '',
+        content: orderData.content || ''
+      })
+
+      // Koordinatları state'e al (eğer varsa)
+      if (orderData.latitude && orderData.longitude) {
+        console.log('📍 Koordinatlar alındı:', {
+          lat: orderData.latitude,
+          lng: orderData.longitude
+        })
+        setCoordinates({
+          latitude: orderData.latitude,
+          longitude: orderData.longitude
+        })
+      } else {
+        // Koordinat yoksa sıfırla
+        setCoordinates({
+          latitude: null,
+          longitude: null
+        })
+      }
+
+      // Ödeme yöntemi varsa set et
+      if (orderData.paymentMethod === 'cash' || orderData.paymentMethod === 'card') {
+        setPaymentMethod(orderData.paymentMethod)
+      }
+
+      // Başarı mesajı göster
+      setSuccessMessage('✅ Eklentiden Veri Çekildi')
+      setTimeout(() => setSuccessMessage(''), 3000)
+
+      console.log('✅ Form otomatik dolduruldu')
+    }
+
+    // Listener'ı ekle
+    window.addEventListener('message', handleMergenMessage)
+
+    // Cleanup - Component unmount olduğunda listener'ı kaldır
+    return () => {
+      window.removeEventListener('message', handleMergenMessage)
+      console.log('🔌 Mergen Agent listener kapatıldı')
+    }
+  }, [isLoggedIn])
 
   // İstatistik verilerini çek
   const fetchStatisticsData = async () => {
@@ -293,7 +362,7 @@ export default function RestoranPage() {
     try {
       const { data, error } = await supabase
         .from('restaurants')
-        .select('id, name, maps_link, delivery_fee')
+        .select('id, name, password')  // Sadece mevcut kolonlar
         .order('name', { ascending: true })
 
       if (error) throw error
@@ -524,20 +593,27 @@ export default function RestoranPage() {
       }
 
       // Supabase'e kayıt - order_number SQL trigger tarafından otomatik üretilecek
+      const packageData: any = {
+        customer_name: formData.customerName.trim(),
+        customer_phone: formData.customerPhone.trim(),
+        content: formData.content.trim(),
+        delivery_address: formData.deliveryAddress.trim(),
+        amount: parseFloat(formData.packageAmount),
+        status: 'waiting',
+        restaurant_id: selectedRestaurantId,
+        payment_method: paymentMethod
+      }
+
+      // Koordinatlar varsa ekle (Mergen Agent'tan gelmişse)
+      if (coordinates.latitude !== null && coordinates.longitude !== null) {
+        packageData.latitude = coordinates.latitude
+        packageData.longitude = coordinates.longitude
+        console.log('📍 Koordinatlar veritabanına kaydediliyor:', coordinates)
+      }
+
       const { data, error } = await supabase
         .from('packages')
-        .insert([
-          {
-            customer_name: formData.customerName.trim(),
-            customer_phone: formData.customerPhone.trim(),
-            content: formData.content.trim(),
-            delivery_address: formData.deliveryAddress.trim(),
-            amount: parseFloat(formData.packageAmount),
-            status: 'waiting',
-            restaurant_id: selectedRestaurantId,
-            payment_method: paymentMethod
-          }
-        ])
+        .insert([packageData])
         .select()
 
       if (error) {
@@ -559,6 +635,10 @@ export default function RestoranPage() {
         content: ''
       })
       setPaymentMethod(null)
+      setCoordinates({
+        latitude: null,
+        longitude: null
+      })
 
       // Paketleri yenile
       fetchPackages()
