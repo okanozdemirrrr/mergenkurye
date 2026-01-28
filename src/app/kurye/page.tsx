@@ -59,6 +59,8 @@ export default function KuryePage() {
   const [darkMode, setDarkMode] = useState(true) // Varsayılan dark mode
   const [leaderboard, setLeaderboard] = useState<CourierLeaderboard[]>([])
   const [myRank, setMyRank] = useState<number | null>(null)
+  const [notificationPermission, setNotificationPermission] = useState<'default' | 'granted' | 'denied'>('default')
+  const [showNotificationButton, setShowNotificationButton] = useState(false)
   const [showLeaderboard, setShowLeaderboard] = useState(false) // Leaderboard modal
   const [showMenu, setShowMenu] = useState(false) // Hamburger menü
   const [activeTab, setActiveTab] = useState<'packages' | 'history' | 'earnings'>('packages') // Aktif sekme
@@ -160,6 +162,90 @@ export default function KuryePage() {
   useEffect(() => {
     setIsMounted(true)
   }, [])
+
+  // Bildirim sesi çal
+  const playNotificationSound = () => {
+    if (typeof window === 'undefined') return
+    
+    try {
+      const audio = new Audio(`/notification.mp3?t=${Date.now()}`)
+      audio.volume = 0.7
+      audio.play().catch((err) => console.error('Ses çalma hatası:', err))
+    } catch (err) {
+      console.error('Ses hatası:', err)
+    }
+  }
+
+  // Tarayıcı bildirimi gönder
+  const sendBrowserNotification = (title: string, body: string, url: string = '/kurye') => {
+    if (typeof window === 'undefined') return
+    if (notificationPermission !== 'granted') return
+    
+    try {
+      if ('serviceWorker' in navigator && 'Notification' in window) {
+        navigator.serviceWorker.ready.then((registration) => {
+          registration.showNotification(title, {
+            body: body,
+            icon: '/icon-192x192.png',
+            badge: '/icon-192x192.png',
+            tag: 'courier-package',
+            requireInteraction: true,
+            vibrate: [200, 100, 200],
+            data: { url: url }
+          })
+        })
+      }
+    } catch (err) {
+      console.error('Bildirim hatası:', err)
+    }
+  }
+
+  // Service Worker kaydet ve bildirim izni al
+  const enableNotifications = async () => {
+    if (typeof window === 'undefined') return
+    
+    try {
+      // Service Worker kaydet
+      if ('serviceWorker' in navigator) {
+        const registration = await navigator.serviceWorker.register('/sw.js')
+        console.log('✅ Service Worker kaydedildi:', registration)
+      }
+      
+      // Bildirim izni al
+      if ('Notification' in window) {
+        const permission = await Notification.requestPermission()
+        setNotificationPermission(permission)
+        
+        if (permission === 'granted') {
+          setSuccessMessage('✅ Bildirimler aktif edildi!')
+          setTimeout(() => setSuccessMessage(''), 2000)
+          setShowNotificationButton(false)
+        } else {
+          setErrorMessage('❌ Bildirim izni reddedildi')
+          setTimeout(() => setErrorMessage(''), 3000)
+        }
+      }
+    } catch (err) {
+      console.error('Bildirim aktifleştirme hatası:', err)
+      setErrorMessage('Bildirim sistemi başlatılamadı')
+      setTimeout(() => setErrorMessage(''), 3000)
+    }
+  }
+
+  // Bildirim iznini kontrol et
+  useEffect(() => {
+    if (typeof window === 'undefined' || !isLoggedIn) return
+    
+    if ('Notification' in window) {
+      const currentPermission = Notification.permission
+      setNotificationPermission(currentPermission)
+      
+      // İzin verilmemişse butonu göster
+      if (currentPermission === 'default') {
+        setShowNotificationButton(true)
+      }
+    }
+  }, [isLoggedIn])
 
   // ÇELİK GİBİ OTURUM KONTROLÜ - SAYFA YENİLENDİĞİNDE DIŞARI ATMA!
   useEffect(() => {
@@ -1198,6 +1284,23 @@ export default function KuryePage() {
       // Realtime callback fonksiyonları - her zaman güncel state'e erişmek için burada tanımla
       const handlePackageChange = async (payload: any) => {
         console.log('📦 Paket değişikliği algılandı:', payload.eventType, 'ID:', payload.new?.id || payload.old?.id)
+        
+        // Yeni paket atandı mı kontrol et (INSERT veya UPDATE ile courier_id eklendi)
+        const isNewAssignment = (
+          (payload.eventType === 'INSERT' && payload.new?.courier_id === courierId) ||
+          (payload.eventType === 'UPDATE' && payload.new?.courier_id === courierId && payload.old?.courier_id !== courierId)
+        )
+        
+        if (isNewAssignment) {
+          console.log('🎯 Yeni paket atandı!')
+          playNotificationSound()
+          sendBrowserNotification(
+            '📦 Üzerine Paket Atandı!',
+            `Sipariş No: ${payload.new?.order_number || 'Yeni'} - ${payload.new?.amount || 0}₺`,
+            '/kurye'
+          )
+        }
+        
         // State'i güncelle - sayfa yenileme YOK!
         await fetchPackages(false)
         await fetchDailyStats()
@@ -1384,6 +1487,17 @@ export default function KuryePage() {
       {/* Sağ Üst Butonlar - Mobil Responsive */}
       {isLoggedIn && (
         <div className="fixed top-2 right-2 sm:top-4 sm:right-4 z-50 flex items-center gap-1 sm:gap-2">
+          {/* Bildirim Aktifleştirme Butonu */}
+          {showNotificationButton && (
+            <button
+              onClick={enableNotifications}
+              className="bg-red-600 hover:bg-red-700 text-white px-2 py-1.5 sm:px-3 sm:py-2 rounded-lg shadow-lg transition-colors font-medium text-xs sm:text-sm animate-pulse"
+              title="Bildirimleri Aktif Et"
+            >
+              🔔
+            </button>
+          )}
+          
           {/* Hız Simgesi - Leaderboard */}
           <button
             onClick={() => setShowLeaderboard(true)}

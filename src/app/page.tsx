@@ -91,6 +91,8 @@ export default function Home() {
   const [showNotificationPopup, setShowNotificationPopup] = useState(false)
   const [newOrderDetails, setNewOrderDetails] = useState<Package | null>(null)
   const [dateFilter, setDateFilter] = useState<'today' | 'week' | 'month' | 'all'>('all')
+  const [notificationPermission, setNotificationPermission] = useState<'default' | 'granted' | 'denied'>('default')
+  const [showNotificationButton, setShowNotificationButton] = useState(false)
   
   // Geçmiş Siparişler Sayfalama
   const [historyCurrentPage, setHistoryCurrentPage] = useState(1)
@@ -196,6 +198,77 @@ export default function Home() {
     }
   }
 
+  // Tarayıcı bildirimi gönder
+  const sendBrowserNotification = (title: string, body: string, url: string = '/') => {
+    if (typeof window === 'undefined') return
+    if (notificationPermission !== 'granted') return
+    
+    try {
+      if ('serviceWorker' in navigator && 'Notification' in window) {
+        navigator.serviceWorker.ready.then((registration) => {
+          registration.showNotification(title, {
+            body: body,
+            icon: '/icon-192x192.png',
+            badge: '/icon-192x192.png',
+            tag: 'admin-order',
+            requireInteraction: true,
+            vibrate: [200, 100, 200],
+            data: { url: url }
+          })
+        })
+      }
+    } catch (err) {
+      console.error('Bildirim hatası:', err)
+    }
+  }
+
+  // Service Worker kaydet ve bildirim izni al
+  const enableNotifications = async () => {
+    if (typeof window === 'undefined') return
+    
+    try {
+      // Service Worker kaydet
+      if ('serviceWorker' in navigator) {
+        const registration = await navigator.serviceWorker.register('/sw.js')
+        console.log('✅ Service Worker kaydedildi:', registration)
+      }
+      
+      // Bildirim izni al
+      if ('Notification' in window) {
+        const permission = await Notification.requestPermission()
+        setNotificationPermission(permission)
+        
+        if (permission === 'granted') {
+          setSuccessMessage('✅ Bildirimler aktif edildi!')
+          setTimeout(() => setSuccessMessage(''), 2000)
+          setShowNotificationButton(false)
+        } else {
+          setErrorMessage('❌ Bildirim izni reddedildi')
+          setTimeout(() => setErrorMessage(''), 3000)
+        }
+      }
+    } catch (err) {
+      console.error('Bildirim aktifleştirme hatası:', err)
+      setErrorMessage('Bildirim sistemi başlatılamadı')
+      setTimeout(() => setErrorMessage(''), 3000)
+    }
+  }
+
+  // Bildirim iznini kontrol et
+  useEffect(() => {
+    if (typeof window === 'undefined' || !isLoggedIn) return
+    
+    if ('Notification' in window) {
+      const currentPermission = Notification.permission
+      setNotificationPermission(currentPermission)
+      
+      // İzin verilmemişse butonu göster
+      if (currentPermission === 'default') {
+        setShowNotificationButton(true)
+      }
+    }
+  }, [isLoggedIn])
+
   const fetchPackages = async (isInitialLoad = false) => {
     if (isInitialLoad) {
       setErrorMessage('')
@@ -238,6 +311,11 @@ export default function Home() {
       
       if (isReallyNewPackage) {
         playNotificationSound()
+        sendBrowserNotification(
+          '🔔 Yeni Sipariş Geldi!',
+          `${newPackages[0].customer_name} - ${newPackages[0].amount}₺`,
+          '/'
+        )
         setNewOrderDetails(newPackages[0])
         setShowNotificationPopup(true)
         setTimeout(() => setShowNotificationPopup(false), 8000)
@@ -2390,6 +2468,17 @@ export default function Home() {
 
       {/* Logo ve Dark Mode Toggle - Sağ Üst */}
       <div className="fixed -top-10 right-4 z-50 flex items-center gap-3">
+        {/* Bildirim Aktifleştirme Butonu */}
+        {showNotificationButton && (
+          <button
+            onClick={enableNotifications}
+            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg shadow-lg transition-colors font-medium text-sm animate-pulse"
+            title="Bildirimleri Aktif Et"
+          >
+            🔔 Bildirimleri Aç
+          </button>
+        )}
+        
         <button
           onClick={() => setDarkMode(!darkMode)}
           className="bg-slate-800 hover:bg-slate-700 text-white p-2 rounded-lg shadow-lg transition-colors"
