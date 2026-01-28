@@ -1087,10 +1087,12 @@ export default function Home() {
         // TAM ÖDEME - Eski borçları öde
         let remainingPayment = paymentAmount
         
+        // Tüm eski borçları sırayla öde
         for (const debt of restaurantDebts) {
           if (remainingPayment <= 0) break
           
           if (remainingPayment >= debt.remaining_amount) {
+            // Borç tamamen ödendi
             await supabase
               .from('restaurant_debts')
               .update({ 
@@ -1101,6 +1103,7 @@ export default function Home() {
             
             remainingPayment -= debt.remaining_amount
           } else {
+            // Kısmi ödeme
             await supabase
               .from('restaurant_debts')
               .update({ 
@@ -1110,6 +1113,15 @@ export default function Home() {
             
             remainingPayment = 0
           }
+        }
+        
+        // Eğer tüm eski borçlar ödendiyse, kalan ödeme varsa tüm borçları 'paid' yap
+        if (remainingPayment > 0 && restaurantDebts.length > 0) {
+          await supabase
+            .from('restaurant_debts')
+            .update({ status: 'paid' })
+            .eq('restaurant_id', selectedRestaurantId)
+            .eq('status', 'pending')
         }
         
         // Seçilen tarih aralığındaki paketleri "kapatıldı" olarak işaretle
@@ -1304,7 +1316,12 @@ export default function Home() {
     setAssigningIds(prev => new Set(prev).add(packageId))
     
     try {
-      // Basit UPDATE - hiçbir kontrol yok
+      // Anti-Loop: Admin işlemi başladı
+      if (typeof window !== 'undefined' && (window as any).__adminLastActionTime) {
+        (window as any).__adminLastActionTime()
+      }
+      
+      // Basit UPDATE - bariyersiz
       const { error } = await supabase
         .from('packages')
         .update({
@@ -1316,7 +1333,7 @@ export default function Home() {
       
       if (error) throw error
       
-      // Başarılı - paketi listeden çıkar
+      // Başarılı - paketi anında listeden uçur
       setPackages(prev => prev.filter(pkg => pkg.id !== packageId))
       setCouriers(prev => prev.map(c => 
         c.id === courierId 
@@ -1367,7 +1384,19 @@ export default function Home() {
     let lastUpdateTime = 0
     const UPDATE_DEBOUNCE = 1000 // 1 saniye içindeki tekrar güncellemeleri engelle
 
+    // Anti-Loop: Son işlem zamanını takip et
+    let lastAdminActionTime = 0
+    const ANTI_LOOP_DELAY = 2000 // 2 saniye
+
     const handlePackageChange = async (payload: any) => {
+      const now = Date.now()
+      
+      // Anti-Loop: Admin'in kendi yaptığı işlemden hemen sonra gelen Realtime'ı ignore et
+      if (now - lastAdminActionTime < ANTI_LOOP_DELAY) {
+        console.log('🔒 Anti-Loop: Admin işlemi, Realtime atlandı')
+        return
+      }
+      
       // UPDATE olayında: Eğer courier_id atandıysa, paketi listeden çıkar
       if (payload.eventType === 'UPDATE' && payload.new?.courier_id) {
         setPackages(prev => prev.filter(pkg => pkg.id !== payload.new.id))
@@ -1380,21 +1409,17 @@ export default function Home() {
     }
 
     const handleCourierChange = async (payload: any) => {
-      console.log('👤 Kurye değişikliği:', payload.eventType)
       await fetchCouriers(false)
-      console.log('✅ Admin state güncellendi (couriers)')
     }
 
     const handleRestaurantChange = async (payload: any) => {
-      console.log('🏪 Restoran değişikliği:', payload.eventType)
       await fetchRestaurants()
-      console.log('✅ Admin state güncellendi (restaurants)')
     }
 
     // Global olarak erişilebilir hale getir (handleAssignCourier'dan çağrılabilmesi için)
     if (typeof window !== 'undefined') {
-      (window as any).__adminLastUpdateTime = () => {
-        lastUpdateTime = Date.now()
+      (window as any).__adminLastActionTime = () => {
+        lastAdminActionTime = Date.now()
       }
     }
 
@@ -2798,11 +2823,10 @@ export default function Home() {
                         {couriers.length === 0 && (
                           <option disabled>Kurye bulunamadı</option>
                         )}
-                        {couriers.filter(c => c.is_active).length === 0 && couriers.length > 0 && (
-                          <option disabled>Aktif kurye yok (Toplam: {couriers.length})</option>
+                        {couriers.length > 0 && (
+                          <option disabled>Kurye Seçin (Toplam: {couriers.length})</option>
                         )}
                         {couriers
-                          .filter(c => c.is_active) // Sadece aktif kuryeler
                           .map(c => (
                             <option key={c.id} value={c.id}>
                               {c.full_name} ({c.todayDeliveryCount || 0} bugün, {c.activePackageCount || 0} aktif)
@@ -4455,9 +4479,9 @@ export default function Home() {
       )
     }
     
-    // Kurye Performansları görünümü (default)
-    const activeCouriers = couriers.filter(c => c.is_active)
-    const sortedByPerformance = [...activeCouriers].sort((a, b) => 
+    // Kurye Performansları görünümü - TÜM kuryeler (pasif olanlar dahil)
+    const allCouriers = couriers
+    const sortedByPerformance = [...allCouriers].sort((a, b) => 
       (b.todayDeliveryCount || 0) - (a.todayDeliveryCount || 0)
     )
     
