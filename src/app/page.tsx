@@ -1156,7 +1156,7 @@ export default function Home() {
       setSelectedRestaurantId(null)
       setRestaurantPaymentAmount('')
       await fetchRestaurantDebts(selectedRestaurantId)
-      await fetchRestaurants()
+      await fetchRestaurants() // Restoran listesindeki borç rakamlarını anında güncelle
       
       setTimeout(() => setSuccessMessage(''), 3000)
     } catch (error: any) {
@@ -1274,7 +1274,7 @@ export default function Home() {
       setSelectedRestaurantId(null)
       setRestaurantDebtPayAmount('')
       await fetchRestaurantDebts(selectedRestaurantId)
-      await fetchRestaurants()
+      await fetchRestaurants() // Restoran listesindeki borç rakamlarını anında güncelle
       
       setTimeout(() => setSuccessMessage(''), 3000)
     } catch (error: any) {
@@ -1335,11 +1335,20 @@ export default function Home() {
       
       // Başarılı - paketi anında listeden uçur
       setPackages(prev => prev.filter(pkg => pkg.id !== packageId))
+      
+      // Kurye state'ini güncelle
       setCouriers(prev => prev.map(c => 
         c.id === courierId 
           ? { ...c, activePackageCount: (c.activePackageCount || 0) + 1 }
           : c
       ))
+      
+      // Hafıza temizliği: selectedCouriers state'inden bu paket ID'sini temizle
+      setSelectedCouriers(prev => {
+        const newState = { ...prev }
+        delete newState[packageId]
+        return newState
+      })
       
       setSuccessMessage('✅ Kurye Atandı!')
       setTimeout(() => setSuccessMessage(''), 2000)
@@ -2739,7 +2748,11 @@ export default function Home() {
                   
                   {/* Oluşturulma Saati ve Sipariş No */}
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded">
+                    <span className={`text-xs font-bold px-2 py-1 rounded ${
+                      pkg.order_number 
+                        ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30'
+                        : 'text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-700/50 animate-pulse'
+                    }`}>
                       {pkg.order_number || '......'}
                     </span>
                     <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
@@ -2749,7 +2762,7 @@ export default function Home() {
 
                   {/* Üst Kısım - Restoran ve Durum */}
                   <div className="flex justify-between items-start mb-2">
-                    <span className="bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 px-2 py-1 rounded text-xs font-medium">
+                    <span className="bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 px-2 py-1 rounded text-sm font-bold">
                       🍽️ {pkg.restaurant?.name || 'Bilinmeyen'}
                     </span>
                     <span className="text-lg font-bold text-green-600 dark:text-green-400">
@@ -2820,19 +2833,21 @@ export default function Home() {
                         disabled={assigningIds.has(pkg.id)}
                       >
                         <option value="">Kurye Seçin</option>
-                        {couriers.length === 0 && (
-                          <option disabled>Kurye bulunamadı</option>
+                        {couriers.filter(c => c.is_active).length === 0 ? (
+                          <option disabled>⚠️ Aktif Kurye Bulunmuyor</option>
+                        ) : (
+                          <>
+                            <option disabled>Kurye Seçin (Aktif: {couriers.filter(c => c.is_active).length})</option>
+                            {couriers
+                              .filter(c => c.is_active)
+                              .map(c => (
+                                <option key={c.id} value={c.id}>
+                                  {c.full_name} ({c.todayDeliveryCount || 0} bugün, {c.activePackageCount || 0} aktif)
+                                </option>
+                              ))
+                            }
+                          </>
                         )}
-                        {couriers.length > 0 && (
-                          <option disabled>Kurye Seçin (Toplam: {couriers.length})</option>
-                        )}
-                        {couriers
-                          .map(c => (
-                            <option key={c.id} value={c.id}>
-                              {c.full_name} ({c.todayDeliveryCount || 0} bugün, {c.activePackageCount || 0} aktif)
-                            </option>
-                          ))
-                        }
                       </select>
                       <button 
                         onClick={() => handleAssignCourier(pkg.id)}
@@ -3971,21 +3986,27 @@ export default function Home() {
 
           console.log('📦 Çekilen paket sayısı:', data?.length || 0)
 
-          // Günlere göre grupla
+          // Günlere göre grupla - Türkiye saatine dönüştür (+3 UTC)
           const dailyData: { [key: string]: number } = {}
           
-          // Son 30 günün tüm tarihlerini oluştur (0 paket olanlar için)
+          // Son 30 günün tüm tarihlerini oluştur (0 paket olanlar için) - Türkiye saati
           for (let i = 0; i < 30; i++) {
             const date = new Date()
             date.setDate(date.getDate() - (29 - i))
-            const dateKey = date.toISOString().split('T')[0]
+            // Türkiye saatine dönüştür
+            const turkeyDate = new Date(date.getTime() + (3 * 60 * 60 * 1000))
+            const dateKey = turkeyDate.toISOString().split('T')[0]
             dailyData[dateKey] = 0
           }
 
-          // Paketleri günlere göre say
+          // Paketleri günlere göre say - UTC'den Türkiye saatine dönüştür
           data?.forEach(pkg => {
             if (pkg.delivered_at) {
-              const dateKey = pkg.delivered_at.split('T')[0]
+              // UTC zamanını Türkiye saatine dönüştür (+3 saat)
+              const utcDate = new Date(pkg.delivered_at)
+              const turkeyDate = new Date(utcDate.getTime() + (3 * 60 * 60 * 1000))
+              const dateKey = turkeyDate.toISOString().split('T')[0]
+              
               if (dailyData.hasOwnProperty(dateKey)) {
                 dailyData[dateKey]++
               }
@@ -4987,7 +5008,6 @@ export default function Home() {
     console.log('📊 Pasta Verisi:', pieChartData)
     console.log('💰 Sütun Verisi:', barChartData)
     
-    // Mergen Teknoloji teması renkleri
     const COLORS = ['#3B82F6', '#06B6D4', '#475569', '#0EA5E9', '#64748B', '#0284C7', '#334155']
     
     const hasData = pieChartData.length > 0

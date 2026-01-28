@@ -12,6 +12,7 @@ interface Restaurant {
   name: string
   password?: string
   maps_link?: string
+  delivery_fee?: number
 }
 
 interface Package {
@@ -25,6 +26,7 @@ interface Package {
   courier_id?: string | null
   payment_method?: 'cash' | 'card'
   restaurant_id?: number | null
+  order_number?: string
   created_at?: string
   assigned_at?: string
   picked_up_at?: string
@@ -108,7 +110,7 @@ export default function RestoranPage() {
       // Seçilen tarih aralığındaki paketleri çek
       const { data, error } = await supabase
         .from('packages')
-        .select('created_at, amount, status')
+        .select('created_at, amount, status, delivery_address')
         .eq('restaurant_id', selectedRestaurantId)
         .gte('created_at', new Date(startDate).toISOString())
         .lte('created_at', new Date(endDate + 'T23:59:59').toISOString())
@@ -173,9 +175,9 @@ export default function RestoranPage() {
       }
 
       // Tüm periyotlar için başlangıç değerleri
-      const grouped: { [key: string]: { count: number; revenue: number } } = {}
+      const grouped: { [key: string]: { count: number; revenue: number; deliveredRevenue: number } } = {}
       allPeriods.forEach(period => {
-        grouped[period] = { count: 0, revenue: 0 }
+        grouped[period] = { count: 0, revenue: 0, deliveredRevenue: 0 }
       })
 
       // Verileri grupla
@@ -217,6 +219,9 @@ export default function RestoranPage() {
           if (grouped[key]) {
             grouped[key].count++
             grouped[key].revenue += pkg.amount || 0
+            if (pkg.status === 'delivered') {
+              grouped[key].deliveredRevenue += pkg.amount || 0
+            }
           }
         })
       }
@@ -225,7 +230,8 @@ export default function RestoranPage() {
       const chartData = allPeriods.map(name => ({
         name,
         count: grouped[name].count,
-        revenue: grouped[name].revenue
+        revenue: grouped[name].revenue,
+        deliveredRevenue: grouped[name].deliveredRevenue
       }))
 
       setStatisticsData(chartData)
@@ -278,12 +284,12 @@ export default function RestoranPage() {
 
   // Restoranları çek
   const fetchRestaurants = async () => {
-    setErrorMessage('') // Önceki hataları temizle
+    setErrorMessage('')
     
     try {
       const { data, error } = await supabase
         .from('restaurants')
-        .select('id, name, maps_link')
+        .select('id, name, maps_link, delivery_fee')
         .order('name', { ascending: true })
 
       if (error) throw error
@@ -514,13 +520,7 @@ export default function RestoranPage() {
         throw new Error('Lütfen ödeme tercihi seçiniz')
       }
 
-      console.log('Sipariş kaydediliyor:', {
-        restaurant_id: selectedRestaurantId,
-        customer_name: formData.customerName.trim(),
-        content: formData.content.trim()
-      }) // Debug için
-
-      // Supabase'e kayıt - restaurant_id otomatik olarak session'dan alınıyor
+      // Supabase'e kayıt - order_number SQL trigger tarafından otomatik üretilecek
       const { data, error } = await supabase
         .from('packages')
         .insert([
@@ -531,7 +531,7 @@ export default function RestoranPage() {
             delivery_address: formData.deliveryAddress.trim(),
             amount: parseFloat(formData.packageAmount),
             status: 'waiting',
-            restaurant_id: selectedRestaurantId, // Session'dan gelen restaurant_id
+            restaurant_id: selectedRestaurantId,
             payment_method: paymentMethod
           }
         ])
@@ -542,7 +542,7 @@ export default function RestoranPage() {
         throw error
       }
 
-      console.log('Sipariş başarıyla kaydedildi:', data) // Debug için
+      console.log('Sipariş başarıyla kaydedildi:', data)
 
       // Başarı mesajı göster
       setSuccessMessage('Sipariş başarıyla kaydedildi!')
@@ -873,12 +873,20 @@ export default function RestoranPage() {
                         radius={[8, 8, 0, 0]}
                       />
                     ) : (
-                      <Bar 
-                        dataKey="revenue" 
-                        fill="#10b981" 
-                        name="Ciro (₺)"
-                        radius={[8, 8, 0, 0]}
-                      />
+                      <>
+                        <Bar 
+                          dataKey="revenue" 
+                          fill="#94a3b8" 
+                          name="Potansiyel Ciro (₺)"
+                          radius={[8, 8, 0, 0]}
+                        />
+                        <Bar 
+                          dataKey="deliveredRevenue" 
+                          fill="#10b981" 
+                          name="Gerçekleşen Ciro (₺)"
+                          radius={[8, 8, 0, 0]}
+                        />
+                      </>
                     )}
                   </BarChart>
                 </ResponsiveContainer>
@@ -946,7 +954,8 @@ export default function RestoranPage() {
               )
 
               const deliveredCount = deliveredPackages.length
-              const totalDebt = deliveredCount * 100
+              const deliveryFee = selectedRestaurant?.delivery_fee || 100
+              const totalDebt = deliveredCount * deliveryFee
 
               return (
                 <>
@@ -977,11 +986,16 @@ export default function RestoranPage() {
                     <div className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 p-6 rounded-xl border-2 border-purple-300 dark:border-purple-700">
                       <div className="text-center">
                         <div className="text-4xl font-black text-purple-700 dark:text-purple-400">
-                          100 ₺
+                          {deliveryFee} ₺
                         </div>
                         <div className="text-sm font-semibold text-purple-600 dark:text-purple-500 mt-2">
                           💰 PAKET BAŞI ÜCRET
                         </div>
+                        {!selectedRestaurant?.delivery_fee && (
+                          <div className="text-xs text-purple-500 dark:text-purple-400 mt-1">
+                            (Varsayılan)
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -996,11 +1010,11 @@ export default function RestoranPage() {
                       </div>
                       <div className="flex justify-between items-center">
                         <span>Paket Başı Ücret:</span>
-                        <span className="font-bold text-purple-400">100 ₺</span>
+                        <span className="font-bold text-purple-400">{deliveryFee} ₺</span>
                       </div>
                       <div className="border-t border-slate-700 pt-3 flex justify-between items-center">
                         <span className="text-lg font-bold">Toplam Borç:</span>
-                        <span className="text-2xl font-black text-red-400">{deliveredCount} × 100₺ = {totalDebt.toFixed(2)} ₺</span>
+                        <span className="text-2xl font-black text-red-400">{deliveredCount} × {deliveryFee}₺ = {totalDebt.toFixed(2)} ₺</span>
                       </div>
                     </div>
                   </div>
@@ -1025,7 +1039,7 @@ export default function RestoranPage() {
                                 </p>
                               </div>
                               <div className="text-right">
-                                <div className="text-lg font-bold text-red-400">100 ₺</div>
+                                <div className="text-lg font-bold text-red-400">{deliveryFee} ₺</div>
                                 <p className="text-xs text-slate-500">ücret</p>
                               </div>
                             </div>
@@ -1038,8 +1052,9 @@ export default function RestoranPage() {
                   {/* Bilgilendirme */}
                   <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                     <p className="text-sm text-blue-700 dark:text-blue-400">
-                      ℹ️ <strong>Not:</strong> Paket ücretleri, teslim edilen her paket için 100₺ üzerinden hesaplanmaktadır. 
+                      ℹ️ <strong>Not:</strong> Paket ücretleri, teslim edilen her paket için {deliveryFee}₺ {!selectedRestaurant?.delivery_fee && '(varsayılan) '}üzerinden hesaplanmaktadır. 
                       Sadece <strong>status = 'delivered'</strong> olan paketler hesaplamaya dahildir.
+                      {!selectedRestaurant?.delivery_fee && ' Özel ücret tanımlaması için lütfen yöneticinizle iletişime geçin.'}
                     </p>
                   </div>
                 </>
@@ -1273,7 +1288,7 @@ export default function RestoranPage() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-xs font-bold text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded">
-                            #{pkg.order_number || '------'}
+                            {pkg.order_number || 'Hazırlanıyor...'}
                           </span>
                           <span className={`text-xs px-2 py-0.5 rounded font-medium ${
                             pkg.status === 'waiting' ? 'bg-yellow-500/20 text-yellow-400' :
