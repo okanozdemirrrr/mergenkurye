@@ -1304,34 +1304,8 @@ export default function Home() {
     setAssigningIds(prev => new Set(prev).add(packageId))
     
     try {
-      console.log('🔄 Kurye atama başlıyor:', { packageId, courierId })
-      
-      // Realtime listener'ı geçici olarak devre dışı bırak
-      const now = Date.now()
-      if (typeof window !== 'undefined') {
-        (window as any).__adminLastUpdateTime = () => now
-      }
-      
-      // Önce paketi kontrol et
-      const { data: checkData, error: checkError } = await supabase
-        .from('packages')
-        .select('id, courier_id, status')
-        .eq('id', packageId)
-        .single()
-      
-      if (checkError) {
-        console.error('❌ Paket kontrol hatası:', checkError)
-        throw new Error('Paket bulunamadı: ' + checkError.message)
-      }
-      
-      console.log('📦 Paket mevcut durumu:', checkData)
-      
-      if (checkData.courier_id) {
-        throw new Error('Bu paket zaten başka bir kuryeye atanmış!')
-      }
-      
-      // Kurye ata
-      const { data, error } = await supabase
+      // Basit UPDATE - hiçbir kontrol yok
+      const { error } = await supabase
         .from('packages')
         .update({
           courier_id: courierId,
@@ -1339,21 +1313,10 @@ export default function Home() {
           assigned_at: new Date().toISOString()
         })
         .eq('id', packageId)
-        .select()
       
-      if (error) {
-        console.error('❌ UPDATE hatası:', error)
-        throw error
-      }
+      if (error) throw error
       
-      if (!data || data.length === 0) {
-        console.error('❌ UPDATE 0 satır döndürdü')
-        throw new Error('Güncelleme başarısız - trigger veya constraint engelliyor olabilir')
-      }
-      
-      console.log('✅ Kurye atama başarılı:', data[0])
-      
-      // Veritabanından gelen kesin veriyle state'i güncelle
+      // Başarılı - paketi listeden çıkar
       setPackages(prev => prev.filter(pkg => pkg.id !== packageId))
       setCouriers(prev => prev.map(c => 
         c.id === courierId 
@@ -1364,22 +1327,10 @@ export default function Home() {
       setSuccessMessage('✅ Kurye Atandı!')
       setTimeout(() => setSuccessMessage(''), 2000)
       
-      // 500ms sonra listeyi yenile (Realtime'dan önce)
-      setTimeout(async () => {
-        await Promise.all([
-          fetchPackages(false),
-          fetchCouriers(false)
-        ])
-      }, 500)
-      
     } catch (error: any) {
-      console.error('❌ Kurye atama hatası:', error)
-      setErrorMessage('❌ Atama Yapılamadı: ' + error.message)
-      setTimeout(() => setErrorMessage(''), 5000)
-      
-      // Hata durumunda listeyi yenile
-      await fetchPackages(false)
-      await fetchCouriers(false)
+      console.error('Kurye atama hatası:', error)
+      setErrorMessage('❌ Hata: ' + error.message)
+      setTimeout(() => setErrorMessage(''), 3000)
     } finally {
       setAssigningIds(prev => {
         const n = new Set(prev)
@@ -1417,18 +1368,8 @@ export default function Home() {
     const UPDATE_DEBOUNCE = 1000 // 1 saniye içindeki tekrar güncellemeleri engelle
 
     const handlePackageChange = async (payload: any) => {
-      const now = Date.now()
-      
-      if (now - lastUpdateTime < UPDATE_DEBOUNCE) {
-        console.log('⏭️ Kendi update, atlanıyor...')
-        return
-      }
-      
-      console.log('📦 Paket değişikliği:', payload.eventType, 'ID:', payload.new?.id || payload.old?.id)
-      
-      // UPDATE olayında: Eğer courier_id atandıysa, bu paketi listeden çıkar
+      // UPDATE olayında: Eğer courier_id atandıysa, paketi listeden çıkar
       if (payload.eventType === 'UPDATE' && payload.new?.courier_id) {
-        console.log('✅ Paket kuryeye atandı, listeden çıkarılıyor:', payload.new.id)
         setPackages(prev => prev.filter(pkg => pkg.id !== payload.new.id))
         return
       }
@@ -1436,7 +1377,6 @@ export default function Home() {
       // Diğer durumlar için listeyi yenile
       await fetchPackages(false)
       await fetchCouriers(false)
-      await fetchDeliveredPackages()
     }
 
     const handleCourierChange = async (payload: any) => {
