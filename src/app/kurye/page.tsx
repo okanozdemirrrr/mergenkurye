@@ -1079,26 +1079,34 @@ export default function KuryePage() {
     setIsUpdating(prev => new Set(prev).add(packageId))
 
     try {
+      // Basit UPDATE
       const { error } = await supabase
         .from('packages')
         .update({
           status: 'picking_up',
-          accepted_at: new Date().toISOString() // Kurye kabul etti
+          accepted_at: new Date().toISOString()
         })
         .eq('id', packageId)
 
       if (error) throw error
 
+      // Yerel state'i anında güncelle
+      setPackages(prev => prev.map(pkg => 
+        pkg.id === packageId 
+          ? { ...pkg, status: 'picking_up', accepted_at: new Date().toISOString() }
+          : pkg
+      ))
+
       setSuccessMessage('✅ Paket kabul edildi!')
       setTimeout(() => setSuccessMessage(''), 2000)
 
-      await fetchPackages(false)
-      await fetchDailyStats()
-
     } catch (error: any) {
       console.error('Kabul hatası:', error)
-      setErrorMessage('Kabul işlemi başarısız: ' + error.message)
+      setErrorMessage('❌ Hata: ' + error.message)
       setTimeout(() => setErrorMessage(''), 3000)
+      
+      // Hata durumunda yenile
+      await fetchPackages(false)
     } finally {
       setIsUpdating(prev => {
         const newSet = new Set(prev)
@@ -1119,6 +1127,7 @@ export default function KuryePage() {
     setIsUpdating(prev => new Set(prev).add(packageId))
 
     try {
+      // Basit UPDATE
       const { error } = await supabase
         .from('packages')
         .update({
@@ -1130,18 +1139,35 @@ export default function KuryePage() {
 
       if (error) throw error
 
+      // Yerel state'i anında güncelle - paketi listeden çıkar
+      setPackages(prev => prev.filter(pkg => pkg.id !== packageId))
+      
+      // İstatistikleri güncelle
+      setDeliveredCount(prev => prev + 1)
+      const pkg = packages.find(p => p.id === packageId)
+      if (pkg) {
+        if (paymentMethod === 'cash') {
+          setCashTotal(prev => prev + pkg.amount)
+        } else {
+          setCardTotal(prev => prev + pkg.amount)
+        }
+      }
+
       setSuccessMessage('✅ Paket teslim edildi!')
       setTimeout(() => setSuccessMessage(''), 2000)
 
-      await fetchPackages(false)
-      await fetchDailyStats()
-      await fetchTodayDeliveredPackages()
-      await fetchLeaderboard()
+      // Arka planda yenile
+      fetchTodayDeliveredPackages()
+      fetchLeaderboard()
 
     } catch (error: any) {
       console.error('Teslim hatası:', error)
-      setErrorMessage('Teslim işlemi başarısız: ' + error.message)
+      setErrorMessage('❌ Hata: ' + error.message)
       setTimeout(() => setErrorMessage(''), 3000)
+      
+      // Hata durumunda yenile
+      await fetchPackages(false)
+      await fetchDailyStats()
     } finally {
       setIsUpdating(prev => {
         const newSet = new Set(prev)
@@ -1272,7 +1298,7 @@ export default function KuryePage() {
     try {
       setIsUpdating(prev => new Set(prev).add(packageId))
       
-      // Basit UPDATE - hiçbir where şartı yok
+      // Basit UPDATE
       const { error } = await supabase
         .from('packages')
         .update({ status: nextStatus, ...additionalData })
@@ -1280,18 +1306,23 @@ export default function KuryePage() {
 
       if (error) throw error
       
+      // Yerel state'i anında güncelle
+      setPackages(prev => prev.map(pkg => 
+        pkg.id === packageId 
+          ? { ...pkg, status: nextStatus, ...additionalData }
+          : pkg
+      ))
+      
       setSuccessMessage('✅ Durum güncellendi!')
       setTimeout(() => setSuccessMessage(''), 2000)
       
-      // Verileri yenile
-      await Promise.all([
-        fetchPackages(false),
-        fetchDailyStats()
-      ])
     } catch (error: any) {
       console.error('Durum güncelleme hatası:', error)
       setErrorMessage('❌ Hata: ' + error.message)
       setTimeout(() => setErrorMessage(''), 3000)
+      
+      // Hata durumunda yenile
+      await fetchPackages(false)
     } finally {
       setIsUpdating(prev => { const n = new Set(prev); n.delete(packageId); return n })
     }
