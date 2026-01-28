@@ -877,15 +877,17 @@ export default function RestoranPage() {
                     ) : (
                       <>
                         <Bar 
-                          dataKey="revenue" 
-                          fill="#94a3b8" 
-                          name="Potansiyel Ciro (₺)"
-                          radius={[8, 8, 0, 0]}
-                        />
-                        <Bar 
                           dataKey="deliveredRevenue" 
+                          stackId="a"
                           fill="#10b981" 
                           name="Gerçekleşen Ciro (₺)"
+                          radius={[0, 0, 0, 0]}
+                        />
+                        <Bar 
+                          dataKey="revenue" 
+                          stackId="a"
+                          fill="#94a3b8" 
+                          name="Potansiyel Ciro (₺)"
                           radius={[8, 8, 0, 0]}
                         />
                       </>
@@ -1079,7 +1081,7 @@ export default function RestoranPage() {
                   alt="Logo" 
                   className="w-52 h-52 mx-auto mb-2"
                 />
-                <h1 className="text-3xl font-black text-white uppercase tracking-wider mb-1">
+                <h1 className="text-3xl font-black text-white uppercase tracking-tighter mb-1">
                   {restaurants.find(r => r.id === selectedRestaurantId)?.name || 'RESTORAN PANELİ'}
                 </h1>
                 <p className="text-sm text-slate-400 mt-1">
@@ -1309,7 +1311,7 @@ export default function RestoranPage() {
                         {/* Kurye Bilgisi */}
                         {pkg.courier_id ? (
                           <div className="mb-2">
-                            <span className="text-xs px-2 py-1 rounded font-medium bg-purple-500/20 text-purple-400 inline-flex items-center gap-1">
+                            <span className="text-xs px-2 py-1 rounded font-medium bg-indigo-500/20 text-indigo-400 inline-flex items-center gap-1">
                               🚴 {pkg.courier_name || 'Kurye'}
                             </span>
                           </div>
