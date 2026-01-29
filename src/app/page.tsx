@@ -92,7 +92,6 @@ export default function Home() {
   const [newOrderDetails, setNewOrderDetails] = useState<Package | null>(null)
   const [dateFilter, setDateFilter] = useState<'today' | 'week' | 'month' | 'all'>('all')
   const [notificationPermission, setNotificationPermission] = useState<'default' | 'granted' | 'denied'>('default')
-  const [showNotificationButton, setShowNotificationButton] = useState(false)
   
   // Geçmiş Siparişler Sayfalama
   const [historyCurrentPage, setHistoryCurrentPage] = useState(1)
@@ -315,7 +314,6 @@ export default function Home() {
         if (permission === 'granted') {
           setSuccessMessage('✅ Bildirimler ve sesler aktif!')
           setTimeout(() => setSuccessMessage(''), 3000)
-          setShowNotificationButton(false)
           
           // Test bildirimi gönder
           console.log('🧪 Test bildirimi gönderiliyor...')
@@ -349,7 +347,7 @@ export default function Home() {
     }
   }
 
-  // Bildirim iznini kontrol et
+  // Bildirim iznini kontrol et ve otomatik iste
   useEffect(() => {
     if (typeof window === 'undefined' || !isLoggedIn) return
     
@@ -360,10 +358,15 @@ export default function Home() {
       setNotificationPermission(currentPermission)
       console.log('📱 Mevcut bildirim izni:', currentPermission)
       
-      // İzin verilmemişse butonu göster
-      if (currentPermission === 'default' || currentPermission === 'denied') {
-        setShowNotificationButton(true)
-        console.log('🔔 Bildirim butonu gösteriliyor')
+      // İzin verilmemişse otomatik iste
+      if (currentPermission === 'default') {
+        console.log('📱 Bildirim izni isteniyor...')
+        enableNotifications()
+      } else if (currentPermission === 'denied') {
+        console.warn('⚠️ Bildirim izni reddedilmiş')
+        console.warn('💡 Tarayıcı ayarlarından bildirimleri açabilirsiniz')
+        setErrorMessage('⚠️ Bildirim izni reddedilmiş. Tarayıcı ayarlarından açabilirsiniz.')
+        setTimeout(() => setErrorMessage(''), 5000)
       } else {
         console.log('✅ Bildirim izni zaten verilmiş')
       }
@@ -2575,17 +2578,6 @@ export default function Home() {
 
       {/* Logo ve Dark Mode Toggle - Sağ Üst */}
       <div className="fixed -top-10 right-4 z-50 flex items-center gap-3">
-        {/* Bildirim Aktifleştirme Butonu */}
-        {showNotificationButton && (
-          <button
-            onClick={enableNotifications}
-            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg shadow-lg transition-colors font-medium text-sm animate-pulse"
-            title="Bildirimleri Aktif Et"
-          >
-            🔔 Bildirimleri Aç
-          </button>
-        )}
-        
         <button
           onClick={() => setDarkMode(!darkMode)}
           className="bg-slate-800 hover:bg-slate-700 text-white p-2 rounded-lg shadow-lg transition-colors"
