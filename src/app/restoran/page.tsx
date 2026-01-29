@@ -13,6 +13,7 @@ interface Restaurant {
   password?: string
   maps_link?: string
   delivery_fee?: number
+  logo_url?: string
 }
 
 interface Package {
@@ -107,13 +108,13 @@ export default function RestoranPage() {
     setIsMounted(true)
   }, [])
 
-  // 🎯 MERGEN AGENT LISTENER - Eklentiden Veri Yakalama
+  // 🎯 MERGEN AGENT LISTENER - OTOMATİK KAYIT SİSTEMİ
   useEffect(() => {
-    if (typeof window === 'undefined' || !isLoggedIn) return
+    if (typeof window === 'undefined' || !isLoggedIn || !selectedRestaurantId) return
 
-    console.log('🔌 Mergen Agent listener aktif - Eklentiden veri bekleniyor...')
+    console.log('🔌 Mergen Agent otomatik kayıt sistemi aktif - Eklentiden veri bekleniyor...')
 
-    const handleMergenMessage = (event: MessageEvent) => {
+    const handleMergenMessage = async (event: MessageEvent) => {
       // Güvenlik kontrolü - Sadece Mergen Agent'tan gelen mesajları kabul et
       if (!event.data || event.data.source !== 'mergen-extension' || event.data.type !== 'MERGEN_ORDER_DATA') {
         return
@@ -123,43 +124,74 @@ export default function RestoranPage() {
 
       const orderData = event.data.payload
 
-      // Form verilerini otomatik doldur
-      setFormData({
-        customerName: orderData.customer || '',
-        customerPhone: orderData.phone || '',
-        deliveryAddress: orderData.address || '',
-        packageAmount: orderData.amount ? String(orderData.amount) : '',
-        content: orderData.content || ''
-      })
+      try {
+        // Validasyon
+        if (!orderData.customer || !orderData.phone || !orderData.address || !orderData.amount || !orderData.content) {
+          console.error('❌ Eksik veri:', orderData)
+          setErrorMessage('❌ Eklentiden eksik veri geldi')
+          setTimeout(() => setErrorMessage(''), 3000)
+          return
+        }
 
-      // Koordinatları state'e al (eğer varsa)
-      if (orderData.latitude && orderData.longitude) {
-        console.log('📍 Koordinatlar alındı:', {
-          lat: orderData.latitude,
-          lng: orderData.longitude
-        })
-        setCoordinates({
-          latitude: orderData.latitude,
-          longitude: orderData.longitude
-        })
-      } else {
-        // Koordinat yoksa sıfırla
-        setCoordinates({
-          latitude: null,
-          longitude: null
-        })
+        if (!orderData.paymentMethod || (orderData.paymentMethod !== 'cash' && orderData.paymentMethod !== 'card')) {
+          console.error('❌ Geçersiz ödeme yöntemi:', orderData.paymentMethod)
+          setErrorMessage('❌ Ödeme yöntemi belirtilmemiş')
+          setTimeout(() => setErrorMessage(''), 3000)
+          return
+        }
+
+        console.log('🚀 Otomatik kayıt başlatılıyor...')
+
+        // Supabase'e kayıt - OTOMATİK
+        const packageData: any = {
+          customer_name: orderData.customer.trim(),
+          customer_phone: orderData.phone.trim(),
+          content: orderData.content.trim(),
+          delivery_address: orderData.address.trim(),
+          amount: parseFloat(orderData.amount),
+          status: 'waiting',
+          restaurant_id: selectedRestaurantId,
+          payment_method: orderData.paymentMethod
+        }
+
+        // Koordinatlar varsa ekle (Mergen Agent'tan gelmişse)
+        if (orderData.latitude && orderData.longitude) {
+          packageData.latitude = orderData.latitude
+          packageData.longitude = orderData.longitude
+          console.log('📍 Koordinatlar veritabanına kaydediliyor:', {
+            lat: orderData.latitude,
+            lng: orderData.longitude
+          })
+        } else {
+          console.warn('⚠️ Koordinat bilgisi yok - Adres bazlı navigasyon kullanılacak')
+        }
+
+        const { data, error } = await supabase
+          .from('packages')
+          .insert([packageData])
+          .select()
+
+        if (error) {
+          console.error('❌ Otomatik kayıt hatası:', error)
+          setErrorMessage('❌ Sipariş kaydedilemedi: ' + error.message)
+          setTimeout(() => setErrorMessage(''), 5000)
+          return
+        }
+
+        console.log('✅ Sipariş otomatik kaydedildi:', data)
+
+        // Başarı mesajı göster
+        setSuccessMessage('🔔 Yeni Sipariş Otomatik Eklendi')
+        setTimeout(() => setSuccessMessage(''), 5000)
+
+        // Paketleri yenile
+        fetchPackages()
+
+      } catch (error: any) {
+        console.error('❌ Otomatik kayıt hatası:', error)
+        setErrorMessage('❌ Otomatik kayıt başarısız: ' + error.message)
+        setTimeout(() => setErrorMessage(''), 5000)
       }
-
-      // Ödeme yöntemi varsa set et
-      if (orderData.paymentMethod === 'cash' || orderData.paymentMethod === 'card') {
-        setPaymentMethod(orderData.paymentMethod)
-      }
-
-      // Başarı mesajı göster
-      setSuccessMessage('✅ Eklentiden Veri Çekildi')
-      setTimeout(() => setSuccessMessage(''), 3000)
-
-      console.log('✅ Form otomatik dolduruldu')
     }
 
     // Listener'ı ekle
@@ -168,9 +200,9 @@ export default function RestoranPage() {
     // Cleanup - Component unmount olduğunda listener'ı kaldır
     return () => {
       window.removeEventListener('message', handleMergenMessage)
-      console.log('🔌 Mergen Agent listener kapatıldı')
+      console.log('🔌 Mergen Agent otomatik kayıt sistemi kapatıldı')
     }
-  }, [isLoggedIn])
+  }, [isLoggedIn, selectedRestaurantId])
 
   // İstatistik verilerini çek
   const fetchStatisticsData = async () => {
@@ -343,9 +375,7 @@ export default function RestoranPage() {
         setSelectedRestaurantId(loggedRestaurantId)
         
         // Oturum bilgileri set edildikten sonra restoranları çek
-        setTimeout(() => {
-          fetchRestaurants()
-        }, 100) // 100ms gecikme ile veritabanı bağlantısının oturmasını bekle
+        fetchRestaurants()
       } else {
         setIsLoggedIn(false)
       }
@@ -362,7 +392,7 @@ export default function RestoranPage() {
     try {
       const { data, error } = await supabase
         .from('restaurants')
-        .select('id, name, password')  // Sadece mevcut kolonlar
+        .select('id, name, password, logo_url, maps_link, delivery_fee')
         .order('name', { ascending: true })
 
       if (error) throw error
@@ -454,7 +484,7 @@ export default function RestoranPage() {
     try {
       const { data, error } = await supabase
         .from('restaurants')
-        .select('id, name, password')
+        .select('id, name, password, logo_url, maps_link, delivery_fee')
         .eq('name', loginForm.username)
         .single()
       
@@ -469,6 +499,9 @@ export default function RestoranPage() {
         localStorage.setItem(LOGIN_RESTAURANT_ID_KEY, data.id)
         setIsLoggedIn(true)
         setSelectedRestaurantId(data.id)
+        
+        // Restoran bilgilerini state'e ekle (logo için)
+        setRestaurants([data])
       } else {
         setErrorMessage('Hatalı şifre!')
       }
@@ -494,14 +527,25 @@ export default function RestoranPage() {
       // Realtime callback fonksiyonu - her zaman güncel state'e erişmek için burada tanımla
       const handlePackageChange = async (payload: any) => {
         console.log('📦 Paket değişikliği algılandı:', payload.eventType, 'ID:', payload.new?.id || payload.old?.id)
+        
+        // Sadece bu restorana ait değişiklikleri işle (ekstra güvenlik)
+        const packageRestaurantId = payload.new?.restaurant_id || payload.old?.restaurant_id
+        if (packageRestaurantId && String(packageRestaurantId) !== String(selectedRestaurantId)) {
+          console.warn('⚠️ Başka restoranın paketi, atlanıyor:', packageRestaurantId)
+          return
+        }
+        
         // State'i güncelle - sayfa yenileme YOK!
         await fetchPackages()
         console.log('✅ Restoran state güncellendi (packages)')
       }
       
+      // Benzersiz kanal ismi - packages-follow-{restaurant_id}-{timestamp}
+      const channelName = `packages-follow-${selectedRestaurantId}-${Date.now()}`
+      
       // Restoran paketlerini dinle (sadece bu restoranın paketleri)
       const channel = supabase
-        .channel(`restaurant-packages-${selectedRestaurantId}`, {
+        .channel(channelName, {
           config: {
             broadcast: { self: true }
           }
@@ -509,7 +553,17 @@ export default function RestoranPage() {
         .on(
           'postgres_changes',
           {
-            event: '*', // Tüm olaylar
+            event: 'INSERT', // Yeni sipariş eklendiğinde
+            schema: 'public',
+            table: 'packages',
+            filter: `restaurant_id=eq.${selectedRestaurantId}` // Sadece bu restoranın paketleri
+          },
+          handlePackageChange
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE', // Sipariş güncellendiğinde (kurye atandı, durum değişti)
             schema: 'public',
             table: 'packages',
             filter: `restaurant_id=eq.${selectedRestaurantId}` // Sadece bu restoranın paketleri
@@ -519,9 +573,12 @@ export default function RestoranPage() {
         .subscribe((status, err) => {
           if (status === 'SUBSCRIBED') {
             console.log('✅ Restoran Realtime bağlantısı kuruldu')
+            console.log('📡 Kanal:', channelName)
+            console.log('📍 Filtreleme: restaurant_id =', selectedRestaurantId)
           }
           if (status === 'CHANNEL_ERROR') {
             console.error('❌ Realtime bağlantı hatası:', err)
+            console.error('💡 Çözüm: Supabase Dashboard > Database > Replication > packages tablosunu işaretleyin')
             setTimeout(() => {
               console.log('🔄 Realtime yeniden bağlanıyor...')
               channel.subscribe()
@@ -537,6 +594,7 @@ export default function RestoranPage() {
       
       return () => {
         console.log('🔴 Restoran Realtime dinleme durduruldu')
+        console.log('📡 Kanal kapatılıyor:', channelName)
         supabase.removeChannel(channel)
       }
     }
@@ -809,16 +867,26 @@ export default function RestoranPage() {
         </>
       )}
 
-      {/* Dark Mode Toggle - Sağ Üst */}
-      <button
-        onClick={() => setDarkMode(!darkMode)}
-        className={`fixed top-4 right-4 z-50 p-2 rounded-lg shadow-lg transition-colors ${
-          darkMode ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-white hover:bg-gray-100 text-gray-900 border border-gray-300'
-        }`}
-        title={darkMode ? 'Gündüz Modu' : 'Gece Modu'}
-      >
-        {darkMode ? '☀️' : '🌙'}
-      </button>
+      {/* Logo ve Dark Mode Toggle - Sağ Üst */}
+      <div className="fixed -top-10 right-4 z-50 flex items-center gap-3">
+        {/* Dark Mode Toggle */}
+        <button
+          onClick={() => setDarkMode(!darkMode)}
+          className={`p-2 rounded-lg shadow-lg transition-colors ${
+            darkMode ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-white hover:bg-gray-100 text-gray-900 border border-gray-300'
+          }`}
+          title={darkMode ? 'Gündüz Modu' : 'Gece Modu'}
+        >
+          {darkMode ? '☀️' : '🌙'}
+        </button>
+        
+        {/* Logo */}
+        <img 
+          src="/logo.png" 
+          alt="Logo" 
+          className="w-36 h-36"
+        />
+      </div>
 
       {/* İSTATİSTİKLER MODAL */}
       {showStatistics && (
@@ -1152,22 +1220,33 @@ export default function RestoranPage() {
         {/* SOL PANEL - YENİ SİPARİŞ FORMU */}
         <div className="lg:col-span-2">
           <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
-            {/* Logo ve Başlık Kısmı */}
-            <div className="flex justify-center items-center mb-6 -mt-8">
-              <div className="text-center">
-                <img 
-                  src="/logo.png" 
-                  alt="Logo" 
-                  className="w-52 h-52 mx-auto mb-2"
-                />
-                {/* Kiro'nun 'RESTORAN PANELİ' yazdığı yeri bu satırla değiştiriyoruz */}
-                <h1 className="text-3xl font-black text-white uppercase tracking-tighter">
-                  {restaurants.find(r => String(r.id) === String(selectedRestaurantId))?.name || 'RESTORAN PANELİ'}
-                </h1>
-                <p className="text-sm text-slate-400 mt-1">
-                  Yeni Sipariş Kayıt Ekranı
-                </p>
-              </div>
+            {/* Hero Section - Dükkana Özel Logo ve Başlık */}
+            <div className="flex flex-col items-center mb-6">
+              {/* Dinamik Restoran Logosu */}
+              {selectedRestaurant && (
+                <div className="mb-4">
+                  <img 
+                    src={selectedRestaurant.logo_url || '/logo.png'} 
+                    alt={selectedRestaurant.name}
+                    className="h-24 w-auto mx-auto"
+                    onError={(e) => {
+                      // Logo yüklenemezse varsayılan Mergen logosunu göster
+                      const target = e.target as HTMLImageElement;
+                      target.src = '/logo.png';
+                    }}
+                  />
+                </div>
+              )}
+              
+              {/* Restoran İsmi */}
+              <h1 className="text-3xl font-black text-white uppercase tracking-tighter">
+                {selectedRestaurant?.name || 'RESTORAN PANELİ'}
+              </h1>
+              
+              {/* Alt Başlık */}
+              <p className="text-sm text-slate-400 mt-1">
+                Yeni Sipariş Kayıt Ekranı
+              </p>
             </div>
 
             {/* Başarı Mesajı */}
@@ -1338,11 +1417,11 @@ export default function RestoranPage() {
 
         {/* SAĞ PANEL - SİPARİŞ LİSTESİ */}
         <div className="lg:col-span-1">
-          <div className="bg-slate-900 rounded-xl p-4 border border-slate-800">
+          <div className="bg-slate-900 rounded-xl p-3 border border-slate-800 flex flex-col" style={{ height: 'calc(100vh - 80px)' }}>
             {/* Başlık ve Filtre */}
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex justify-between items-center mb-3 flex-shrink-0">
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-white">Verilen Siparişler</h2>
+                <h2 className="text-sm font-bold text-white">Verilen Siparişler</h2>
                 <span className="bg-orange-500/20 text-orange-400 text-xs px-2 py-0.5 rounded">
                   {packages.length}
                 </span>
@@ -1359,7 +1438,8 @@ export default function RestoranPage() {
               </select>
             </div>
             
-            <div className="space-y-2 max-h-96 overflow-y-auto">
+            {/* Kompakt Liste - Tam Boy Scroll */}
+            <div className="space-y-2 overflow-y-auto custom-scrollbar flex-1">
               {packages.length === 0 ? (
                 <div className="text-center py-8 text-slate-500">
                   <div className="text-3xl mb-2">📦</div>
@@ -1367,14 +1447,14 @@ export default function RestoranPage() {
                 </div>
               ) : (
                 packages.map(pkg => (
-                  <div key={pkg.id} className="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
-                    <div className="flex justify-between items-start mb-2">
+                  <div key={pkg.id} className="bg-slate-800/50 p-2 rounded-lg border border-slate-700 hover:border-slate-600 transition-colors mb-2">
+                    <div className="flex justify-between items-start mb-1.5">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <span className="text-xs font-bold text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded">
+                        <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                          <span className="text-xs font-bold text-blue-400 bg-blue-500/20 px-1.5 py-0.5 rounded">
                             {pkg.order_number || 'Hazırlanıyor...'}
                           </span>
-                          <span className={`text-xs px-2 py-0.5 rounded font-medium ${
+                          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
                             pkg.status === 'waiting' ? 'bg-yellow-500/20 text-yellow-400' :
                             pkg.status === 'assigned' ? 'bg-blue-500/20 text-blue-400' :
                             pkg.status === 'picking_up' ? 'bg-orange-500/20 text-orange-400' :
@@ -1388,16 +1468,16 @@ export default function RestoranPage() {
                           </span>
                         </div>
                         
-                        {/* Kurye Bilgisi */}
+                        {/* Kurye Bilgisi - Kompakt */}
                         {pkg.courier_id ? (
-                          <div className="mb-2">
-                            <span className="text-xs px-2 py-1 rounded font-medium bg-indigo-500/20 text-indigo-400 inline-flex items-center gap-1">
+                          <div className="mb-1">
+                            <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-indigo-500/20 text-indigo-400 inline-flex items-center gap-1">
                               🚴 {pkg.courier_name || 'Kurye'}
                             </span>
                           </div>
                         ) : (
-                          <div className="mb-2">
-                            <span className="text-xs px-2 py-1 rounded font-medium bg-slate-600/30 text-slate-400 inline-flex items-center gap-1">
+                          <div className="mb-1">
+                            <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-slate-600/30 text-slate-400 inline-flex items-center gap-1">
                               ⏳ Kurye Bekleniyor
                             </span>
                           </div>
@@ -1405,38 +1485,38 @@ export default function RestoranPage() {
                         
                         <h3 className="font-medium text-sm text-white">{pkg.customer_name}</h3>
                         {pkg.customer_phone && (
-                          <p className="text-xs text-slate-400 mt-1">
+                          <p className="text-xs text-slate-400 mt-0.5">
                             📞 {pkg.customer_phone}
                           </p>
                         )}
                       </div>
                     </div>
                     
-                    {/* Tarih ve Saat Bilgileri */}
-                    <div className="bg-slate-900/50 p-2 rounded mb-2 space-y-1">
+                    {/* Tarih ve Saat Bilgileri - Kompakt */}
+                    <div className="bg-slate-900/50 p-1.5 rounded mb-1.5 space-y-0.5">
                       <div className="flex justify-between items-center text-xs">
-                        <span className="text-slate-400">📅 Sipariş Tarihi:</span>
+                        <span className="text-slate-400">📅 Sipariş:</span>
                         <span className="text-slate-300 font-medium">{formatDateTime(pkg.created_at)}</span>
                       </div>
                       <div className="flex justify-between items-center text-xs">
-                        <span className="text-slate-400">🕐 Sisteme Giriş:</span>
+                        <span className="text-slate-400">🕐 Giriş:</span>
                         <span className="text-blue-400 font-medium">{formatTime(pkg.created_at)}</span>
                       </div>
                       {pkg.delivered_at && (
                         <div className="flex justify-between items-center text-xs">
-                          <span className="text-slate-400">✅ Teslim Saati:</span>
+                          <span className="text-slate-400">✅ Teslim:</span>
                           <span className="text-green-400 font-medium">{formatTime(pkg.delivered_at)}</span>
                         </div>
                       )}
                     </div>
                     
                     {pkg.content && (
-                      <p className="text-xs text-slate-400 mb-2">
+                      <p className="text-xs text-slate-400 mb-1.5">
                         📦 {pkg.content}
                       </p>
                     )}
                     
-                    <p className="text-xs text-slate-400 mb-2 line-clamp-2">
+                    <p className="text-xs text-slate-400 mb-1.5 line-clamp-1">
                       📍 {pkg.delivery_address}
                     </p>
                     

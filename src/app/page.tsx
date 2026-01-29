@@ -1617,7 +1617,9 @@ export default function Home() {
       .channel('admin-realtime-all-events', {
         config: {
           broadcast: { self: false }, // KRİTİK: Kendi update'lerimizi dinleme
-          presence: { key: 'admin' }
+          presence: { 
+            key: 'admin'
+          }
         }
       })
       .on(
@@ -1625,7 +1627,7 @@ export default function Home() {
         { 
           event: '*', // Tüm olaylar (INSERT, UPDATE, DELETE)
           schema: 'public', 
-          table: 'packages' 
+          table: 'packages' // FİZİKSEL TABLO (View değil)
         },
         handlePackageChange
       )
@@ -1649,10 +1651,11 @@ export default function Home() {
       )
       .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
-          console.log('✅ Admin Realtime bağlantısı kuruldu')
+          console.log('✅ Admin Realtime bağlantısı kuruldu - Fiziksel tablolar dinleniyor')
         }
         if (status === 'CHANNEL_ERROR') {
           console.error('❌ Realtime bağlantı hatası:', err)
+          console.error('💡 Çözüm: Supabase Dashboard > Database > Replication > packages tablosunu işaretleyin')
           // 5 saniye sonra yeniden bağlan
           setTimeout(() => {
             console.log('🔄 Realtime yeniden bağlanıyor...')
@@ -1667,8 +1670,9 @@ export default function Home() {
         }
       })
 
+    // CLEANUP: Component unmount olduğunda kanalı temizle
     return () => {
-      console.log('🔴 Admin Realtime dinleme durduruldu')
+      console.log('🔴 Admin Realtime dinleme durduruldu - Kanal temizleniyor')
       supabase.removeChannel(channel)
     }
   }, [isLoggedIn, isMounted])
