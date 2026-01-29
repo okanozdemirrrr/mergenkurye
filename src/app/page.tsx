@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './lib/supabase'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts'
+import { getPlatformBadgeClass, getPlatformDisplayName } from './lib/platformUtils'
 
 interface Restaurant {
   id: number | string
@@ -27,6 +28,7 @@ interface Package {
   payment_method?: 'cash' | 'card' | null
   restaurant_id?: number | string | null
   restaurant?: Restaurant | null
+  platform?: string
   created_at?: string
   assigned_at?: string
   picked_up_at?: string
@@ -2151,9 +2153,16 @@ export default function Home() {
                             index % 2 === 0 ? 'bg-white dark:bg-slate-800' : 'bg-slate-50/50 dark:bg-slate-700/20'
                           }`}>
                             <td className="py-3 px-4">
-                              <span className="font-bold text-blue-600 dark:text-blue-400">
-                                {order.order_number || '......'}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-blue-600 dark:text-blue-400">
+                                  {order.order_number || '......'}
+                                </span>
+                                {order.platform && (
+                                  <span className={`text-xs py-0.5 px-2 rounded ${getPlatformBadgeClass(order.platform)}`}>
+                                    {getPlatformDisplayName(order.platform)}
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="py-3 px-4">
                               <div className="text-sm">
@@ -2936,13 +2945,20 @@ export default function Home() {
                   
                   {/* Oluşturulma Saati ve Sipariş No */}
                   <div className="flex justify-between items-center mb-2">
-                    <span className={`text-xs font-bold px-2 py-1 rounded ${
-                      pkg.order_number 
-                        ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30'
-                        : 'text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-700/50 animate-pulse'
-                    }`}>
-                      {pkg.order_number || '......'}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-bold px-2 py-1 rounded ${
+                        pkg.order_number 
+                          ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30'
+                          : 'text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-700/50 animate-pulse'
+                      }`}>
+                        {pkg.order_number || '......'}
+                      </span>
+                      {pkg.platform && (
+                        <span className={`text-xs py-0.5 px-2 rounded ${getPlatformBadgeClass(pkg.platform)}`}>
+                          {getPlatformDisplayName(pkg.platform)}
+                        </span>
+                      )}
+                    </div>
                     <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
                       🕐 {formatTurkishTime(pkg.created_at)}
                     </span>
@@ -3337,9 +3353,16 @@ export default function Home() {
                 currentPageData.map(pkg => (
                   <tr key={pkg.id} className="border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50">
                     <td className="py-3 px-4">
-                      <span className="font-bold text-blue-600 dark:text-blue-400">
-                        {pkg.order_number || '......'}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-blue-600 dark:text-blue-400">
+                          {pkg.order_number || '......'}
+                        </span>
+                        {pkg.platform && (
+                          <span className={`text-xs py-0.5 px-2 rounded ${getPlatformBadgeClass(pkg.platform)}`}>
+                            {getPlatformDisplayName(pkg.platform)}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="py-3 px-4">
                       <div className="text-sm">
@@ -3633,9 +3656,16 @@ export default function Home() {
                               index % 2 === 0 ? 'bg-white dark:bg-slate-800' : 'bg-slate-50/50 dark:bg-slate-700/20'
                             }`}>
                               <td className="py-3 px-4">
-                                <span className="font-bold text-blue-600 dark:text-blue-400">
-                                  {order.order_number || '......'}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold text-blue-600 dark:text-blue-400">
+                                    {order.order_number || '......'}
+                                  </span>
+                                  {order.platform && (
+                                    <span className={`text-xs py-0.5 px-2 rounded ${getPlatformBadgeClass(order.platform)}`}>
+                                      {getPlatformDisplayName(order.platform)}
+                                    </span>
+                                  )}
+                                </div>
                               </td>
                               <td className="py-3 px-4">
                                 <div className="text-sm">

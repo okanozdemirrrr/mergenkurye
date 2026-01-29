@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { getPlatformBadgeClass, getPlatformDisplayName } from '../lib/platformUtils'
 
 interface Package {
   id: number
@@ -14,6 +15,7 @@ interface Package {
   content?: string
   courier_id?: string | null
   payment_method?: 'cash' | 'card' | null
+  platform?: string
   created_at?: string
   assigned_at?: string
   accepted_at?: string
@@ -1965,6 +1967,11 @@ export default function KuryePage() {
                         <span className="text-xs font-bold text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded">
                           {pkg.order_number || '......'}
                         </span>
+                        {pkg.platform && (
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded ${getPlatformBadgeClass(pkg.platform)}`}>
+                            {getPlatformDisplayName(pkg.platform)}
+                          </span>
+                        )}
                         <span className="text-xs px-2 py-0.5 bg-orange-500/20 text-orange-400 rounded">
                           {pkg.restaurant?.name || 'Restoran'}
                         </span>
@@ -2176,6 +2183,11 @@ export default function KuryePage() {
                           <span className="text-xs font-bold text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded">
                             {pkg.order_number || '......'}
                           </span>
+                          {pkg.platform && (
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded ${getPlatformBadgeClass(pkg.platform)}`}>
+                              {getPlatformDisplayName(pkg.platform)}
+                            </span>
+                          )}
                           <span className="text-xs px-2 py-0.5 bg-green-500/20 text-green-400 rounded">
                             ✓ Teslim Edildi
                           </span>
@@ -2345,6 +2357,11 @@ export default function KuryePage() {
                                 <span className="text-xs font-bold text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded">
                                   {pkg.order_number || '......'}
                                 </span>
+                                {pkg.platform && (
+                                  <span className={`text-xs font-bold px-2 py-0.5 rounded ${getPlatformBadgeClass(pkg.platform)}`}>
+                                    {getPlatformDisplayName(pkg.platform)}
+                                  </span>
+                                )}
                               </div>
                               <p className="font-medium text-sm text-white">{pkg.customer_name}</p>
                               {pkg.customer_phone && (

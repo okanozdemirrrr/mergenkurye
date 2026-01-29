@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { getPlatformBadgeClass, getPlatformDisplayName } from '../lib/platformUtils'
 
 const LOGIN_STORAGE_KEY = 'restoran_logged_in'
 const LOGIN_RESTAURANT_ID_KEY = 'restoran_logged_restaurant_id'
@@ -28,6 +29,7 @@ interface Package {
   payment_method?: 'cash' | 'card'
   restaurant_id?: number | null
   order_number?: string
+  platform?: string
   created_at?: string
   assigned_at?: string
   picked_up_at?: string
@@ -1454,6 +1456,11 @@ export default function RestoranPage() {
                           <span className="text-xs font-bold text-blue-400 bg-blue-500/20 px-1.5 py-0.5 rounded">
                             {pkg.order_number || 'Hazırlanıyor...'}
                           </span>
+                          {pkg.platform && (
+                            <span className={`text-xs py-0.5 px-1.5 rounded ${getPlatformBadgeClass(pkg.platform)}`}>
+                              {getPlatformDisplayName(pkg.platform)}
+                            </span>
+                          )}
                           <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
                             pkg.status === 'waiting' ? 'bg-yellow-500/20 text-yellow-400' :
                             pkg.status === 'assigned' ? 'bg-blue-500/20 text-blue-400' :
