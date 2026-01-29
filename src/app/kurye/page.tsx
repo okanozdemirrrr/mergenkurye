@@ -1971,6 +1971,24 @@ export default function KuryePage() {
                       </div>
                       <p className="font-medium text-sm sm:text-base text-white">{pkg.customer_name}</p>
                       
+                      {/* İçerik Gösterimi - Müşteri isminin altında */}
+                      {pkg.content && (
+                        <p className="text-xs text-slate-400 mt-1">📦 {pkg.content}</p>
+                      )}
+                      
+                      {/* Müşteri Telefonu - Her zaman göster */}
+                      {pkg.customer_phone && (
+                        <div className="mt-2">
+                          <p className="text-xs text-slate-400">📞 {pkg.customer_phone}</p>
+                          <a 
+                            href={`tel:${pkg.customer_phone}`}
+                            className="inline-block mt-1 py-1.5 px-3 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white text-xs font-medium rounded transition-colors"
+                          >
+                            � Ara
+                          </a>
+                        </div>
+                      )}
+                      
                       {/* Restoran bilgileri - Mobil Responsive */}
                       {(pkg.status === 'assigned' || pkg.status === 'picking_up' || pkg.status === 'on_the_way') && pkg.restaurant?.phone && (
                         <div className="mt-2 p-2 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
@@ -1998,33 +2016,6 @@ export default function KuryePage() {
                           </a>
                         </div>
                       )}
-                      
-                      {/* Müşteri numarası - sadece on_the_way durumunda göster */}
-                      {pkg.status === 'on_the_way' && pkg.customer_phone && (
-                        <div className="mt-2">
-                          <p className="text-xs text-slate-400 mb-1">👤 Müşteri: {pkg.customer_phone}</p>
-                          <div className="flex gap-2">
-                            <a 
-                              href={`tel:${pkg.customer_phone}`}
-                              className="py-1.5 px-3 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded transition-colors text-center"
-                            >
-                              📞 Ara
-                            </a>
-                            <a 
-                              href={`https://wa.me/${pkg.customer_phone.replace(/[^0-9]/g, '')}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded transition-colors text-center"
-                            >
-                              💬 WhatsApp
-                            </a>
-                          </div>
-                        </div>
-                      )}
-                      
-                      {pkg.content && (
-                        <p className="text-xs text-slate-400 mt-1">{pkg.content}</p>
-                      )}
                     </div>
                     <div className="text-right">
                       <p className="text-xl font-bold text-green-400">{pkg.amount}₺</p>
@@ -2035,25 +2026,19 @@ export default function KuryePage() {
                   </div>
 
                   {/* Adres */}
-                  <div className="mb-3 p-2 bg-slate-800/50 rounded-lg">
+                  <div className="mb-2 p-2 bg-slate-800/50 rounded-lg">
                     <p className="text-xs text-slate-300">{pkg.delivery_address}</p>
                   </div>
 
-                  {/* AKILLI NAVİGASYON BUTONU */}
-                  {pkg.latitude && pkg.longitude ? (
+                  {/* NAVİGASYON BUTONU - Sadece on_the_way durumunda göster */}
+                  {pkg.status === 'on_the_way' && pkg.latitude && pkg.longitude && (
                     <button
                       onClick={() => handleOpenNavigation(pkg)}
-                      className="w-full mb-3 py-3 sm:py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 active:from-indigo-800 active:to-purple-800 text-white text-base sm:text-lg font-bold rounded-xl transition-all shadow-lg hover:shadow-xl active:scale-95 flex items-center justify-center gap-2"
+                      className="w-full mb-2 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 active:from-indigo-800 active:to-purple-800 text-white text-sm font-medium rounded-lg transition-all shadow-md hover:shadow-lg active:scale-95 flex items-center justify-center gap-2"
                     >
-                      <span className="text-2xl">📍</span>
-                      <span>KONUMA GİT</span>
+                      <span>📍</span>
+                      <span>Konuma Git</span>
                     </button>
-                  ) : (
-                    <div className="w-full mb-3 py-2 px-3 bg-slate-800/50 border border-slate-700 rounded-lg text-center">
-                      <p className="text-xs text-slate-400">
-                        📍 Koordinat bilgisi yok - Adres tarifine bakın
-                      </p>
-                    </div>
                   )}
 
                   {/* Durum Badge */}
