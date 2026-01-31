@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from './lib/supabase'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts'
 import { getPlatformBadgeClass, getPlatformDisplayName } from './lib/platformUtils'
@@ -1156,7 +1156,8 @@ export default function Home() {
 
   // fetchCourierStatuses fonksiyonu kaldırıldı - artık fetchCouriers'da tüm bilgiler geliyor
 
-  const handleAssignCourier = async (packageId: number) => {
+  // ⚡ handleAssignCourier - useCallback ile optimize edildi
+  const handleAssignCourier = useCallback(async (packageId: number) => {
     const courierId = selectedCouriers[packageId]
     
     if (!courierId) {
@@ -1216,7 +1217,7 @@ export default function Home() {
         return n
       })
     }
-  }
+  }, [selectedCouriers, setPackages, setCouriers]) // ⚡ Dependencies eklendi
 
   // ✅ AŞAMA 2: İlk yükleme ve Realtime subscription useAdminData hook'una taşındı!
   
@@ -1229,12 +1230,13 @@ export default function Home() {
 
   // ✅ AŞAMA 2: fetchRestaurants ve yardımcı fonksiyonlar useAdminData hook'una taşındı!
 
-  const handleCourierChange = (packageId: number, courierId: string) => {
+  // ⚡ AŞAMA 4: Event handler'lar useCallback ile optimize edildi
+  const handleCourierChange = useCallback((packageId: number, courierId: string) => {
     setSelectedCouriers(prev => ({ ...prev, [packageId]: courierId }))
-  }
+  }, [])
 
-  // Türkiye saatine dönüştürme fonksiyonu
-  const formatTurkishTime = (dateString?: string) => {
+  // ⚡ Türkiye saatine dönüştürme fonksiyonu - useMemo yerine useCallback (fonksiyon olduğu için)
+  const formatTurkishTime = useCallback((dateString?: string) => {
     if (!dateString) return '--:--'
     
     try {
@@ -1250,9 +1252,9 @@ export default function Home() {
       console.error('Saat formatı hatası:', error)
       return '--:--'
     }
-  }
+  }, [])
 
-  const formatTurkishDate = (dateString: string) => {
+  const formatTurkishDate = useCallback((dateString: string) => {
     try {
       const date = new Date(dateString)
       const day = date.getDate().toString().padStart(2, '0')
@@ -1263,7 +1265,7 @@ export default function Home() {
       console.error('Tarih formatı hatası:', error)
       return dateString
     }
-  }
+  }, [])
 
   const fetchCourierOrders = async (courierId: string) => {
     try {

@@ -2,9 +2,10 @@
  * @file src/hooks/useAdminData.ts
  * @description Admin Panel Veri Yönetimi Custom Hook
  * 🛡️ AŞAMA 3: TypeScript zırhı eklendi - ANY kullanımı yok!
+ * ⚡ AŞAMA 4: Performance optimizasyonu - useCallback, useMemo eklendi
  */
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/app/lib/supabase'
 import type { 
   Package, 
@@ -26,8 +27,8 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
   // Refs
   const lastAdminActionTimeRef = useRef(0)
 
-  // Fetch Functions - Artık tip güvenli!
-  const fetchPackages = async (isInitialLoad = false) => {
+  // ⚡ Fetch Functions - useCallback ile optimize edildi
+  const fetchPackages = useCallback(async (isInitialLoad = false) => {
     if (isInitialLoad) {
       setErrorMessage('')
     }
@@ -36,9 +37,17 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
       const todayStart = new Date()
       todayStart.setHours(0, 0, 0, 0)
 
+      // ⚡ Sadece gerekli sütunları çek (veri boyutu optimizasyonu)
       const { data, error } = await supabase
         .from('packages')
-        .select('*, restaurants(*)')
+        .select(`
+          id, order_number, customer_name, customer_phone, 
+          delivery_address, amount, status, content, courier_id, 
+          payment_method, restaurant_id, platform, created_at, 
+          assigned_at, picked_up_at, delivered_at, settled_at, 
+          restaurant_settled_at, latitude, longitude,
+          restaurants(id, name, phone, address)
+        `)
         .is('courier_id', null)
         .gte('created_at', todayStart.toISOString())
         .order('created_at', { ascending: false })
@@ -73,13 +82,21 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
         setErrorMessage(`Siparişler yüklenirken hata: ${error instanceof Error ? error.message : 'Bilinmeyen hata'}`)
       }
     }
-  }
+  }, []) // ⚡ Dependency array boş - fonksiyon hiç değişmeyecek
 
-  const fetchDeliveredPackages = async () => {
+  const fetchDeliveredPackages = useCallback(async () => {
     try {
+      // ⚡ Sadece gerekli sütunları çek
       const { data, error } = await supabase
         .from('packages')
-        .select('*, restaurants(*), couriers(*)')
+        .select(`
+          id, order_number, customer_name, customer_phone,
+          delivery_address, amount, status, payment_method,
+          restaurant_id, platform, delivered_at, settled_at,
+          restaurant_settled_at, courier_id,
+          restaurants(id, name),
+          couriers(full_name)
+        `)
         .eq('status', 'delivered')
         .order('delivered_at', { ascending: false })
 
@@ -104,17 +121,18 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
       }
       console.error('Geçmiş siparişler yüklenirken hata:', error instanceof Error ? error.message : error)
     }
-  }
+  }, [])
 
-  const fetchCouriers = async (isInitialLoad = false) => {
+  const fetchCouriers = useCallback(async (isInitialLoad = false) => {
     if (isInitialLoad) {
       setErrorMessage('')
     }
     
     try {
+      // ⚡ Sadece gerekli sütunları çek
       const { data, error } = await supabase
         .from('couriers')
-        .select('*')
+        .select('id, full_name, phone, is_active, last_location')
         .order('full_name', { ascending: true })
 
       if (error) throw error
@@ -159,9 +177,9 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
         setErrorMessage(`Kuryeler yüklenemedi: ${error instanceof Error ? error.message : 'Bilinmeyen hata'}`)
       }
     }
-  }
+  }, []) // ⚡ fetchCourierDeliveryCounts vb. fonksiyonlar da useCallback olacak
 
-  const fetchCourierActivePackageCounts = async (courierIds: string[]) => {
+  const fetchCourierActivePackageCounts = useCallback(async (courierIds: string[]) => {
     try {
       const { data, error } = await supabase
         .from('packages')
@@ -192,9 +210,9 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
       }
       console.error('Aktif paket sayıları alınırken hata:', error)
     }
-  }
+  }, [])
 
-  const fetchCourierDeliveryCounts = async (courierIds: string[]) => {
+  const fetchCourierDeliveryCounts = useCallback(async (courierIds: string[]) => {
     try {
       const { data, error } = await supabase
         .from('packages')
@@ -224,9 +242,9 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
       }
       console.error('Kurye teslimat sayıları alınırken hata:', error)
     }
-  }
+  }, [])
 
-  const fetchCourierTodayDeliveryCounts = async (courierIds: string[]) => {
+  const fetchCourierTodayDeliveryCounts = useCallback(async (courierIds: string[]) => {
     try {
       const todayStart = new Date()
       todayStart.setHours(0, 0, 0, 0)
@@ -265,9 +283,9 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
       }
       console.error('Kurye bugünkü teslimat sayıları alınırken hata:', error)
     }
-  }
+  }, [])
 
-  const fetchCourierDebtsTotal = async (courierIds: string[]) => {
+  const fetchCourierDebtsTotal = useCallback(async (courierIds: string[]) => {
     try {
       const { data, error } = await supabase
         .from('courier_debts')
@@ -302,13 +320,14 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
       }
       console.error('Kurye borçları alınırken hata:', error)
     }
-  }
+  }, [])
 
-  const fetchRestaurants = async () => {
+  const fetchRestaurants = useCallback(async () => {
     try {
+      // ⚡ Sadece gerekli sütunları çek
       const { data, error } = await supabase
         .from('restaurants')
-        .select('*')
+        .select('id, name, phone, address')
         .order('name', { ascending: true })
 
       if (error) throw error
@@ -339,9 +358,9 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
       }
       console.error('Restoranlar yüklenirken hata:', error)
     }
-  }
+  }, [])
 
-  const fetchRestaurantStats = async (restaurantIds: (number | string)[]) => {
+  const fetchRestaurantStats = useCallback(async (restaurantIds: (number | string)[]) => {
     try {
       const { data, error } = await supabase
         .from('packages')
@@ -375,9 +394,9 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
       }
       console.error('Restoran istatistikleri alınırken hata:', error)
     }
-  }
+  }, [])
 
-  const fetchRestaurantDebtsTotal = async (restaurantIds: (number | string)[]) => {
+  const fetchRestaurantDebtsTotal = useCallback(async (restaurantIds: (number | string)[]) => {
     try {
       const { data, error } = await supabase
         .from('restaurant_debts')
@@ -411,17 +430,17 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
       }
       console.error('Restoran borçları alınırken hata:', error)
     }
-  }
+  }, [])
 
-  // Manuel yenileme fonksiyonu
-  const refreshData = async () => {
+  // ⚡ Manuel yenileme fonksiyonu - useCallback ile optimize edildi
+  const refreshData = useCallback(async () => {
     await Promise.all([
       fetchPackages(false),
       fetchDeliveredPackages(),
       fetchCouriers(false),
       fetchRestaurants()
     ])
-  }
+  }, [fetchPackages, fetchDeliveredPackages, fetchCouriers, fetchRestaurants])
 
   // İlk yükleme
   useEffect(() => {
