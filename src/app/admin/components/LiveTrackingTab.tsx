@@ -53,7 +53,7 @@ export function LiveTrackingTab({
     const assignedPackages = packages.filter(pkg => pkg.courier_id && pkg.status !== 'cancelled')
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-2">
             {/* DRAWER BUTONU - STICKY SAĞ ÜST KÖŞE */}
             <OrderDrawer
                 packages={assignedPackages}
@@ -64,11 +64,11 @@ export function LiveTrackingTab({
             />
 
             {/* CANLI HARİTA + KURYE DURUMLARI - YAN YANA */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-2">
                 {/* SOL: Canlı Harita (3/4) */}
                 <div className="lg:col-span-3">
-                    <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-4">
-                        <h2 className="text-xl font-bold mb-3 flex items-center gap-2">
+                    <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-2">
+                        <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
                             <span>🗺️</span>
                             <span>Canlı Harita</span>
                         </h2>
@@ -80,8 +80,8 @@ export function LiveTrackingTab({
 
                 {/* SAĞ: Kurye Durumları (1/4) */}
                 <div className="lg:col-span-1">
-                    <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-4 sticky top-4">
-                        <h2 className="text-base font-bold mb-3">🚴 Kurye Durumları</h2>
+                    <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-2 sticky top-4">
+                        <h2 className="text-sm font-bold mb-2">🚴 Kurye Durumları</h2>
                         <div className="space-y-2 max-h-[500px] overflow-y-auto">
                             {couriers.map(c => {
                                 const courierPackages = assignedPackages.filter(pkg => pkg.courier_id === c.id)
@@ -136,11 +136,11 @@ export function LiveTrackingTab({
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                <div className="lg:col-span-3 space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-2">
+                <div className="lg:col-span-3 space-y-2">
                     {/* SİPARİŞ KARTLARI */}
-                    <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
-                        <h2 className="text-2xl font-bold mb-6">📦 Canlı Sipariş Takibi</h2>
+                    <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-3">
+                        <h2 className="text-xl font-bold mb-3">📦 Canlı Sipariş Takibi</h2>
 
                         {/* Sipariş Kartları */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

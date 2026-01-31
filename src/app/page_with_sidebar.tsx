@@ -2332,8 +2332,8 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Tab Content - PADDING AZALTILDI */}
-      <div className="py-3 px-3">
+      {/* Tab Content - PADDING MİNİMAL */}
+      <div className="py-1 px-2">
         <div className="max-w-full mx-auto">
           {/* Başarı/Hata/Bildirim Mesajları */}
           {notificationMessage && (
