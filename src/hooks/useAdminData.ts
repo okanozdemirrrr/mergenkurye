@@ -3,10 +3,12 @@
  * @description Admin Panel Veri Yönetimi Custom Hook
  * 🛡️ AŞAMA 3: TypeScript zırhı eklendi - ANY kullanımı yok!
  * ⚡ AŞAMA 4: Performance optimizasyonu - useCallback, useMemo eklendi
+ * 🛡️ AŞAMA 5: Retry logic ve error handling eklendi
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/app/lib/supabase'
+import { retryWithBackoff } from '@/utils/retry'
 import type { 
   Package, 
   Courier, 
@@ -26,8 +28,10 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
   
   // Refs
   const lastAdminActionTimeRef = useRef(0)
+  const retryCountRef = useRef(0) // 🛡️ Retry sayacı
 
   // ⚡ Fetch Functions - useCallback ile optimize edildi
+  // 🛡️ Retry logic eklendi
   const fetchPackages = useCallback(async (isInitialLoad = false) => {
     if (isInitialLoad) {
       setErrorMessage('')
@@ -37,25 +41,38 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
       const todayStart = new Date()
       todayStart.setHours(0, 0, 0, 0)
 
-      // ⚡ Sadece gerekli sütunları çek (veri boyutu optimizasyonu)
-      const { data, error } = await supabase
-        .from('packages')
-        .select(`
-          id, order_number, customer_name, customer_phone, 
-          delivery_address, amount, status, content, courier_id, 
-          payment_method, restaurant_id, platform, created_at, 
-          assigned_at, picked_up_at, delivered_at, settled_at, 
-          restaurant_settled_at, latitude, longitude,
-          restaurants(id, name, phone, address)
-        `)
-        .is('courier_id', null)
-        .gte('created_at', todayStart.toISOString())
-        .order('created_at', { ascending: false })
-      
-      if (error) throw error
+      // 🛡️ Retry logic ile fetch
+      const result = await retryWithBackoff(
+        async () => {
+          const { data, error } = await supabase
+            .from('packages')
+            .select(`
+              id, order_number, customer_name, customer_phone, 
+              delivery_address, amount, status, content, courier_id, 
+              payment_method, restaurant_id, platform, created_at, 
+              assigned_at, picked_up_at, delivered_at, settled_at, 
+              restaurant_settled_at, latitude, longitude,
+              restaurants(id, name, phone, address)
+            `)
+            .is('courier_id', null)
+            .gte('created_at', todayStart.toISOString())
+            .order('created_at', { ascending: false })
+          
+          if (error) throw error
+          return data
+        },
+        {
+          maxAttempts: 3,
+          initialDelay: 1000,
+          onRetry: (attempt, error) => {
+            console.warn(`🔄 Packages fetch retry ${attempt}/3:`, error.message)
+            retryCountRef.current = attempt
+          }
+        }
+      )
 
       // 🛡️ Type-safe transformation
-      const transformedData: Package[] = (data || []).map((pkg) => {
+      const transformedData: Package[] = (result || []).map((pkg) => {
         const restaurantData = Array.isArray(pkg.restaurants) && pkg.restaurants.length > 0 
           ? pkg.restaurants[0] 
           : pkg.restaurants || null
@@ -68,6 +85,7 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
       })
 
       setPackages(transformedData)
+      retryCountRef.current = 0 // Reset retry counter
     } catch (error) {
       // 🛡️ Graceful error handling
       const errorMsg = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase()

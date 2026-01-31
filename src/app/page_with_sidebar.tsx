@@ -22,9 +22,12 @@ import type {
   RestaurantDebt 
 } from '@/types'
 
+// 🛡️ AŞAMA 5: Validation utilities
+import { isValidCoordinate, isValidAmount, isValidCourierId } from '@/utils/validation'
+
 // 🛡️ Error handling utility
 const getErrorMessage = (error: unknown): string => {
-  if (error instanceof Error) return getErrorMessage(error)
+  if (error instanceof Error) return error.message
   return String(error)
 }
 
@@ -1157,12 +1160,28 @@ export default function Home() {
   // fetchCourierStatuses fonksiyonu kaldırıldı - artık fetchCouriers'da tüm bilgiler geliyor
 
   // ⚡ handleAssignCourier - useCallback ile optimize edildi
+  // 🛡️ Validation eklendi
   const handleAssignCourier = useCallback(async (packageId: number) => {
     const courierId = selectedCouriers[packageId]
     
+    // 🛡️ Validation: Kurye seçildi mi?
     if (!courierId) {
       setNotificationMessage('⚠️ Lütfen önce bir kurye seçin!')
       setTimeout(() => setNotificationMessage(''), 2000)
+      return
+    }
+
+    // 🛡️ Validation: Kurye ID geçerli mi?
+    if (!isValidCourierId(courierId)) {
+      setErrorMessage('❌ Geçersiz kurye ID!')
+      setTimeout(() => setErrorMessage(''), 3000)
+      return
+    }
+
+    // 🛡️ Validation: Paket ID geçerli mi?
+    if (!packageId || packageId <= 0) {
+      setErrorMessage('❌ Geçersiz paket ID!')
+      setTimeout(() => setErrorMessage(''), 3000)
       return
     }
     
