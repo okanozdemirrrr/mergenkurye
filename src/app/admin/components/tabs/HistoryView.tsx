@@ -182,9 +182,9 @@ export function HistoryView({
   }
 
   return (
-    <div id="history-container" className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">📋 Geçmiş Siparişler</h2>
+    <div id="history-container" className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-4">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-bold">📋 Geçmiş Siparişler</h2>
         
         {/* Tarih Filtresi Dropdown */}
         <div className="flex items-center gap-3">
@@ -207,26 +207,26 @@ export function HistoryView({
         </div>
       </div>
 
-      {/* İstatistikler - TÜM filtrelenmiş veriden hesaplanıyor */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl">
-          <div className="text-sm text-blue-600 dark:text-blue-400 font-medium">Toplam Sipariş</div>
-          <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">{filteredHistory.length}</div>
-          <div className="text-xs text-slate-500 mt-1">
+      {/* İstatistikler - TÜM filtrelenmiş veriden hesaplanıyor - PADDING AZALTILDI */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+        <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-xl">
+          <div className="text-xs text-blue-600 dark:text-blue-400 font-medium">Toplam Sipariş</div>
+          <div className="text-xl font-bold text-blue-700 dark:text-blue-300">{filteredHistory.length}</div>
+          <div className="text-[10px] text-slate-500 mt-1">
             Sayfa {historyCurrentPage} / {totalPages || 1}
           </div>
         </div>
-        <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl">
-          <div className="text-sm text-green-600 dark:text-green-400 font-medium">Toplam Tutar</div>
-          <div className="text-2xl font-bold text-green-700 dark:text-green-300">{totalAmount.toFixed(2)} ₺</div>
+        <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-xl">
+          <div className="text-xs text-green-600 dark:text-green-400 font-medium">Toplam Tutar</div>
+          <div className="text-xl font-bold text-green-700 dark:text-green-300">{totalAmount.toFixed(2)} ₺</div>
         </div>
-        <div className="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-xl">
-          <div className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Nakit</div>
-          <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">{cashAmount.toFixed(2)} ₺</div>
+        <div className="bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded-xl">
+          <div className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Nakit</div>
+          <div className="text-xl font-bold text-emerald-700 dark:text-emerald-300">{cashAmount.toFixed(2)} ₺</div>
         </div>
-        <div className="bg-sky-50 dark:bg-sky-900/20 p-4 rounded-xl">
-          <div className="text-sm text-sky-600 dark:text-sky-400 font-medium">Kart</div>
-          <div className="text-2xl font-bold text-sky-700 dark:text-sky-300">{cardAmount.toFixed(2)} ₺</div>
+        <div className="bg-sky-50 dark:bg-sky-900/20 p-3 rounded-xl">
+          <div className="text-xs text-sky-600 dark:text-sky-400 font-medium">Kart</div>
+          <div className="text-xl font-bold text-sky-700 dark:text-sky-300">{cardAmount.toFixed(2)} ₺</div>
         </div>
       </div>
 

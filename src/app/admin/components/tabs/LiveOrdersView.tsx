@@ -72,12 +72,12 @@ export function LiveOrdersView({
   handleAssignCourier
 }: LiveOrdersViewProps) {
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-        <div className="lg:col-span-4 space-y-6">
-          {/* SİPARİŞ KARTLARI */}
-          <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
-            <h2 className="text-2xl font-bold mb-6">📦 Canlı Sipariş Takibi</h2>
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
+        <div className="lg:col-span-4 space-y-3">
+          {/* SİPARİŞ KARTLARI - PADDING AZALTILDI */}
+          <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-4">
+            <h2 className="text-xl font-bold mb-4">📦 Canlı Sipariş Takibi</h2>
         
             {/* Sipariş Kartları */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -231,10 +231,10 @@ export function LiveOrdersView({
           </div>
         </div>
 
-        {/* SAĞ PANEL: KURYELERİN DURUMU */}
-        <div className="lg:col-span-1 space-y-4">
-          <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-4">
-            <h2 className="text-base font-bold mb-3">🚴 Kurye Durumları</h2>
+        {/* SAĞ PANEL: KURYELERİN DURUMU - PADDING AZALTILDI */}
+        <div className="lg:col-span-1 space-y-3">
+          <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-3">
+            <h2 className="text-sm font-bold mb-2">🚴 Kurye Durumları</h2>
             <div className="space-y-2">
               {couriers.map(c => {
                 // Bu kuryenin paketlerini bul

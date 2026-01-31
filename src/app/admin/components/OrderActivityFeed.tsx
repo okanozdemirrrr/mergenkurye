@@ -38,25 +38,25 @@ export function OrderActivityFeed({
     )
 
     return (
-        <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-4 mb-6">
-            <h2 className="text-lg font-bold mb-3">🚀 Anlık Sipariş Durumu & Canlı Harita</h2>
+        <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-3 mb-3">
+            <h2 className="text-base font-bold mb-2">🚀 Anlık Sipariş Durumu & Canlı Harita</h2>
             
-            {/* Grid Layout: Sol Harita, Sağ Kartlar */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                {/* SOL: Canlı Harita (35%) */}
-                <div className="lg:col-span-1 h-[400px]">
+            {/* Grid Layout: Sol Harita, Sağ Kartlar - YÜKSEKLIK ARTIRILDI */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                {/* SOL: Canlı Harita (35%) - YÜKSEKLIK ARTIRILDI */}
+                <div className="lg:col-span-1 h-[500px]">
                     <LiveMapComponent packages={packages} couriers={couriers} />
                 </div>
 
-                {/* SAĞ: Sipariş Kartları (65%) */}
+                {/* SAĞ: Sipariş Kartları (65%) - YÜKSEKLIK ARTIRILDI */}
                 <div className="lg:col-span-2">
                     {activeOperationPackages.length === 0 ? (
-                        <div className="text-center py-8 text-slate-500 text-sm h-[400px] flex flex-col items-center justify-center">
+                        <div className="text-center py-8 text-slate-500 text-sm h-[500px] flex flex-col items-center justify-center">
                             <div className="text-4xl mb-2">📭</div>
                             <p>Şu an yolda olan sipariş yok</p>
                         </div>
                     ) : (
-                        <div className="overflow-x-auto pb-2 h-[400px]">
+                        <div className="overflow-x-auto pb-2 h-[500px]">
                             <div className="flex gap-3 min-w-max h-full items-start">
                                 {activeOperationPackages.map(pkg => (
                                     <div 
