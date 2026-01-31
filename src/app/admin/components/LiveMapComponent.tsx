@@ -32,6 +32,16 @@ export function LiveMapComponent({ packages, couriers }: LiveMapComponentProps) 
   // Client-side rendering kontrolü
   useEffect(() => {
     setIsClient(true)
+    
+    // Leaflet CSS'ini dinamik olarak yükle
+    if (typeof window !== 'undefined') {
+      const link = document.createElement('link')
+      link.rel = 'stylesheet'
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
+      link.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY='
+      link.crossOrigin = ''
+      document.head.appendChild(link)
+    }
   }, [])
 
   // SSR sırasında loading göster
@@ -49,7 +59,6 @@ export function LiveMapComponent({ packages, couriers }: LiveMapComponentProps) 
   // Client-side'da Leaflet'i import et
   const { MapContainer, TileLayer, Marker, Popup } = require('react-leaflet')
   const L = require('leaflet')
-  require('leaflet/dist/leaflet.css')
 
   // Paket ikonu
   const packageIcon = L.divIcon({
