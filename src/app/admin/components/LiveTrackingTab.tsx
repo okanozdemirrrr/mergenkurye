@@ -68,7 +68,7 @@ export function LiveTrackingTab({
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-2">
                 {/* SOL: Canlı Harita (3/4) */}
                 <div className="lg:col-span-3">
-                    <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-2">
+                    <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-2" style={{ position: 'relative', zIndex: 1 }}>
                         <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
                             <span>🗺️</span>
                             <span>Canlı Harita</span>

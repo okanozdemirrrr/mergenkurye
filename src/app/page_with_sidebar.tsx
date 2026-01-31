@@ -2021,7 +2021,8 @@ export default function Home() {
       {/* Hamburger Menü Butonu - Sol Üst */}
       <button 
         onClick={() => setShowMenu(!showMenu)} 
-        className="fixed top-4 left-4 z-50 bg-slate-800 hover:bg-slate-700 text-white p-3 rounded-lg shadow-lg transition-colors"
+        className="fixed top-4 left-4 bg-slate-800 hover:bg-slate-700 text-white p-3 rounded-lg shadow-lg transition-colors"
+        style={{ zIndex: 9995 }}
       >
         <div className="space-y-1.5">
           <div className="w-6 h-0.5 bg-white"></div>
