@@ -41,14 +41,9 @@ export function OrderActivityFeed({
         <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-3 mb-3">
             <h2 className="text-base font-bold mb-2">🚀 Anlık Sipariş Durumu & Canlı Harita</h2>
             
-            {/* Grid Layout: Sol Harita, Sağ Kartlar - YÜKSEKLIK ARTIRILDI */}
+            {/* Grid Layout: SOL Kartlar, SAĞ Harita - YER DEĞİŞTİRİLDİ */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-                {/* SOL: Canlı Harita (35%) - YÜKSEKLIK ARTIRILDI */}
-                <div className="lg:col-span-1 h-[500px]">
-                    <LiveMapComponent packages={packages} couriers={couriers} />
-                </div>
-
-                {/* SAĞ: Sipariş Kartları (65%) - YÜKSEKLIK ARTIRILDI */}
+                {/* SOL: Sipariş Kartları (65%) */}
                 <div className="lg:col-span-2">
                     {activeOperationPackages.length === 0 ? (
                         <div className="text-center py-8 text-slate-500 text-sm h-[500px] flex flex-col items-center justify-center">
@@ -163,6 +158,11 @@ export function OrderActivityFeed({
                             </div>
                         </div>
                     )}
+                </div>
+
+                {/* SAĞ: Canlı Harita (35%) */}
+                <div className="lg:col-span-1 h-[500px]">
+                    <LiveMapComponent packages={packages} couriers={couriers} />
                 </div>
             </div>
         </div>
