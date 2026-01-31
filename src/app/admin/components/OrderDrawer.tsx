@@ -46,10 +46,10 @@ export function OrderDrawer({
 
     return (
         <>
-            {/* SABİT BUTON - SAĞ ÜST KÖŞE */}
+            {/* SABİT BUTON - SAĞ ÜST KÖŞE - STICKY */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="fixed top-4 right-4 z-50 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-4 py-2.5 rounded-xl shadow-2xl transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold"
+                className="sticky top-4 right-4 z-50 ml-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-4 py-2.5 rounded-xl shadow-2xl transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold"
             >
                 <span className="text-lg">📦</span>
                 <span className="hidden sm:inline">Anlık Sipariş Takibi</span>

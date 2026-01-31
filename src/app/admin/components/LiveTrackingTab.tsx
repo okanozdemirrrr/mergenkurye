@@ -54,7 +54,7 @@ export function LiveTrackingTab({
 
     return (
         <div className="space-y-6">
-            {/* DRAWER BUTONU - SABİT SAĞ ÜST KÖŞE */}
+            {/* DRAWER BUTONU - STICKY SAĞ ÜST KÖŞE */}
             <OrderDrawer
                 packages={assignedPackages}
                 couriers={couriers}
@@ -63,14 +63,76 @@ export function LiveTrackingTab({
                 handleCancelOrder={handleCancelOrder}
             />
 
-            {/* CANLI HARİTA - EN ÜSTTE TAM GENİŞLİK */}
-            <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-4">
-                <h2 className="text-xl font-bold mb-3 flex items-center gap-2">
-                    <span>🗺️</span>
-                    <span>Canlı Harita</span>
-                </h2>
-                <div className="h-[500px] w-full rounded-xl overflow-hidden">
-                    <LiveMapComponent packages={packages} couriers={couriers} />
+            {/* CANLI HARİTA + KURYE DURUMLARI - YAN YANA */}
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+                {/* SOL: Canlı Harita (3/4) */}
+                <div className="lg:col-span-3">
+                    <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-4">
+                        <h2 className="text-xl font-bold mb-3 flex items-center gap-2">
+                            <span>🗺️</span>
+                            <span>Canlı Harita</span>
+                        </h2>
+                        <div className="h-[500px] w-full rounded-xl overflow-hidden">
+                            <LiveMapComponent packages={packages} couriers={couriers} />
+                        </div>
+                    </div>
+                </div>
+
+                {/* SAĞ: Kurye Durumları (1/4) */}
+                <div className="lg:col-span-1">
+                    <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-4 sticky top-4">
+                        <h2 className="text-base font-bold mb-3">🚴 Kurye Durumları</h2>
+                        <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                            {couriers.map(c => {
+                                const courierPackages = assignedPackages.filter(pkg => pkg.courier_id === c.id)
+
+                                return (
+                                    <div
+                                        key={c.id}
+                                        className="p-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg border dark:border-slate-600"
+                                    >
+                                        <div className="flex justify-between items-center mb-1.5">
+                                            <span className="font-bold text-xs">{c.full_name}</span>
+                                            <div className="text-right">
+                                                <span className="text-[10px] text-green-600 dark:text-green-400 block font-semibold">
+                                                    📦 {c.todayDeliveryCount || 0} bugün
+                                                </span>
+                                                <span className="text-[10px] text-blue-600 dark:text-blue-400 block font-semibold">
+                                                    🚚 {c.activePackageCount || 0} üzerinde
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="mb-1.5">
+                                            {!c.is_active && <span className="text-[9px] bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded font-bold">⚫ AKTİF DEĞİL</span>}
+                                            {c.is_active && <span className="text-[9px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-bold">🟢 AKTİF</span>}
+                                        </div>
+
+                                        {courierPackages.length > 0 && (
+                                            <div className="mt-2 space-y-1">
+                                                {courierPackages.map(pkg => (
+                                                    <div key={pkg.id} className="text-[10px] flex items-center gap-1">
+                                                        <span className={`px-2 py-0.5 rounded-full font-semibold ${pkg.status === 'waiting' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                                            pkg.status === 'assigned' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                                                pkg.status === 'picking_up' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
+                                                                    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                                            }`}>
+                                                            {pkg.status === 'waiting' ? '⏳ Bekliyor' :
+                                                                pkg.status === 'assigned' ? '👤 Atandı' :
+                                                                    pkg.status === 'picking_up' ? '🏃 Alıyor' : '🚗 Yolda'}
+                                                        </span>
+                                                        <span className="text-slate-600 dark:text-slate-400 truncate">
+                                                            {pkg.customer_name}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -241,64 +303,6 @@ export function LiveTrackingTab({
                                     </div>
                                 ))
                             )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* SAĞ PANEL */}
-                <div className="lg:col-span-1 space-y-4">
-                    {/* Kurye Durumları */}
-                    <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-4">
-                        <h2 className="text-base font-bold mb-3">🚴 Kurye Durumları</h2>
-                        <div className="space-y-2">
-                            {couriers.map(c => {
-                                const courierPackages = assignedPackages.filter(pkg => pkg.courier_id === c.id)
-
-                                return (
-                                    <div
-                                        key={c.id}
-                                        className="p-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg border dark:border-slate-600"
-                                    >
-                                        <div className="flex justify-between items-center mb-1.5">
-                                            <span className="font-bold text-xs">{c.full_name}</span>
-                                            <div className="text-right">
-                                                <span className="text-[10px] text-green-600 dark:text-green-400 block font-semibold">
-                                                    📦 {c.todayDeliveryCount || 0} bugün
-                                                </span>
-                                                <span className="text-[10px] text-blue-600 dark:text-blue-400 block font-semibold">
-                                                    🚚 {c.activePackageCount || 0} üzerinde
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        <div className="mb-1.5">
-                                            {!c.is_active && <span className="text-[9px] bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded font-bold">⚫ AKTİF DEĞİL</span>}
-                                            {c.is_active && <span className="text-[9px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-bold">🟢 AKTİF</span>}
-                                        </div>
-
-                                        {courierPackages.length > 0 && (
-                                            <div className="mt-2 space-y-1">
-                                                {courierPackages.map(pkg => (
-                                                    <div key={pkg.id} className="text-[10px] flex items-center gap-1">
-                                                        <span className={`px-2 py-0.5 rounded-full font-semibold ${pkg.status === 'waiting' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                                                            pkg.status === 'assigned' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                                                                pkg.status === 'picking_up' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
-                                                                    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                                            }`}>
-                                                            {pkg.status === 'waiting' ? '⏳ Bekliyor' :
-                                                                pkg.status === 'assigned' ? '👤 Atandı' :
-                                                                    pkg.status === 'picking_up' ? '🏃 Alıyor' : '🚗 Yolda'}
-                                                        </span>
-                                                        <span className="text-slate-600 dark:text-slate-400 truncate">
-                                                            {pkg.customer_name}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                )
-                            })}
                         </div>
                     </div>
                 </div>
