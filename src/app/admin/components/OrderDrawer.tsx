@@ -66,16 +66,18 @@ export function OrderDrawer({
             {/* DRAWER OVERLAY */}
             {isOpen && (
                 <div
-                    className="fixed inset-0 bg-black/50 z-[210] transition-opacity duration-300"
+                    className="fixed inset-0 bg-black/50 transition-opacity duration-300"
+                    style={{ zIndex: 9998 }}
                     onClick={() => setIsOpen(false)}
                 />
             )}
 
             {/* DRAWER PANEL */}
             <div
-                className={`fixed top-0 right-0 h-screen w-[90%] max-w-7xl bg-white dark:bg-slate-900 shadow-2xl z-[220] transform transition-transform duration-300 ease-out overflow-hidden ${
+                className={`fixed top-0 right-0 h-screen w-[90%] max-w-7xl bg-white dark:bg-slate-900 shadow-2xl transform transition-transform duration-300 ease-out overflow-hidden ${
                     isOpen ? 'translate-x-0' : 'translate-x-full'
                 }`}
+                style={{ zIndex: 9999 }}
             >
                 {/* DRAWER HEADER */}
                 <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-4 flex justify-between items-center">
