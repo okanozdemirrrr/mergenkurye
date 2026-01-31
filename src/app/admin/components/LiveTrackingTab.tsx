@@ -8,11 +8,18 @@
  */
 'use client'
 
+import dynamic from 'next/dynamic'
 import { Package, Courier } from '@/types'
 import { OrderActionMenu } from '@/components/ui/OrderActionMenu'
 import { OrderDrawer } from './OrderDrawer'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
 import { formatTurkishTime } from '@/utils/dateHelpers'
+
+// Harita bileşenini dinamik olarak yükle (SSR devre dışı)
+const LiveMapComponent = dynamic(
+    () => import('./LiveMapComponent').then(mod => ({ default: mod.LiveMapComponent })),
+    { ssr: false, loading: () => <div className="h-full flex items-center justify-center text-slate-500">Harita yükleniyor...</div> }
+)
 
 interface LiveTrackingTabProps {
     packages: Package[]
@@ -55,6 +62,17 @@ export function LiveTrackingTab({
                 setOpenDropdownId={setOpenDropdownId}
                 handleCancelOrder={handleCancelOrder}
             />
+
+            {/* CANLI HARİTA - EN ÜSTTE TAM GENİŞLİK */}
+            <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-4">
+                <h2 className="text-xl font-bold mb-3 flex items-center gap-2">
+                    <span>🗺️</span>
+                    <span>Canlı Harita</span>
+                </h2>
+                <div className="h-[500px] w-full rounded-xl overflow-hidden">
+                    <LiveMapComponent packages={packages} couriers={couriers} />
+                </div>
+            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
                 <div className="lg:col-span-3 space-y-6">
