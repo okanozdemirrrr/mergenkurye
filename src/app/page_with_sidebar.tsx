@@ -13,68 +13,19 @@ import { ManagementView } from './admin/components/tabs/ManagementView'
 // AŞAMA 2: Veri yönetimini custom hook'a taşıdık
 import { useAdminData } from '@/hooks/useAdminData'
 
-interface Restaurant {
-  id: number | string
-  name: string
-  phone?: string
-  address?: string
-  totalOrders?: number
-  totalRevenue?: number
-  totalDebt?: number
-}
+// 🛡️ AŞAMA 3: Merkezi type tanımlarını kullanıyoruz
+import type { 
+  Package, 
+  Courier, 
+  Restaurant, 
+  CourierDebt, 
+  RestaurantDebt 
+} from '@/types'
 
-interface Package {
-  id: number
-  order_number?: string
-  customer_name: string
-  customer_phone?: string
-  delivery_address: string
-  amount: number
-  status: string
-  content?: string
-  courier_id?: string | null
-  payment_method?: 'cash' | 'card' | null
-  restaurant_id?: number | string | null
-  restaurant?: Restaurant | null
-  platform?: string
-  created_at?: string
-  assigned_at?: string
-  picked_up_at?: string
-  delivered_at?: string
-  settled_at?: string | null
-  restaurant_settled_at?: string | null
-  courier_name?: string
-}
-
-interface Courier {
-  id: string
-  full_name?: string
-  deliveryCount?: number
-  todayDeliveryCount?: number
-  is_active?: boolean
-  activePackageCount?: number
-  status?: 'idle' | 'picking_up' | 'on_the_way' | 'assigned' | 'inactive'
-  totalDebt?: number
-}
-
-interface CourierDebt {
-  id: number
-  courier_id: string
-  debt_date: string
-  amount: number
-  remaining_amount: number
-  status: 'pending' | 'paid'
-  created_at: string
-}
-
-interface RestaurantDebt {
-  id: number
-  restaurant_id: number | string
-  debt_date: string
-  amount: number
-  remaining_amount: number
-  status: 'pending' | 'paid'
-  created_at: string
+// 🛡️ Error handling utility
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) return getErrorMessage(error)
+  return String(error)
 }
 
 export default function Home() {
@@ -411,20 +362,20 @@ export default function Home() {
 
       if (error) throw error
       setCourierDebts(data || [])
-    } catch (error: any) {
-      const errorMsg = error.message?.toLowerCase() || ''
+    } catch (error) {
+      const errorMsg = getErrorMessage(error).toLowerCase()
       // Tablo yoksa veya internet hatası varsa sessizce geç
       if (errorMsg.includes('failed to fetch') || 
           errorMsg.includes('network') || 
           errorMsg.includes('could not find') ||
           errorMsg.includes('table') ||
           errorMsg.includes('schema cache')) {
-        console.warn('⚠️ Borç tablosu henüz oluşturulmamış veya bağlantı hatası (sessiz):', error.message)
+        console.warn('⚠️ Borç tablosu henüz oluşturulmamış veya bağlantı hatası (sessiz):', getErrorMessage(error))
         setCourierDebts([]) // Boş liste göster
         return
       }
       console.error('Borçlar yüklenemedi:', error)
-      setErrorMessage('Borçlar yüklenemedi: ' + error.message)
+      setErrorMessage('Borçlar yüklenemedi: ' + getErrorMessage(error))
     } finally {
       setLoadingDebts(false)
     }
@@ -625,9 +576,9 @@ export default function Home() {
       await refreshData() // Tüm verileri güncelle (hook'tan)
       
       setTimeout(() => setSuccessMessage(''), 3000)
-    } catch (error: any) {
+    } catch (error) {
       console.error('Gün sonu işlemi hatası:', error)
-      const errorMsg = error.message?.toLowerCase() || ''
+      const errorMsg = getErrorMessage(error).toLowerCase()
       
       // Tablo yoksa özel mesaj
       if (errorMsg.includes('could not find') || 
@@ -635,7 +586,7 @@ export default function Home() {
           errorMsg.includes('schema cache')) {
         setErrorMessage('⚠️ Veritabanı tabloları henüz oluşturulmamış! Lütfen database_migration_courier_debts.sql dosyasını Supabase SQL Editor\'de çalıştırın.')
       } else {
-        setErrorMessage('Gün sonu işlemi başarısız: ' + error.message)
+        setErrorMessage('Gün sonu işlemi başarısız: ' + getErrorMessage(error))
       }
       
       setTimeout(() => setErrorMessage(''), 5000)
@@ -744,16 +695,16 @@ export default function Home() {
       await refreshData() // Tüm verileri güncelle (hook'tan)
       
       setTimeout(() => setSuccessMessage(''), 3000)
-    } catch (error: any) {
+    } catch (error) {
       console.error('Borç ödeme işlemi hatası:', error)
-      const errorMsg = error.message?.toLowerCase() || ''
+      const errorMsg = getErrorMessage(error).toLowerCase()
       
       if (errorMsg.includes('could not find') || 
           errorMsg.includes('table') || 
           errorMsg.includes('schema cache')) {
         setErrorMessage('⚠️ Veritabanı tabloları henüz oluşturulmamış! Lütfen database_migration_courier_debts.sql dosyasını Supabase SQL Editor\'de çalıştırın.')
       } else {
-        setErrorMessage('Borç ödeme işlemi başarısız: ' + error.message)
+        setErrorMessage('Borç ödeme işlemi başarısız: ' + getErrorMessage(error))
       }
       
       setTimeout(() => setErrorMessage(''), 5000)
@@ -793,20 +744,21 @@ export default function Home() {
 
       if (error) throw error
 
-      const transformedData = (data || []).map((pkg: any) => ({
+      // 🛡️ Type-safe transformation
+      const transformedData: Package[] = (data || []).map((pkg) => ({
         ...pkg,
         courier_name: pkg.couriers?.full_name,
         couriers: undefined
-      }))
+      } as Package))
 
       setSelectedRestaurantOrders(transformedData)
-    } catch (error: any) {
-      const errorMsg = error.message?.toLowerCase() || ''
+    } catch (error) {
+      const errorMsg = getErrorMessage(error).toLowerCase()
       if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
-        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
+        console.warn('⚠️ Bağlantı hatası (sessiz):', getErrorMessage(error))
         return
       }
-      console.error('Restoran siparişleri yüklenirken hata:', error.message)
+      console.error('Restoran siparişleri yüklenirken hata:', getErrorMessage(error))
     }
   }
 
@@ -823,19 +775,19 @@ export default function Home() {
 
       if (error) throw error
       setRestaurantDebts(data || [])
-    } catch (error: any) {
-      const errorMsg = error.message?.toLowerCase() || ''
+    } catch (error) {
+      const errorMsg = getErrorMessage(error).toLowerCase()
       if (errorMsg.includes('failed to fetch') || 
           errorMsg.includes('network') || 
           errorMsg.includes('could not find') ||
           errorMsg.includes('table') ||
           errorMsg.includes('schema cache')) {
-        console.warn('⚠️ Borç tablosu henüz oluşturulmamış veya bağlantı hatası (sessiz):', error.message)
+        console.warn('⚠️ Borç tablosu henüz oluşturulmamış veya bağlantı hatası (sessiz):', getErrorMessage(error))
         setRestaurantDebts([])
         return
       }
       console.error('Borçlar yüklenemedi:', error)
-      setErrorMessage('Borçlar yüklenemedi: ' + error.message)
+      setErrorMessage('Borçlar yüklenemedi: ' + getErrorMessage(error))
     } finally {
       setLoadingRestaurantDebts(false)
     }
@@ -1059,16 +1011,16 @@ export default function Home() {
       await refreshData() // Tüm verileri güncelle (hook'tan)
       
       setTimeout(() => setSuccessMessage(''), 3000)
-    } catch (error: any) {
+    } catch (error) {
       console.error('Ödeme işlemi hatası:', error)
-      const errorMsg = error.message?.toLowerCase() || ''
+      const errorMsg = getErrorMessage(error).toLowerCase()
       
       if (errorMsg.includes('could not find') || 
           errorMsg.includes('table') || 
           errorMsg.includes('schema cache')) {
         setErrorMessage('⚠️ Veritabanı tabloları henüz oluşturulmamış! Lütfen database_migration_restaurant_debts.sql dosyasını Supabase SQL Editor\'de çalıştırın.')
       } else {
-        setErrorMessage('Ödeme işlemi başarısız: ' + error.message)
+        setErrorMessage('Ödeme işlemi başarısız: ' + getErrorMessage(error))
       }
       
       setTimeout(() => setErrorMessage(''), 5000)
@@ -1177,16 +1129,16 @@ export default function Home() {
       await refreshData() // Tüm verileri güncelle (hook'tan)
       
       setTimeout(() => setSuccessMessage(''), 3000)
-    } catch (error: any) {
+    } catch (error) {
       console.error('Borç ödeme işlemi hatası:', error)
-      const errorMsg = error.message?.toLowerCase() || ''
+      const errorMsg = getErrorMessage(error).toLowerCase()
       
       if (errorMsg.includes('could not find') || 
           errorMsg.includes('table') || 
           errorMsg.includes('schema cache')) {
         setErrorMessage('⚠️ Veritabanı tabloları henüz oluşturulmamış! Lütfen database_migration_restaurant_debts.sql dosyasını Supabase SQL Editor\'de çalıştırın.')
       } else {
-        setErrorMessage('Borç ödeme işlemi başarısız: ' + error.message)
+        setErrorMessage('Borç ödeme işlemi başarısız: ' + getErrorMessage(error))
       }
       
       setTimeout(() => setErrorMessage(''), 5000)
@@ -1253,9 +1205,9 @@ export default function Home() {
       setSuccessMessage('✅ Kurye Atandı!')
       setTimeout(() => setSuccessMessage(''), 2000)
       
-    } catch (error: any) {
+    } catch (error) {
       console.error('Kurye atama hatası:', error)
-      setErrorMessage('❌ Hata: ' + error.message)
+      setErrorMessage('❌ Hata: ' + getErrorMessage(error))
       setTimeout(() => setErrorMessage(''), 3000)
     } finally {
       setAssigningIds(prev => {
@@ -1341,22 +1293,23 @@ export default function Home() {
 
       if (error) throw error
 
-      const transformedData = (data || []).map((pkg: any) => ({
+      // 🛡️ Type-safe transformation
+      const transformedData: Package[] = (data || []).map((pkg) => ({
         ...pkg,
-        restaurant: pkg.restaurants,
+        restaurant: pkg.restaurants as Restaurant | null,
         restaurants: undefined
-      }))
+      } as Package))
 
       setSelectedCourierOrders(transformedData)
-    } catch (error: any) {
+    } catch (error) {
       // İnternet hatalarını sessizce geç
-      const errorMsg = error.message?.toLowerCase() || ''
+      const errorMsg = getErrorMessage(error).toLowerCase()
       if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
-        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
+        console.warn('⚠️ Bağlantı hatası (sessiz):', getErrorMessage(error))
         return
       }
       
-      console.error('Kurye siparişleri yüklenirken hata:', error.message)
+      console.error('Kurye siparişleri yüklenirken hata:', getErrorMessage(error))
     }
   }
 
@@ -4777,7 +4730,7 @@ export default function Home() {
                         border: '1px solid #475569',
                         borderRadius: '8px'
                       }}
-                      formatter={(value: any) => [`${value} paket`, 'Paket Sayısı']}
+                      formatter={(value: number | undefined) => [`${value || 0} paket`, 'Paket Sayısı']}
                     />
                     <Legend />
                   </PieChart>
@@ -4818,7 +4771,7 @@ export default function Home() {
                         border: '1px solid #475569',
                         borderRadius: '8px'
                       }}
-                      formatter={(value: any) => [`${value.toFixed(2)} ₺`, 'Ciro']}
+                      formatter={(value: number | undefined) => [`${(value || 0).toFixed(2)} ₺`, 'Ciro']}
                     />
                     <Legend />
                     <Bar 
@@ -4950,3 +4903,7 @@ export default function Home() {
   }
 
 }
+
+
+
+

@@ -1,77 +1,21 @@
 /**
  * @file src/hooks/useAdminData.ts
  * @description Admin Panel Veri Yönetimi Custom Hook
- * AŞAMA 2: Tüm veri çekme, realtime ve state yönetimi buraya taşındı
+ * 🛡️ AŞAMA 3: TypeScript zırhı eklendi - ANY kullanımı yok!
  */
 
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/app/lib/supabase'
-
-interface Restaurant {
-  id: number | string
-  name: string
-  phone?: string
-  address?: string
-  totalOrders?: number
-  totalRevenue?: number
-  totalDebt?: number
-}
-
-interface Package {
-  id: number
-  order_number?: string
-  customer_name: string
-  customer_phone?: string
-  delivery_address: string
-  amount: number
-  status: string
-  content?: string
-  courier_id?: string | null
-  payment_method?: 'cash' | 'card' | null
-  restaurant_id?: number | string | null
-  restaurant?: Restaurant | null
-  platform?: string
-  created_at?: string
-  assigned_at?: string
-  picked_up_at?: string
-  delivered_at?: string
-  settled_at?: string | null
-  restaurant_settled_at?: string | null
-  courier_name?: string
-}
-
-interface Courier {
-  id: string
-  full_name?: string
-  phone?: string
-  deliveryCount?: number
-  todayDeliveryCount?: number
-  is_active?: boolean
-  activePackageCount?: number
-  status?: 'idle' | 'picking_up' | 'on_the_way' | 'assigned' | 'inactive'
-  totalDebt?: number
-}
-
-interface UseAdminDataReturn {
-  // Veriler
-  packages: Package[]
-  deliveredPackages: Package[]
-  couriers: Courier[]
-  restaurants: Restaurant[]
-  
-  // Durumlar
-  isLoading: boolean
-  errorMessage: string
-  
-  // Fonksiyonlar
-  refreshData: () => Promise<void>
-  setPackages: React.Dispatch<React.SetStateAction<Package[]>>
-  setCouriers: React.Dispatch<React.SetStateAction<Courier[]>>
-  setRestaurants: React.Dispatch<React.SetStateAction<Restaurant[]>>
-}
+import type { 
+  Package, 
+  Courier, 
+  Restaurant, 
+  UseAdminDataReturn,
+  CourierLocation 
+} from '@/types'
 
 export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
-  // State
+  // State - Artık kesin tipli!
   const [packages, setPackages] = useState<Package[]>([])
   const [deliveredPackages, setDeliveredPackages] = useState<Package[]>([])
   const [couriers, setCouriers] = useState<Courier[]>([])
@@ -82,7 +26,7 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
   // Refs
   const lastAdminActionTimeRef = useRef(0)
 
-  // Fetch Functions
+  // Fetch Functions - Artık tip güvenli!
   const fetchPackages = async (isInitialLoad = false) => {
     if (isInitialLoad) {
       setErrorMessage('')
@@ -101,25 +45,32 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
       
       if (error) throw error
 
-      const transformedData = (data || []).map((pkg: any) => ({
-        ...pkg,
-        restaurant: Array.isArray(pkg.restaurants) && pkg.restaurants.length > 0 
+      // 🛡️ Type-safe transformation
+      const transformedData: Package[] = (data || []).map((pkg) => {
+        const restaurantData = Array.isArray(pkg.restaurants) && pkg.restaurants.length > 0 
           ? pkg.restaurants[0] 
-          : pkg.restaurants || null,
-        restaurants: undefined
-      }))
+          : pkg.restaurants || null
+
+        return {
+          ...pkg,
+          restaurant: restaurantData as Restaurant | null,
+          restaurants: undefined
+        } as Package
+      })
 
       setPackages(transformedData)
-    } catch (error: any) {
-      const errorMsg = error.message?.toLowerCase() || ''
+    } catch (error) {
+      // 🛡️ Graceful error handling
+      const errorMsg = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase()
+      
       if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
-        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
+        console.warn('⚠️ Bağlantı hatası (sessiz):', errorMsg)
         return
       }
       
       if (isInitialLoad) {
         console.error('Siparişler yüklenirken hata:', error)
-        setErrorMessage('Siparişler yüklenirken hata: ' + error.message)
+        setErrorMessage(`Siparişler yüklenirken hata: ${error instanceof Error ? error.message : 'Bilinmeyen hata'}`)
       }
     }
   }
@@ -134,22 +85,24 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
 
       if (error) throw error
 
-      const transformedData = (data || []).map((pkg: any) => ({
+      // 🛡️ Type-safe transformation
+      const transformedData: Package[] = (data || []).map((pkg) => ({
         ...pkg,
-        restaurant: pkg.restaurants,
+        restaurant: pkg.restaurants as Restaurant | null,
         courier_name: pkg.couriers?.full_name,
         restaurants: undefined,
         couriers: undefined
-      }))
+      } as Package))
 
       setDeliveredPackages(transformedData)
-    } catch (error: any) {
-      const errorMsg = error.message?.toLowerCase() || ''
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase()
+      
       if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
-        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
+        console.warn('⚠️ Bağlantı hatası (sessiz):', errorMsg)
         return
       }
-      console.error('Geçmiş siparişler yüklenirken hata:', error.message)
+      console.error('Geçmiş siparişler yüklenirken hata:', error instanceof Error ? error.message : error)
     }
   }
 
@@ -171,14 +124,16 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
         return
       }
       
-      const couriersData = data.map(courier => ({
+      // 🛡️ Type-safe courier data
+      const couriersData: Courier[] = data.map(courier => ({
         ...courier,
         id: courier.id,
         full_name: courier.full_name || 'İsimsiz Kurye',
         is_active: Boolean(courier.is_active),
         deliveryCount: 0,
         todayDeliveryCount: 0,
-        activePackageCount: 0
+        activePackageCount: 0,
+        last_location: courier.last_location as CourierLocation | null
       }))
       
       setCouriers(couriersData)
@@ -192,15 +147,16 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
           fetchCourierDebtsTotal(ids)
         ])
       }
-    } catch (error: any) {
-      const errorMsg = error.message?.toLowerCase() || ''
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase()
+      
       if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
-        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
+        console.warn('⚠️ Bağlantı hatası (sessiz):', errorMsg)
         return
       }
       
       if (isInitialLoad) {
-        setErrorMessage('Kuryeler yüklenemedi: ' + error.message)
+        setErrorMessage(`Kuryeler yüklenemedi: ${error instanceof Error ? error.message : 'Bilinmeyen hata'}`)
       }
     }
   }
@@ -215,7 +171,8 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
 
       if (error) throw error
 
-      const counts: { [key: string]: number } = {}
+      // 🛡️ Type-safe counting
+      const counts: Record<string, number> = {}
       data?.forEach((pkg) => { 
         if (pkg.courier_id) {
           counts[pkg.courier_id] = (counts[pkg.courier_id] || 0) + 1 
@@ -226,10 +183,11 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
         ...c, 
         activePackageCount: counts[c.id] || 0 
       })))
-    } catch (error: any) {
-      const errorMsg = error.message?.toLowerCase() || ''
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase()
+      
       if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
-        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
+        console.warn('⚠️ Bağlantı hatası (sessiz):', errorMsg)
         return
       }
       console.error('Aktif paket sayıları alınırken hata:', error)
@@ -246,7 +204,7 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
 
       if (error) throw error
 
-      const counts: { [key: string]: number } = {}
+      const counts: Record<string, number> = {}
       data?.forEach((pkg) => { 
         if (pkg.courier_id) {
           counts[pkg.courier_id] = (counts[pkg.courier_id] || 0) + 1 
@@ -257,10 +215,11 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
         ...c, 
         deliveryCount: counts[c.id] || 0 
       })))
-    } catch (error: any) {
-      const errorMsg = error.message?.toLowerCase() || ''
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase()
+      
       if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
-        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
+        console.warn('⚠️ Bağlantı hatası (sessiz):', errorMsg)
         return
       }
       console.error('Kurye teslimat sayıları alınırken hata:', error)
@@ -286,7 +245,7 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
 
       if (error) throw error
 
-      const counts: { [key: string]: number } = {}
+      const counts: Record<string, number> = {}
       data?.forEach((pkg) => { 
         if (pkg.courier_id) {
           counts[pkg.courier_id] = (counts[pkg.courier_id] || 0) + 1 
@@ -297,10 +256,11 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
         ...c, 
         todayDeliveryCount: counts[c.id] || 0 
       })))
-    } catch (error: any) {
-      const errorMsg = error.message?.toLowerCase() || ''
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase()
+      
       if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
-        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
+        console.warn('⚠️ Bağlantı hatası (sessiz):', errorMsg)
         return
       }
       console.error('Kurye bugünkü teslimat sayıları alınırken hata:', error)
@@ -317,7 +277,7 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
 
       if (error) throw error
 
-      const debts: { [key: string]: number } = {}
+      const debts: Record<string, number> = {}
       data?.forEach((debt) => { 
         if (debt.courier_id) {
           debts[debt.courier_id] = (debts[debt.courier_id] || 0) + debt.remaining_amount
@@ -328,14 +288,15 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
         ...c, 
         totalDebt: debts[c.id] || 0 
       })))
-    } catch (error: any) {
-      const errorMsg = error.message?.toLowerCase() || ''
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase()
+      
       if (errorMsg.includes('failed to fetch') || 
           errorMsg.includes('network') || 
           errorMsg.includes('could not find') ||
           errorMsg.includes('table') ||
           errorMsg.includes('schema cache')) {
-        console.warn('⚠️ Borç tablosu henüz oluşturulmamış veya bağlantı hatası (sessiz):', error.message)
+        console.warn('⚠️ Borç tablosu henüz oluşturulmamış veya bağlantı hatası (sessiz):', errorMsg)
         setCouriers(prev => prev.map(c => ({ ...c, totalDebt: 0 })))
         return
       }
@@ -352,7 +313,8 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
 
       if (error) throw error
       
-      const restaurantsData = (data || []).map(r => ({
+      // 🛡️ Type-safe restaurant data
+      const restaurantsData: Restaurant[] = (data || []).map(r => ({
         ...r,
         totalOrders: 0,
         totalRevenue: 0,
@@ -368,10 +330,11 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
           fetchRestaurantDebtsTotal(ids)
         ])
       }
-    } catch (error: any) {
-      const errorMsg = error.message?.toLowerCase() || ''
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase()
+      
       if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
-        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
+        console.warn('⚠️ Bağlantı hatası (sessiz):', errorMsg)
         return
       }
       console.error('Restoranlar yüklenirken hata:', error)
@@ -388,7 +351,7 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
 
       if (error) throw error
 
-      const stats: { [key: string]: { orders: number; revenue: number } } = {}
+      const stats: Record<string, { orders: number; revenue: number }> = {}
       data?.forEach((pkg) => {
         const id = String(pkg.restaurant_id)
         if (!stats[id]) {
@@ -403,10 +366,11 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
         totalOrders: stats[String(r.id)]?.orders || 0,
         totalRevenue: stats[String(r.id)]?.revenue || 0
       })))
-    } catch (error: any) {
-      const errorMsg = error.message?.toLowerCase() || ''
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase()
+      
       if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
-        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
+        console.warn('⚠️ Bağlantı hatası (sessiz):', errorMsg)
         return
       }
       console.error('Restoran istatistikleri alınırken hata:', error)
@@ -423,7 +387,7 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
 
       if (error) throw error
 
-      const debts: { [key: string]: number } = {}
+      const debts: Record<string, number> = {}
       data?.forEach((debt) => {
         const id = String(debt.restaurant_id)
         debts[id] = (debts[id] || 0) + debt.remaining_amount
@@ -433,14 +397,15 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
         ...r,
         totalDebt: debts[String(r.id)] || 0
       })))
-    } catch (error: any) {
-      const errorMsg = error.message?.toLowerCase() || ''
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase()
+      
       if (errorMsg.includes('failed to fetch') || 
           errorMsg.includes('network') || 
           errorMsg.includes('could not find') ||
           errorMsg.includes('table') ||
           errorMsg.includes('schema cache')) {
-        console.warn('⚠️ Borç tablosu henüz oluşturulmamış veya bağlantı hatası (sessiz):', error.message)
+        console.warn('⚠️ Borç tablosu henüz oluşturulmamış veya bağlantı hatası (sessiz):', errorMsg)
         setRestaurants(prev => prev.map(r => ({ ...r, totalDebt: 0 })))
         return
       }
@@ -476,7 +441,7 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
     loadInitialData()
   }, [isLoggedIn])
 
-  // Realtime subscriptions
+  // Realtime subscriptions - 🛡️ Type-safe event handlers
   useEffect(() => {
     if (!isLoggedIn) return
 
@@ -484,7 +449,14 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
 
     const ANTI_LOOP_DELAY = 2000
 
-    const handlePackageChange = async (payload: any) => {
+    // 🛡️ Type-safe payload handling
+    interface RealtimePayload {
+      eventType: 'INSERT' | 'UPDATE' | 'DELETE'
+      new?: Record<string, unknown>
+      old?: Record<string, unknown>
+    }
+
+    const handlePackageChange = async (payload: RealtimePayload) => {
       const now = Date.now()
       
       if (now - lastAdminActionTimeRef.current < ANTI_LOOP_DELAY) {
