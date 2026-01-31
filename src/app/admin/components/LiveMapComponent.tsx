@@ -78,9 +78,15 @@ export function LiveMapComponent({ packages, couriers }: LiveMapComponentProps) 
     popupAnchor: [0, -14]
   })
 
-  // Koordinatı olan paketleri filtrele
+  // Koordinatı olan paketleri filtrele (atanmış + atanmamış)
   const packagesWithCoords = packages.filter(
-    pkg => pkg.latitude && pkg.longitude && pkg.status !== 'delivered' && pkg.status !== 'cancelled'
+    pkg => pkg.latitude && pkg.longitude && 
+    pkg.status !== 'delivered' && pkg.status !== 'cancelled'
+  )
+  
+  // Aktif operasyondaki paketler (sayı için)
+  const activeOperationPackages = packagesWithCoords.filter(
+    pkg => pkg.status === 'assigned' || pkg.status === 'picking_up' || pkg.status === 'on_the_way'
   )
 
   // Koordinatı olan kuryeleri filtrele
@@ -161,7 +167,9 @@ export function LiveMapComponent({ packages, couriers }: LiveMapComponentProps) 
           <div className="absolute bottom-4 left-4 z-[1000] bg-slate-800/90 backdrop-blur-sm text-white p-3 rounded-lg shadow-lg text-xs">
             <div className="font-bold mb-2">📍 Canlı Takip</div>
             <div className="space-y-1">
-              <div>📦 Paketler: {packagesWithCoords.length}</div>
+              <div>📦 Toplam: {packagesWithCoords.length} paket</div>
+              <div className="text-blue-400">🚚 Yolda: {activeOperationPackages.length}</div>
+              <div className="text-yellow-400">⏳ Bekleyen: {packagesWithCoords.length - activeOperationPackages.length}</div>
               <div>🏍️ Kuryeler: {couriersWithCoords.length}</div>
             </div>
           </div>
