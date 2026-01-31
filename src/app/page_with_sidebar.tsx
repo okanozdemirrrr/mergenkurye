@@ -2051,12 +2051,16 @@ export default function Home() {
         <>
           {/* Overlay - Menü dışına tıklayınca kapansın */}
           <div 
-            className="fixed inset-0 bg-black/50 z-40"
+            className="fixed inset-0 bg-black/50"
+            style={{ zIndex: 9996 }}
             onClick={() => setShowMenu(false)}
           ></div>
           
           {/* Menü İçeriği */}
-          <div className="fixed top-0 left-0 h-full w-64 bg-slate-900 shadow-2xl z-50 transform transition-transform overflow-y-auto admin-scrollbar">
+          <div 
+            className="fixed top-0 left-0 h-full w-64 bg-slate-900 shadow-2xl transform transition-transform overflow-y-auto admin-scrollbar"
+            style={{ zIndex: 9997 }}
+          >
             <div className="p-6">
               {/* Logo ve Başlık */}
               <div className="mb-8 text-center">
