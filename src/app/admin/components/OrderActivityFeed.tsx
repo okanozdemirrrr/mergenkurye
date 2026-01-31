@@ -1,7 +1,7 @@
 /**
  * @file src/app/admin/components/OrderActivityFeed.tsx
  * @description Anlık Sipariş Durumu Bileşeni + Canlı Harita.
- * Sol tarafta Malatya haritası, sağ tarafta yatay kaydırmalı sipariş kartları.
+ * Üstte tam genişlikte Malatya haritası, altta yatay kaydırmalı sipariş kartları.
  */
 'use client'
 
@@ -41,18 +41,26 @@ export function OrderActivityFeed({
         <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-3 mb-3">
             <h2 className="text-base font-bold mb-2">🚀 Anlık Sipariş Durumu & Canlı Harita</h2>
             
-            {/* Grid Layout: SOL Kartlar, SAĞ Harita - YER DEĞİŞTİRİLDİ */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-                {/* SOL: Sipariş Kartları (65%) */}
-                <div className="lg:col-span-2">
+            {/* Dikey Layout: ÜSTTE Harita, ALTTA Kartlar */}
+            <div className="space-y-3">
+                {/* ÜSTTE: Canlı Harita (Tam Genişlik) */}
+                <div className="h-[400px] w-full">
+                    <LiveMapComponent packages={packages} couriers={couriers} />
+                </div>
+
+                {/* ALTTA: Sipariş Kartları (Yatay Scroll) */}
+                <div>
+                    <h3 className="text-sm font-semibold mb-2 text-slate-700 dark:text-slate-300">
+                        📦 Canlı Sipariş Takibi ({activeOperationPackages.length})
+                    </h3>
                     {activeOperationPackages.length === 0 ? (
-                        <div className="text-center py-8 text-slate-500 text-sm h-[500px] flex flex-col items-center justify-center">
+                        <div className="text-center py-8 text-slate-500 text-sm">
                             <div className="text-4xl mb-2">📭</div>
                             <p>Şu an yolda olan sipariş yok</p>
                         </div>
                     ) : (
-                        <div className="overflow-x-auto pb-2 h-[500px]">
-                            <div className="flex gap-3 min-w-max h-full items-start">
+                        <div className="overflow-x-auto pb-2">
+                            <div className="flex gap-3 min-w-max items-start">
                                 {activeOperationPackages.map(pkg => (
                                     <div 
                                         key={pkg.id} 
@@ -158,11 +166,6 @@ export function OrderActivityFeed({
                             </div>
                         </div>
                     )}
-                </div>
-
-                {/* SAĞ: Canlı Harita (35%) */}
-                <div className="lg:col-span-1 h-[500px]">
-                    <LiveMapComponent packages={packages} couriers={couriers} />
                 </div>
             </div>
         </div>
