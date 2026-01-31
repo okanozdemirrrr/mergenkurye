@@ -2320,19 +2320,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* Sticky Navbar - İNCELTİLDİ */}
-      <div className="sticky top-0 z-30 bg-white dark:bg-slate-800 shadow-lg border-b border-slate-200 dark:border-slate-700">
-        <div className="max-w-full mx-auto px-4">
-          <div className="flex justify-center items-center h-12">
-            {/* Title - Ortada - Küçültüldü */}
-            <h1 className="text-xl font-black tracking-wider bg-gradient-to-r from-gray-200 to-gray-500 bg-clip-text text-transparent" style={{fontFamily: 'Orbitron, sans-serif'}}>
-              ADMIN PANEL
-            </h1>
-          </div>
-        </div>
-      </div>
-
-      {/* Tab Content - PADDING MİNİMAL */}
+      {/* Tab Content - PADDING MİNİMAL - NAVBAR KALDIRILDI */}
       <div className="py-1 px-2">
         <div className="max-w-full mx-auto">
           {/* Başarı/Hata/Bildirim Mesajları */}

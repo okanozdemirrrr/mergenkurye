@@ -46,11 +46,12 @@ export function OrderDrawer({
 
     return (
         <>
-            {/* SABİT BUTON - SAĞ ÜST KÖŞE - STICKY */}
-            <button
-                onClick={() => setIsOpen(!isOpen)}
-                className="sticky top-4 right-4 z-50 ml-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-4 py-2.5 rounded-xl shadow-2xl transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold"
-            >
+            {/* SABİT BUTON - EN ÜSTTE SAĞ KÖŞE */}
+            <div className="fixed top-2 right-2 z-[100]">
+                <button
+                    onClick={() => setIsOpen(!isOpen)}
+                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-4 py-2.5 rounded-xl shadow-2xl transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold"
+                >
                 <span className="text-lg">📦</span>
                 <span className="hidden sm:inline">Anlık Sipariş Takibi</span>
                 {/* Bildirim Badge */}
@@ -60,18 +61,19 @@ export function OrderDrawer({
                     </span>
                 )}
             </button>
+            </div>
 
             {/* DRAWER OVERLAY */}
             {isOpen && (
                 <div
-                    className="fixed inset-0 bg-black/50 z-40 transition-opacity duration-300"
+                    className="fixed inset-0 bg-black/50 z-[110] transition-opacity duration-300"
                     onClick={() => setIsOpen(false)}
                 />
             )}
 
             {/* DRAWER PANEL */}
             <div
-                className={`fixed top-0 right-0 h-screen w-[90%] max-w-7xl bg-white dark:bg-slate-900 shadow-2xl z-50 transform transition-transform duration-300 ease-out overflow-hidden ${
+                className={`fixed top-0 right-0 h-screen w-[90%] max-w-7xl bg-white dark:bg-slate-900 shadow-2xl z-[120] transform transition-transform duration-300 ease-out overflow-hidden ${
                     isOpen ? 'translate-x-0' : 'translate-x-full'
                 }`}
             >

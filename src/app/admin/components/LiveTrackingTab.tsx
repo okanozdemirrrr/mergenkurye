@@ -53,8 +53,8 @@ export function LiveTrackingTab({
     const assignedPackages = packages.filter(pkg => pkg.courier_id && pkg.status !== 'cancelled')
 
     return (
-        <div className="space-y-2">
-            {/* DRAWER BUTONU - STICKY SAĞ ÜST KÖŞE */}
+        <>
+            {/* DRAWER BUTONU - EN ÜSTTE SABİT */}
             <OrderDrawer
                 packages={assignedPackages}
                 couriers={couriers}
@@ -62,7 +62,8 @@ export function LiveTrackingTab({
                 setOpenDropdownId={setOpenDropdownId}
                 handleCancelOrder={handleCancelOrder}
             />
-
+            
+            <div className="space-y-2">
             {/* CANLI HARİTA + KURYE DURUMLARI - YAN YANA */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-2">
                 {/* SOL: Canlı Harita (3/4) */}
@@ -308,5 +309,6 @@ export function LiveTrackingTab({
                 </div>
             </div>
         </div>
+        </>
     )
 }
