@@ -1,11 +1,3 @@
-/**
- * @file src/app/page.tsx
- * @description Admin Panel Ana Giriş Sayfası. 
- * Bu dosya, tüm admin panelinin ana konteyneri olarak hizmet eder. Kimlik doğrulama, 
- * navigasyon (sidebar) yönetimi ve farklı admin sekmeleri (Canlı Takip, Geçmiş, Kuryeler, Restoranlar) 
- * arasındaki geçişleri koordine eder. Ayrıca modal durumlarını ve global veri yenileme 
- * mantığını yönetir.
- */
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -20,14 +12,6 @@ import { LiveTrackingTab } from './admin/components/LiveTrackingTab'
 import { HistoryTab } from './admin/components/HistoryTab'
 import { CouriersTab } from './admin/components/CouriersTab'
 import { RestaurantsTab } from './admin/components/RestaurantsTab'
-
-// Modal Imports
-import { CourierDetailModal } from './admin/components/modals/CourierDetailModal'
-import { RestaurantDetailModal } from './admin/components/modals/RestaurantDetailModal'
-import { EndOfDayModal } from './admin/components/modals/EndOfDayModal'
-import { PayDebtModal } from './admin/components/modals/PayDebtModal'
-import { RestaurantPaymentModal } from './admin/components/modals/RestaurantPaymentModal'
-import { RestaurantDebtPayModal } from './admin/components/modals/RestaurantDebtPayModal'
 
 // Service Imports
 import { cancelOrder, assignCourier, updateOrderStatus } from '@/services/orderService'
@@ -60,9 +44,6 @@ export default function Home() {
   const [showMenu, setShowMenu] = useState(false)
   const [showCourierSubmenu, setShowCourierSubmenu] = useState(false)
 
-  const [showRestaurantSubmenu, setShowRestaurantSubmenu] = useState(false)
-
-
   // Courier States
   const [selectedCourierId, setSelectedCourierId] = useState<string | null>(null)
   const [showCourierModal, setShowCourierModal] = useState(false)
@@ -70,7 +51,6 @@ export default function Home() {
   const [courierSubTab, setCourierSubTab] = useState<'accounts' | 'performance' | 'earnings'>('accounts')
   const [courierStartDate, setCourierStartDate] = useState('')
   const [courierEndDate, setCourierEndDate] = useState('')
-  const [courierEarningsFilter, setCourierEarningsFilter] = useState<'today' | 'week' | 'month'>('today')
   const [courierDebts, setCourierDebts] = useState<CourierDebt[]>([])
   const [loadingDebts, setLoadingDebts] = useState(false)
   const [showEndOfDayModal, setShowEndOfDayModal] = useState(false)
@@ -95,7 +75,6 @@ export default function Home() {
   const [restaurantDebtPayProcessing, setRestaurantDebtPayProcessing] = useState(false)
   const [restaurantStartDate, setRestaurantStartDate] = useState('')
   const [restaurantEndDate, setRestaurantEndDate] = useState('')
-  const [restaurantChartFilter, setRestaurantChartFilter] = useState<'today' | 'week' | 'month'>('today')
 
   // Notification States
   const [notificationPermission, setNotificationPermission] = useState<'default' | 'granted' | 'denied'>('default')
@@ -135,12 +114,10 @@ export default function Home() {
       const todayStart = new Date()
       todayStart.setHours(0, 0, 0, 0)
 
-      // TÜM aktif paketleri çek (hem sahipsiz hem atanmış)
       const { data, error } = await supabase
         .from('packages')
         .select('*, restaurants(*)')
-        .neq('status', 'cancelled')
-        .neq('status', 'delivered')
+        .is('courier_id', null)
         .gte('created_at', todayStart.toISOString())
         .order('created_at', { ascending: false })
 
@@ -154,7 +131,6 @@ export default function Home() {
         restaurants: undefined
       }))
 
-      console.log('📦 Aktif paketler güncellendi:', transformedData.length, 'adet')
       setPackages(transformedData)
     } catch (error: any) {
       console.error('Siparişler yüklenirken hata:', error)
@@ -168,8 +144,8 @@ export default function Home() {
       const { data, error } = await supabase
         .from('packages')
         .select('*, restaurants(*), couriers(*)')
-        .in('status', ['delivered', 'cancelled'])
-        .order('created_at', { ascending: false })
+        .eq('status', 'delivered')
+        .order('delivered_at', { ascending: false })
 
       if (error) throw error
 
@@ -181,22 +157,6 @@ export default function Home() {
         couriers: undefined
       }))
 
-      // Tarihe göre sırala (delivered_at veya cancelled_at)
-      transformedData.sort((a, b) => {
-        const dateA = a.status === 'cancelled' && a.cancelled_at 
-          ? new Date(a.cancelled_at).getTime()
-          : a.delivered_at 
-            ? new Date(a.delivered_at).getTime() 
-            : 0
-        const dateB = b.status === 'cancelled' && b.cancelled_at 
-          ? new Date(b.cancelled_at).getTime()
-          : b.delivered_at 
-            ? new Date(b.delivered_at).getTime() 
-            : 0
-        return dateB - dateA // En yeni önce
-      })
-
-      console.log('📋 Geçmiş siparişler güncellendi:', transformedData.length, 'adet')
       setDeliveredPackages(transformedData)
     } catch (error: any) {
       console.error('Geçmiş siparişler yüklenirken hata:', error)
@@ -283,98 +243,6 @@ export default function Home() {
     }
   }
 
-  const fetchCourierOrders = async (courierId: string) => {
-    try {
-      let query = supabase
-        .from('packages')
-        .select('*, restaurants(*)')
-        .eq('courier_id', courierId)
-        .eq('status', 'delivered')
-        .order('delivered_at', { ascending: false })
-
-      if (courierStartDate && courierEndDate) {
-        const start = new Date(courierStartDate)
-        start.setHours(0, 0, 0, 0)
-        const end = new Date(courierEndDate)
-        end.setHours(23, 59, 59, 999)
-        query = query.gte('delivered_at', start.toISOString()).lte('delivered_at', end.toISOString())
-      }
-
-      const { data, error } = await query
-      if (error) throw error
-
-      const transformedData = (data || []).map((pkg: any) => ({
-        ...pkg,
-        restaurant: Array.isArray(pkg.restaurants) && pkg.restaurants.length > 0 ? pkg.restaurants[0] : pkg.restaurants || null,
-        restaurants: undefined
-      }))
-
-      setSelectedCourierOrders(transformedData)
-    } catch (error: any) {
-      console.error('Kurye siparişleri yüklenirken hata:', error.message)
-    }
-  }
-
-  const fetchRestaurantOrders = async (restaurantId: number | string) => {
-    try {
-      let query = supabase
-        .from('packages')
-        .select('*, couriers(full_name)')
-        .eq('restaurant_id', restaurantId)
-        .eq('status', 'delivered')
-        .order('delivered_at', { ascending: false })
-
-      if (restaurantStartDate && restaurantEndDate) {
-        const start = new Date(restaurantStartDate)
-        start.setHours(0, 0, 0, 0)
-        const end = new Date(restaurantEndDate)
-        end.setHours(23, 59, 59, 999)
-        query = query.gte('delivered_at', start.toISOString()).lte('delivered_at', end.toISOString())
-      }
-
-      const { data, error } = await query
-      if (error) throw error
-
-      const transformedData = (data || []).map((pkg: any) => ({
-        ...pkg,
-        courier_name: pkg.couriers?.full_name,
-        couriers: undefined
-      }))
-
-      setSelectedRestaurantOrders(transformedData)
-    } catch (error: any) {
-      console.error('Restoran siparişleri yüklenirken hata:', error.message)
-    }
-  }
-
-  // Helper Functions
-  const calculateCashSummary = (orders: Package[]) => {
-    const cashTotal = orders
-      .filter(order => order.payment_method === 'cash')
-      .reduce((sum, order) => sum + (order.amount || 0), 0)
-
-    const cardTotal = orders
-      .filter(order => order.payment_method === 'card')
-      .reduce((sum, order) => sum + (order.amount || 0), 0)
-
-    const grandTotal = orders
-      .filter(order => !order.settled_at)
-      .reduce((sum, order) => sum + (order.amount || 0), 0)
-
-    return { cashTotal, cardTotal, grandTotal }
-  }
-
-  const calculateRestaurantSummary = (orders: Package[]) => {
-    const restaurantCounts: { [key: string]: number } = {}
-    orders.forEach(order => {
-      const restaurantName = order.restaurant?.name || 'Bilinmeyen Restoran'
-      restaurantCounts[restaurantName] = (restaurantCounts[restaurantName] || 0) + 1
-    })
-    return Object.entries(restaurantCounts)
-      .sort(([, a], [, b]) => b - a)
-      .map(([name, count]) => ({ name, count }))
-  }
-
   // ========== INITIAL DATA LOAD ==========
   useEffect(() => {
     if (!isLoggedIn) return
@@ -387,8 +255,7 @@ export default function Home() {
     // Realtime subscriptions
     const packagesChannel = supabase
       .channel('packages-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'packages' }, (payload) => {
-        console.log('📦 Paket değişikliği algılandı:', payload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'packages' }, () => {
         fetchPackages()
         fetchDeliveredPackages()
       })
@@ -396,8 +263,7 @@ export default function Home() {
 
     const couriersChannel = supabase
       .channel('couriers-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'couriers' }, (payload) => {
-        console.log('🚴 Kurye değişikliği algılandı:', payload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'couriers' }, () => {
         fetchCouriers()
       })
       .subscribe()
@@ -407,22 +273,6 @@ export default function Home() {
       couriersChannel.unsubscribe()
     }
   }, [isLoggedIn])
-
-  // Courier Effect
-  useEffect(() => {
-    if (showCourierModal && selectedCourierId) {
-      fetchCourierOrders(selectedCourierId)
-      fetchCourierDebts(selectedCourierId)
-    }
-  }, [showCourierModal, selectedCourierId, courierStartDate, courierEndDate])
-
-  // Restaurant Effect
-  useEffect(() => {
-    if (showRestaurantModal && selectedRestaurantId) {
-      fetchRestaurantOrders(selectedRestaurantId)
-      fetchRestaurantDebts(selectedRestaurantId)
-    }
-  }, [showRestaurantModal, selectedRestaurantId, restaurantStartDate, restaurantEndDate])
 
   // ========== EVENT HANDLERS ==========
   const handleLogin = async (e: React.FormEvent) => {
@@ -470,149 +320,31 @@ export default function Home() {
     }
   }
 
-  const handleCancelOrder = async (packageId: number, details: string = '') => {
+  const handleCancelOrder = async (packageId: number) => {
+    if (!confirm('Bu siparişi iptal etmek istediğinize emin misiniz?')) return
+
     try {
-      const result = await cancelOrder(packageId, details)
-      
-      if (result.cancelled) {
-        // Kullanıcı iptal etti
-        return
-      }
-      
-      if (result.success) {
-        console.log('✅ Sipariş iptal edildi, UI güncelleniyor...')
-        
-        // Local state'i anında güncelle (optimistic update)
-        setPackages(prev => prev.map(pkg => 
-          pkg.id === packageId 
-            ? { ...pkg, status: 'cancelled' as const, courier_id: null, cancelled_at: new Date().toISOString() }
-            : pkg
-        ))
-        
-        setSuccessMessage('Sipariş iptal edildi!')
-        setTimeout(() => setSuccessMessage(''), 2000)
-        
-        // Veritabanından da çek (doğrulama için)
-        await fetchPackages()
-        await fetchDeliveredPackages()
-      }
+      await cancelOrder(packageId)
+      setSuccessMessage('Sipariş iptal edildi!')
+      setTimeout(() => setSuccessMessage(''), 2000)
+      await fetchPackages()
+      await fetchDeliveredPackages()
     } catch (error: any) {
-      console.error('❌ İptal hatası:', error)
-      setErrorMessage(error.message || 'Sipariş iptal edilemedi')
+      setErrorMessage(error.message)
       setTimeout(() => setErrorMessage(''), 3000)
     }
   }
 
   const handleCourierClick = async (courierId: string) => {
     setSelectedCourierId(courierId)
-    if (!courierStartDate || !courierEndDate) {
-      const today = new Date().toISOString().split('T')[0]
-      setCourierStartDate(today)
-      setCourierEndDate(today)
-    }
+    await fetchCourierDebts(courierId)
     setShowCourierModal(true)
   }
 
   const handleRestaurantClick = async (restaurantId: number | string) => {
     setSelectedRestaurantId(restaurantId)
-    if (!restaurantStartDate || !restaurantEndDate) {
-      const today = new Date().toISOString().split('T')[0]
-      setRestaurantStartDate(today)
-      setRestaurantEndDate(today)
-    }
+    await fetchRestaurantDebts(restaurantId)
     setShowRestaurantModal(true)
-  }
-
-  const handleEndOfDay = async () => {
-    if (!selectedCourierId) return
-    const amount = parseFloat(endOfDayAmount)
-    if (isNaN(amount)) return
-
-    setEndOfDayProcessing(true)
-    const summary = calculateCashSummary(selectedCourierOrders)
-
-    const result = await handleEndOfDayService(selectedCourierId, {
-      dailyCashTotal: summary.cashTotal,
-      amountReceived: amount,
-      oldDebts: courierDebts
-    })
-
-    if (result.success) {
-      setSuccessMessage('Gün sonu başarıyla alındı')
-      setShowEndOfDayModal(false)
-      setEndOfDayAmount('')
-      fetchCouriers()
-      fetchCourierDebts(selectedCourierId)
-      fetchCourierOrders(selectedCourierId)
-    } else {
-      setErrorMessage('Gün sonu alınırken hata oluştu')
-    }
-    setEndOfDayProcessing(false)
-  }
-
-  const handlePayDebt = async () => {
-    if (!selectedCourierId) return
-    const amount = parseFloat(payDebtAmount)
-    if (isNaN(amount)) return
-
-    setPayDebtProcessing(true)
-    const result = await handlePayDebtService(selectedCourierId, amount, courierDebts)
-
-    if (result.success) {
-      setSuccessMessage('Borç ödemesi başarıyla kaydedildi')
-      setShowPayDebtModal(false)
-      setPayDebtAmount('')
-      fetchCouriers()
-      fetchCourierDebts(selectedCourierId)
-    } else {
-      setErrorMessage('Borç ödenirken hata oluştu')
-    }
-    setPayDebtProcessing(false)
-  }
-
-  const handleRestaurantPayment = async () => {
-    if (!selectedRestaurantId) return
-    const amount = parseFloat(restaurantPaymentAmount)
-    if (isNaN(amount)) return
-
-    setRestaurantPaymentProcessing(true)
-    const result = await handleRestaurantPaymentService(selectedRestaurantId, {
-      totalOrderAmount: selectedRestaurantOrders.reduce((sum, o) => sum + (o.amount || 0), 0),
-      amountPaid: amount,
-      orderIds: selectedRestaurantOrders.map(o => o.id)
-    })
-
-    if (result.success) {
-      setSuccessMessage('Ödeme başarıyla kaydedildi')
-      setShowRestaurantPaymentModal(false)
-      setRestaurantPaymentAmount('')
-      fetchRestaurants()
-      fetchRestaurantDebts(selectedRestaurantId)
-      fetchRestaurantOrders(selectedRestaurantId)
-    } else {
-      setErrorMessage('Ödeme kaydedilirken hata oluştu')
-    }
-    setRestaurantPaymentProcessing(false)
-  }
-
-  const handleRestaurantDebtPayment = async () => {
-    if (!selectedRestaurantId) return
-    const amount = parseFloat(restaurantDebtPayAmount)
-    if (isNaN(amount)) return
-
-    setRestaurantDebtPayProcessing(true)
-    const result = await handleRestaurantDebtPaymentService(selectedRestaurantId, amount, restaurantDebts)
-
-    if (result.success) {
-      setSuccessMessage('Borç ödemesi başarıyla kaydedildi')
-      setShowRestaurantDebtPayModal(false)
-      setRestaurantDebtPayAmount('')
-      fetchRestaurants()
-      fetchRestaurantDebts(selectedRestaurantId)
-    } else {
-      setErrorMessage('Borç ödenirken hata oluştu')
-    }
-    setRestaurantDebtPayProcessing(false)
   }
 
   // ========== RENDER ==========
@@ -683,9 +415,9 @@ export default function Home() {
           <div className="relative bg-slate-900 w-80 h-full overflow-y-auto p-6">
             {/* Logo and Title */}
             <div className="mb-8 text-center">
-              <img
-                src="/logo.png"
-                alt="Logo"
+              <img 
+                src="/logo.png" 
+                alt="Logo" 
                 className="w-24 h-24 mx-auto mb-3"
               />
               <h2 className="text-xl font-bold text-white">Admin Panel</h2>
@@ -740,7 +472,7 @@ export default function Home() {
                   Kuryeler
                   <span className="float-right">{showCourierSubmenu ? '▼' : '▶'}</span>
                 </button>
-
+                
                 {/* Courier Submenu */}
                 {showCourierSubmenu && (
                   <div className="ml-4 mt-2 space-y-1">
@@ -800,7 +532,7 @@ export default function Home() {
                   Restoranlar
                   <span className="float-right">{showRestaurantSubmenu ? '▼' : '▶'}</span>
                 </button>
-
+                
                 {/* Restaurant Submenu */}
                 {showRestaurantSubmenu && (
                   <div className="ml-4 mt-2 space-y-1">
@@ -871,6 +603,7 @@ export default function Home() {
               ← Çıkış Yap
             </button>
           </div>
+
         </div>
       )}
 
@@ -934,20 +667,14 @@ export default function Home() {
             <CouriersTab
               couriers={couriers}
               courierSubTab={courierSubTab}
-              deliveredPackages={deliveredPackages}
               onCourierClick={handleCourierClick}
-              courierEarningsFilter={courierEarningsFilter}
-              setCourierEarningsFilter={setCourierEarningsFilter}
             />
           )}
           {activeTab === 'restaurants' && (
             <RestaurantsTab
               restaurants={restaurants}
               restaurantSubTab={restaurantSubTab}
-              deliveredPackages={deliveredPackages}
               onRestaurantClick={handleRestaurantClick}
-              restaurantChartFilter={restaurantChartFilter}
-              setRestaurantChartFilter={setRestaurantChartFilter}
               onDebtPayClick={(id) => {
                 setSelectedRestaurantId(id)
                 fetchRestaurantDebts(id)
@@ -957,112 +684,7 @@ export default function Home() {
           )}
         </div>
       </div>
-      <CourierDetailModal
-        show={showCourierModal}
-        onClose={() => {
-          setShowCourierModal(false)
-          setSelectedCourierId(null)
-        }}
-        courier={couriers.find(c => c.id === selectedCourierId)}
-        selectedCourierId={selectedCourierId}
-        courierStartDate={courierStartDate}
-        setCourierStartDate={setCourierStartDate}
-        courierEndDate={courierEndDate}
-        setCourierEndDate={setCourierEndDate}
-        onEndOfDayClick={() => setShowEndOfDayModal(true)}
-        onPayDebtClick={() => setShowPayDebtModal(true)}
-        selectedCourierOrders={selectedCourierOrders}
-        courierDebts={courierDebts}
-        calculateCashSummary={calculateCashSummary}
-        calculateRestaurantSummary={calculateRestaurantSummary}
-        getPlatformBadgeClass={getPlatformBadgeClass}
-        getPlatformDisplayName={getPlatformDisplayName}
-      />
-
-      <EndOfDayModal
-        show={showEndOfDayModal}
-        onClose={() => setShowEndOfDayModal(false)}
-        courier={couriers.find(c => c.id === selectedCourierId)}
-        selectedCourierId={selectedCourierId}
-        endOfDayAmount={endOfDayAmount}
-        setEndOfDayAmount={setEndOfDayAmount}
-        onConfirm={handleEndOfDay}
-        processing={endOfDayProcessing}
-        calculateCashSummary={calculateCashSummary}
-        selectedCourierOrders={selectedCourierOrders}
-        courierDebts={courierDebts}
-        courierStartDate={courierStartDate}
-        courierEndDate={courierEndDate}
-        loadingDebts={loadingDebts}
-      />
-
-      <PayDebtModal
-        show={showPayDebtModal}
-        onClose={() => setShowPayDebtModal(false)}
-        courier={couriers.find(c => c.id === selectedCourierId)}
-        selectedCourierId={selectedCourierId}
-        payDebtAmount={payDebtAmount}
-        setPayDebtAmount={setPayDebtAmount}
-        onConfirm={handlePayDebt}
-        processing={payDebtProcessing}
-        courierDebts={courierDebts}
-        loadingDebts={loadingDebts}
-      />
-
-      <RestaurantDetailModal
-        show={showRestaurantModal}
-        onClose={() => {
-          setShowRestaurantModal(false)
-          setSelectedRestaurantId(null)
-          setRestaurantStartDate('')
-          setRestaurantEndDate('')
-        }}
-        restaurant={restaurants.find(r => r.id === selectedRestaurantId)}
-        selectedRestaurantId={selectedRestaurantId}
-        restaurantStartDate={restaurantStartDate}
-        setRestaurantStartDate={setRestaurantStartDate}
-        restaurantEndDate={restaurantEndDate}
-        setRestaurantEndDate={setRestaurantEndDate}
-        onPaymentClick={() => setShowRestaurantPaymentModal(true)}
-        selectedRestaurantOrders={selectedRestaurantOrders}
-        getPlatformBadgeClass={getPlatformBadgeClass}
-        getPlatformDisplayName={getPlatformDisplayName}
-      />
-
-      <RestaurantPaymentModal
-        show={showRestaurantPaymentModal}
-        onClose={() => {
-          setShowRestaurantPaymentModal(false)
-          setRestaurantPaymentAmount('')
-        }}
-        restaurant={restaurants.find(r => r.id === selectedRestaurantId)}
-        selectedRestaurantId={selectedRestaurantId}
-        restaurantPaymentAmount={restaurantPaymentAmount}
-        setRestaurantPaymentAmount={setRestaurantPaymentAmount}
-        onConfirm={handleRestaurantPayment}
-        processing={restaurantPaymentProcessing}
-        restaurantDebts={restaurantDebts}
-        selectedRestaurantOrders={selectedRestaurantOrders}
-        restaurantStartDate={restaurantStartDate}
-        restaurantEndDate={restaurantEndDate}
-        loadingDebts={loadingRestaurantDebts}
-      />
-
-      <RestaurantDebtPayModal
-        show={showRestaurantDebtPayModal}
-        onClose={() => {
-          setShowRestaurantDebtPayModal(false)
-          setRestaurantDebtPayAmount('')
-        }}
-        restaurant={restaurants.find(r => r.id === selectedRestaurantId)}
-        selectedRestaurantId={selectedRestaurantId}
-        restaurantDebtPayAmount={restaurantDebtPayAmount}
-        setRestaurantDebtPayAmount={setRestaurantDebtPayAmount}
-        onConfirm={handleRestaurantDebtPayment}
-        processing={restaurantDebtPayProcessing}
-        restaurantDebts={restaurantDebts}
-        loadingDebts={loadingRestaurantDebts}
-      />
     </div>
   )
 }
+

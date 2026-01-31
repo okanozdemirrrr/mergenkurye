@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"name": "kurye_projesi",
+			"path": "../../.."
+		}
+	],
+	"settings": {
+		"kiroAgent.configureMCP": "Disabled"
+	}
+}

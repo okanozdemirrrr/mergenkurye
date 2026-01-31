@@ -1,3 +1,11 @@
+/**
+ * @file src/app/kurye/page.tsx
+ * @description Kurye Arayüzü Uygulaması.
+ * Kuryelerin kendilerine atanan paketleri gördüğü, teslimat süreçlerini 
+ * (yola çıktı, teslim edildi vb.) yönettiği ve günlük performanslarını 
+ * takip ettiği ana mobil uyumlu arayüzdür. Sesli komut desteği ve 
+ * anlık bildirim özelliklerini içerir.
+ */
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
@@ -11,7 +19,7 @@ interface Package {
   customer_phone?: string
   delivery_address: string
   amount: number
-  status: string
+  status: 'waiting' | 'assigned' | 'picking_up' | 'on_the_way' | 'delivered' | 'cancelled'
   content?: string
   courier_id?: string | null
   payment_method?: 'cash' | 'card' | null
@@ -23,11 +31,14 @@ interface Package {
   delivered_at?: string
   latitude?: number | null
   longitude?: number | null
-  restaurant?: { 
+  restaurant?: {
     name: string
     phone?: string
     address?: string
   }
+  cancelled_at?: string | null
+  cancelled_by?: 'admin' | 'restaurant' | null
+  cancellation_reason?: string | null
 }
 
 interface CourierLeaderboard {
@@ -72,7 +83,7 @@ export default function KuryePage() {
   const [totalPages, setTotalPages] = useState(1) // Toplam sayfa sayısı
   const [unsettledAmount, setUnsettledAmount] = useState(0) // Verilecek hesap (admin'den)
   const ITEMS_PER_PAGE = 30 // Sayfa başına öğe sayısı
-  
+
   const [startDate, setStartDate] = useState(() => {
     const today = new Date()
     return today.toISOString().split('T')[0]
@@ -89,20 +100,20 @@ export default function KuryePage() {
     const today = new Date()
     return today.toISOString().split('T')[0]
   })
-  
+
   // SESLİ KOMUT STATE'LERİ
   const [isListening, setIsListening] = useState(false)
   const [voiceCommand, setVoiceCommand] = useState('')
   const [recognition, setRecognition] = useState<any>(null)
   const [showVoiceHelp, setShowVoiceHelp] = useState(false) // Sesli komut yardım pop-up'ı
   const voiceTimeoutRef = useRef<NodeJS.Timeout | null>(null) // Timeout referansı
-  
+
   // SCROLL POZİSYONU KORUMA
   const scrollPositionRef = useRef<{ [key: string]: number }>({})
-  
+
   // PACKAGES REF - Sesli komutlar için güncel state
   const packagesRef = useRef<Package[]>([])
-  
+
   // SAYISAL ETİKETLEME (SLOT SYSTEM) - SABİT NUMARALANDIRMA
   const [packageSlots, setPackageSlots] = useState<{ [key: number]: number }>({}) // packageId -> slotNumber
 
@@ -168,15 +179,15 @@ export default function KuryePage() {
   // Bildirim sesi çal
   const playNotificationSound = () => {
     if (typeof window === 'undefined') return
-    
+
     try {
       console.log('🔊 Ses çalınıyor...')
       const audio = new Audio(`/notification.mp3?t=${Date.now()}`)
       audio.volume = 1.0 // Maksimum ses
-      
+
       // Ses çalma promise'ini handle et
       const playPromise = audio.play()
-      
+
       if (playPromise !== undefined) {
         playPromise
           .then(() => {
@@ -189,7 +200,7 @@ export default function KuryePage() {
               message: err.message,
               code: err.code
             })
-            
+
             // Kullanıcı etkileşimi gerekiyorsa
             if (err.name === 'NotAllowedError') {
               console.warn('⚠️ Ses çalmak için kullanıcı etkileşimi gerekli')
@@ -207,14 +218,14 @@ export default function KuryePage() {
   // Tarayıcı bildirimi gönder
   const sendBrowserNotification = (title: string, body: string, url: string = '/kurye') => {
     if (typeof window === 'undefined') return
-    
+
     console.log('📱 Bildirim gönderiliyor:', { title, body, permission: notificationPermission })
-    
+
     if (notificationPermission !== 'granted') {
       console.warn('⚠️ Bildirim izni verilmemiş:', notificationPermission)
       return
     }
-    
+
     try {
       if ('serviceWorker' in navigator && 'Notification' in window) {
         navigator.serviceWorker.ready.then((registration) => {
@@ -245,12 +256,12 @@ export default function KuryePage() {
   // Service Worker kaydet ve bildirim izni al
   const enableNotifications = async () => {
     if (typeof window === 'undefined') return
-    
+
     try {
       console.log('🔔 Bildirim sistemi başlatılıyor...')
       console.log('📍 Tarayıcı:', navigator.userAgent)
       console.log('📍 HTTPS:', window.location.protocol === 'https:')
-      
+
       // Service Worker kaydet
       if ('serviceWorker' in navigator) {
         try {
@@ -260,13 +271,13 @@ export default function KuryePage() {
             console.log('✅ Service Worker zaten kayıtlı:', existingRegistration.scope)
           } else {
             console.log('📝 Service Worker kaydediliyor...')
-            const registration = await navigator.serviceWorker.register('/sw.js', { 
+            const registration = await navigator.serviceWorker.register('/sw.js', {
               scope: '/',
               updateViaCache: 'none' // Cache'i bypass et
             })
             console.log('✅ Service Worker kaydedildi:', registration.scope)
           }
-          
+
           // Service Worker'ın aktif olmasını bekle
           await navigator.serviceWorker.ready
           console.log('✅ Service Worker hazır ve aktif')
@@ -282,21 +293,21 @@ export default function KuryePage() {
         setTimeout(() => setErrorMessage(''), 3000)
         return
       }
-      
+
       // Bildirim izni al
       if ('Notification' in window) {
         console.log('📱 Bildirim izni isteniyor...')
         console.log('📱 Mevcut izin durumu:', Notification.permission)
-        
+
         const permission = await Notification.requestPermission()
         console.log('📱 Yeni izin durumu:', permission)
         setNotificationPermission(permission)
-        
+
         if (permission === 'granted') {
           setSuccessMessage('✅ Bildirimler ve sesler aktif!')
           setTimeout(() => setSuccessMessage(''), 3000)
           setShowNotificationButton(false)
-          
+
           // Test bildirimi gönder
           console.log('🧪 Test bildirimi gönderiliyor...')
           sendBrowserNotification(
@@ -304,7 +315,7 @@ export default function KuryePage() {
             'Yeni paketler için bildirim alacaksınız',
             '/kurye'
           )
-          
+
           // Test sesi çal
           console.log('🧪 Test sesi çalınıyor...')
           playNotificationSound()
@@ -332,14 +343,14 @@ export default function KuryePage() {
   // Bildirim iznini kontrol et
   useEffect(() => {
     if (typeof window === 'undefined' || !isLoggedIn) return
-    
+
     console.log('🔍 Bildirim izni kontrol ediliyor...')
-    
+
     if ('Notification' in window) {
       const currentPermission = Notification.permission
       setNotificationPermission(currentPermission)
       console.log('📱 Mevcut bildirim izni:', currentPermission)
-      
+
       // İzin verilmemişse butonu göster
       if (currentPermission === 'default') {
         setShowNotificationButton(true)
@@ -362,7 +373,7 @@ export default function KuryePage() {
     try {
       const loggedIn = localStorage.getItem(LOGIN_STORAGE_KEY)
       const loggedCourierId = localStorage.getItem(LOGIN_COURIER_ID_KEY)
-      
+
       // Kurye oturumu varsa BURADA KAL!
       if (loggedIn === 'true' && loggedCourierId) {
         setIsLoggedIn(true)
@@ -381,7 +392,7 @@ export default function KuryePage() {
   // Heartbeat fonksiyonu - Kurye aktiflik sinyali
   const sendHeartbeat = async () => {
     if (typeof window === 'undefined') return
-    
+
     const courierId = localStorage.getItem(LOGIN_COURIER_ID_KEY)
     if (!courierId) return
 
@@ -397,15 +408,15 @@ export default function KuryePage() {
 
   const fetchPackages = async (isInitialLoad = false) => {
     if (typeof window === 'undefined') return
-    
+
     const courierId = localStorage.getItem(LOGIN_COURIER_ID_KEY)
     if (!courierId) return
 
     try {
       if (isInitialLoad) setIsLoading(true)
-      
+
       await sendHeartbeat()
-      
+
       const { data, error } = await supabase
         .from('packages')
         .select('*, restaurants(name, phone, address)')
@@ -414,12 +425,12 @@ export default function KuryePage() {
         .order('created_at', { ascending: false })
 
       if (error) throw error
-      
+
       const transformed = (data || []).map((pkg: any) => ({
         ...pkg,
         restaurant: pkg.restaurants
       }))
-      
+
       setPackages(transformed)
     } catch (error: any) {
       // İnternet hatalarını sessizce geç
@@ -428,7 +439,7 @@ export default function KuryePage() {
         console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
         return // Eski veriler ekranda kalsın
       }
-      
+
       console.error('❌ Paketler yüklenemedi:', error)
       setErrorMessage('Paketler yüklenemedi: ' + error.message)
     } finally {
@@ -441,8 +452,8 @@ export default function KuryePage() {
     if (!courierId) return
 
     try {
-      const todayStart = new Date(); todayStart.setHours(0,0,0,0)
-      
+      const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
+
       const { data, error } = await supabase
         .from('packages')
         .select('amount, payment_method, status')
@@ -464,7 +475,7 @@ export default function KuryePage() {
         console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
         return
       }
-      
+
       console.error('❌ İstatistik yüklenemedi:', error)
       setErrorMessage('İstatistikler yüklenemedi: ' + error.message)
     }
@@ -478,7 +489,7 @@ export default function KuryePage() {
     try {
       const todayStart = new Date()
       todayStart.setHours(0, 0, 0, 0)
-      
+
       const { data, error } = await supabase
         .from('packages')
         .select('*, restaurants(name, phone, address)')
@@ -488,14 +499,14 @@ export default function KuryePage() {
         .order('delivered_at', { ascending: false })
 
       if (error) throw error
-      
+
       console.log('📦 Bugün teslim edilen paketler:', data?.length || 0)
-      
+
       const transformed = (data || []).map((pkg: any) => ({
         ...pkg,
         restaurant: pkg.restaurants
       }))
-      
+
       setTodayDeliveredPackages(transformed)
     } catch (error: any) {
       const errorMsg = error.message?.toLowerCase() || ''
@@ -503,7 +514,7 @@ export default function KuryePage() {
         console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
         return
       }
-      
+
       console.error('❌ Geçmiş paketler yüklenemedi:', error)
     }
   }
@@ -532,7 +543,7 @@ export default function KuryePage() {
         console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
         return
       }
-      
+
       console.error('❌ Kurye durumu alınamadı:', error)
       setErrorMessage('Kurye durumu alınamadı: ' + error.message)
     }
@@ -540,30 +551,30 @@ export default function KuryePage() {
 
   // AKILLI NAVİGASYON - Koordinat veya Adres Bazlı
   const handleOpenNavigation = (pkg: Package) => {
-    console.log('🗺️ Navigasyon açılıyor:', { 
-      latitude: pkg.latitude, 
-      longitude: pkg.longitude, 
-      address: pkg.delivery_address 
+    console.log('🗺️ Navigasyon açılıyor:', {
+      latitude: pkg.latitude,
+      longitude: pkg.longitude,
+      address: pkg.delivery_address
     })
 
     // Koordinat varsa hassas navigasyon kullan
     if (pkg.latitude && pkg.longitude) {
       const lat = pkg.latitude
       const lng = pkg.longitude
-      
+
       // Cihaz tespiti
       const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera
       const isIOS = /iPad|iPhone|iPod/.test(userAgent) && !(window as any).MSStream
       const isAndroid = /android/i.test(userAgent)
-      
+
       console.log('📱 Cihaz:', { isIOS, isAndroid })
-      
+
       if (isIOS) {
         // iOS - Apple Maps
         const appleMapsUrl = `maps://maps.apple.com/?q=${lat},${lng}&dirflg=d`
         console.log('🍎 Apple Maps URL:', appleMapsUrl)
         window.location.href = appleMapsUrl
-        
+
         // Fallback: Apple Maps açılmazsa Google Maps'e yönlendir
         setTimeout(() => {
           const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
@@ -575,7 +586,7 @@ export default function KuryePage() {
         console.log('🤖 Google Maps URL:', googleMapsUrl)
         window.open(googleMapsUrl, '_blank')
       }
-      
+
       console.log('✅ Koordinat bazlı navigasyon başlatıldı')
     } else {
       // Koordinat yoksa adres bazlı navigasyon
@@ -652,14 +663,14 @@ export default function KuryePage() {
         console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
         return
       }
-      
+
       console.error('❌ Leaderboard yüklenemedi:', error)
     }
   }
 
   const updateCourierStatus = async (newStatus: 'idle' | 'busy', newIsActive: boolean) => {
     const courierId = localStorage.getItem(LOGIN_COURIER_ID_KEY)
-    
+
     if (!courierId) {
       setErrorMessage('Kurye ID bulunamadı')
       return
@@ -667,10 +678,10 @@ export default function KuryePage() {
 
     try {
       setStatusUpdating(true)
-      
+
       const { error } = await supabase
         .from('couriers')
-        .update({ 
+        .update({
           status: newStatus,
           is_active: newIsActive
         })
@@ -682,7 +693,7 @@ export default function KuryePage() {
       setIs_active(newIsActive)
       setSuccessMessage(newIsActive ? '✅ Aktif duruma geçildi!' : '❌ Pasif duruma geçildi!')
       setTimeout(() => setSuccessMessage(''), 2000)
-      
+
     } catch (error: any) {
       console.error('❌ Durum güncellenemedi:', error)
       setErrorMessage('Durum güncellenemedi: ' + error.message)
@@ -712,13 +723,13 @@ export default function KuryePage() {
     recognitionInstance.onresult = (event: any) => {
       const last = event.results.length - 1
       const result = event.results[last]
-      
+
       // Final result (kesin sonuç) geldiğinde işle
       if (result.isFinal) {
         const transcript = result[0].transcript.toLowerCase()
         console.log('🎤 Final transcript:', transcript)
         setVoiceCommand(transcript)
-        
+
         // Komut algılandı, hemen durdur ve işle
         recognitionInstance.abort() // Zorla durdur
         setIsListening(false)
@@ -773,16 +784,16 @@ export default function KuryePage() {
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
     const oscillator = audioContext.createOscillator()
     const gainNode = audioContext.createGain()
-    
+
     oscillator.connect(gainNode)
     gainNode.connect(audioContext.destination)
-    
+
     oscillator.frequency.value = 800
     oscillator.type = 'sine'
-    
+
     gainNode.gain.setValueAtTime(0.3, audioContext.currentTime)
     gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1)
-    
+
     oscillator.start(audioContext.currentTime)
     oscillator.stop(audioContext.currentTime + 0.1)
   }
@@ -791,36 +802,36 @@ export default function KuryePage() {
     if ('speechSynthesis' in window) {
       // Önce konuşmayı durdur
       window.speechSynthesis.cancel()
-      
+
       const utterance = new SpeechSynthesisUtterance(text)
       utterance.lang = 'tr-TR'
       utterance.rate = 0.9 // Daha yavaş ve anlaşılır
       utterance.pitch = 1.1 // Daha nazik ve profesyonel ton
       utterance.volume = 1.0
-      
+
       // Sesleri yükle ve Türkçe kadın sesini seç
       const setVoiceAndSpeak = () => {
         const voices = window.speechSynthesis.getVoices()
         console.log('🎙️ Mevcut sesler:', voices.map(v => ({ name: v.name, lang: v.lang })))
-        
+
         // Türkçe kadın sesi ara (öncelik sırasına göre)
-        const turkishFemaleVoice = 
+        const turkishFemaleVoice =
           voices.find(voice => voice.lang === 'tr-TR' && voice.name.includes('Filiz')) || // Google Türkçe kadın
           voices.find(voice => voice.lang === 'tr-TR' && voice.name.includes('Yelda')) || // Microsoft Türkçe kadın
           voices.find(voice => voice.lang === 'tr-TR' && voice.name.includes('Female')) ||
           voices.find(voice => voice.lang === 'tr-TR' && !voice.name.includes('Male')) ||
           voices.find(voice => voice.lang.startsWith('tr'))
-        
+
         if (turkishFemaleVoice) {
           utterance.voice = turkishFemaleVoice
           console.log('🎙️ Seçilen ses:', turkishFemaleVoice.name, turkishFemaleVoice.lang)
         } else {
           console.warn('⚠️ Türkçe kadın sesi bulunamadı, varsayılan ses kullanılıyor')
         }
-        
+
         window.speechSynthesis.speak(utterance)
       }
-      
+
       // Sesler yüklenmişse hemen kullan, yoksa yüklenene kadar bekle
       if (window.speechSynthesis.getVoices().length > 0) {
         setVoiceAndSpeak()
@@ -839,7 +850,7 @@ export default function KuryePage() {
       // Dinleme durduruluyor
       recognition.abort()
       setIsListening(false)
-      
+
       // Timeout'u temizle
       if (voiceTimeoutRef.current) {
         clearTimeout(voiceTimeoutRef.current)
@@ -851,12 +862,12 @@ export default function KuryePage() {
         recognition.start()
         setIsListening(true)
         playBeep()
-        
+
         // Müziği sustur (Audio Focus)
         if ('mediaSession' in navigator) {
           navigator.mediaSession.playbackState = 'paused'
         }
-        
+
         // 6 saniye sonra otomatik kapat (PC için)
         voiceTimeoutRef.current = setTimeout(() => {
           if (recognition && isListening) {
@@ -866,7 +877,7 @@ export default function KuryePage() {
             speak('Zaman aşımı')
           }
         }, 6000)
-        
+
       } catch (error) {
         console.error('Ses tanıma başlatılamadı:', error)
         setErrorMessage('Mikrofon başlatılamadı')
@@ -904,13 +915,13 @@ export default function KuryePage() {
     }
 
     let slotNumber: number | null = null
-    
+
     // Ekleri temizle (birin -> bir, ikinin -> iki, üçü -> üç)
     const cleanedTranscript = transcript
       .replace(/([a-zğüşıöç]+)(in|ın|un|ün|i|ı|u|ü|e|a|nin|nın|nun|nün)\b/gi, '$1')
-    
+
     console.log('🧹 Temizlenmiş transcript:', cleanedTranscript)
-    
+
     for (const [word, num] of Object.entries(numberWords)) {
       // Kelime sınırlarını kontrol et (tam eşleşme)
       const regex = new RegExp(`\\b${word}\\b`, 'i')
@@ -925,22 +936,22 @@ export default function KuryePage() {
     const currentPackages = packagesRef.current
     console.log('📦 Ref\'ten alınan paket sayısı:', currentPackages.length)
 
-    // SAYISAL KOMUTLAR - Slot numarasıyla paket bul
+    // SAYISAL KOMUTLAR - ID ile paket bul
     if (slotNumber) {
-      console.log('📦 Aktif paketler:', currentPackages.filter(p => p.status !== 'delivered').map(p => ({ id: p.id, slot: p.slot_number, customer: p.customer_name, status: p.status })))
-      
-      // Slot numarasından paketi bul (slot_number field'ını kullan)
-      const pkg = currentPackages.find(p => p.slot_number === slotNumber && p.status !== 'delivered')
-      
-      console.log('📦 Bulunan paket:', pkg ? { id: pkg.id, slot: pkg.slot_number, status: pkg.status } : null)
+      console.log('📦 Aktif paketler:', currentPackages.filter(p => p.status !== 'delivered').map(p => ({ id: p.id, customer: p.customer_name, status: p.status })))
+
+      // ID'den paketi bul
+      const pkg = currentPackages.find(p => p.id === slotNumber && p.status !== 'delivered')
+
+      console.log('📦 Bulunan paket:', pkg ? { id: pkg.id, status: pkg.status } : null)
 
       if (!pkg) {
-        console.warn('⚠️ Paket bulunamadı, slot:', slotNumber)
+        console.warn('⚠️ Paket bulunamadı, id:', slotNumber)
         speak(`${slotNumber} bulunamadı`)
         return
       }
 
-      console.log('✅ İşlem yapılacak paket:', { id: pkg.id, slot: slotNumber, customer: pkg.customer_name, status: pkg.status })
+      console.log('✅ İşlem yapılacak paket:', { id: pkg.id, customer: pkg.customer_name, status: pkg.status })
 
       // [Numara] kabul / onayla / tamam
       if (transcript.includes('kabul') || transcript.includes('onayla') || transcript.includes('tamam')) {
@@ -974,16 +985,16 @@ export default function KuryePage() {
       // [Numara] bitti / teslim edildi / teslim / kapat (+ ödeme yöntemi)
       if (transcript.includes('bitti') || transcript.includes('teslim') || transcript.includes('kapat')) {
         console.log('🔵 TESLİM ET komutu tetiklendi, packageId:', pkg.id, 'status:', pkg.status)
-        
+
         if (pkg.status !== 'on_the_way') {
           console.log('⚠️ Paket on_the_way durumunda değil, mevcut status:', pkg.status)
           speak('Önce paketi restorandan almalısınız')
           return
         }
-        
+
         // Ödeme yöntemini transcript'ten algıla
         let paymentMethod = selectedPaymentMethods[pkg.id]
-        
+
         if (transcript.includes('nakit') || transcript.includes('nakıt')) {
           paymentMethod = 'cash'
           setSelectedPaymentMethods(prev => ({ ...prev, [pkg.id]: 'cash' }))
@@ -993,7 +1004,7 @@ export default function KuryePage() {
           setSelectedPaymentMethods(prev => ({ ...prev, [pkg.id]: 'card' }))
           console.log('💳 Ödeme yöntemi sesli komuttan algılandı: KART')
         }
-        
+
         console.log('💳 Ödeme yöntemi:', paymentMethod)
         if (!paymentMethod) {
           console.warn('⚠️ Ödeme yöntemi seçilmemiş')
@@ -1002,7 +1013,7 @@ export default function KuryePage() {
           setTimeout(() => setErrorMessage(''), 3000)
           return
         }
-        
+
         console.log('🔵 handleDeliver çağrılıyor...')
         await handleDeliver(pkg.id)
         const paymentText = paymentMethod === 'cash' ? 'nakit' : 'kart'
@@ -1014,7 +1025,7 @@ export default function KuryePage() {
       if (transcript.includes('dükkan') || transcript.includes('restoran') || transcript.includes('işletme')) {
         console.log('🏪 DÜKKAN ARA komutu tetiklendi')
         console.log('📞 Restoran bilgisi:', pkg.restaurant)
-        
+
         if (pkg.restaurant?.phone) {
           const phoneNumber = pkg.restaurant.phone
           const restaurantName = pkg.restaurant.name
@@ -1032,7 +1043,7 @@ export default function KuryePage() {
       if (transcript.includes('müşteri') || transcript.includes('kişi') || transcript.includes('ara')) {
         console.log('📞 MÜŞTERİ ARA komutu tetiklendi')
         console.log('📞 Müşteri telefonu:', pkg.customer_phone)
-        
+
         if (pkg.customer_phone) {
           const customerName = pkg.customer_name.split(' ')[0]
           console.log('📞 Aranacak numara:', pkg.customer_phone)
@@ -1056,14 +1067,14 @@ export default function KuryePage() {
 
     // GENEL KOMUTLAR (numarasız) - İlk aktif paketi kullan
     console.log('🔄 Genel komut modu (numarasız)')
-    
+
     // Kabul
     if (transcript.includes('kabul') || transcript.includes('onayla') || transcript.includes('tamam')) {
-      const pendingPackage = currentPackages.find(pkg => 
+      const pendingPackage = currentPackages.find(pkg =>
         pkg.status === 'assigned' || pkg.status === 'waiting'
       )
       console.log('🟢 Genel KABUL komutu, bulunan paket:', pendingPackage)
-      
+
       if (pendingPackage) {
         await handleAcceptPackage(pendingPackage.id)
         speak('Kabul edildi')
@@ -1077,11 +1088,11 @@ export default function KuryePage() {
     if (transcript.includes('bitti') || transcript.includes('teslim') || transcript.includes('kapat')) {
       const activePackage = currentPackages.find(pkg => pkg.status === 'on_the_way')
       console.log('🔵 Genel TESLİM komutu, bulunan paket:', activePackage)
-      
+
       if (activePackage) {
         // Ödeme yöntemini transcript'ten algıla
         let paymentMethod = selectedPaymentMethods[activePackage.id]
-        
+
         if (transcript.includes('nakit') || transcript.includes('nakıt')) {
           paymentMethod = 'cash'
           setSelectedPaymentMethods(prev => ({ ...prev, [activePackage.id]: 'cash' }))
@@ -1091,7 +1102,7 @@ export default function KuryePage() {
           setSelectedPaymentMethods(prev => ({ ...prev, [activePackage.id]: 'card' }))
           console.log('💳 Ödeme yöntemi sesli komuttan algılandı: KART')
         }
-        
+
         if (!paymentMethod) {
           speak('Nakit mi kart mı')
           setErrorMessage('Lütfen ödeme yöntemini seçin!')
@@ -1110,7 +1121,7 @@ export default function KuryePage() {
     if (transcript.includes('müşteri') || transcript.includes('kişi')) {
       const activePackage = currentPackages.find(pkg => pkg.status !== 'delivered')
       console.log('📞 Genel MÜŞTERİ ARA komutu, bulunan paket:', activePackage)
-      
+
       if (activePackage && activePackage.customer_phone) {
         window.location.href = `tel:${activePackage.customer_phone}`
         speak('Müşteri aranıyor')
@@ -1124,7 +1135,7 @@ export default function KuryePage() {
     if (transcript.includes('dükkan') || transcript.includes('restoran') || transcript.includes('işletme')) {
       const activePackage = currentPackages.find(pkg => pkg.status !== 'delivered')
       console.log('🏪 Genel DÜKKAN ARA komutu, bulunan paket:', activePackage)
-      
+
       if (activePackage && activePackage.restaurant?.phone) {
         window.location.href = `tel:${activePackage.restaurant.phone}`
         speak('Dükkan aranıyor')
@@ -1138,7 +1149,7 @@ export default function KuryePage() {
     if (transcript.includes('konum') || transcript.includes('yol') || transcript.includes('harita') || transcript.includes('navigasyon')) {
       const activePackage = currentPackages.find(pkg => pkg.status !== 'delivered')
       console.log('🗺️ Genel NAVİGASYON komutu, bulunan paket:', activePackage)
-      
+
       if (activePackage) {
         handleOpenNavigation(activePackage)
         speak('Navigasyon açılıyor')
@@ -1152,7 +1163,7 @@ export default function KuryePage() {
     if (transcript.includes('sıra') || transcript.includes('nere') || transcript.includes('adres')) {
       const activePackage = currentPackages.find(pkg => pkg.status !== 'delivered')
       console.log('📍 ADRES SORGULA komutu, bulunan paket:', activePackage)
-      
+
       if (activePackage) {
         const address = activePackage.delivery_address
         const amount = activePackage.amount
@@ -1175,7 +1186,7 @@ export default function KuryePage() {
     try {
       const startDateTime = new Date(start + 'T00:00:00')
       const endDateTime = new Date(end + 'T23:59:59')
-      
+
       // Tarih aralığındaki TÜM teslim edilmiş paketleri çek
       const { data, error, count } = await supabase
         .from('packages')
@@ -1192,11 +1203,11 @@ export default function KuryePage() {
         ...pkg,
         restaurant: pkg.restaurants
       }))
-      
+
       setFilteredPackages(transformed)
       setTotalPages(Math.ceil((count || 0) / ITEMS_PER_PAGE))
       setCurrentPage(1) // İlk sayfaya dön
-      
+
       console.log(`📊 ${transformed.length} paket bulundu, ${Math.ceil((count || 0) / ITEMS_PER_PAGE)} sayfa`)
     } catch (error: any) {
       console.error('❌ Paket filtreleme hatası:', error)
@@ -1220,7 +1231,7 @@ export default function KuryePage() {
 
       const total = (data || []).reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
       setUnsettledAmount(total)
-      
+
       console.log(`💰 Verilecek hesap: ${total}₺`)
     } catch (error: any) {
       console.error('❌ Verilecek hesap hesaplanamadı:', error)
@@ -1282,9 +1293,9 @@ export default function KuryePage() {
       if (error) throw error
 
       // Yerel state'i anında güncelle
-      setPackages(prev => prev.map(pkg => 
-        pkg.id === packageId 
-          ? { ...pkg, status: 'picking_up', accepted_at: new Date().toISOString() }
+      setPackages(prev => prev.map(pkg =>
+        pkg.id === packageId
+          ? { ...pkg, status: 'picking_up' as const, accepted_at: new Date().toISOString() }
           : pkg
       ))
 
@@ -1295,7 +1306,7 @@ export default function KuryePage() {
       console.error('Kabul hatası:', error)
       setErrorMessage('❌ Hata: ' + error.message)
       setTimeout(() => setErrorMessage(''), 3000)
-      
+
       // Hata durumunda yenile
       await fetchPackages(false)
     } finally {
@@ -1332,7 +1343,7 @@ export default function KuryePage() {
 
       // Yerel state'i anında güncelle - paketi listeden çıkar
       setPackages(prev => prev.filter(pkg => pkg.id !== packageId))
-      
+
       // İstatistikleri güncelle
       setDeliveredCount(prev => prev + 1)
       const pkg = packages.find(p => p.id === packageId)
@@ -1355,7 +1366,7 @@ export default function KuryePage() {
       console.error('Teslim hatası:', error)
       setErrorMessage('❌ Hata: ' + error.message)
       setTimeout(() => setErrorMessage(''), 3000)
-      
+
       // Hata durumunda yenile
       await fetchPackages(false)
       await fetchDailyStats()
@@ -1380,22 +1391,22 @@ export default function KuryePage() {
       fetchCourierStatus()
       fetchLeaderboard()
       fetchUnsettledAmount() // Verilecek hesabı çek
-      
+
       // REALTIME ONLY - Canlı yayın modu
       // ⚠️ ÖNEMLİ: Supabase Dashboard -> Database -> Replication -> 'packages' tablosunu işaretleyin!
       console.log('🔴 Kurye Realtime dinleme başlatıldı - Canlı yayın modu aktif')
       console.log('📍 Dinlenen kurye ID:', courierId)
-      
+
       // Realtime callback fonksiyonları - her zaman güncel state'e erişmek için burada tanımla
       const handlePackageChange = async (payload: any) => {
         console.log('📦 Paket değişikliği algılandı:', payload.eventType, 'ID:', payload.new?.id || payload.old?.id)
-        
+
         // Yeni paket atandı mı kontrol et (INSERT veya UPDATE ile courier_id eklendi)
         const isNewAssignment = (
           (payload.eventType === 'INSERT' && payload.new?.courier_id === courierId) ||
           (payload.eventType === 'UPDATE' && payload.new?.courier_id === courierId && payload.old?.courier_id !== courierId)
         )
-        
+
         if (isNewAssignment) {
           console.log('🎯 Yeni paket atandı!')
           playNotificationSound()
@@ -1405,7 +1416,7 @@ export default function KuryePage() {
             '/kurye'
           )
         }
-        
+
         // State'i güncelle - sayfa yenileme YOK!
         await fetchPackages(false)
         await fetchDailyStats()
@@ -1419,13 +1430,13 @@ export default function KuryePage() {
         // Sadece status veya is_active değiştiğinde güncelle
         const oldRecord = payload.old as any
         const newRecord = payload.new as any
-        
+
         if (oldRecord && newRecord) {
           const statusChanged = oldRecord.status !== newRecord.status
           const activeChanged = oldRecord.is_active !== newRecord.is_active
-          
+
           if (statusChanged || activeChanged) {
-            console.log('👤 Kurye durumu değişti:', { 
+            console.log('👤 Kurye durumu değişti:', {
               status: statusChanged ? `${oldRecord.status} → ${newRecord.status}` : 'değişmedi',
               is_active: activeChanged ? `${oldRecord.is_active} → ${newRecord.is_active}` : 'değişmedi'
             })
@@ -1438,7 +1449,7 @@ export default function KuryePage() {
           console.log('✅ Kurye state güncellendi (status)')
         }
       }
-      
+
       // Paket değişikliklerini dinle (sadece bu kuryenin paketleri)
       const packagesChannel = supabase
         .channel(`courier-packages-${courierId}`, {
@@ -1474,7 +1485,7 @@ export default function KuryePage() {
             }, 5000)
           }
         })
-      
+
       // Kurye durumu değişikliklerini dinle
       const courierChannel = supabase
         .channel(`courier-status-${courierId}`)
@@ -1493,7 +1504,7 @@ export default function KuryePage() {
             console.log('✅ Kurye durumu Realtime bağlantısı kuruldu')
           }
         })
-      
+
       return () => {
         console.log('🔴 Realtime dinleme durduruldu')
         supabase.removeChannel(packagesChannel)
@@ -1502,10 +1513,10 @@ export default function KuryePage() {
     }
   }, [isLoggedIn])
 
-  const handleUpdateStatus = async (packageId: number, nextStatus: string, additionalData = {}) => {
+  const handleUpdateStatus = async (packageId: number, nextStatus: Package['status'], additionalData = {}) => {
     try {
       setIsUpdating(prev => new Set(prev).add(packageId))
-      
+
       // Basit UPDATE
       const { error } = await supabase
         .from('packages')
@@ -1513,22 +1524,22 @@ export default function KuryePage() {
         .eq('id', packageId)
 
       if (error) throw error
-      
+
       // Yerel state'i anında güncelle
-      setPackages(prev => prev.map(pkg => 
-        pkg.id === packageId 
+      setPackages(prev => prev.map(pkg =>
+        pkg.id === packageId
           ? { ...pkg, status: nextStatus, ...additionalData }
           : pkg
       ))
-      
+
       setSuccessMessage('✅ Durum güncellendi!')
       setTimeout(() => setSuccessMessage(''), 2000)
-      
+
     } catch (error: any) {
       console.error('Durum güncelleme hatası:', error)
       setErrorMessage('❌ Hata: ' + error.message)
       setTimeout(() => setErrorMessage(''), 3000)
-      
+
       // Hata durumunda yenile
       await fetchPackages(false)
     } finally {
@@ -1559,24 +1570,24 @@ export default function KuryePage() {
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
         <form onSubmit={handleLogin} className="bg-slate-900 p-8 rounded-2xl border border-slate-800 w-full max-w-md">
           <div className="text-center mb-8">
-            <img 
-              src="/logo.png" 
-              alt="Logo" 
+            <img
+              src="/logo.png"
+              alt="Logo"
               className="w-48 h-48 mx-auto mb-4"
             />
             <h1 className="text-2xl font-bold text-white mb-2">
               Kurye Girişi
             </h1>
           </div>
-          <input 
-            type="text" placeholder="Kullanıcı Adı" 
+          <input
+            type="text" placeholder="Kullanıcı Adı"
             className="w-full p-3 mb-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-blue-500 transition-colors"
-            onChange={e => setLoginForm({...loginForm, username: e.target.value})}
+            onChange={e => setLoginForm({ ...loginForm, username: e.target.value })}
           />
-          <input 
-            type="password" placeholder="Şifre" 
+          <input
+            type="password" placeholder="Şifre"
             className="w-full p-3 mb-4 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-blue-500 transition-colors"
-            onChange={e => setLoginForm({...loginForm, password: e.target.value})}
+            onChange={e => setLoginForm({ ...loginForm, password: e.target.value })}
           />
           <button className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
             Giriş Yap
@@ -1602,13 +1613,12 @@ export default function KuryePage() {
               🔔
             </button>
           )}
-          
+
           {/* Hız Simgesi - Leaderboard */}
           <button
             onClick={() => setShowLeaderboard(true)}
-            className={`flex items-center gap-1 sm:gap-2 px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm rounded-lg shadow-lg transition-all active:scale-95 ${
-              darkMode ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-purple-500 hover:bg-purple-600 text-white'
-            }`}
+            className={`flex items-center gap-1 sm:gap-2 px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm rounded-lg shadow-lg transition-all active:scale-95 ${darkMode ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-purple-500 hover:bg-purple-600 text-white'
+              }`}
             title="Günün En Hızlıları"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1616,13 +1626,12 @@ export default function KuryePage() {
             </svg>
             <span className="hidden xs:inline font-medium whitespace-nowrap">Sıralama</span>
           </button>
-          
+
           {/* Dark Mode Toggle */}
           <button
             onClick={() => setDarkMode(!darkMode)}
-            className={`p-1.5 sm:p-2 rounded-lg shadow-lg transition-colors ${
-              darkMode ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-white hover:bg-gray-100 text-gray-900 border border-gray-300'
-            }`}
+            className={`p-1.5 sm:p-2 rounded-lg shadow-lg transition-colors ${darkMode ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-white hover:bg-gray-100 text-gray-900 border border-gray-300'
+              }`}
             title={darkMode ? 'Gündüz Modu' : 'Gece Modu'}
           >
             <span className="text-sm sm:text-base">{darkMode ? '☀️' : '🌙'}</span>
@@ -1632,8 +1641,8 @@ export default function KuryePage() {
 
       {/* Hamburger Menü Butonu - Sol Üst */}
       {isLoggedIn && (
-        <button 
-          onClick={() => setShowMenu(!showMenu)} 
+        <button
+          onClick={() => setShowMenu(!showMenu)}
           className="fixed top-2 left-2 sm:top-4 sm:left-4 z-50 bg-slate-800 hover:bg-slate-700 text-white p-2 sm:p-3 rounded-lg shadow-lg transition-colors active:scale-95"
         >
           <div className="space-y-1">
@@ -1646,23 +1655,21 @@ export default function KuryePage() {
 
       {/* Açılır Menü */}
       {isLoggedIn && (
-        <div className={`fixed top-0 left-0 h-full w-64 sm:w-80 bg-slate-900 text-white z-40 transform transition-transform duration-300 ${
-          showMenu ? 'translate-x-0' : '-translate-x-full'
-        } overflow-y-auto admin-scrollbar`}>
+        <div className={`fixed top-0 left-0 h-full w-64 sm:w-80 bg-slate-900 text-white z-40 transform transition-transform duration-300 ${showMenu ? 'translate-x-0' : '-translate-x-full'
+          } overflow-y-auto admin-scrollbar`}>
           <div className="p-6 pt-20">
             <h2 className="text-xl sm:text-2xl font-bold mb-6">📦 Kurye Panel</h2>
-            
+
             <nav className="space-y-2">
               <button
                 onClick={() => {
                   setActiveTab('packages')
                   setShowMenu(false)
                 }}
-                className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${
-                  activeTab === 'packages'
+                className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${activeTab === 'packages'
                     ? 'bg-blue-600 text-white'
                     : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                }`}
+                  }`}
               >
                 <span className="mr-3">📦</span>
                 Aktif Paketlerim
@@ -1673,11 +1680,10 @@ export default function KuryePage() {
                   setActiveTab('history')
                   setShowMenu(false)
                 }}
-                className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${
-                  activeTab === 'history'
+                className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${activeTab === 'history'
                     ? 'bg-blue-600 text-white'
                     : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                }`}
+                  }`}
               >
                 <span className="mr-3">📋</span>
                 Paket Geçmişim
@@ -1688,22 +1694,21 @@ export default function KuryePage() {
                   setActiveTab('earnings')
                   setShowMenu(false)
                 }}
-                className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${
-                  activeTab === 'earnings'
+                className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${activeTab === 'earnings'
                     ? 'bg-blue-600 text-white'
                     : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                }`}
+                  }`}
               >
                 <span className="mr-3">💰</span>
                 Verilecek Hesap
               </button>
 
               <button
-                onClick={() => { 
+                onClick={() => {
                   localStorage.removeItem(LOGIN_STORAGE_KEY);
                   localStorage.removeItem(LOGIN_COURIER_ID_KEY);
                   window.location.href = '/kurye';
-                }} 
+                }}
                 className="w-full text-left px-4 py-3 rounded-lg font-medium text-red-400 hover:bg-red-900/20 hover:text-red-300 transition-all mt-4"
               >
                 <span className="mr-3">🚪</span>
@@ -1731,9 +1736,9 @@ export default function KuryePage() {
         {/* LOGO VE BUGÜN TESLİM YAN YANA */}
         {activeTab === 'packages' && (
           <div className="flex items-center justify-between gap-3 mb-3 sm:mb-4">
-            <img 
-              src="/logo.png" 
-              alt="Logo" 
+            <img
+              src="/logo.png"
+              alt="Logo"
               className="w-20 h-20 sm:w-24 sm:h-24"
             />
             <div className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-800 flex-1">
@@ -1765,26 +1770,23 @@ export default function KuryePage() {
                   setIsListening(false)
                 }
               }}
-              className={`w-16 h-16 rounded-full shadow-2xl transition-all duration-300 flex items-center justify-center text-2xl ${
-                isListening 
-                  ? 'bg-red-600 animate-pulse' 
+              className={`w-16 h-16 rounded-full shadow-2xl transition-all duration-300 flex items-center justify-center text-2xl ${isListening
+                  ? 'bg-red-600 animate-pulse'
                   : 'bg-blue-600 hover:bg-blue-700 active:scale-95'
-              }`}
+                }`}
             >
               {isListening ? '🔴' : '🎤'}
             </button>
-            
+
             {/* Durum Toggle */}
             <button
               onClick={() => updateCourierStatus('idle', !is_active)}
               disabled={statusUpdating}
-              className={`relative w-14 h-7 rounded-full transition-all duration-300 disabled:opacity-50 shadow-lg ${
-                is_active ? 'bg-green-600' : 'bg-slate-700'
-              }`}
+              className={`relative w-14 h-7 rounded-full transition-all duration-300 disabled:opacity-50 shadow-lg ${is_active ? 'bg-green-600' : 'bg-slate-700'
+                }`}
             >
-              <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300 ${
-                is_active ? 'left-7' : 'left-0.5'
-              }`}>
+              <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300 ${is_active ? 'left-7' : 'left-0.5'
+                }`}>
                 {statusUpdating && (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
@@ -1820,7 +1822,7 @@ export default function KuryePage() {
                 {/* Kullanım Talimatı */}
                 <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
                   <p className="text-blue-300 text-sm leading-relaxed">
-                    🎯 <strong>Nasıl Kullanılır:</strong> Mikrofon butonuna basın veya interkom tuşuna basın, komutunuzu söyleyin. 
+                    🎯 <strong>Nasıl Kullanılır:</strong> Mikrofon butonuna basın veya interkom tuşuna basın, komutunuzu söyleyin.
                     Paket numarasını söyleyip ardından işlemi belirtin.
                   </p>
                 </div>
@@ -1907,7 +1909,7 @@ export default function KuryePage() {
                 {/* Alt Bilgi */}
                 <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/30 rounded-xl p-4">
                   <p className="text-purple-300 text-xs leading-relaxed">
-                    💡 <strong>İpucu:</strong> Paket numaraları ekranın sol üstünde mor-pembe renkli kutularda gösterilir. 
+                    💡 <strong>İpucu:</strong> Paket numaraları ekranın sol üstünde mor-pembe renkli kutularda gösterilir.
                     Komutları söylerken net ve yavaş konuşun. Bluetooth kulaklık kullanıyorsanız, play/pause tuşu ile de mikrofonu açabilirsiniz.
                   </p>
                 </div>
@@ -1929,7 +1931,7 @@ export default function KuryePage() {
             {successMessage}
           </div>
         )}
-        
+
         {errorMessage && (
           <div className="mb-3 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400 text-sm text-center">
             {errorMessage}
@@ -1955,171 +1957,168 @@ export default function KuryePage() {
 
                 {/* Paket Listesi - Mobil Responsive */}
                 {packages.map((pkg, index) => (
-                <div key={pkg.id} className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-800">
-                  {/* Üst Kısım */}
-                  <div className="flex justify-between items-start mb-2 sm:mb-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        {/* SLOT NUMARASI */}
-                        <span className="text-lg font-black text-white bg-gradient-to-r from-purple-600 to-pink-600 px-3 py-1 rounded-lg shadow-lg">
-                          {packageSlots[pkg.id] || '?'}
-                        </span>
-                        <span className="text-xs font-bold text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded">
-                          {pkg.order_number || '......'}
-                        </span>
-                        {pkg.platform && (
-                          <span className={`text-xs font-bold px-2 py-0.5 rounded ${getPlatformBadgeClass(pkg.platform)}`}>
-                            {getPlatformDisplayName(pkg.platform)}
+                  <div key={pkg.id} className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-800">
+                    {/* Üst Kısım */}
+                    <div className="flex justify-between items-start mb-2 sm:mb-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          {/* SLOT NUMARASI */}
+                          <span className="text-lg font-black text-white bg-gradient-to-r from-purple-600 to-pink-600 px-3 py-1 rounded-lg shadow-lg">
+                            {packageSlots[pkg.id] || '?'}
                           </span>
+                          <span className="text-xs font-bold text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded">
+                            {pkg.order_number || '......'}
+                          </span>
+                          {pkg.platform && (
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded ${getPlatformBadgeClass(pkg.platform)}`}>
+                              {getPlatformDisplayName(pkg.platform)}
+                            </span>
+                          )}
+                          <span className="text-xs px-2 py-0.5 bg-orange-500/20 text-orange-400 rounded">
+                            {pkg.restaurant?.name || 'Restoran'}
+                          </span>
+                        </div>
+                        <p className="font-medium text-sm sm:text-base text-white">{pkg.customer_name}</p>
+
+                        {/* İçerik Gösterimi - Müşteri isminin altında */}
+                        {pkg.content && (
+                          <p className="text-xs text-slate-400 mt-1">📦 {pkg.content}</p>
                         )}
-                        <span className="text-xs px-2 py-0.5 bg-orange-500/20 text-orange-400 rounded">
-                          {pkg.restaurant?.name || 'Restoran'}
-                        </span>
-                      </div>
-                      <p className="font-medium text-sm sm:text-base text-white">{pkg.customer_name}</p>
-                      
-                      {/* İçerik Gösterimi - Müşteri isminin altında */}
-                      {pkg.content && (
-                        <p className="text-xs text-slate-400 mt-1">📦 {pkg.content}</p>
-                      )}
-                      
-                      {/* Müşteri Telefonu - Her zaman göster */}
-                      {pkg.customer_phone && (
-                        <div className="mt-2">
-                          <p className="text-xs text-slate-400">📞 {pkg.customer_phone}</p>
-                          <a 
-                            href={`tel:${pkg.customer_phone}`}
-                            className="inline-block mt-1 py-1.5 px-3 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white text-xs font-medium rounded transition-colors"
-                          >
-                            � Ara
-                          </a>
-                        </div>
-                      )}
-                      
-                      {/* Restoran bilgileri - Mobil Responsive */}
-                      {(pkg.status === 'assigned' || pkg.status === 'picking_up' || pkg.status === 'on_the_way') && pkg.restaurant?.phone && (
-                        <div className="mt-2 p-2 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
-                          <div className="flex items-start gap-2 mb-1">
-                            <span className="text-xs">🍽️</span>
-                            <div className="flex-1">
-                              <p className="text-xs font-medium text-orange-900 dark:text-orange-300">
-                                {pkg.restaurant.name}
-                              </p>
-                              <p className="text-xs text-orange-700 dark:text-orange-400 break-all">
-                                📞 {pkg.restaurant.phone}
-                              </p>
-                              {pkg.restaurant.address && (
-                                <p className="text-xs text-orange-700 dark:text-orange-400 mt-1">
-                                  📍 {pkg.restaurant.address}
-                                </p>
-                              )}
-                            </div>
+
+                        {/* Müşteri Telefonu - Her zaman göster */}
+                        {pkg.customer_phone && (
+                          <div className="mt-2">
+                            <p className="text-xs text-slate-400">📞 {pkg.customer_phone}</p>
+                            <a
+                              href={`tel:${pkg.customer_phone}`}
+                              className="inline-block mt-1 py-1.5 px-3 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white text-xs font-medium rounded transition-colors"
+                            >
+                              � Ara
+                            </a>
                           </div>
-                          <a 
-                            href={`tel:${pkg.restaurant.phone}`}
-                            className="block w-full py-1.5 px-3 bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white text-xs sm:text-sm font-medium rounded transition-colors text-center mt-2"
+                        )}
+
+                        {/* Restoran bilgileri - Mobil Responsive */}
+                        {(pkg.status === 'assigned' || pkg.status === 'picking_up' || pkg.status === 'on_the_way') && pkg.restaurant?.phone && (
+                          <div className="mt-2 p-2 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+                            <div className="flex items-start gap-2 mb-1">
+                              <span className="text-xs">🍽️</span>
+                              <div className="flex-1">
+                                <p className="text-xs font-medium text-orange-900 dark:text-orange-300">
+                                  {pkg.restaurant.name}
+                                </p>
+                                <p className="text-xs text-orange-700 dark:text-orange-400 break-all">
+                                  📞 {pkg.restaurant.phone}
+                                </p>
+                                {pkg.restaurant.address && (
+                                  <p className="text-xs text-orange-700 dark:text-orange-400 mt-1">
+                                    📍 {pkg.restaurant.address}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <a
+                              href={`tel:${pkg.restaurant.phone}`}
+                              className="block w-full py-1.5 px-3 bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white text-xs sm:text-sm font-medium rounded transition-colors text-center mt-2"
+                            >
+                              📞 Restoranı Ara
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xl font-bold text-green-400">{pkg.amount}₺</p>
+                        <p className="text-xs text-slate-500">
+                          {pkg.payment_method === 'cash' ? 'Nakit' : 'Kart'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Adres */}
+                    <div className="mb-2 p-2 bg-slate-800/50 rounded-lg">
+                      <p className="text-xs text-slate-300">{pkg.delivery_address}</p>
+                    </div>
+
+                    {/* NAVİGASYON BUTONU - Sadece on_the_way durumunda göster */}
+                    {pkg.status === 'on_the_way' && pkg.latitude && pkg.longitude && (
+                      <button
+                        onClick={() => handleOpenNavigation(pkg)}
+                        className="w-full mb-2 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 active:from-indigo-800 active:to-purple-800 text-white text-sm font-medium rounded-lg transition-all shadow-md hover:shadow-lg active:scale-95 flex items-center justify-center gap-2"
+                      >
+                        <span>📍</span>
+                        <span>Konuma Git</span>
+                      </button>
+                    )}
+
+                    {/* Durum Badge */}
+                    <div className="mb-3">
+                      <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${pkg.status === 'assigned' ? 'bg-blue-500/20 text-blue-400' :
+                          pkg.status === 'picking_up' ? 'bg-yellow-500/20 text-yellow-400' :
+                            'bg-red-500/20 text-red-400'
+                        }`}>
+                        {pkg.status === 'assigned' ? 'Yeni Paket' :
+                          pkg.status === 'picking_up' ? 'Almaya Git' :
+                            'Teslimatta'}
+                      </span>
+                    </div>
+
+                    {/* Aksiyon Butonları - Mobil Responsive */}
+                    {pkg.status === 'assigned' && (
+                      <button
+                        disabled={isUpdating.has(pkg.id)}
+                        onClick={() => handleUpdateStatus(pkg.id, 'picking_up')}
+                        className="w-full py-2 sm:py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm sm:text-base font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isUpdating.has(pkg.id) ? 'İşleniyor...' : 'Kabul Et'}
+                      </button>
+                    )}
+
+                    {pkg.status === 'picking_up' && (
+                      <button
+                        disabled={isUpdating.has(pkg.id)}
+                        onClick={() => handleUpdateStatus(pkg.id, 'on_the_way', { picked_up_at: new Date().toISOString() })}
+                        className="w-full py-2 sm:py-2.5 bg-yellow-600 hover:bg-yellow-700 active:bg-yellow-800 text-white text-sm sm:text-base font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isUpdating.has(pkg.id) ? 'İşleniyor...' : 'Paketi Aldım'}
+                      </button>
+                    )}
+
+                    {pkg.status === 'on_the_way' && (
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            onClick={() => setSelectedPaymentMethods({ ...selectedPaymentMethods, [pkg.id]: 'cash' })}
+                            className={`py-2 rounded-lg border font-medium text-sm transition-colors ${selectedPaymentMethods[pkg.id] === 'cash'
+                                ? 'bg-green-600 border-green-600 text-white'
+                                : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600'
+                              }`}
                           >
-                            📞 Restoranı Ara
-                          </a>
+                            Nakit
+                          </button>
+                          <button
+                            onClick={() => setSelectedPaymentMethods({ ...selectedPaymentMethods, [pkg.id]: 'card' })}
+                            className={`py-2 rounded-lg border font-medium text-sm transition-colors ${selectedPaymentMethods[pkg.id] === 'card'
+                                ? 'bg-blue-600 border-blue-600 text-white'
+                                : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600'
+                              }`}
+                          >
+                            Kart
+                          </button>
                         </div>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xl font-bold text-green-400">{pkg.amount}₺</p>
-                      <p className="text-xs text-slate-500">
-                        {pkg.payment_method === 'cash' ? 'Nakit' : 'Kart'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Adres */}
-                  <div className="mb-2 p-2 bg-slate-800/50 rounded-lg">
-                    <p className="text-xs text-slate-300">{pkg.delivery_address}</p>
-                  </div>
-
-                  {/* NAVİGASYON BUTONU - Sadece on_the_way durumunda göster */}
-                  {pkg.status === 'on_the_way' && pkg.latitude && pkg.longitude && (
-                    <button
-                      onClick={() => handleOpenNavigation(pkg)}
-                      className="w-full mb-2 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 active:from-indigo-800 active:to-purple-800 text-white text-sm font-medium rounded-lg transition-all shadow-md hover:shadow-lg active:scale-95 flex items-center justify-center gap-2"
-                    >
-                      <span>📍</span>
-                      <span>Konuma Git</span>
-                    </button>
-                  )}
-
-                  {/* Durum Badge */}
-                  <div className="mb-3">
-                    <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                      pkg.status === 'assigned' ? 'bg-blue-500/20 text-blue-400' :
-                      pkg.status === 'picking_up' ? 'bg-yellow-500/20 text-yellow-400' :
-                      'bg-red-500/20 text-red-400'
-                    }`}>
-                      {pkg.status === 'assigned' ? 'Yeni Paket' :
-                       pkg.status === 'picking_up' ? 'Almaya Git' :
-                       'Teslimatta'}
-                    </span>
-                  </div>
-
-                  {/* Aksiyon Butonları - Mobil Responsive */}
-                  {pkg.status === 'assigned' && (
-                    <button 
-                      disabled={isUpdating.has(pkg.id)}
-                      onClick={() => handleUpdateStatus(pkg.id, 'picking_up')}
-                      className="w-full py-2 sm:py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm sm:text-base font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isUpdating.has(pkg.id) ? 'İşleniyor...' : 'Kabul Et'}
-                    </button>
-                  )}
-
-                  {pkg.status === 'picking_up' && (
-                    <button 
-                      disabled={isUpdating.has(pkg.id)}
-                      onClick={() => handleUpdateStatus(pkg.id, 'on_the_way', { picked_up_at: new Date().toISOString() })}
-                      className="w-full py-2 sm:py-2.5 bg-yellow-600 hover:bg-yellow-700 active:bg-yellow-800 text-white text-sm sm:text-base font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isUpdating.has(pkg.id) ? 'İşleniyor...' : 'Paketi Aldım'}
-                    </button>
-                  )}
-
-                  {pkg.status === 'on_the_way' && (
-                    <div className="space-y-2">
-                      <div className="grid grid-cols-2 gap-2">
-                        <button 
-                          onClick={() => setSelectedPaymentMethods({...selectedPaymentMethods, [pkg.id]: 'cash'})}
-                          className={`py-2 rounded-lg border font-medium text-sm transition-colors ${
-                            selectedPaymentMethods[pkg.id] === 'cash' 
-                              ? 'bg-green-600 border-green-600 text-white' 
-                              : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600'
-                          }`}
+                        <button
+                          disabled={!selectedPaymentMethods[pkg.id] || isUpdating.has(pkg.id)}
+                          onClick={() => handleUpdateStatus(pkg.id, 'delivered', {
+                            payment_method: selectedPaymentMethods[pkg.id],
+                            delivered_at: new Date().toISOString()
+                          })}
+                          className="w-full py-2.5 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          Nakit
-                        </button>
-                        <button 
-                          onClick={() => setSelectedPaymentMethods({...selectedPaymentMethods, [pkg.id]: 'card'})}
-                          className={`py-2 rounded-lg border font-medium text-sm transition-colors ${
-                            selectedPaymentMethods[pkg.id] === 'card' 
-                              ? 'bg-blue-600 border-blue-600 text-white' 
-                              : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600'
-                          }`}
-                        >
-                          Kart
+                          {isUpdating.has(pkg.id) ? 'Teslim Ediliyor...' : 'Teslim Et'}
                         </button>
                       </div>
-                      <button 
-                        disabled={!selectedPaymentMethods[pkg.id] || isUpdating.has(pkg.id)}
-                        onClick={() => handleUpdateStatus(pkg.id, 'delivered', { 
-                          payment_method: selectedPaymentMethods[pkg.id],
-                          delivered_at: new Date().toISOString() 
-                        })}
-                        className="w-full py-2.5 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {isUpdating.has(pkg.id) ? 'Teslim Ediliyor...' : 'Teslim Et'}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
+                    )}
+                  </div>
+                ))}
               </>
             )}
           </div>
@@ -2193,14 +2192,14 @@ export default function KuryePage() {
                           </span>
                         </div>
                         <p className="font-medium text-sm sm:text-base text-white">{pkg.customer_name}</p>
-                        
+
                         {/* Müşteri Telefonu */}
                         {pkg.customer_phone && (
                           <p className="text-xs text-slate-400 mt-1">
                             📞 {pkg.customer_phone}
                           </p>
                         )}
-                        
+
                         {/* Paket İçeriği */}
                         {pkg.content && (
                           <p className="text-xs text-slate-400 mt-1">
@@ -2254,12 +2253,12 @@ export default function KuryePage() {
                     {pkg.picked_up_at && pkg.delivered_at && (
                       <div className="mt-2 p-2 bg-blue-900/20 rounded-lg border border-blue-800">
                         <p className="text-xs text-blue-300 text-center">
-                          ⏰ {new Date(pkg.picked_up_at).toLocaleTimeString('tr-TR', { 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
-                          })} saatinde kabul ettiğiniz bu paketi {new Date(pkg.delivered_at).toLocaleTimeString('tr-TR', { 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
+                          ⏰ {new Date(pkg.picked_up_at).toLocaleTimeString('tr-TR', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })} saatinde kabul ettiğiniz bu paketi {new Date(pkg.delivered_at).toLocaleTimeString('tr-TR', {
+                            hour: '2-digit',
+                            minute: '2-digit'
                           })} saatinde müşteriye ulaştırdınız
                         </p>
                       </div>
@@ -2337,9 +2336,9 @@ export default function KuryePage() {
                       Sayfa {currentPage} / {totalPages}
                     </span>
                   </div>
-                  <div 
+                  <div
                     id="earnings-scroll-container"
-                    className="space-y-2 max-h-96 overflow-y-auto admin-scrollbar" 
+                    className="space-y-2 max-h-96 overflow-y-auto admin-scrollbar"
                     style={{ WebkitOverflowScrolling: 'touch' }}
                     onScroll={() => saveScrollPosition('earnings-scroll-container')}
                   >
@@ -2395,7 +2394,7 @@ export default function KuryePage() {
                       ))
                     )}
                   </div>
-                  
+
                   {/* SAYFALAMA BUTONLARI */}
                   {totalPages > 1 && (
                     <div className="mt-4 flex justify-center items-center gap-1 flex-wrap">
@@ -2407,7 +2406,7 @@ export default function KuryePage() {
                       >
                         ‹
                       </button>
-                      
+
                       {/* Sayfa Numaraları */}
                       {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => {
                         // İlk 3, son 3 ve mevcut sayfa civarındaki 2 sayfayı göster
@@ -2422,11 +2421,10 @@ export default function KuryePage() {
                             <button
                               key={page}
                               onClick={() => setCurrentPage(page)}
-                              className={`px-3 py-1.5 text-xs rounded transition-colors ${
-                                currentPage === page
+                              className={`px-3 py-1.5 text-xs rounded transition-colors ${currentPage === page
                                   ? 'bg-blue-600 text-white font-bold'
                                   : 'bg-slate-800 hover:bg-slate-700 text-white'
-                              }`}
+                                }`}
                             >
                               {page}
                             </button>
@@ -2439,7 +2437,7 @@ export default function KuryePage() {
                         }
                         return null
                       })}
-                      
+
                       {/* Sonraki Sayfa */}
                       <button
                         onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
@@ -2465,7 +2463,7 @@ export default function KuryePage() {
               <h2 className="text-base sm:text-lg font-bold text-white">Günlük Rapor</h2>
               <button onClick={() => setShowSummary(false)} className="text-slate-400 hover:text-white text-2xl active:scale-90">×</button>
             </div>
-            
+
             <SummaryList courierId={selectedCourierId!} calculateDuration={calculateDuration} />
 
             <div className="mt-4 pt-4 border-t border-slate-800">
@@ -2473,8 +2471,8 @@ export default function KuryePage() {
                 <span className="text-slate-300">Toplam Kazanç:</span>
                 <span className="text-green-400">{(cashTotal + cardTotal).toFixed(2)} ₺</span>
               </div>
-              <button 
-                onClick={() => setShowSummary(false)} 
+              <button
+                onClick={() => setShowSummary(false)}
                 className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-medium transition-colors"
               >
                 Kapat
@@ -2492,14 +2490,14 @@ export default function KuryePage() {
               <h2 className="text-lg sm:text-xl font-bold text-purple-100 flex items-center gap-2">
                 🚀 <span className="hidden xs:inline">Günün En Hızlıları</span><span className="xs:hidden">Sıralama</span>
               </h2>
-              <button 
-                onClick={() => setShowLeaderboard(false)} 
+              <button
+                onClick={() => setShowLeaderboard(false)}
                 className="text-purple-300 hover:text-white text-2xl active:scale-90"
               >
                 ×
               </button>
             </div>
-            
+
             {/* Kendi Sıralaman - Mobil Responsive */}
             {myRank !== null && (
               <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-2 sm:p-3 mb-3 sm:mb-4">
@@ -2523,7 +2521,7 @@ export default function KuryePage() {
                 {leaderboard.slice(0, 10).map((courier, index) => {
                   const isMe = courier.id === selectedCourierId
                   const rank = index + 1
-                  
+
                   // Madalya veya sıra numarası
                   let badge = ''
                   let badgeColor = ''
@@ -2542,26 +2540,23 @@ export default function KuryePage() {
                   }
 
                   return (
-                    <div 
+                    <div
                       key={courier.id}
-                      className={`flex items-center justify-between p-3 rounded-lg transition-all ${
-                        isMe 
-                          ? 'bg-purple-500/30 border border-purple-400 scale-105' 
+                      className={`flex items-center justify-between p-3 rounded-lg transition-all ${isMe
+                          ? 'bg-purple-500/30 border border-purple-400 scale-105'
                           : rank <= 3
-                          ? `bg-gradient-to-r ${badgeColor} bg-opacity-20`
-                          : 'bg-purple-800/30'
-                      }`}
+                            ? `bg-gradient-to-r ${badgeColor} bg-opacity-20`
+                            : 'bg-purple-800/30'
+                        }`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-base font-bold ${
-                          rank <= 3 ? 'text-white' : 'text-purple-300'
-                        }`}>
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-base font-bold ${rank <= 3 ? 'text-white' : 'text-purple-300'
+                          }`}>
                           {badge}
                         </div>
                         <div>
-                          <p className={`text-sm font-medium ${
-                            isMe ? 'text-purple-100 font-bold' : 'text-purple-200'
-                          }`}>
+                          <p className={`text-sm font-medium ${isMe ? 'text-purple-100 font-bold' : 'text-purple-200'
+                            }`}>
                             {courier.full_name} {isMe && '(Sen)'}
                           </p>
                         </div>
@@ -2582,8 +2577,8 @@ export default function KuryePage() {
               <div className="text-xs text-purple-400 text-center mb-3">
                 Son güncelleme: {new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
               </div>
-              <button 
-                onClick={() => setShowLeaderboard(false)} 
+              <button
+                onClick={() => setShowLeaderboard(false)}
                 className="w-full py-2.5 bg-purple-700 hover:bg-purple-600 text-white rounded-lg font-medium transition-colors"
               >
                 Kapat
@@ -2598,7 +2593,7 @@ export default function KuryePage() {
   async function handleLogin(e: any) {
     e.preventDefault()
     if (typeof window === 'undefined') return
-    
+
     try {
       const { data, error } = await supabase
         .from('couriers')
@@ -2606,20 +2601,20 @@ export default function KuryePage() {
         .eq('username', loginForm.username)
         .eq('password', loginForm.password)
         .maybeSingle()
-        
+
       if (error) {
         console.error('Veritabanı hatası:', error)
         setErrorMessage("Veritabanı hatası!")
         return
       }
-      
+
       if (data) {
         // Sadece kurye oturumunu başlat, diğerlerine dokunma
         await supabase
           .from('couriers')
           .update({ is_active: true, status: 'idle' })
           .eq('id', data.id)
-        
+
         // Kurye oturumunu başlat
         localStorage.setItem(LOGIN_STORAGE_KEY, 'true')
         localStorage.setItem(LOGIN_COURIER_ID_KEY, data.id)
@@ -2637,7 +2632,7 @@ export default function KuryePage() {
 
 function SummaryList({ courierId, calculateDuration }: { courierId: string, calculateDuration: any }) {
   const [history, setHistory] = useState<any[]>([]);
-  
+
   useEffect(() => {
     const fetchHistory = async () => {
       const { data } = await supabase
@@ -2645,7 +2640,7 @@ function SummaryList({ courierId, calculateDuration }: { courierId: string, calc
         .select('*')
         .eq('courier_id', courierId)
         .eq('status', 'delivered')
-        .gte('created_at', new Date(new Date().setHours(0,0,0,0)).toISOString());
+        .gte('created_at', new Date(new Date().setHours(0, 0, 0, 0)).toISOString());
       setHistory(data || []);
     };
     fetchHistory();

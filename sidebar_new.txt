@@ -1,0 +1,191 @@
+          <div className="relative bg-slate-900 w-80 h-full overflow-y-auto p-6">
+            {/* Logo and Title */}
+            <div className="mb-8 text-center">
+              <img 
+                src="/logo.png" 
+                alt="Logo" 
+                className="w-24 h-24 mx-auto mb-3"
+              />
+              <h2 className="text-xl font-bold text-white">Admin Panel</h2>
+            </div>
+
+            {/* Menu Options */}
+            <nav className="space-y-2">
+              {/* Live Tracking */}
+              <button
+                onClick={() => {
+                  setActiveTab('live')
+                  setShowMenu(false)
+                  setShowRestaurantSubmenu(false)
+                  setShowCourierSubmenu(false)
+                }}
+                className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${activeTab === 'live'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  }`}
+              >
+                <span className="mr-3">📦</span>
+                Canlı Takip
+              </button>
+
+              {/* History */}
+              <button
+                onClick={() => {
+                  setActiveTab('history')
+                  setShowMenu(false)
+                  setShowRestaurantSubmenu(false)
+                  setShowCourierSubmenu(false)
+                }}
+                className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${activeTab === 'history'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  }`}
+              >
+                <span className="mr-3">📋</span>
+                Geçmiş Siparişler
+              </button>
+
+              {/* Couriers - With Submenu */}
+              <div>
+                <button
+                  onClick={() => setShowCourierSubmenu(!showCourierSubmenu)}
+                  className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${activeTab === 'couriers'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                    }`}
+                >
+                  <span className="mr-3">🚴</span>
+                  Kuryeler
+                  <span className="float-right">{showCourierSubmenu ? '▼' : '▶'}</span>
+                </button>
+                
+                {/* Courier Submenu */}
+                {showCourierSubmenu && (
+                  <div className="ml-4 mt-2 space-y-1">
+                    <button
+                      onClick={() => {
+                        setActiveTab('couriers')
+                        setCourierSubTab('accounts')
+                        setShowMenu(false)
+                      }}
+                      className={`w-full text-left px-4 py-2 rounded-lg text-sm transition-all ${activeTab === 'couriers' && courierSubTab === 'accounts'
+                        ? 'bg-blue-500 text-white'
+                        : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                        }`}
+                    >
+                      👤 Kurye Hesapları
+                    </button>
+                    <button
+                      onClick={() => {
+                        setActiveTab('couriers')
+                        setCourierSubTab('performance')
+                        setShowMenu(false)
+                      }}
+                      className={`w-full text-left px-4 py-2 rounded-lg text-sm transition-all ${activeTab === 'couriers' && courierSubTab === 'performance'
+                        ? 'bg-blue-500 text-white'
+                        : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                        }`}
+                    >
+                      📊 Kurye Performansları
+                    </button>
+                    <button
+                      onClick={() => {
+                        setActiveTab('couriers')
+                        setCourierSubTab('earnings')
+                        setShowMenu(false)
+                      }}
+                      className={`w-full text-left px-4 py-2 rounded-lg text-sm transition-all ${activeTab === 'couriers' && courierSubTab === 'earnings'
+                        ? 'bg-blue-500 text-white'
+                        : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                        }`}
+                    >
+                      💰 Kurye Kazançları
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Restaurants - With Submenu */}
+              <div>
+                <button
+                  onClick={() => setShowRestaurantSubmenu(!showRestaurantSubmenu)}
+                  className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${activeTab === 'restaurants'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                    }`}
+                >
+                  <span className="mr-3">🍽️</span>
+                  Restoranlar
+                  <span className="float-right">{showRestaurantSubmenu ? '▼' : '▶'}</span>
+                </button>
+                
+                {/* Restaurant Submenu */}
+                {showRestaurantSubmenu && (
+                  <div className="ml-4 mt-2 space-y-1">
+                    <button
+                      onClick={() => {
+                        setActiveTab('restaurants')
+                        setRestaurantSubTab('list')
+                        setShowMenu(false)
+                      }}
+                      className={`w-full text-left px-4 py-2 rounded-lg text-sm transition-all ${activeTab === 'restaurants' && restaurantSubTab === 'list'
+                        ? 'bg-blue-500 text-white'
+                        : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                        }`}
+                    >
+                      📋 Restoranlar Listesi
+                    </button>
+                    <button
+                      onClick={() => {
+                        setActiveTab('restaurants')
+                        setRestaurantSubTab('details')
+                        setShowMenu(false)
+                      }}
+                      className={`w-full text-left px-4 py-2 rounded-lg text-sm transition-all ${activeTab === 'restaurants' && restaurantSubTab === 'details'
+                        ? 'bg-blue-500 text-white'
+                        : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                        }`}
+                    >
+                      📊 Restoran Sipariş Detayları
+                    </button>
+                    <button
+                      onClick={() => {
+                        setActiveTab('restaurants')
+                        setRestaurantSubTab('debt')
+                        setShowMenu(false)
+                      }}
+                      className={`w-full text-left px-4 py-2 rounded-lg text-sm transition-all ${activeTab === 'restaurants' && restaurantSubTab === 'debt'
+                        ? 'bg-blue-500 text-white'
+                        : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                        }`}
+                    >
+                      💳 Restoranların Borcu
+                    </button>
+                    <button
+                      onClick={() => {
+                        setActiveTab('restaurants')
+                        setRestaurantSubTab('payments')
+                        setShowMenu(false)
+                      }}
+                      className={`w-full text-left px-4 py-2 rounded-lg text-sm transition-all ${activeTab === 'restaurants' && restaurantSubTab === 'payments'
+                        ? 'bg-blue-500 text-white'
+                        : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                        }`}
+                    >
+                      💰 Restoranların Ödemesi
+                    </button>
+                  </div>
+                )}
+              </div>
+            </nav>
+
+            <button
+              onClick={() => {
+                localStorage.removeItem('admin_logged_in')
+                window.location.href = '/'
+              }}
+              className="w-full mt-8 bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-lg font-medium transition-colors"
+            >
+              ← Çıkış Yap
+            </button>
+          </div>

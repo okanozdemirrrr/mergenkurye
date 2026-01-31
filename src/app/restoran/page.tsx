@@ -1,3 +1,10 @@
+/**
+ * @file src/app/restoran/page.tsx
+ * @description Restoran Arayüzü Uygulaması.
+ * Restoranların yeni sipariş girdiği (manuel veya eklenti ile otomatik), 
+ * aktif siparişlerini takip ettiği ve finansal borç/alacak durumlarını 
+ * izlediği ana arayüzdür. Satış istatistikleri ve performans grafikleri sunar.
+ */
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -23,7 +30,7 @@ interface Package {
   customer_phone?: string
   delivery_address: string
   amount: number
-  status: string
+  status: 'waiting' | 'assigned' | 'picking_up' | 'on_the_way' | 'delivered' | 'cancelled'
   content?: string
   courier_id?: string | null
   payment_method?: 'cash' | 'card'
@@ -36,6 +43,9 @@ interface Package {
   delivered_at?: string
   restaurant?: Restaurant
   courier_name?: string
+  cancelled_at?: string | null
+  cancelled_by?: 'admin' | 'restaurant' | null
+  cancellation_reason?: string | null
 }
 
 export default function RestoranPage() {
@@ -62,10 +72,23 @@ export default function RestoranPage() {
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [dateFilter, setDateFilter] = useState<'today' | 'week' | 'month' | 'all'>('all')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'delivered' | 'cancelled'>('all')
   const [darkMode, setDarkMode] = useState(true)
   const [showMenu, setShowMenu] = useState(false)
   const [showStatistics, setShowStatistics] = useState(false)
   const [showDebt, setShowDebt] = useState(false)
+
+  // 3 Nokta Menüsü State
+  const [openDropdownId, setOpenDropdownId] = useState<number | null>(null)
+
+  // Dropdown dışına tıklandığında kapat
+  useEffect(() => {
+    const handleClickOutside = () => setOpenDropdownId(null)
+    if (openDropdownId !== null) {
+      document.addEventListener('click', handleClickOutside)
+      return () => document.removeEventListener('click', handleClickOutside)
+    }
+  }, [openDropdownId])
   const [statisticsTab, setStatisticsTab] = useState<'packages' | 'revenue'>('packages')
   const [statisticsFilter, setStatisticsFilter] = useState<'daily' | 'weekly' | 'monthly'>('daily')
   const [statisticsData, setStatisticsData] = useState<any[]>([])
@@ -76,7 +99,7 @@ export default function RestoranPage() {
   // Tarih ve saat formatı
   const formatDateTime = (dateString?: string) => {
     if (!dateString) return '-'
-    
+
     try {
       const date = new Date(dateString)
       const day = date.getDate().toString().padStart(2, '0')
@@ -84,7 +107,7 @@ export default function RestoranPage() {
       const year = date.getFullYear()
       const hours = date.getHours().toString().padStart(2, '0')
       const minutes = date.getMinutes().toString().padStart(2, '0')
-      
+
       return `${day}.${month}.${year} ${hours}:${minutes}`
     } catch (error) {
       return '-'
@@ -93,12 +116,12 @@ export default function RestoranPage() {
 
   const formatTime = (dateString?: string) => {
     if (!dateString) return '-'
-    
+
     try {
       const date = new Date(dateString)
       const hours = date.getHours().toString().padStart(2, '0')
       const minutes = date.getMinutes().toString().padStart(2, '0')
-      
+
       return `${hours}:${minutes}`
     } catch (error) {
       return '-'
@@ -258,15 +281,15 @@ export default function RestoranPage() {
           if (!allPeriods.includes(key)) {
             allPeriods.push(key)
           }
-          
+
           current.setDate(current.getDate() + 7)
         }
       } else {
         // Aylık: Her ayı ekle
         const current = new Date(start)
-        const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 
-                           'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık']
-        
+        const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+          'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık']
+
         while (current <= end) {
           const month = monthNames[current.getMonth()]
           const year = current.getFullYear()
@@ -313,8 +336,8 @@ export default function RestoranPage() {
 
             key = `${startDay}.${startMonth}.${startYear}-${endDay}.${endMonth}.${endYear}`
           } else {
-            const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 
-                               'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık']
+            const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+              'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık']
             const month = monthNames[date.getMonth()]
             const year = date.getFullYear()
             key = `${year} ${month}`
@@ -346,7 +369,7 @@ export default function RestoranPage() {
         console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
         return
       }
-      
+
       console.error('İstatistik verileri yüklenirken hata:', error)
     }
   }
@@ -370,12 +393,12 @@ export default function RestoranPage() {
     try {
       const loggedIn = localStorage.getItem(LOGIN_STORAGE_KEY)
       const loggedRestaurantId = localStorage.getItem(LOGIN_RESTAURANT_ID_KEY)
-      
+
       // Restoran oturumu varsa BURADA KAL!
       if (loggedIn === 'true' && loggedRestaurantId) {
         setIsLoggedIn(true)
         setSelectedRestaurantId(loggedRestaurantId)
-        
+
         // Oturum bilgileri set edildikten sonra restoranları çek
         fetchRestaurants()
       } else {
@@ -403,7 +426,7 @@ export default function RestoranPage() {
       // Tüm hataları sessizce geç - ilk yükleme sırasında kullanıcıyı rahatsız etme
       const errorMsg = error.message?.toLowerCase() || ''
       console.warn('⚠️ Restoranlar yüklenirken hata (sessiz):', error.message)
-      
+
       // Sessizce tekrar dene (retry) - 2 saniye sonra
       setTimeout(() => {
         fetchRestaurants()
@@ -414,13 +437,13 @@ export default function RestoranPage() {
   // Müşteri Memnuniyeti - Google Maps'e yönlendir
   const handleCustomerSatisfaction = () => {
     const restaurant = restaurants.find(r => String(r.id) === String(selectedRestaurantId))
-    
+
     if (!restaurant?.maps_link) {
       setErrorMessage('Google Haritalar linkiniz henüz sisteme tanımlanmamıştır.')
       setTimeout(() => setErrorMessage(''), 3000)
       return
     }
-    
+
     // Yeni sekmede aç
     window.open(restaurant.maps_link, '_blank')
   }
@@ -428,7 +451,7 @@ export default function RestoranPage() {
   // Restoran paketlerini çek
   const fetchPackages = async () => {
     if (!selectedRestaurantId) return
-    
+
     try {
       let query = supabase
         .from('packages')
@@ -457,7 +480,7 @@ export default function RestoranPage() {
       const { data, error } = await query.order('created_at', { ascending: false })
 
       if (error) throw error
-      
+
       const transformed = (data || []).map((pkg: any) => ({
         ...pkg,
         restaurant: pkg.restaurants,
@@ -471,7 +494,7 @@ export default function RestoranPage() {
         console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
         return // Eski veriler ekranda kalsın
       }
-      
+
       console.error('Paketler yüklenirken hata:', error.message)
     }
   }
@@ -480,28 +503,28 @@ export default function RestoranPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     if (typeof window === 'undefined') return
-    
+
     setErrorMessage('')
-    
+
     try {
       const { data, error } = await supabase
         .from('restaurants')
         .select('id, name, password, logo_url, maps_link, delivery_fee')
         .eq('name', loginForm.username)
         .single()
-      
+
       if (error) {
         setErrorMessage('Restoran bulunamadı!')
         return
       }
-      
+
       if (data && data.password === loginForm.password) {
         // Sadece restoran oturumunu başlat, diğerlerine dokunma
         localStorage.setItem(LOGIN_STORAGE_KEY, 'true')
         localStorage.setItem(LOGIN_RESTAURANT_ID_KEY, data.id)
         setIsLoggedIn(true)
         setSelectedRestaurantId(data.id)
-        
+
         // Restoran bilgilerini state'e ekle (logo için)
         setRestaurants([data])
       } else {
@@ -522,29 +545,29 @@ export default function RestoranPage() {
     if (isLoggedIn && selectedRestaurantId) {
       // İlk yükleme
       fetchPackages()
-      
+
       console.log('🔴 Restoran Realtime dinleme başlatıldı - Canlı yayın modu aktif')
       console.log('📍 Dinlenen restoran ID:', selectedRestaurantId)
-      
+
       // Realtime callback fonksiyonu - her zaman güncel state'e erişmek için burada tanımla
       const handlePackageChange = async (payload: any) => {
         console.log('📦 Paket değişikliği algılandı:', payload.eventType, 'ID:', payload.new?.id || payload.old?.id)
-        
+
         // Sadece bu restorana ait değişiklikleri işle (ekstra güvenlik)
         const packageRestaurantId = payload.new?.restaurant_id || payload.old?.restaurant_id
         if (packageRestaurantId && String(packageRestaurantId) !== String(selectedRestaurantId)) {
           console.warn('⚠️ Başka restoranın paketi, atlanıyor:', packageRestaurantId)
           return
         }
-        
+
         // State'i güncelle - sayfa yenileme YOK!
         await fetchPackages()
         console.log('✅ Restoran state güncellendi (packages)')
       }
-      
+
       // Benzersiz kanal ismi - packages-follow-{restaurant_id}-{timestamp}
       const channelName = `packages-follow-${selectedRestaurantId}-${Date.now()}`
-      
+
       // Restoran paketlerini dinle (sadece bu restoranın paketleri)
       const channel = supabase
         .channel(channelName, {
@@ -593,7 +616,7 @@ export default function RestoranPage() {
             }, 5000)
           }
         })
-      
+
       return () => {
         console.log('🔴 Restoran Realtime dinleme durduruldu')
         console.log('📡 Kanal kapatılıyor:', channelName)
@@ -685,7 +708,7 @@ export default function RestoranPage() {
 
       // Başarı mesajı göster
       setSuccessMessage('Sipariş başarıyla kaydedildi!')
-      
+
       // Formu temizle
       setFormData({
         customerName: '',
@@ -716,6 +739,41 @@ export default function RestoranPage() {
     }
   }
 
+  // SİPARİŞ İPTAL FONKSİYONU (Restoran)
+  const handleCancelOrder = async (packageId: number, packageInfo: string) => {
+    const confirmed = window.confirm(
+      `⚠️ Bu siparişi iptal etmek istediğinizden emin misiniz?\n\n${packageInfo}\n\nBu işlem geri alınamaz!`
+    )
+
+    if (!confirmed) return
+
+    try {
+      const { error } = await supabase
+        .from('packages')
+        .update({
+          status: 'cancelled',
+          cancelled_at: new Date().toISOString(),
+          cancelled_by: 'restaurant',
+          cancellation_reason: 'Restoran tarafından iptal edildi',
+          courier_id: null // Kuryeden düşür
+        })
+        .eq('id', packageId)
+
+      if (error) throw error
+
+      setSuccessMessage('✅ Sipariş İptal Edildi')
+      setTimeout(() => setSuccessMessage(''), 2000)
+
+      // Paketleri yenile
+      fetchPackages()
+
+    } catch (error: any) {
+      console.error('Sipariş iptal hatası:', error)
+      setErrorMessage('❌ İptal Hatası: ' + error.message)
+      setTimeout(() => setErrorMessage(''), 3000)
+    }
+  }
+
   const selectedRestaurant = restaurants.find(r => r.id === selectedRestaurantId)
 
   // RENDER BLOKLAMA - Oturum kontrolü tamamlanmadan hiçbir şey gösterme!
@@ -736,46 +794,46 @@ export default function RestoranPage() {
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
         <div className="bg-slate-900 p-8 rounded-2xl border border-slate-800 w-full max-w-md">
           <div className="text-center mb-8">
-            <img 
-              src="/logo.png" 
-              alt="Logo" 
+            <img
+              src="/logo.png"
+              alt="Logo"
               className="w-48 h-48 mx-auto mb-4"
             />
             <h1 className="text-2xl font-bold text-white mb-2">
               Restoran Girişi
             </h1>
           </div>
-          
+
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <input 
-                type="text" 
-                placeholder="Restoran Adı" 
+              <input
+                type="text"
+                placeholder="Restoran Adı"
                 className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors"
                 value={loginForm.username}
-                onChange={e => setLoginForm({...loginForm, username: e.target.value})}
+                onChange={e => setLoginForm({ ...loginForm, username: e.target.value })}
                 required
               />
             </div>
-            
+
             <div>
-              <input 
-                type="password" 
-                placeholder="Şifre" 
+              <input
+                type="password"
+                placeholder="Şifre"
                 className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors"
                 value={loginForm.password}
-                onChange={e => setLoginForm({...loginForm, password: e.target.value})}
+                onChange={e => setLoginForm({ ...loginForm, password: e.target.value })}
                 required
               />
             </div>
-            
-            <button 
+
+            <button
               type="submit"
               className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-lg transition-colors"
             >
               Giriş Yap
             </button>
-            
+
             {errorMessage && (
               <div className="p-3 bg-red-500/20 border border-red-500/50 rounded-lg">
                 <p className="text-red-400 text-sm text-center">{errorMessage}</p>
@@ -790,8 +848,8 @@ export default function RestoranPage() {
   return (
     <div className={`min-h-screen py-6 px-4 ${darkMode ? 'bg-slate-950' : 'bg-gray-100'}`}>
       {/* Hamburger Menü - Sol Üst */}
-      <button 
-        onClick={() => setShowMenu(!showMenu)} 
+      <button
+        onClick={() => setShowMenu(!showMenu)}
         className="fixed top-4 left-4 z-50 bg-slate-800 hover:bg-slate-700 text-white p-3 rounded-lg shadow-lg transition-colors"
       >
         <div className="space-y-1.5">
@@ -804,17 +862,17 @@ export default function RestoranPage() {
       {/* Açılır Menü */}
       {showMenu && (
         <>
-          <div 
+          <div
             className="fixed inset-0 bg-black/50 z-40"
             onClick={() => setShowMenu(false)}
           ></div>
-          
+
           <div className="fixed top-0 left-0 h-full w-64 bg-slate-900 shadow-2xl z-50 overflow-y-auto admin-scrollbar">
             <div className="p-6">
               <div className="mb-8 text-center -mt-4">
-                <img 
-                  src="/logo.png" 
-                  alt="Logo" 
+                <img
+                  src="/logo.png"
+                  alt="Logo"
                   className="w-36 h-36 mx-auto mb-3"
                 />
                 <h2 className="text-xl font-bold text-white">Restoran Panel</h2>
@@ -841,7 +899,7 @@ export default function RestoranPage() {
                   <span className="mr-3">💳</span>
                   Paket Ücretim
                 </button>
-                
+
                 <button
                   onClick={() => {
                     handleCustomerSatisfaction()
@@ -854,12 +912,12 @@ export default function RestoranPage() {
                 </button>
               </nav>
 
-              <button 
-                onClick={() => { 
+              <button
+                onClick={() => {
                   localStorage.removeItem(LOGIN_STORAGE_KEY);
                   localStorage.removeItem(LOGIN_RESTAURANT_ID_KEY);
                   window.location.href = '/restoran';
-                }} 
+                }}
                 className="w-full mt-8 bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-lg font-medium transition-colors"
               >
                 ← Çıkış
@@ -869,26 +927,29 @@ export default function RestoranPage() {
         </>
       )}
 
-      {/* Logo ve Dark Mode Toggle - Sağ Üst */}
+      {/* Logo - Sağ Üst */}
       <div className="fixed -top-10 right-4 z-50 flex items-center gap-3">
-        {/* Dark Mode Toggle */}
-        <button
-          onClick={() => setDarkMode(!darkMode)}
-          className={`p-2 rounded-lg shadow-lg transition-colors ${
-            darkMode ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-white hover:bg-gray-100 text-gray-900 border border-gray-300'
-          }`}
-          title={darkMode ? 'Gündüz Modu' : 'Gece Modu'}
-        >
-          {darkMode ? '☀️' : '🌙'}
-        </button>
-        
         {/* Logo */}
-        <img 
-          src="/logo.png" 
-          alt="Logo" 
+        <img
+          src="/logo.png"
+          alt="Logo"
           className="w-36 h-36"
         />
       </div>
+
+      {/* Dark Mode Toggle - SAĞ ALT KÖŞE */}
+      <button
+        onClick={() => setDarkMode(!darkMode)}
+        className={`fixed bottom-6 right-6 p-2 rounded-full shadow-xl transition-all hover:scale-110 border ${
+          darkMode 
+            ? 'bg-slate-800 hover:bg-slate-700 text-white border-slate-600' 
+            : 'bg-white hover:bg-gray-50 text-gray-900 border-gray-300'
+        }`}
+        style={{ zIndex: 99999 }}
+        title={darkMode ? 'Gündüz Modu' : 'Gece Modu'}
+      >
+        <span className="text-xl">{darkMode ? '☀️' : '🌙'}</span>
+      </button>
 
       {/* İSTATİSTİKLER MODAL */}
       {showStatistics && (
@@ -896,8 +957,8 @@ export default function RestoranPage() {
           <div className="max-w-4xl w-full bg-slate-900 rounded-xl p-6 border border-slate-800">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-white">📊 Paketlerim ve Cirom</h2>
-              <button 
-                onClick={() => setShowStatistics(false)} 
+              <button
+                onClick={() => setShowStatistics(false)}
                 className="text-slate-400 hover:text-white text-2xl"
               >
                 ×
@@ -908,21 +969,19 @@ export default function RestoranPage() {
             <div className="flex gap-2 mb-6">
               <button
                 onClick={() => setStatisticsTab('packages')}
-                className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors ${
-                  statisticsTab === 'packages'
+                className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors ${statisticsTab === 'packages'
                     ? 'bg-blue-600 text-white'
                     : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                }`}
+                  }`}
               >
                 📦 Paket Sayıları
               </button>
               <button
                 onClick={() => setStatisticsTab('revenue')}
-                className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors ${
-                  statisticsTab === 'revenue'
+                className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors ${statisticsTab === 'revenue'
                     ? 'bg-green-600 text-white'
                     : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                }`}
+                  }`}
               >
                 💰 Ciro Analizi
               </button>
@@ -955,33 +1014,30 @@ export default function RestoranPage() {
               <button
                 onClick={() => setStatisticsFilter('daily')}
                 disabled={!startDate || !endDate}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                  statisticsFilter === 'daily'
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${statisticsFilter === 'daily'
                     ? 'bg-purple-600 text-white'
                     : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                }`}
+                  }`}
               >
                 Günlük
               </button>
               <button
                 onClick={() => setStatisticsFilter('weekly')}
                 disabled={!startDate || !endDate}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                  statisticsFilter === 'weekly'
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${statisticsFilter === 'weekly'
                     ? 'bg-purple-600 text-white'
                     : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                }`}
+                  }`}
               >
                 Haftalık
               </button>
               <button
                 onClick={() => setStatisticsFilter('monthly')}
                 disabled={!startDate || !endDate}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                  statisticsFilter === 'monthly'
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${statisticsFilter === 'monthly'
                     ? 'bg-purple-600 text-white'
                     : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                }`}
+                  }`}
               >
                 Aylık
               </button>
@@ -1001,8 +1057,8 @@ export default function RestoranPage() {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={statisticsData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                    <XAxis 
-                      dataKey="name" 
+                    <XAxis
+                      dataKey="name"
                       stroke="#94a3b8"
                       angle={-45}
                       textAnchor="end"
@@ -1010,32 +1066,32 @@ export default function RestoranPage() {
                       style={{ fontSize: '12px' }}
                     />
                     <YAxis stroke="#94a3b8" />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: '#1e293b', 
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#1e293b',
                         border: '1px solid #334155',
                         borderRadius: '8px'
                       }}
                     />
                     <Legend />
                     {statisticsTab === 'packages' ? (
-                      <Bar 
-                        dataKey="count" 
-                        fill="#3b82f6" 
+                      <Bar
+                        dataKey="count"
+                        fill="#3b82f6"
                         name="Paket Sayısı"
                         radius={[8, 8, 0, 0]}
                       />
                     ) : (
                       <>
-                        <Bar 
-                          dataKey="deliveredRevenue" 
+                        <Bar
+                          dataKey="deliveredRevenue"
                           stackId="a"
-                          fill="#10b981" 
+                          fill="#10b981"
                           name="Gerçekleşen Ciro (₺)"
                           radius={[0, 0, 0, 0]}
                         />
-                        <Bar 
-                          dataKey="revenue" 
+                        <Bar
+                          dataKey="revenue"
                           name="Gerçekleşen Ciro (₺)"
                           radius={[8, 8, 0, 0]}
                         />
@@ -1055,8 +1111,8 @@ export default function RestoranPage() {
           <div className="max-w-4xl w-full bg-slate-900 rounded-xl p-6 border border-slate-800 my-8">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-white">💳 Paket Ücretim (Borç Durumu)</h2>
-              <button 
-                onClick={() => setShowDebt(false)} 
+              <button
+                onClick={() => setShowDebt(false)}
                 className="text-slate-400 hover:text-white text-2xl"
               >
                 ×
@@ -1082,7 +1138,7 @@ export default function RestoranPage() {
               const getStartDate = () => {
                 const now = new Date()
                 const start = new Date()
-                
+
                 if (debtFilter === 'today') {
                   start.setHours(0, 0, 0, 0)
                 } else if (debtFilter === 'week') {
@@ -1093,16 +1149,16 @@ export default function RestoranPage() {
                   // Tüm zamanlar için çok eski bir tarih
                   start.setFullYear(2000, 0, 1)
                 }
-                
+
                 return start
               }
 
               const startDate = getStartDate()
-              
+
               // Seçilen tarih aralığındaki delivered paketleri say
-              const deliveredPackages = packages.filter(pkg => 
-                pkg.status === 'delivered' && 
-                pkg.delivered_at && 
+              const deliveredPackages = packages.filter(pkg =>
+                pkg.status === 'delivered' &&
+                pkg.delivered_at &&
                 new Date(pkg.delivered_at) >= startDate
               )
 
@@ -1205,7 +1261,7 @@ export default function RestoranPage() {
                   {/* Bilgilendirme */}
                   <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                     <p className="text-sm text-blue-700 dark:text-blue-400">
-                      ℹ️ <strong>Not:</strong> Paket ücretleri, teslim edilen her paket için {deliveryFee}₺ {!selectedRestaurant?.delivery_fee && '(varsayılan) '}üzerinden hesaplanmaktadır. 
+                      ℹ️ <strong>Not:</strong> Paket ücretleri, teslim edilen her paket için {deliveryFee}₺ {!selectedRestaurant?.delivery_fee && '(varsayılan) '}üzerinden hesaplanmaktadır.
                       Sadece <strong>status = 'delivered'</strong> olan paketler hesaplamaya dahildir.
                       {!selectedRestaurant?.delivery_fee && ' Özel ücret tanımlaması için lütfen yöneticinizle iletişime geçin.'}
                     </p>
@@ -1217,18 +1273,18 @@ export default function RestoranPage() {
         </div>
       )}
 
-      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-4">
-        
+      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-5 gap-4">
+
         {/* SOL PANEL - YENİ SİPARİŞ FORMU */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-3">
           <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
             {/* Hero Section - Dükkana Özel Logo ve Başlık */}
             <div className="flex flex-col items-center mb-6">
               {/* Dinamik Restoran Logosu */}
               {selectedRestaurant && (
                 <div className="mb-4">
-                  <img 
-                    src={selectedRestaurant.logo_url || '/logo.png'} 
+                  <img
+                    src={selectedRestaurant.logo_url || '/logo.png'}
                     alt={selectedRestaurant.name}
                     className="h-24 w-auto mx-auto"
                     onError={(e) => {
@@ -1239,12 +1295,12 @@ export default function RestoranPage() {
                   />
                 </div>
               )}
-              
+
               {/* Restoran İsmi */}
               <h1 className="text-3xl font-black text-white uppercase tracking-tighter">
                 {selectedRestaurant?.name || 'RESTORAN PANELİ'}
               </h1>
-              
+
               {/* Alt Başlık */}
               <p className="text-sm text-slate-400 mt-1">
                 Yeni Sipariş Kayıt Ekranı
@@ -1372,11 +1428,10 @@ export default function RestoranPage() {
                     type="button"
                     onClick={() => setPaymentMethod('cash')}
                     disabled={isSubmitting}
-                    className={`py-2.5 rounded-lg border font-medium transition-colors ${
-                      paymentMethod === 'cash'
+                    className={`py-2.5 rounded-lg border font-medium transition-colors ${paymentMethod === 'cash'
                         ? 'bg-green-600 border-green-600 text-white'
                         : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600'
-                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                      } disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
                     Nakit
                   </button>
@@ -1384,11 +1439,10 @@ export default function RestoranPage() {
                     type="button"
                     onClick={() => setPaymentMethod('card')}
                     disabled={isSubmitting}
-                    className={`py-2.5 rounded-lg border font-medium transition-colors ${
-                      paymentMethod === 'card'
+                    className={`py-2.5 rounded-lg border font-medium transition-colors ${paymentMethod === 'card'
                         ? 'bg-blue-600 border-blue-600 text-white'
                         : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600'
-                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                      } disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
                     Kart
                   </button>
@@ -1418,15 +1472,52 @@ export default function RestoranPage() {
         </div>
 
         {/* SAĞ PANEL - SİPARİŞ LİSTESİ */}
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-2">
           <div className="bg-slate-900 rounded-xl p-3 border border-slate-800 flex flex-col" style={{ height: 'calc(100vh - 80px)' }}>
             {/* Başlık ve Filtre */}
             <div className="flex justify-between items-center mb-3 flex-shrink-0">
               <div className="flex items-center gap-2">
                 <h2 className="text-sm font-bold text-white">Verilen Siparişler</h2>
                 <span className="bg-orange-500/20 text-orange-400 text-xs px-2 py-0.5 rounded">
-                  {packages.length}
+                  {packages.filter(pkg => {
+                    if (statusFilter === 'delivered') return pkg.status === 'delivered'
+                    if (statusFilter === 'cancelled') return pkg.status === 'cancelled'
+                    return true
+                  }).length}
                 </span>
+                
+                {/* Durum Filtreleme Butonları */}
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => setStatusFilter('delivered')}
+                    className={`text-xs px-2 py-1 rounded font-medium transition-all ${
+                      statusFilter === 'delivered'
+                        ? 'bg-green-600 text-white shadow-lg'
+                        : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                    }`}
+                  >
+                    ✅ Teslim
+                  </button>
+                  <button
+                    onClick={() => setStatusFilter('cancelled')}
+                    className={`text-xs px-2 py-1 rounded font-medium transition-all ${
+                      statusFilter === 'cancelled'
+                        ? 'bg-red-600 text-white shadow-lg'
+                        : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                    }`}
+                  >
+                    🚫 İptal
+                  </button>
+                  {statusFilter !== 'all' && (
+                    <button
+                      onClick={() => setStatusFilter('all')}
+                      className="text-xs px-2 py-1 rounded bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors"
+                      title="Filtreyi Temizle"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
               </div>
               <select
                 value={dateFilter}
@@ -1439,19 +1530,69 @@ export default function RestoranPage() {
                 <option value="all">Tümü</option>
               </select>
             </div>
-            
+
             {/* Kompakt Liste - Tam Boy Scroll */}
             <div className="space-y-2 overflow-y-auto custom-scrollbar flex-1">
-              {packages.length === 0 ? (
+              {packages.filter(pkg => {
+                if (statusFilter === 'delivered') return pkg.status === 'delivered'
+                if (statusFilter === 'cancelled') return pkg.status === 'cancelled'
+                return true
+              }).length === 0 ? (
                 <div className="text-center py-8 text-slate-500">
                   <div className="text-3xl mb-2">📦</div>
-                  <p className="text-sm">Sipariş yok</p>
+                  <p className="text-sm">
+                    {statusFilter === 'delivered' 
+                      ? 'Teslim edilen sipariş yok'
+                      : statusFilter === 'cancelled'
+                        ? 'İptal edilen sipariş yok'
+                        : 'Sipariş yok'
+                    }
+                  </p>
                 </div>
               ) : (
-                packages.map(pkg => (
-                  <div key={pkg.id} className="bg-slate-800/50 p-2 rounded-lg border border-slate-700 hover:border-slate-600 transition-colors mb-2">
+                packages.filter(pkg => {
+                  if (statusFilter === 'delivered') return pkg.status === 'delivered'
+                  if (statusFilter === 'cancelled') return pkg.status === 'cancelled'
+                  return true
+                }).map(pkg => (
+                  <div key={pkg.id} className="relative bg-slate-800/50 p-2 rounded-lg border border-slate-700 hover:border-slate-600 transition-colors mb-2">
+
+                    {/* 3 Nokta Menüsü - SOL ÜST */}
+                    <div className="absolute top-2 left-2 z-10">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setOpenDropdownId(openDropdownId === pkg.id ? null : pkg.id)
+                        }}
+                        className="p-1 hover:bg-slate-700 rounded transition-colors"
+                        title="Menü"
+                      >
+                        <span className="text-slate-400 text-sm">⋮</span>
+                      </button>
+
+                      {openDropdownId === pkg.id && (
+                        <div className="absolute left-0 top-8 bg-slate-700 rounded-lg shadow-xl border border-slate-600 py-1 min-w-[160px] z-20">
+                          {pkg.status !== 'cancelled' && (
+                            <button
+                              onClick={() => {
+                                setOpenDropdownId(null)
+                                handleCancelOrder(
+                                  pkg.id,
+                                  `Sipariş: ${pkg.order_number || pkg.id}\nMüşteri: ${pkg.customer_name}\nTutar: ${pkg.amount}₺`
+                                )
+                              }}
+                              className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-red-900/20 transition-colors flex items-center gap-2"
+                            >
+                              <span>🚫</span>
+                              <span>Siparişi İptal Et</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
                     <div className="flex justify-between items-start mb-1.5">
-                      <div className="flex-1">
+                      <div className="flex-1 ml-6">
                         <div className="flex items-center gap-1.5 mb-1 flex-wrap">
                           <span className="text-xs font-bold text-blue-400 bg-blue-500/20 px-1.5 py-0.5 rounded">
                             {pkg.order_number || 'Hazırlanıyor...'}
@@ -1462,34 +1603,30 @@ export default function RestoranPage() {
                             </span>
                           )}
                           <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                            pkg.status === 'cancelled' ? 'bg-red-500/20 text-red-400' :
                             pkg.status === 'waiting' ? 'bg-yellow-500/20 text-yellow-400' :
                             pkg.status === 'assigned' ? 'bg-blue-500/20 text-blue-400' :
                             pkg.status === 'picking_up' ? 'bg-orange-500/20 text-orange-400' :
                             pkg.status === 'on_the_way' ? 'bg-purple-500/20 text-purple-400' :
                             'bg-green-500/20 text-green-400'
-                          }`}>
-                            {pkg.status === 'waiting' ? 'Bekliyor' :
+                            }`}>
+                            {pkg.status === 'cancelled' ? '🚫 İptal Edildi' :
+                             pkg.status === 'waiting' ? 'Bekliyor' :
                              pkg.status === 'assigned' ? 'Atandı' :
                              pkg.status === 'picking_up' ? 'Alınıyor' :
                              pkg.status === 'on_the_way' ? 'Yolda' : 'Teslim'}
                           </span>
                         </div>
-                        
+
                         {/* Kurye Bilgisi - Kompakt */}
-                        {pkg.courier_id ? (
+                        {pkg.courier_id && (
                           <div className="mb-1">
                             <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-indigo-500/20 text-indigo-400 inline-flex items-center gap-1">
                               🚴 {pkg.courier_name || 'Kurye'}
                             </span>
                           </div>
-                        ) : (
-                          <div className="mb-1">
-                            <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-slate-600/30 text-slate-400 inline-flex items-center gap-1">
-                              ⏳ Kurye Bekleniyor
-                            </span>
-                          </div>
                         )}
-                        
+
                         <h3 className="font-medium text-sm text-white">{pkg.customer_name}</h3>
                         {pkg.customer_phone && (
                           <p className="text-xs text-slate-400 mt-0.5">
@@ -1498,7 +1635,7 @@ export default function RestoranPage() {
                         )}
                       </div>
                     </div>
-                    
+
                     {/* Tarih ve Saat Bilgileri - Kompakt */}
                     <div className="bg-slate-900/50 p-1.5 rounded mb-1.5 space-y-0.5">
                       <div className="flex justify-between items-center text-xs">
@@ -1509,24 +1646,30 @@ export default function RestoranPage() {
                         <span className="text-slate-400">🕐 Giriş:</span>
                         <span className="text-blue-400 font-medium">{formatTime(pkg.created_at)}</span>
                       </div>
-                      {pkg.delivered_at && (
+                      {pkg.delivered_at && pkg.status === 'delivered' && (
                         <div className="flex justify-between items-center text-xs">
                           <span className="text-slate-400">✅ Teslim:</span>
                           <span className="text-green-400 font-medium">{formatTime(pkg.delivered_at)}</span>
                         </div>
                       )}
+                      {pkg.cancelled_at && pkg.status === 'cancelled' && (
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-slate-400">🚫 İptal:</span>
+                          <span className="text-red-400 font-medium">{formatTime(pkg.cancelled_at)}</span>
+                        </div>
+                      )}
                     </div>
-                    
+
                     {pkg.content && (
                       <p className="text-xs text-slate-400 mb-1.5">
                         📦 {pkg.content}
                       </p>
                     )}
-                    
+
                     <p className="text-xs text-slate-400 mb-1.5 line-clamp-1">
                       📍 {pkg.delivery_address}
                     </p>
-                    
+
                     <div className="flex justify-between items-center">
                       <span className="font-bold text-green-400 text-sm">
                         {pkg.amount}₺
