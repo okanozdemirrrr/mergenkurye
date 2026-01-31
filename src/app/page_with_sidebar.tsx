@@ -5,6 +5,11 @@ import { supabase } from './lib/supabase'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts'
 import { getPlatformBadgeClass, getPlatformDisplayName } from './lib/platformUtils'
 
+// AŞAMA 1: Tab görünümlerini ayrı dosyalara taşıdık
+import { LiveOrdersView } from './admin/components/tabs/LiveOrdersView'
+import { HistoryView } from './admin/components/tabs/HistoryView'
+import { ManagementView } from './admin/components/tabs/ManagementView'
+
 interface Restaurant {
   id: number | string
   name: string
@@ -2908,10 +2913,36 @@ export default function Home() {
           )}
 
           {/* Tab İçerikleri */}
-          {activeTab === 'live' && <LiveTrackingTab />}
-          {activeTab === 'history' && <HistoryTab />}
-          {activeTab === 'couriers' && <CouriersTab />}
-          {activeTab === 'restaurants' && <RestaurantsTab />}
+          {activeTab === 'live' && (
+            <LiveOrdersView
+              packages={packages}
+              couriers={couriers}
+              isLoading={isLoading}
+              selectedCouriers={selectedCouriers}
+              assigningIds={assigningIds}
+              formatTurkishTime={formatTurkishTime}
+              handleCourierChange={handleCourierChange}
+              handleAssignCourier={handleAssignCourier}
+            />
+          )}
+          {activeTab === 'history' && (
+            <HistoryView
+              deliveredPackages={deliveredPackages}
+              dateFilter={dateFilter}
+              setDateFilter={setDateFilter}
+              historyCurrentPage={historyCurrentPage}
+              setHistoryCurrentPage={setHistoryCurrentPage}
+              HISTORY_ITEMS_PER_PAGE={HISTORY_ITEMS_PER_PAGE}
+              formatTurkishTime={formatTurkishTime}
+            />
+          )}
+          {(activeTab === 'couriers' || activeTab === 'restaurants') && (
+            <ManagementView
+              activeTab={activeTab}
+              CouriersTabComponent={CouriersTab}
+              RestaurantsTabComponent={RestaurantsTab}
+            />
+          )}
         </div>
       </div>
     </div>
