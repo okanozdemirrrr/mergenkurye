@@ -2037,16 +2037,27 @@ export default function KuryePage() {
                           <p className="text-xs text-slate-400 mt-1">📦 {pkg.content}</p>
                         )}
 
-                        {/* Müşteri Telefonu - Her zaman göster */}
+                        {/* Müşteri Telefonu - Koşullu Görünüm */}
                         {pkg.customer_phone && (
                           <div className="mt-2">
-                            <p className="text-xs text-slate-400">📞 {pkg.customer_phone}</p>
-                            <a
-                              href={`tel:${pkg.customer_phone}`}
-                              className="inline-block mt-1 py-1.5 px-3 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white text-xs font-medium rounded transition-colors"
-                            >
-                              � Ara
-                            </a>
+                            {/* Yolda ise: Tam numara + Büyük Ara Butonu */}
+                            {pkg.status === 'on_the_way' ? (
+                              <>
+                                <p className="text-xs text-slate-400 mb-2">📞 {pkg.customer_phone}</p>
+                                <a
+                                  href={`tel:${pkg.customer_phone}`}
+                                  className="inline-flex items-center gap-2 py-3 px-6 bg-green-500 hover:bg-green-600 active:bg-green-700 text-white text-base font-bold rounded-xl transition-all shadow-lg hover:shadow-xl active:scale-95"
+                                >
+                                  <span className="text-xl">📞</span>
+                                  <span>Müşteriyi Ara</span>
+                                </a>
+                              </>
+                            ) : (
+                              /* Diğer durumlarda: Maskelenmiş numara */
+                              <p className="text-xs text-slate-500">
+                                📞 {pkg.customer_phone.substring(0, 4)} **** {pkg.customer_phone.substring(pkg.customer_phone.length - 2)}
+                              </p>
+                            )}
                           </div>
                         )}
 
@@ -2245,10 +2256,10 @@ export default function KuryePage() {
                         </div>
                         <p className="font-medium text-sm sm:text-base text-white">{pkg.customer_name}</p>
 
-                        {/* Müşteri Telefonu */}
+                        {/* Müşteri Telefonu - Maskelenmiş */}
                         {pkg.customer_phone && (
-                          <p className="text-xs text-slate-400 mt-1">
-                            📞 {pkg.customer_phone}
+                          <p className="text-xs text-slate-500 mt-1">
+                            📞 {pkg.customer_phone.substring(0, 4)} **** {pkg.customer_phone.substring(pkg.customer_phone.length - 2)}
                           </p>
                         )}
 
@@ -2416,8 +2427,8 @@ export default function KuryePage() {
                               </div>
                               <p className="font-medium text-sm text-white">{pkg.customer_name}</p>
                               {pkg.customer_phone && (
-                                <p className="text-xs text-slate-400 mt-1">
-                                  📞 {pkg.customer_phone}
+                                <p className="text-xs text-slate-500 mt-1">
+                                  📞 {pkg.customer_phone.substring(0, 4)} **** {pkg.customer_phone.substring(pkg.customer_phone.length - 2)}
                                 </p>
                               )}
                               <p className="text-xs text-slate-400 mt-1">
