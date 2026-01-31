@@ -10,7 +10,7 @@
 
 import { Package, Courier } from '@/types'
 import { OrderActionMenu } from '@/components/ui/OrderActionMenu'
-import { OrderActivityFeed } from './OrderActivityFeed'
+import { OrderDrawer } from './OrderDrawer'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
 import { formatTurkishTime } from '@/utils/dateHelpers'
 
@@ -47,8 +47,8 @@ export function LiveTrackingTab({
 
     return (
         <div className="space-y-6">
-            {/* YATAY SİPARİŞ ŞERİDİ - EN ÜSTTE */}
-            <OrderActivityFeed
+            {/* DRAWER BUTONU - SABİT SAĞ ÜST KÖŞE */}
+            <OrderDrawer
                 packages={assignedPackages}
                 couriers={couriers}
                 openDropdownId={openDropdownId}
