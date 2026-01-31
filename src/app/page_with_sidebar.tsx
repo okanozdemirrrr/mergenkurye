@@ -10,6 +10,9 @@ import { LiveOrdersView } from './admin/components/tabs/LiveOrdersView'
 import { HistoryView } from './admin/components/tabs/HistoryView'
 import { ManagementView } from './admin/components/tabs/ManagementView'
 
+// AŞAMA 2: Veri yönetimini custom hook'a taşıdık
+import { useAdminData } from '@/hooks/useAdminData'
+
 interface Restaurant {
   id: number | string
   name: string
@@ -79,18 +82,29 @@ export default function Home() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [loginForm, setLoginForm] = useState({ username: '', password: '' })
+  
+  // AŞAMA 2: Veri yönetimi custom hook'tan geliyor
+  const {
+    packages,
+    deliveredPackages,
+    couriers,
+    restaurants,
+    isLoading,
+    errorMessage: dataErrorMessage,
+    refreshData,
+    setPackages,
+    setCouriers,
+    setRestaurants
+  } = useAdminData(isLoggedIn)
+  
+  // UI State'leri (bunlar kalıyor)
   const [activeTab, setActiveTab] = useState<'live' | 'history' | 'couriers' | 'restaurants'>('live')
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [notificationMessage, setNotificationMessage] = useState('')
-  const [packages, setPackages] = useState<Package[]>([])
-  const [deliveredPackages, setDeliveredPackages] = useState<Package[]>([])
   const [selectedCourierOrders, setSelectedCourierOrders] = useState<Package[]>([])
   const [selectedCourierId, setSelectedCourierId] = useState<string | null>(null)
   const [showCourierModal, setShowCourierModal] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
-  const [couriers, setCouriers] = useState<Courier[]>([])
-  const [restaurants, setRestaurants] = useState<Restaurant[]>([])
   const [selectedCouriers, setSelectedCouriers] = useState<{ [key: number]: string }>({})
   const [assigningIds, setAssigningIds] = useState<Set<number>>(new Set())
   const [restaurantFilter, setRestaurantFilter] = useState<number | null>(null)
