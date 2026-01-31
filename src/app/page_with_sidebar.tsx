@@ -90,7 +90,7 @@ export default function Home() {
     couriers,
     restaurants,
     isLoading,
-    errorMessage: dataErrorMessage,
+    errorMessage: dataErrorMessage, // Hook'tan gelen hata mesajı
     refreshData,
     setPackages,
     setCouriers,
@@ -100,7 +100,7 @@ export default function Home() {
   // UI State'leri (bunlar kalıyor)
   const [activeTab, setActiveTab] = useState<'live' | 'history' | 'couriers' | 'restaurants'>('live')
   const [successMessage, setSuccessMessage] = useState('')
-  const [errorMessage, setErrorMessage] = useState('')
+  const [errorMessage, setErrorMessage] = useState('') // UI hata mesajları için
   const [notificationMessage, setNotificationMessage] = useState('')
   const [selectedCourierOrders, setSelectedCourierOrders] = useState<Package[]>([])
   const [selectedCourierId, setSelectedCourierId] = useState<string | null>(null)
@@ -396,312 +396,7 @@ export default function Home() {
     }
   }, [isLoggedIn])
 
-  const fetchPackages = async (isInitialLoad = false) => {
-    if (isInitialLoad) {
-      setErrorMessage('')
-    }
-    
-    try {
-      // Bugün (gece 00:00'dan itibaren)
-      const todayStart = new Date()
-      todayStart.setHours(0, 0, 0, 0)
-
-      // Sadece kurye atanmamış paketleri çek
-      const { data, error } = await supabase
-        .from('packages')
-        .select('*, restaurants(*)')
-        .is('courier_id', null)
-        .gte('created_at', todayStart.toISOString())
-        .order('created_at', { ascending: false })
-      
-      if (error) throw error
-
-      const transformedData = (data || []).map((pkg: any) => ({
-        ...pkg,
-        restaurant: Array.isArray(pkg.restaurants) && pkg.restaurants.length > 0 
-          ? pkg.restaurants[0] 
-          : pkg.restaurants || null,
-        restaurants: undefined
-      }))
-
-      // Yeni paket kontrolü - ID bazlı
-      const currentIds = new Set(transformedData.map(p => p.id))
-      
-      // Sadece gerçekten yeni eklenen paketleri bul (ID'si daha önce hiç görülmemiş)
-      const newPackages = transformedData.filter(p => !lastPackageIds.has(p.id))
-      
-      // Bildirim: Sadece lastPackageIds dolu ise (ilk yükleme değilse) ve gerçekten yeni paket varsa
-      // VE paket sayısı artmışsa (durum değişikliği değil, yeni paket)
-      const isReallyNewPackage = newPackages.length > 0 && 
-                                  lastPackageIds.size > 0 && 
-                                  transformedData.length > packages.length
-      
-      if (isReallyNewPackage) {
-        playNotificationSound()
-        sendBrowserNotification(
-          '🔔 Yeni Sipariş Geldi!',
-          `${newPackages[0].customer_name} - ${newPackages[0].amount}₺`,
-          '/'
-        )
-        setNewOrderDetails(newPackages[0])
-        setShowNotificationPopup(true)
-        setTimeout(() => setShowNotificationPopup(false), 8000)
-      }
-      
-      setLastPackageIds(currentIds)
-      setPackages(transformedData)
-    } catch (error: any) {
-      // İnternet hatalarını sessizce geç
-      const errorMsg = error.message?.toLowerCase() || ''
-      if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
-        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
-        return // Eski veriler ekranda kalsın
-      }
-      
-      // Sadece ilk yüklemede hata göster
-      if (isInitialLoad) {
-        console.error('Siparişler yüklenirken hata:', error)
-        setErrorMessage('Siparişler yüklenirken hata: ' + error.message)
-      }
-    }
-  }
-
-  const fetchDeliveredPackages = async () => {
-    try {
-      // TÜM delivered paketleri çek (filtresiz)
-      const { data, error } = await supabase
-        .from('packages')
-        .select('*, restaurants(*), couriers(*)')
-        .eq('status', 'delivered')
-        .order('delivered_at', { ascending: false })
-
-      if (error) throw error
-
-      const transformedData = (data || []).map((pkg: any) => ({
-        ...pkg,
-        restaurant: pkg.restaurants,
-        courier_name: pkg.couriers?.full_name,
-        restaurants: undefined,
-        couriers: undefined
-      }))
-
-      setDeliveredPackages(transformedData)
-    } catch (error: any) {
-      // İnternet hatalarını sessizce geç
-      const errorMsg = error.message?.toLowerCase() || ''
-      if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
-        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
-        return
-      }
-      
-      console.error('Geçmiş siparişler yüklenirken hata:', error.message)
-    }
-  }
-
-  const fetchCouriers = async (isInitialLoad = false) => {
-    if (isInitialLoad) {
-      setErrorMessage('') // Sadece ilk yüklemede hataları temizle
-    }
-    
-    try {
-      const { data, error } = await supabase
-        .from('couriers')
-        .select('*')
-        .order('full_name', { ascending: true })
-
-      if (error) throw error
-      
-      if (!data || data.length === 0) {
-        setCouriers([])
-        return
-      }
-      
-      const couriersData = data.map(courier => ({
-        ...courier,
-        id: courier.id,
-        full_name: courier.full_name || 'İsimsiz Kurye',
-        is_active: Boolean(courier.is_active),
-        deliveryCount: 0,
-        todayDeliveryCount: 0,
-        activePackageCount: 0
-      }))
-      
-      setCouriers(couriersData)
-      
-      // Paket sayılarını ayrı olarak çek
-      if (couriersData.length > 0) {
-        const ids = couriersData.map(c => c.id)
-        await Promise.all([
-          fetchCourierDeliveryCounts(ids),
-          fetchCourierTodayDeliveryCounts(ids),
-          fetchCourierActivePackageCounts(ids),
-          fetchCourierDebtsTotal(ids)
-        ])
-      }
-    } catch (error: any) {
-      // İnternet hatalarını sessizce geç
-      const errorMsg = error.message?.toLowerCase() || ''
-      if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
-        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
-        return
-      }
-      
-      // Sadece ilk yüklemede hata göster
-      if (isInitialLoad) {
-        setErrorMessage('Kuryeler yüklenemedi: ' + error.message)
-      }
-    }
-  }
-
-  const fetchCourierActivePackageCounts = async (courierIds: string[]) => {
-    try {
-      const { data, error } = await supabase
-        .from('packages')
-        .select('courier_id')
-        .in('courier_id', courierIds)
-        .neq('status', 'delivered')
-
-      if (error) throw error
-
-      const counts: { [key: string]: number } = {}
-      data?.forEach((pkg) => { 
-        if (pkg.courier_id) {
-          counts[pkg.courier_id] = (counts[pkg.courier_id] || 0) + 1 
-        }
-      })
-
-      setCouriers(prev => prev.map(c => ({ 
-        ...c, 
-        activePackageCount: counts[c.id] || 0 
-      })))
-    } catch (error: any) {
-      // İnternet hatalarını sessizce geç
-      const errorMsg = error.message?.toLowerCase() || ''
-      if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
-        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
-        return
-      }
-      
-      console.error('Aktif paket sayıları alınırken hata:', error)
-    }
-  }
-
-  const fetchCourierDeliveryCounts = async (courierIds: string[]) => {
-    try {
-      const { data, error } = await supabase
-        .from('packages')
-        .select('courier_id')
-        .eq('status', 'delivered')
-        .in('courier_id', courierIds)
-
-      if (error) throw error
-
-      const counts: { [key: string]: number } = {}
-      data?.forEach((pkg) => { 
-        if (pkg.courier_id) {
-          counts[pkg.courier_id] = (counts[pkg.courier_id] || 0) + 1 
-        }
-      })
-
-      setCouriers(prev => prev.map(c => ({ 
-        ...c, 
-        deliveryCount: counts[c.id] || 0 
-      })))
-    } catch (error: any) {
-      // İnternet hatalarını sessizce geç
-      const errorMsg = error.message?.toLowerCase() || ''
-      if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
-        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
-        return
-      }
-      
-      console.error('Kurye teslimat sayıları alınırken hata:', error)
-    }
-  }
-
-  const fetchCourierTodayDeliveryCounts = async (courierIds: string[]) => {
-    try {
-      // Bugün (gece 00:00'dan itibaren) - UTC formatında
-      const todayStart = new Date()
-      todayStart.setHours(0, 0, 0, 0)
-      
-      // Yarın (gece 00:00) - Bugünün bitiş saati
-      const tomorrowStart = new Date(todayStart)
-      tomorrowStart.setDate(tomorrowStart.getDate() + 1)
-      
-      const { data, error } = await supabase
-        .from('packages')
-        .select('courier_id, delivered_at')
-        .eq('status', 'delivered')
-        .in('courier_id', courierIds)
-        .gte('delivered_at', todayStart.toISOString())
-        .lt('delivered_at', tomorrowStart.toISOString())
-        .not('delivered_at', 'is', null)
-
-      if (error) throw error
-
-      const counts: { [key: string]: number } = {}
-      data?.forEach((pkg) => { 
-        if (pkg.courier_id) {
-          counts[pkg.courier_id] = (counts[pkg.courier_id] || 0) + 1 
-        }
-      })
-
-      setCouriers(prev => prev.map(c => ({ 
-        ...c, 
-        todayDeliveryCount: counts[c.id] || 0 
-      })))
-    } catch (error: any) {
-      // İnternet hatalarını sessizce geç
-      const errorMsg = error.message?.toLowerCase() || ''
-      if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
-        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
-        return
-      }
-      
-      console.error('Kurye bugünkü teslimat sayıları alınırken hata:', error)
-    }
-  }
-
-  // Kurye toplam borçlarını çek
-  const fetchCourierDebtsTotal = async (courierIds: string[]) => {
-    try {
-      const { data, error } = await supabase
-        .from('courier_debts')
-        .select('courier_id, remaining_amount')
-        .eq('status', 'pending')
-        .in('courier_id', courierIds)
-
-      if (error) throw error
-
-      const debts: { [key: string]: number } = {}
-      data?.forEach((debt) => { 
-        if (debt.courier_id) {
-          debts[debt.courier_id] = (debts[debt.courier_id] || 0) + debt.remaining_amount
-        }
-      })
-
-      setCouriers(prev => prev.map(c => ({ 
-        ...c, 
-        totalDebt: debts[c.id] || 0 
-      })))
-    } catch (error: any) {
-      // Tablo yoksa veya internet hatası varsa sessizce geç
-      const errorMsg = error.message?.toLowerCase() || ''
-      if (errorMsg.includes('failed to fetch') || 
-          errorMsg.includes('network') || 
-          errorMsg.includes('could not find') ||
-          errorMsg.includes('table') ||
-          errorMsg.includes('schema cache')) {
-        console.warn('⚠️ Borç tablosu henüz oluşturulmamış veya bağlantı hatası (sessiz):', error.message)
-        // Borç bilgisi olmadan devam et
-        setCouriers(prev => prev.map(c => ({ ...c, totalDebt: 0 })))
-        return
-      }
-      
-      console.error('Kurye borçları alınırken hata:', error)
-    }
-  }
+  // ✅ AŞAMA 2: Tüm fetch fonksiyonları useAdminData hook'una taşındı!
 
   // Kurye borçlarını çek
   const fetchCourierDebts = async (courierId: string) => {
@@ -927,7 +622,7 @@ export default function Home() {
       setShowEndOfDayModal(false)
       setEndOfDayAmount('')
       await fetchCourierDebts(selectedCourierId)
-      await fetchCouriers() // Kurye listesindeki borç bilgisini güncelle
+      await refreshData() // Tüm verileri güncelle (hook'tan)
       
       setTimeout(() => setSuccessMessage(''), 3000)
     } catch (error: any) {
@@ -1046,7 +741,7 @@ export default function Home() {
       setShowPayDebtModal(false)
       setPayDebtAmount('')
       await fetchCourierDebts(selectedCourierId)
-      await fetchCouriers() // Kurye listesindeki borç bilgisini güncelle
+      await refreshData() // Tüm verileri güncelle (hook'tan)
       
       setTimeout(() => setSuccessMessage(''), 3000)
     } catch (error: any) {
@@ -1361,7 +1056,7 @@ export default function Home() {
       setSelectedRestaurantId(null)
       setRestaurantPaymentAmount('')
       await fetchRestaurantDebts(selectedRestaurantId)
-      await fetchRestaurants() // Restoran listesindeki borç rakamlarını anında güncelle
+      await refreshData() // Tüm verileri güncelle (hook'tan)
       
       setTimeout(() => setSuccessMessage(''), 3000)
     } catch (error: any) {
@@ -1479,7 +1174,7 @@ export default function Home() {
       setSelectedRestaurantId(null)
       setRestaurantDebtPayAmount('')
       await fetchRestaurantDebts(selectedRestaurantId)
-      await fetchRestaurants() // Restoran listesindeki borç rakamlarını anında güncelle
+      await refreshData() // Tüm verileri güncelle (hook'tan)
       
       setTimeout(() => setSuccessMessage(''), 3000)
     } catch (error: any) {
@@ -1571,136 +1266,8 @@ export default function Home() {
     }
   }
 
-  useEffect(() => {
-    if (isLoggedIn) {
-      // İlk yükleme - SADECE BURADA LOADING GÖSTER
-      setIsLoading(true)
-      Promise.all([
-        fetchPackages(true),
-        fetchCouriers(true),
-        fetchRestaurants(),
-        fetchDeliveredPackages()
-      ]).finally(() => {
-        setIsLoading(false)
-      })
-    }
-  }, [isLoggedIn])
-
-  // REALTIME ONLY - Sadece veritabanı değişikliklerinde güncelle
-  // ⚠️ ÖNEMLİ: Supabase Dashboard -> Database -> Replication -> 'packages', 'couriers', 'restaurants' tablolarını işaretleyin!
-  // Detaylı kurulum için: SUPABASE_REALTIME_KURULUM.md dosyasına bakın
-  useEffect(() => {
-    if (!isLoggedIn || !isMounted) return
-
-    console.log('🔴 Admin Realtime dinleme başlatıldı - Canlı yayın modu aktif')
-
-    // Son güncelleme zamanını takip et (kendi update'lerini tekrar tetiklememek için)
-    let lastUpdateTime = 0
-    const UPDATE_DEBOUNCE = 1000 // 1 saniye içindeki tekrar güncellemeleri engelle
-
-    // Anti-Loop: Son işlem zamanını takip et
-    let lastAdminActionTime = 0
-    const ANTI_LOOP_DELAY = 2000 // 2 saniye
-
-    const handlePackageChange = async (payload: any) => {
-      const now = Date.now()
-      
-      // Anti-Loop: Admin'in kendi yaptığı işlemden hemen sonra gelen Realtime'ı ignore et
-      if (now - lastAdminActionTime < ANTI_LOOP_DELAY) {
-        console.log('🔒 Anti-Loop: Admin işlemi, Realtime atlandı')
-        return
-      }
-      
-      // UPDATE olayında: Eğer courier_id atandıysa, paketi listeden çıkar
-      if (payload.eventType === 'UPDATE' && payload.new?.courier_id) {
-        setPackages(prev => prev.filter(pkg => pkg.id !== payload.new.id))
-        return
-      }
-      
-      // Diğer durumlar için listeyi yenile
-      await fetchPackages(false)
-      await fetchCouriers(false)
-    }
-
-    const handleCourierChange = async (payload: any) => {
-      await fetchCouriers(false)
-    }
-
-    const handleRestaurantChange = async (payload: any) => {
-      await fetchRestaurants()
-    }
-
-    // Global olarak erişilebilir hale getir (handleAssignCourier'dan çağrılabilmesi için)
-    if (typeof window !== 'undefined') {
-      (window as any).__adminLastActionTime = () => {
-        lastAdminActionTime = Date.now()
-      }
-    }
-
-    const channel = supabase
-      .channel('admin-realtime-all-events', {
-        config: {
-          broadcast: { self: false }, // KRİTİK: Kendi update'lerimizi dinleme
-          presence: { 
-            key: 'admin'
-          }
-        }
-      })
-      .on(
-        'postgres_changes',
-        { 
-          event: '*', // Tüm olaylar (INSERT, UPDATE, DELETE)
-          schema: 'public', 
-          table: 'packages' // FİZİKSEL TABLO (View değil)
-        },
-        handlePackageChange
-      )
-      .on(
-        'postgres_changes',
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'couriers' 
-        },
-        handleCourierChange
-      )
-      .on(
-        'postgres_changes',
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'restaurants' 
-        },
-        handleRestaurantChange
-      )
-      .subscribe((status, err) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ Admin Realtime bağlantısı kuruldu - Fiziksel tablolar dinleniyor')
-        }
-        if (status === 'CHANNEL_ERROR') {
-          console.error('❌ Realtime bağlantı hatası:', err)
-          console.error('💡 Çözüm: Supabase Dashboard > Database > Replication > packages tablosunu işaretleyin')
-          // 5 saniye sonra yeniden bağlan
-          setTimeout(() => {
-            console.log('🔄 Realtime yeniden bağlanıyor...')
-            channel.subscribe()
-          }, 5000)
-        }
-        if (status === 'TIMED_OUT') {
-          console.warn('⏱️ Realtime zaman aşımı, yeniden bağlanıyor...')
-          setTimeout(() => {
-            channel.subscribe()
-          }, 5000)
-        }
-      })
-
-    // CLEANUP: Component unmount olduğunda kanalı temizle
-    return () => {
-      console.log('🔴 Admin Realtime dinleme durduruldu - Kanal temizleniyor')
-      supabase.removeChannel(channel)
-    }
-  }, [isLoggedIn, isMounted])
-
+  // ✅ AŞAMA 2: İlk yükleme ve Realtime subscription useAdminData hook'una taşındı!
+  
   // Kurye modal tarih filtresi değiştiğinde yeniden çek
   useEffect(() => {
     if (showCourierModal && selectedCourierId) {
@@ -1708,122 +1275,7 @@ export default function Home() {
     }
   }, [showCourierModal, selectedCourierId])
 
-  const fetchRestaurants = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('restaurants')
-        .select('id, name, phone, address')
-        .order('name', { ascending: true })
-
-      if (error) throw error
-      
-      if (!data || data.length === 0) {
-        setRestaurants([])
-        return
-      }
-      
-      const restaurantsData = data.map(restaurant => ({
-        ...restaurant,
-        totalOrders: 0,
-        totalRevenue: 0,
-        totalDebt: 0
-      }))
-      
-      setRestaurants(restaurantsData)
-      
-      // Restoran istatistiklerini ayrı olarak çek
-      if (restaurantsData.length > 0) {
-        const ids = restaurantsData.map(r => r.id)
-        await Promise.all([
-          fetchRestaurantStats(ids),
-          fetchRestaurantDebtsTotal(ids)
-        ])
-      }
-    } catch (error: any) {
-      const errorMsg = error.message?.toLowerCase() || ''
-      if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
-        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
-        return
-      }
-      console.error('Restoranlar yüklenemedi:', error)
-    }
-  }
-
-  // Restoran istatistiklerini çek
-  const fetchRestaurantStats = async (restaurantIds: (number | string)[]) => {
-    try {
-      const { data, error } = await supabase
-        .from('packages')
-        .select('restaurant_id, amount, restaurant_settled_at')
-        .eq('status', 'delivered')
-        .in('restaurant_id', restaurantIds)
-
-      if (error) throw error
-
-      const stats: { [key: string]: { count: number, revenue: number } } = {}
-      data?.forEach((pkg) => {
-        if (pkg.restaurant_id && !pkg.restaurant_settled_at) { // Sadece ödenmemiş paketler
-          const key = String(pkg.restaurant_id)
-          if (!stats[key]) {
-            stats[key] = { count: 0, revenue: 0 }
-          }
-          stats[key].count += 1
-          stats[key].revenue += pkg.amount || 0
-        }
-      })
-
-      setRestaurants(prev => prev.map(r => ({
-        ...r,
-        totalOrders: stats[String(r.id)]?.count || 0,
-        totalRevenue: stats[String(r.id)]?.revenue || 0
-      })))
-    } catch (error: any) {
-      const errorMsg = error.message?.toLowerCase() || ''
-      if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
-        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
-        return
-      }
-      console.error('Restoran istatistikleri alınırken hata:', error)
-    }
-  }
-
-  // Restoran toplam borçlarını çek
-  const fetchRestaurantDebtsTotal = async (restaurantIds: (number | string)[]) => {
-    try {
-      const { data, error } = await supabase
-        .from('restaurant_debts')
-        .select('restaurant_id, remaining_amount')
-        .eq('status', 'pending')
-        .in('restaurant_id', restaurantIds)
-
-      if (error) throw error
-
-      const debts: { [key: string]: number } = {}
-      data?.forEach((debt) => {
-        if (debt.restaurant_id) {
-          const key = String(debt.restaurant_id)
-          debts[key] = (debts[key] || 0) + debt.remaining_amount
-        }
-      })
-
-      setRestaurants(prev => prev.map(r => ({
-        ...r,
-        totalDebt: debts[String(r.id)] || 0
-      })))
-    } catch (error: any) {
-      const errorMsg = error.message?.toLowerCase() || ''
-      if (errorMsg.includes('failed to fetch') || 
-          errorMsg.includes('network') || 
-          errorMsg.includes('could not find') ||
-          errorMsg.includes('table') ||
-          errorMsg.includes('schema cache')) {
-        console.warn('⚠️ Borç tablosu henüz oluşturulmamış veya bağlantı hatası (sessiz):', error.message)
-        setRestaurants(prev => prev.map(r => ({ ...r, totalDebt: 0 })))
-        return
-      }
-      console.error('Restoran borçları alınırken hata:', error)
-    }
-  }
+  // ✅ AŞAMA 2: fetchRestaurants ve yardımcı fonksiyonlar useAdminData hook'una taşındı!
 
   const handleCourierChange = (packageId: number, courierId: string) => {
     setSelectedCouriers(prev => ({ ...prev, [packageId]: courierId }))
