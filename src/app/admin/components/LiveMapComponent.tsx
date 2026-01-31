@@ -5,10 +5,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
-import L from 'leaflet'
 import { Maximize2, Minimize2 } from 'lucide-react'
-import 'leaflet/dist/leaflet.css'
 import { Package, Courier } from '@/types'
 
 interface LiveMapComponentProps {
@@ -18,6 +15,8 @@ interface LiveMapComponentProps {
 
 // Harita merkezini güncelleme komponenti
 function MapUpdater({ center }: { center: [number, number] }) {
+  // @ts-ignore - Leaflet dinamik import
+  const { useMap } = require('react-leaflet')
   const map = useMap()
   useEffect(() => {
     map.setView(center, map.getZoom())
@@ -26,8 +25,31 @@ function MapUpdater({ center }: { center: [number, number] }) {
 }
 
 export function LiveMapComponent({ packages, couriers }: LiveMapComponentProps) {
+  const [isClient, setIsClient] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [mapCenter] = useState<[number, number]>([38.3552, 38.3095]) // Malatya merkez
+
+  // Client-side rendering kontrolü
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  // SSR sırasında loading göster
+  if (!isClient) {
+    return (
+      <div className="h-full flex items-center justify-center bg-slate-800 rounded-xl text-slate-400">
+        <div className="text-center">
+          <div className="animate-spin text-3xl mb-2">🗺️</div>
+          <div className="text-sm">Harita yükleniyor...</div>
+        </div>
+      </div>
+    )
+  }
+
+  // Client-side'da Leaflet'i import et
+  const { MapContainer, TileLayer, Marker, Popup } = require('react-leaflet')
+  const L = require('leaflet')
+  require('leaflet/dist/leaflet.css')
 
   // Paket ikonu
   const packageIcon = L.divIcon({
