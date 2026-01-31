@@ -34,17 +34,25 @@ export interface Package {
     cancelled_at?: string | null
     cancelled_by?: 'admin' | 'restaurant' | null
     cancellation_reason?: string | null
+    latitude?: number | null
+    longitude?: number | null
 }
 
 export interface Courier {
     id: string
     full_name?: string
+    phone?: string
     deliveryCount?: number
     todayDeliveryCount?: number
     is_active?: boolean
     activePackageCount?: number
     status?: 'idle' | 'picking_up' | 'on_the_way' | 'assigned' | 'inactive'
     totalDebt?: number
+    last_location?: {
+        latitude: number
+        longitude: number
+        updated_at?: string
+    } | null
 }
 
 export interface CourierDebt {

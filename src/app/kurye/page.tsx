@@ -1379,6 +1379,49 @@ export default function KuryePage() {
     }
   }
 
+  // Konum güncellemesi fonksiyonu
+  const updateCourierLocation = async (courierId: string) => {
+    if (!navigator.geolocation) {
+      console.warn('⚠️ Tarayıcı konum servisini desteklemiyor')
+      return
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords
+        
+        try {
+          const { error } = await supabase
+            .from('couriers')
+            .update({
+              last_location: {
+                latitude,
+                longitude,
+                updated_at: new Date().toISOString()
+              }
+            })
+            .eq('id', courierId)
+
+          if (error) {
+            console.error('❌ Konum güncellenemedi:', error)
+          } else {
+            console.log('📍 Konum güncellendi:', { latitude, longitude })
+          }
+        } catch (err) {
+          console.error('❌ Konum güncelleme hatası:', err)
+        }
+      },
+      (error) => {
+        console.warn('⚠️ Konum alınamadı:', error.message)
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 30000
+      }
+    )
+  }
+
   useEffect(() => {
     if (isLoggedIn) {
       const courierId = localStorage.getItem(LOGIN_COURIER_ID_KEY)
@@ -1391,6 +1434,14 @@ export default function KuryePage() {
       fetchCourierStatus()
       fetchLeaderboard()
       fetchUnsettledAmount() // Verilecek hesabı çek
+
+      // İlk konum güncellemesi
+      updateCourierLocation(courierId)
+
+      // Her 30 saniyede bir konum güncelle
+      const locationInterval = setInterval(() => {
+        updateCourierLocation(courierId)
+      }, 30000) // 30 saniye
 
       // REALTIME ONLY - Canlı yayın modu
       // ⚠️ ÖNEMLİ: Supabase Dashboard -> Database -> Replication -> 'packages' tablosunu işaretleyin!
@@ -1509,6 +1560,7 @@ export default function KuryePage() {
         console.log('🔴 Realtime dinleme durduruldu')
         supabase.removeChannel(packagesChannel)
         supabase.removeChannel(courierChannel)
+        clearInterval(locationInterval) // Konum güncellemesini durdur
       }
     }
   }, [isLoggedIn])

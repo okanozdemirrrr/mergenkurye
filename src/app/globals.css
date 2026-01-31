@@ -122,3 +122,29 @@ html {
 .custom-scrollbar::-webkit-scrollbar-corner {
   background: transparent;
 }
+
+/* Leaflet Map Styles */
+.leaflet-container {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.leaflet-popup-content-wrapper {
+  background: #1e293b;
+  color: #f1f5f9;
+  border-radius: 8px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+}
+
+.leaflet-popup-tip {
+  background: #1e293b;
+}
+
+.leaflet-control-zoom a {
+  background: #1e293b !important;
+  color: #f1f5f9 !important;
+  border: 1px solid #475569 !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background: #334155 !important;
+}
