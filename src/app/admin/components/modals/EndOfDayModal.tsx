@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file src/app/admin/components/modals/EndOfDayModal.tsx
  * @description Kurye Gün Sonu İşlemleri Modalı.
  * Kuryeden alınan nakit paranın sisteme girildiği ve kurye üzerindeki borçlarla 
@@ -93,19 +93,19 @@ export function EndOfDayModal({
                                 </div>
 
                                 {/* Seçilen Tarih Aralığı Kart Toplam */}
-                                <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
+                                <div className="bg-orange-50 p-4 rounded-xl border border-orange-200">
                                     <div className="flex justify-between items-center">
-                                        <span className="text-sm font-medium text-blue-700">
+                                        <span className="text-sm font-medium text-orange-700">
                                             💳 Seçilen Tarih Aralığı Kart Toplam
                                         </span>
-                                        <span className="text-2xl font-bold text-blue-700">
+                                        <span className="text-2xl font-bold text-orange-700">
                                             {summary.cardTotal.toFixed(2)} ₺
                                         </span>
                                     </div>
-                                    <p className="text-xs text-blue-600 mt-1">
+                                    <p className="text-xs text-orange-600 mt-1">
                                         {selectedCourierOrders.filter(o => o.payment_method === 'card').length} kart sipariş ({courierStartDate} - {courierEndDate})
                                     </p>
-                                    <p className="text-xs text-blue-700 mt-2 font-medium">
+                                    <p className="text-xs text-orange-700 mt-2 font-medium">
                                         ℹ️ Bu değer değişmez (bilgi amaçlı)
                                     </p>
                                 </div>
@@ -123,7 +123,7 @@ export function EndOfDayModal({
                                         </div>
                                         <div className="space-y-2">
                                             {courierDebts.map((debt) => (
-                                                <div key={debt.id} className="flex justify-between items-center text-xs bg-white p-2 rounded">
+                                                <div key={debt.id} className="flex justify-between items-center text-xs bg-slate-900 p-2 rounded">
                                                     <span className="text-slate-600">
                                                         📅 {formatTurkishDate(debt.debt_date)} tarihinden kalan
                                                     </span>
@@ -164,7 +164,7 @@ export function EndOfDayModal({
                                     onChange={(e) => setEndOfDayAmount(e.target.value)}
                                     placeholder="Örn: 1250.00"
                                     autoFocus
-                                    className="w-full px-4 py-3 bg-white border-2 border-slate-300 rounded-xl text-lg font-bold text-slate-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                                    className="w-full px-4 py-3 bg-slate-800 border-slate-700-2 border-slate-300 rounded-xl text-lg font-bold text-slate-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                                 />
                             </div>
 
@@ -200,12 +200,12 @@ export function EndOfDayModal({
                                             </p>
                                         </div>
                                     ) : (
-                                        <div className="bg-blue-50 p-4 rounded-xl border-2 border-blue-300">
+                                        <div className="bg-orange-50 p-4 rounded-xl border-2 border-orange-300">
                                             <div className="text-center">
-                                                <span className="text-2xl font-black text-blue-700">
+                                                <span className="text-2xl font-black text-orange-700">
                                                     ✓ TAM ÖDEME
                                                 </span>
-                                                <p className="text-xs text-blue-600 mt-2">
+                                                <p className="text-xs text-orange-600 mt-2">
                                                     Hesap tam olarak kapandı
                                                 </p>
                                             </div>

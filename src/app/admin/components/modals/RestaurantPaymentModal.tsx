@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file src/app/admin/components/modals/RestaurantPaymentModal.tsx
  * @description Restoran Hakediş Ödeme Modalı.
  * Belirli bir dönem için restoranın hakediş tutarının (sipariş toplamları + eski borçlar) 
@@ -108,7 +108,7 @@ export function RestaurantPaymentModal({
                                         </div>
                                         <div className="space-y-2">
                                             {restaurantDebts.map((debt) => (
-                                                <div key={debt.id} className="flex justify-between items-center text-xs bg-white p-2 rounded">
+                                                <div key={debt.id} className="flex justify-between items-center text-xs bg-slate-900 p-2 rounded">
                                                     <span className="text-slate-600">
                                                         📅 {formatTurkishDate(debt.debt_date)} tarihinden kalan
                                                     </span>
@@ -149,7 +149,7 @@ export function RestaurantPaymentModal({
                                     onChange={(e) => setRestaurantPaymentAmount(e.target.value)}
                                     placeholder="Örn: 30000.00"
                                     autoFocus
-                                    className="w-full px-4 py-3 bg-white border-2 border-slate-300 rounded-xl text-lg font-bold text-slate-900 focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                                    className="w-full px-4 py-3 bg-slate-800 border-slate-700-2 border-slate-300 rounded-xl text-lg font-bold text-slate-900 focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
                                 />
                             </div>
 

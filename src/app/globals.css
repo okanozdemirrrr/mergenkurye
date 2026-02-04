@@ -2,32 +2,304 @@
 @import "tailwindcss";
 
 :root {
+  /* ============================================
+     🎨 RENK PALETİ - Tek yerden tüm siteyi yönet
+     ============================================ */
+
+  /* Ana Renkler */
   --background: #f8fafc;
   --foreground: #0f172a;
-  --brand-primary: #3b82f6;
+  --brand-primary: #fbff02;
+  /* Mavi - Ana marka rengi */
   --brand-secondary: #8b5cf6;
-  --color-background: #f8fafc;
-  --color-foreground: #0f172a;
+  /* Mor - İkincil marka rengi */
+
+  /* Slate Renkleri (Arka planlar, kenarlıklar) */
+  --slate-50: #f8fafc;
+  --slate-100: #f1f5f9;
+  --slate-200: #e2e8f0;
+  --slate-300: #cbd5e1;
+  --slate-400: #94a3b8;
+  --slate-500: #64748b;
+  --slate-600: #475569;
+  --slate-700: #334155;
+  --slate-800: #1e293b;
+  --slate-900: #0f172a;
+  --slate-950: #020617;
+
+  /* Blue Renkleri (Bilgi, linkler) */
+  --blue-50: #eff6ff;
+  --blue-100: #dbeafe;
+  --blue-200: #bfdbfe;
+  --blue-300: #93c5fd;
+  --blue-400: #60a5fa;
+  --blue-500: #3b82f6;
+  --blue-600: #2563eb;
+  --blue-700: #1d4ed8;
+  --blue-800: #1e40af;
+  --blue-900: #1e3a8a;
+
+  /* Green Renkleri (Başarı, pozitif) */
+  --green-50: #f0fdf4;
+  --green-100: #dcfce7;
+  --green-200: #bbf7d0;
+  --green-300: #86efac;
+  --green-400: #4ade80;
+  --green-500: #22c55e;
+  --green-600: #16a34a;
+  --green-700: #15803d;
+  --green-800: #166534;
+  --green-900: #14532d;
+
+  /* Red Renkleri (Hata, uyarı) */
+  --red-50: #fef2f2;
+  --red-100: #fee2e2;
+  --red-200: #fecaca;
+  --red-300: #fca5a5;
+  --red-400: #f87171;
+  --red-500: #ef4444;
+  --red-600: #dc2626;
+  --red-700: #b91c1c;
+  --red-800: #991b1b;
+  --red-900: #7f1d1d;
+
+  /* Yellow Renkleri (Uyarı, beklemede) */
+  --yellow-50: #fefce8;
+  --yellow-100: #fef9c3;
+  --yellow-200: #fef08a;
+  --yellow-300: #fde047;
+  --yellow-400: #facc15;
+  --yellow-500: #eab308;
+  --yellow-600: #ca8a04;
+  --yellow-700: #a16207;
+  --yellow-800: #854d0e;
+  --yellow-900: #713f12;
+
+  /* Purple Renkleri (Özel, premium) */
+  --purple-50: #faf5ff;
+  --purple-100: #f3e8ff;
+  --purple-200: #e9d5ff;
+  --purple-300: #d8b4fe;
+  --purple-400: #c084fc;
+  --purple-500: #a855f7;
+  --purple-600: #9333ea;
+  --purple-700: #7e22ce;
+  --purple-800: #6b21a8;
+  --purple-900: #581c87;
+
+  /* Orange Renkleri (Restoran, yemek) */
+  --orange-50: #fff7ed;
+  --orange-100: #ffedd5;
+  --orange-200: #fed7aa;
+  --orange-300: #fdba74;
+  --orange-400: #fb923c;
+  --orange-500: #f97316;
+  --orange-600: #ea580c;
+  --orange-700: #c2410c;
+  --orange-800: #9a3412;
+  --orange-900: #7c2d12;
+
+  /* ============================================
+     📝 TİPOGRAFİ - Font aileleri ve boyutları
+     ============================================ */
+
+  /* Font Aileleri */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'Fira Code', 'Courier New', monospace;
+
+  /* Font Boyutları */
+  --text-xs: 0.75rem;
+  /* 12px */
+  --text-sm: 0.875rem;
+  /* 14px */
+  --text-base: 1rem;
+  /* 16px */
+  --text-lg: 1.125rem;
+  /* 18px */
+  --text-xl: 1.25rem;
+  /* 20px */
+  --text-2xl: 1.5rem;
+  /* 24px */
+  --text-3xl: 1.875rem;
+  /* 30px */
+  --text-4xl: 2.25rem;
+  /* 36px */
+
+  /* Font Kalınlıkları */
+  --font-light: 300;
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+  --font-extrabold: 800;
+  --font-black: 900;
+
+  /* ============================================
+     📏 BOŞLUKLAR - Spacing sistemi
+     ============================================ */
+
+  --space-1: 0.25rem;
+  /* 4px */
+  --space-2: 0.5rem;
+  /* 8px */
+  --space-3: 0.75rem;
+  /* 12px */
+  --space-4: 1rem;
+  /* 16px */
+  --space-5: 1.25rem;
+  /* 20px */
+  --space-6: 1.5rem;
+  /* 24px */
+  --space-8: 2rem;
+  /* 32px */
+  --space-10: 2.5rem;
+  /* 40px */
+  --space-12: 3rem;
+  /* 48px */
+  --space-16: 4rem;
+  /* 64px */
+  --space-20: 5rem;
+  /* 80px */
+  --space-24: 6rem;
+  /* 96px */
+
+  /* ============================================
+     🔲 BORDER & RADIUS - Kenarlıklar
+     ============================================ */
+
+  --radius-sm: 0.25rem;
+  /* 4px */
+  --radius-md: 0.5rem;
+  /* 8px */
+  --radius-lg: 0.75rem;
+  /* 12px */
+  --radius-xl: 1rem;
+  /* 16px */
+  --radius-2xl: 1.5rem;
+  /* 24px */
+  --radius-full: 9999px;
+  /* Tam yuvarlak */
+
+  --border-width: 1px;
+  --border-width-2: 2px;
+  --border-width-4: 4px;
+
+  /* ============================================
+     🌑 GÖLGELER - Shadow sistemi
+     ============================================ */
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+
+  /* ============================================
+     ⏱️ ANİMASYONLAR - Transition & Duration
+     ============================================ */
+
+  --transition-fast: 150ms;
+  --transition-base: 200ms;
+  --transition-slow: 300ms;
+  --transition-slower: 500ms;
+
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ============================================
+     📱 BREAKPOINTS - Responsive tasarım
+     ============================================ */
+
+  --screen-sm: 640px;
+  --screen-md: 768px;
+  --screen-lg: 1024px;
+  --screen-xl: 1280px;
+  --screen-2xl: 1536px;
+
+  /* ============================================
+     🖼️ LOGO AYARLARI
+     ============================================ */
+  --logo-filter: none;
+  --logo-opacity: 1;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0f172a;
-    --foreground: #f1f5f9;
-    --color-background: #0f172a;
-    --color-foreground: #f1f5f9;
-  }
+
+/* ============================================
+   🚀 TAILWIND v4 @THEME YAPILANDIRMASI
+   ============================================ */
+@theme {
+  /* Renkler */
+  --color-brand-primary: var(--brand-primary);
+  --color-brand-secondary: var(--brand-secondary);
+
+  --color-slate-50: var(--slate-50);
+  --color-slate-100: var(--slate-100);
+  --color-slate-200: var(--slate-200);
+  --color-slate-300: var(--slate-300);
+  --color-slate-400: var(--slate-400);
+  --color-slate-500: var(--slate-500);
+  --color-slate-600: var(--slate-600);
+  --color-slate-700: var(--slate-700);
+  --color-slate-800: var(--slate-800);
+  --color-slate-900: var(--slate-900);
+  --color-slate-950: var(--slate-950);
+
+  --color-blue-50: var(--blue-50);
+  --color-blue-100: var(--blue-100);
+  --color-blue-200: var(--blue-200);
+  --color-blue-300: var(--blue-300);
+  --color-blue-400: var(--blue-400);
+  --color-blue-500: var(--blue-500);
+  --color-blue-600: var(--blue-600);
+  --color-blue-700: var(--blue-700);
+  --color-blue-800: var(--blue-800);
+  --color-blue-900: var(--blue-900);
+
+  --color-green-50: var(--green-50);
+  --color-green-100: var(--green-100);
+  --color-green-200: var(--green-200);
+  --color-green-300: var(--green-300);
+  --color-green-400: var(--green-400);
+  --color-green-500: var(--green-500);
+  --color-green-600: var(--green-600);
+  --color-green-700: var(--green-700);
+  --color-green-800: var(--green-800);
+  --color-green-900: var(--green-900);
+
+  /* Fontlar */
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  /* Radius */
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-2xl: var(--radius-2xl);
+
+  /* Gölgeler */
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
+  --shadow-2xl: var(--shadow-2xl);
+
+  /* Logo */
+  --logo-filter: var(--logo-filter);
+  --logo-opacity: var(--logo-opacity);
 }
+
 
 body {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  background-attachment: fixed;
+  background: var(--background);
   color: var(--foreground);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--font-sans);
   margin: 0;
   padding: 0;
   overflow-x: hidden;
 }
+
 
 html {
   margin: 0;
@@ -44,29 +316,36 @@ html {
 
 /* Smooth animations */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .animate-fadeIn {
-  animation: fadeIn 0.3s ease-out;
+  animation: fadeIn 0.3s var(--ease-out);
 }
 
 /* Card hover effect */
 .card-hover {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all var(--transition-slow) var(--ease-in-out);
 }
 
 .card-hover:hover {
   transform: translateY(-4px);
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-xl);
 }
 
 
-/* Admin Panel Custom Scrollbar - Dark Mode Uyumlu */
+/* Admin Panel Custom Scrollbar */
 .admin-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: #475569 #1e293b;
+  scrollbar-color: var(--slate-600) var(--slate-800);
 }
 
 .admin-scrollbar::-webkit-scrollbar {
@@ -75,28 +354,28 @@ html {
 }
 
 .admin-scrollbar::-webkit-scrollbar-track {
-  background: #1e293b;
-  border-radius: 4px;
+  background: var(--slate-800);
+  border-radius: var(--radius-sm);
 }
 
 .admin-scrollbar::-webkit-scrollbar-thumb {
-  background: #475569;
-  border-radius: 4px;
-  transition: background 0.2s;
+  background: var(--slate-600);
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-base);
 }
 
 .admin-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
+  background: var(--slate-500);
 }
 
 .admin-scrollbar::-webkit-scrollbar-corner {
-  background: #1e293b;
+  background: var(--slate-800);
 }
 
-/* Custom Scrollbar - İnce ve Modern (Restoran Paneli için) */
+/* Custom Scrollbar */
 .custom-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: #475569 transparent;
+  scrollbar-color: var(--slate-600) transparent;
 }
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -106,17 +385,17 @@ html {
 
 .custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #475569;
-  border-radius: 3px;
-  transition: background 0.2s;
+  background: var(--slate-600);
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-base);
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
+  background: var(--slate-500);
 }
 
 .custom-scrollbar::-webkit-scrollbar-corner {
@@ -125,33 +404,35 @@ html {
 
 /* Leaflet Map Styles */
 .leaflet-container {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--font-sans);
 }
 
 .leaflet-popup-content-wrapper {
-  background: #1e293b;
-  color: #f1f5f9;
-  border-radius: 8px;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+  background: var(--slate-800);
+  color: var(--slate-100);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
 }
 
 .leaflet-popup-tip {
-  background: #1e293b;
+  background: var(--slate-800);
 }
 
 .leaflet-control-zoom a {
-  background: #1e293b !important;
-  color: #f1f5f9 !important;
-  border: 1px solid #475569 !important;
+  background: var(--slate-800) !important;
+  color: var(--slate-100) !important;
+  border: 1px solid var(--slate-600) !important;
 }
 
 .leaflet-control-zoom a:hover {
-  background: #334155 !important;
+  background: var(--slate-700) !important;
 }
 
 /* Logo Koruma - Üst öğelerden gelen renk ve filtre baskısını engelle */
 img[src*="logo.png"] {
-  filter: none !important;
+  filter: var(--logo-filter, none) !important;
   color: transparent !important;
-  opacity: 1 !important;
+  opacity: var(--logo-opacity, 1) !important;
+  background: transparent !important;
+  -webkit-filter: var(--logo-filter, none) !important;
 }

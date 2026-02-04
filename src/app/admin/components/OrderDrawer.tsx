@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file src/app/admin/components/OrderDrawer.tsx
  * @description Modüler Sipariş Takip Drawer'ı - Sağ üstten açılır panel
  * Aktif siparişleri şık bir drawer içinde gösterir
@@ -46,17 +46,17 @@ export function OrderDrawer({
 
     return (
         <>
-            {/* SABİT BUTON - EN ÜSTTE SAĞ KÖŞE */}
-            <div className="fixed top-2 right-2 z-[200]">
+            {/* SABİT BUTON - SAĞ ALT KÖŞE */}
+            <div className="fixed bottom-6 right-6 z-[200]">
                 <button
                     onClick={() => setIsOpen(!isOpen)}
-                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-4 py-2.5 rounded-xl shadow-2xl transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold"
+                    className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white px-6 py-3 rounded-xl shadow-2xl transition-all hover:scale-105 active:scale-95 flex items-center gap-3 font-bold"
                 >
-                <span className="text-lg">📦</span>
+                <span className="text-2xl">📦</span>
                 <span className="hidden sm:inline">Anlık Sipariş Takibi</span>
                 {/* Bildirim Badge */}
                 {activeOperationPackages.length > 0 && (
-                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-black rounded-full w-6 h-6 flex items-center justify-center animate-pulse shadow-lg">
+                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-black rounded-full w-7 h-7 flex items-center justify-center animate-pulse shadow-lg">
                         {activeOperationPackages.length}
                     </span>
                 )}
@@ -85,7 +85,7 @@ export function OrderDrawer({
                         <span className="text-2xl">📦</span>
                         <div>
                             <h2 className="text-xl font-bold">Anlık Sipariş Takibi</h2>
-                            <p className="text-sm text-blue-100">
+                            <p className="text-sm text-orange-100">
                                 {activeOperationPackages.length} aktif sipariş
                             </p>
                         </div>
@@ -137,7 +137,7 @@ export function OrderDrawer({
                                     <div className="space-y-3 mt-6">
                                         {/* Sipariş No */}
                                         <div className="text-center">
-                                            <div className="text-xs font-bold text-blue-600">
+                                            <div className="text-xs font-bold text-orange-600">
                                                 #{pkg.order_number || '...'}
                                             </div>
                                         </div>
@@ -154,7 +154,7 @@ export function OrderDrawer({
                                         {/* Durum Badge */}
                                         <div className="flex justify-center">
                                             <span className={`text-[9px] px-2 py-1 rounded font-semibold ${
-                                                pkg.status === 'assigned' ? 'bg-blue-100 text-blue-700' :
+                                                pkg.status === 'assigned' ? 'bg-orange-100 text-orange-700' :
                                                 pkg.status === 'picking_up' ? 'bg-orange-100 text-orange-700' :
                                                 'bg-red-100 text-red-700'
                                             }`}>
@@ -202,7 +202,7 @@ export function OrderDrawer({
                                             <span className={`text-[9px] px-2 py-1 rounded font-medium ${
                                                 pkg.payment_method === 'cash'
                                                     ? 'bg-green-50 text-green-700'
-                                                    : 'bg-blue-50 text-blue-700'
+                                                    : 'bg-orange-50 text-orange-700'
                                             }`}>
                                                 {pkg.payment_method === 'cash' ? '💵 Nakit' : '💳 Kart'}
                                             </span>

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file src/app/admin/components/RestaurantsTab.tsx
  * @description Restoran Yönetim Paneli Bileşeni.
  * Restoran listesi, sipariş analizleri (paket dağılımı ve ciro grafikleri) 
@@ -33,7 +33,7 @@ export function RestaurantsTab({
     // Liste
     if (restaurantSubTab === 'list') {
         return (
-            <div className="bg-white shadow-xl rounded-2xl p-6">
+            <div className="bg-slate-900 shadow-xl rounded-2xl p-6">
                 <h2 className="text-2xl font-bold mb-6">📋 Restoranlar Listesi</h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -48,7 +48,7 @@ export function RestaurantsTab({
                                 <div className="flex justify-between items-start mb-3">
                                     <button
                                         onClick={() => onRestaurantClick(r.id)}
-                                        className="font-bold text-lg text-blue-600 hover:text-blue-800:text-blue-300 transition-colors cursor-pointer text-left"
+                                        className="font-bold text-lg text-orange-600 hover:text-orange-800:text-orange-300 transition-colors cursor-pointer text-left"
                                     >
                                         🍽️ {r.name}
                                     </button>
@@ -68,7 +68,7 @@ export function RestaurantsTab({
 
                                     <button
                                         onClick={() => onRestaurantClick(r.id)}
-                                        className="w-full mt-3 text-xs bg-blue-100 text-blue-700 py-2 rounded-lg hover:bg-blue-200:bg-blue-900/50 transition-colors"
+                                        className="w-full mt-3 text-xs bg-orange-100 text-orange-700 py-2 rounded-lg hover:bg-orange-200:bg-orange-900/50 transition-colors"
                                     >
                                         📊 Detaylı Rapor Görüntüle
                                     </button>
@@ -134,7 +134,7 @@ export function RestaurantsTab({
         const hasData = pieChartData.length > 0
 
         return (
-            <div className="bg-white shadow-xl rounded-2xl p-6">
+            <div className="bg-slate-900 shadow-xl rounded-2xl p-6">
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-2xl font-bold">📊 Restoran Sipariş Detayları</h2>
                     <select
@@ -243,7 +243,7 @@ export function RestaurantsTab({
         const totalDeliveries = restaurantDebts.reduce((sum, r) => sum + r.deliveredCount, 0)
 
         return (
-            <div className="bg-white shadow-xl rounded-2xl p-6">
+            <div className="bg-slate-900 shadow-xl rounded-2xl p-6">
                 <h2 className="text-2xl font-bold mb-6">💳 Restoranların Borcu</h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -258,12 +258,12 @@ export function RestaurantsTab({
                         </div>
                     </div>
 
-                    <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-4 rounded-xl border-2 border-blue-300">
+                    <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-4 rounded-xl border-2 border-orange-300">
                         <div className="text-center">
-                            <div className="text-3xl font-black text-blue-700">
+                            <div className="text-3xl font-black text-orange-700">
                                 {totalDeliveries}
                             </div>
-                            <div className="text-sm font-semibold text-blue-600 mt-1">
+                            <div className="text-sm font-semibold text-orange-600 mt-1">
                                 📦 TOPLAM TESLİMAT
                             </div>
                         </div>
@@ -313,7 +313,7 @@ export function RestaurantsTab({
                                                 e.stopPropagation()
                                                 onRestaurantClick(restaurant.id)
                                             }}
-                                            className="px-4 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold hover:bg-blue-200:bg-blue-800 transition-colors"
+                                            className="px-4 py-1.5 bg-orange-100 text-orange-700 rounded-lg text-xs font-bold hover:bg-orange-200:bg-orange-800 transition-colors"
                                         >
                                             📊 Rapor
                                         </button>
@@ -324,8 +324,8 @@ export function RestaurantsTab({
                     )}
                 </div>
 
-                <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <p className="text-sm text-blue-700">
+                <div className="mt-6 p-4 bg-orange-50 rounded-lg border border-orange-200">
+                    <p className="text-sm text-orange-700">
                         ℹ️ <strong>Not:</strong> Restoran borçları, teslim edilen her paket için 100₺ üzerinden hesaplanmaktadır.
                         Sadece <strong>status = 'delivered'</strong> olan paketler hesaplamaya dahildir.
                         <br />
@@ -339,7 +339,7 @@ export function RestaurantsTab({
     // Ödemeler
     if (restaurantSubTab === 'payments') {
         return (
-            <div className="bg-white shadow-xl rounded-2xl p-6">
+            <div className="bg-slate-900 shadow-xl rounded-2xl p-6">
                 <h2 className="text-2xl font-bold mb-6">💰 Restoranların Ödemesi</h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -354,7 +354,7 @@ export function RestaurantsTab({
                                 <div className="flex justify-between items-start mb-3">
                                     <button
                                         onClick={() => onRestaurantClick(r.id)}
-                                        className="font-bold text-lg text-blue-600 hover:text-blue-800:text-blue-300 transition-colors cursor-pointer text-left"
+                                        className="font-bold text-lg text-orange-600 hover:text-orange-800:text-orange-300 transition-colors cursor-pointer text-left"
                                     >
                                         🍽️ {r.name}
                                     </button>
@@ -363,7 +363,7 @@ export function RestaurantsTab({
                                 <div className="space-y-2 text-sm">
                                     <div className="flex justify-between">
                                         <span className="text-slate-600">Toplam Sipariş:</span>
-                                        <span className="font-bold text-blue-600">{r.totalOrders || 0}</span>
+                                        <span className="font-bold text-orange-600">{r.totalOrders || 0}</span>
                                     </div>
 
                                     <div className="flex justify-between">
@@ -382,7 +382,7 @@ export function RestaurantsTab({
                                     <div className="mt-3 pt-2 border-t border-slate-200 space-y-2">
                                         <button
                                             onClick={() => onRestaurantClick(r.id)}
-                                            className="w-full text-xs bg-blue-100 text-blue-700 py-2 rounded-lg hover:bg-blue-200:bg-blue-900/50 transition-colors"
+                                            className="w-full text-xs bg-orange-100 text-orange-700 py-2 rounded-lg hover:bg-orange-200:bg-orange-900/50 transition-colors"
                                         >
                                             📊 Detaylı Rapor Görüntüle
                                         </button>

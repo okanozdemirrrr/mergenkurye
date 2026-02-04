@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file src/app/admin/components/OrderActivityFeed.tsx
  * @description Anlık Sipariş Durumu Bileşeni + Canlı Harita.
  * Üstte tam genişlikte Malatya haritası, altta yatay kaydırmalı sipariş kartları.
@@ -38,7 +38,7 @@ export function OrderActivityFeed({
     )
 
     return (
-        <div className="bg-white shadow-xl rounded-2xl p-3 mb-3">
+        <div className="bg-slate-900 shadow-xl rounded-2xl p-3 mb-3">
             <h2 className="text-base font-bold mb-2">🚀 Anlık Sipariş Durumu & Canlı Harita</h2>
             
             {/* Dikey Layout: ÜSTTE Harita, ALTTA Kartlar */}
@@ -88,7 +88,7 @@ export function OrderActivityFeed({
                                         <div className="space-y-2 mt-5">
                                             {/* Sipariş No - Merkez */}
                                             <div className="text-center">
-                                                <div className="text-[11px] font-bold text-blue-600">
+                                                <div className="text-[11px] font-bold text-orange-600">
                                                     #{pkg.order_number || '...'}
                                                 </div>
                                             </div>
@@ -106,7 +106,7 @@ export function OrderActivityFeed({
                                             {/* Durum Badge - Merkez */}
                                             <div className="flex justify-center">
                                                 <span className={`text-[8px] px-2 py-1 rounded font-semibold ${
-                                                    pkg.status === 'assigned' ? 'bg-blue-100 text-blue-700' :
+                                                    pkg.status === 'assigned' ? 'bg-orange-100 text-orange-700' :
                                                     pkg.status === 'picking_up' ? 'bg-orange-100 text-orange-700' :
                                                     'bg-red-100 text-red-700'
                                                 }`}>
@@ -155,7 +155,7 @@ export function OrderActivityFeed({
                                                 <span className={`text-[8px] px-2 py-1 rounded font-medium ${
                                                     pkg.payment_method === 'cash'
                                                         ? 'bg-green-50 text-green-700'
-                                                        : 'bg-blue-50 text-blue-700'
+                                                        : 'bg-orange-50 text-orange-700'
                                                 }`}>
                                                     {pkg.payment_method === 'cash' ? '💵 Nakit' : '💳 Kart'}
                                                 </span>

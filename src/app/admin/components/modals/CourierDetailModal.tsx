@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file src/app/admin/components/modals/CourierDetailModal.tsx
  * @description Kurye Detay ve Rapor Modalı.
  * Seçili kuryenin belirli bir tarih aralığındaki performansını, teslim ettiği 
@@ -127,15 +127,15 @@ export function CourierDetailModal({
                                     </div>
                                 </div>
 
-                                <div className="bg-blue-100 p-4 rounded-xl border-2 border-blue-300">
+                                <div className="bg-orange-100 p-4 rounded-xl border-2 border-orange-300">
                                     <div className="text-center">
-                                        <div className="text-3xl font-black text-blue-700">
+                                        <div className="text-3xl font-black text-orange-700">
                                             {summary.cardTotal.toFixed(2)} ₺
                                         </div>
-                                        <div className="text-sm font-semibold text-blue-600 mt-1">
+                                        <div className="text-sm font-semibold text-orange-600 mt-1">
                                             💳 KART TOPLAM
                                         </div>
-                                        <div className="text-xs text-blue-600 mt-1">
+                                        <div className="text-xs text-orange-600 mt-1">
                                             {selectedCourierOrders.filter(o => o.payment_method === 'card').length} sipariş
                                         </div>
                                     </div>
@@ -187,7 +187,7 @@ export function CourierDetailModal({
                                                 }`}>
                                                 <td className="py-3 px-4">
                                                     <div className="flex items-center gap-2">
-                                                        <span className="font-bold text-blue-600">
+                                                        <span className="font-bold text-orange-600">
                                                             {order.order_number || '......'}
                                                         </span>
                                                         {order.platform && (
@@ -231,7 +231,7 @@ export function CourierDetailModal({
                                                 <td className="py-3 px-4">
                                                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${order.payment_method === 'cash'
                                                         ? 'bg-green-100 text-green-700'
-                                                        : 'bg-blue-100 text-blue-700'
+                                                        : 'bg-orange-100 text-orange-700'
                                                         }`}>
                                                         {order.payment_method === 'cash' ? '💵 Nakit' : '💳 Kart'}
                                                     </span>
@@ -272,8 +272,8 @@ export function CourierDetailModal({
                             </div>
 
                             {/* Özet İstatistik */}
-                            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                                <div className="text-center text-sm text-blue-700">
+                            <div className="mt-4 p-3 bg-orange-50 rounded-lg">
+                                <div className="text-center text-sm text-orange-700">
                                     <span className="font-semibold">
                                         Toplam {calculateRestaurantSummary(selectedCourierOrders).length} farklı restorandan
                                         {' '}{selectedCourierOrders.length} paket teslim edildi

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file src/app/admin/components/HistoryTab.tsx
  * @description Geçmiş Siparişler Paneli Bileşeni.
  * Tamamlanan (teslim edilen veya iptal edilen) tüm siparişlerin listelendiği sekmeyi yönetir. 
@@ -85,7 +85,7 @@ export function HistoryTab({
         .reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
 
     return (
-        <div id="history-container" className="bg-white shadow-xl rounded-2xl p-6">
+        <div id="history-container" className="bg-slate-900 shadow-xl rounded-2xl p-6">
             <div className="flex flex-col gap-4 mb-6">
                 {/* Başlık ve Kategorik Filtre */}
                 <div className="flex justify-between items-center">
@@ -97,7 +97,7 @@ export function HistoryTab({
                             <button
                                 onClick={() => setStatusFilter('all')}
                                 className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${statusFilter === 'all'
-                                    ? 'bg-blue-600 text-white shadow-lg'
+                                    ? 'bg-orange-600 text-white shadow-lg'
                                     : 'bg-slate-200 text-slate-700 hover:bg-slate-300:bg-slate-600'
                                     }`}
                             >
@@ -134,7 +134,7 @@ export function HistoryTab({
                         type="date"
                         value={startDate}
                         onChange={(e) => setStartDate(e.target.value)}
-                        className="px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="px-3 py-2 bg-slate-800 border-slate-700 border-slate-300 rounded-lg text-sm text-slate-700 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                         placeholder="Başlangıç"
                     />
                     <span className="text-slate-500">-</span>
@@ -142,7 +142,7 @@ export function HistoryTab({
                         type="date"
                         value={endDate}
                         onChange={(e) => setEndDate(e.target.value)}
-                        className="px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="px-3 py-2 bg-slate-800 border-slate-700 border-slate-300 rounded-lg text-sm text-slate-700 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                         placeholder="Bitiş"
                     />
                     {(startDate || endDate) && (
@@ -161,9 +161,9 @@ export function HistoryTab({
 
             {/* İstatistikler */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <div className="bg-blue-50 p-4 rounded-xl">
-                    <div className="text-sm text-blue-600 font-medium">Toplam Sipariş</div>
-                    <div className="text-2xl font-bold text-blue-700">{filteredHistory.length}</div>
+                <div className="bg-orange-50 p-4 rounded-xl">
+                    <div className="text-sm text-orange-600 font-medium">Toplam Sipariş</div>
+                    <div className="text-2xl font-bold text-orange-700">{filteredHistory.length}</div>
                 </div>
                 <div className="bg-green-50 p-4 rounded-xl">
                     <div className="text-sm text-green-600 font-medium">Toplam Tutar</div>
@@ -226,7 +226,7 @@ export function HistoryTab({
                                     </td>
                                     <td className="py-3 px-4">
                                         <div className="flex items-center gap-2">
-                                            <span className="font-bold text-blue-600">
+                                            <span className="font-bold text-orange-600">
                                                 {pkg.order_number || '......'}
                                             </span>
                                             {pkg.platform && (
@@ -295,7 +295,7 @@ export function HistoryTab({
                                         ) : (
                                             <span className={`px-2 py-1 rounded text-xs font-medium ${pkg.payment_method === 'cash'
                                                 ? 'bg-green-100 text-green-700'
-                                                : 'bg-blue-100 text-blue-700'
+                                                : 'bg-orange-100 text-orange-700'
                                                 }`}>
                                                 {pkg.payment_method === 'cash' ? '💵 Nakit' : '💳 Kart'}
                                             </span>

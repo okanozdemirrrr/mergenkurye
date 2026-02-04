@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file src/app/admin/components/tabs/HistoryView.tsx
  * @description Geçmiş Siparişler Görünümü
  * AŞAMA 1: Sadece görünüm katmanı - Tüm state ve logic ana dosyada kalıyor
@@ -104,7 +104,7 @@ export function HistoryView({
             onClick={() => handlePageChange(i)}
             className={`px-4 py-2 rounded-lg font-medium transition-all ${
               historyCurrentPage === i
-                ? 'bg-blue-600 text-white shadow-lg scale-105'
+                ? 'bg-orange-600 text-white shadow-lg scale-105'
                 : 'bg-slate-200 text-slate-700 hover:bg-slate-300:bg-slate-600'
             }`}
           >
@@ -120,7 +120,7 @@ export function HistoryView({
           onClick={() => handlePageChange(1)}
           className={`px-4 py-2 rounded-lg font-medium transition-all ${
             historyCurrentPage === 1
-              ? 'bg-blue-600 text-white shadow-lg scale-105'
+              ? 'bg-orange-600 text-white shadow-lg scale-105'
               : 'bg-slate-200 text-slate-700 hover:bg-slate-300:bg-slate-600'
           }`}
         >
@@ -146,7 +146,7 @@ export function HistoryView({
             onClick={() => handlePageChange(i)}
             className={`px-4 py-2 rounded-lg font-medium transition-all ${
               historyCurrentPage === i
-                ? 'bg-blue-600 text-white shadow-lg scale-105'
+                ? 'bg-orange-600 text-white shadow-lg scale-105'
                 : 'bg-slate-200 text-slate-700 hover:bg-slate-300:bg-slate-600'
             }`}
           >
@@ -169,7 +169,7 @@ export function HistoryView({
           onClick={() => handlePageChange(totalPages)}
           className={`px-4 py-2 rounded-lg font-medium transition-all ${
             historyCurrentPage === totalPages
-              ? 'bg-blue-600 text-white shadow-lg scale-105'
+              ? 'bg-orange-600 text-white shadow-lg scale-105'
               : 'bg-slate-200 text-slate-700 hover:bg-slate-300:bg-slate-600'
           }`}
         >
@@ -182,7 +182,7 @@ export function HistoryView({
   }
 
   return (
-    <div id="history-container" className="bg-white shadow-xl rounded-2xl p-4">
+    <div id="history-container" className="bg-slate-900 shadow-xl rounded-2xl p-4">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold">📋 Geçmiş Siparişler</h2>
         
@@ -197,7 +197,7 @@ export function HistoryView({
               setDateFilter(e.target.value as 'today' | 'week' | 'month' | 'all')
               setHistoryCurrentPage(1) // Filtre değiştiğinde sayfa 1'e dön
             }}
-            className="px-4 py-2 bg-white border border-slate-300 rounded-lg text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="px-4 py-2 bg-slate-800 border-slate-700 border-slate-300 rounded-lg text-sm font-medium text-slate-700 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
           >
             <option value="today">📅 Son 24 Saat</option>
             <option value="week">📅 Son 7 Gün</option>
@@ -209,9 +209,9 @@ export function HistoryView({
 
       {/* İstatistikler - TÜM filtrelenmiş veriden hesaplanıyor - PADDING AZALTILDI */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
-        <div className="bg-blue-50 p-3 rounded-xl">
-          <div className="text-xs text-blue-600 font-medium">Toplam Sipariş</div>
-          <div className="text-xl font-bold text-blue-700">{filteredHistory.length}</div>
+        <div className="bg-orange-50 p-3 rounded-xl">
+          <div className="text-xs text-orange-600 font-medium">Toplam Sipariş</div>
+          <div className="text-xl font-bold text-orange-700">{filteredHistory.length}</div>
           <div className="text-[10px] text-slate-500 mt-1">
             Sayfa {historyCurrentPage} / {totalPages || 1}
           </div>
@@ -255,7 +255,7 @@ export function HistoryView({
                 <tr key={pkg.id} className="border-b hover:bg-slate-50:bg-slate-700/50">
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-blue-600">
+                      <span className="font-bold text-orange-600">
                         {pkg.order_number || '......'}
                       </span>
                       {pkg.platform && (
@@ -286,7 +286,7 @@ export function HistoryView({
                     <span className={`px-2 py-1 rounded text-xs font-medium ${
                       pkg.payment_method === 'cash' 
                         ? 'bg-green-100 text-green-700' 
-                        : 'bg-blue-100 text-blue-700'
+                        : 'bg-orange-100 text-orange-700'
                     }`}>
                       {pkg.payment_method === 'cash' ? '💵 Nakit' : '💳 Kart'}
                     </span>

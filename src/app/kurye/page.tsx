@@ -77,6 +77,7 @@ export default function KuryePage() {
   const [showLeaderboard, setShowLeaderboard] = useState(false) // Leaderboard modal
   const [showMenu, setShowMenu] = useState(false) // Hamburger menü
   const [activeTab, setActiveTab] = useState<'packages' | 'history' | 'earnings'>('packages') // Aktif sekme
+  const [courierName, setCourierName] = useState<string>('Kurye') // Giriş yapan kuryenin ismi
   const [todayDeliveredPackages, setTodayDeliveredPackages] = useState<Package[]>([]) // Bugünkü teslim edilenler
   const [filteredPackages, setFilteredPackages] = useState<Package[]>([]) // Filtrelenmiş paketler
   const [currentPage, setCurrentPage] = useState(1) // Mevcut sayfa
@@ -526,7 +527,7 @@ export default function KuryePage() {
     try {
       const { data, error } = await supabase
         .from('couriers')
-        .select('status, is_active')
+        .select('status, is_active, full_name')
         .eq('id', courierId)
         .maybeSingle()
 
@@ -535,6 +536,7 @@ export default function KuryePage() {
       if (data) {
         setCourierStatus(data.status)
         setIs_active(data.is_active || false)
+        setCourierName(data.full_name || 'Kurye')
       }
     } catch (error: any) {
       // İnternet hatalarını sessizce geç
@@ -1710,7 +1712,11 @@ export default function KuryePage() {
         <div className={`fixed top-0 left-0 h-full w-64 sm:w-80 bg-slate-900 text-white z-40 transform transition-transform duration-300 ${showMenu ? 'translate-x-0' : '-translate-x-full'
           } overflow-y-auto admin-scrollbar`}>
           <div className="p-6 pt-20">
-            <h2 className="text-xl sm:text-2xl font-bold mb-6">📦 Kurye Panel</h2>
+            {/* Başlık ve Kurye İsmi */}
+            <div className="flex flex-col mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold">📦 Kurye Panel</h2>
+              <p className="text-sm text-slate-400 mt-1">{courierName}</p>
+            </div>
 
             <nav className="space-y-2">
               <button
@@ -1793,8 +1799,9 @@ export default function KuryePage() {
               alt="Mergen Kurye Logo"
               className="w-24 h-24 object-contain"
               style={{
-                filter: 'grayscale(0) invert(0) brightness(1) contrast(1)',
-                WebkitFilter: 'grayscale(0) invert(0) brightness(1) contrast(1)'
+                filter: 'var(--logo-filter)',
+                WebkitFilter: 'var(--logo-filter)',
+                opacity: 'var(--logo-opacity)'
               }}
             />
             <div className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-800 flex-1">

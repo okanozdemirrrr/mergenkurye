@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file src/app/admin/components/tabs/LiveOrdersView.tsx
  * @description Canlı Sipariş Takibi Görünümü
  * AŞAMA 1: Sadece görünüm katmanı - Tüm state ve logic ana dosyada kalıyor
@@ -76,7 +76,7 @@ export function LiveOrdersView({
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
         <div className="lg:col-span-4 space-y-3">
           {/* SİPARİŞ KARTLARI - PADDING AZALTILDI */}
-          <div className="bg-white shadow-xl rounded-2xl p-4">
+          <div className="bg-slate-900 shadow-xl rounded-2xl p-4">
             <h2 className="text-xl font-bold mb-4">📦 Canlı Sipariş Takibi</h2>
         
             {/* Sipariş Kartları */}
@@ -87,7 +87,7 @@ export function LiveOrdersView({
                 <div className="col-span-full text-center py-8 text-slate-500">Aktif sipariş bulunmuyor.</div>
               ) : (
                 packages.map(pkg => (
-                  <div key={pkg.id} className={`bg-white p-3 rounded-lg border-l-4 shadow-sm ${
+                  <div key={pkg.id} className={`bg-slate-900 p-3 rounded-lg border-l-4 shadow-sm ${
                     pkg.status === 'pending' || pkg.status === 'waiting' ? 'border-l-yellow-500' :
                     pkg.status === 'assigned' ? 'border-l-blue-500' :
                     pkg.status === 'picking_up' ? 'border-l-orange-500' :
@@ -99,7 +99,7 @@ export function LiveOrdersView({
                       <div className="flex items-center gap-2">
                         <span className={`text-xs font-bold px-2 py-1 rounded ${
                           pkg.order_number 
-                            ? 'text-blue-600 bg-blue-50'
+                            ? 'text-orange-600 bg-orange-50'
                             : 'text-slate-400 bg-slate-100 animate-pulse'
                         }`}>
                           {pkg.order_number || '......'}
@@ -129,7 +129,7 @@ export function LiveOrdersView({
                     <div className="mb-2">
                       <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                         pkg.status === 'pending' || pkg.status === 'waiting' ? 'bg-yellow-100 text-yellow-700' :
-                        pkg.status === 'assigned' ? 'bg-blue-100 text-blue-700' :
+                        pkg.status === 'assigned' ? 'bg-orange-100 text-orange-700' :
                         pkg.status === 'picking_up' ? 'bg-orange-100 text-orange-700' :
                         'bg-red-100 text-red-700'
                       }`}>
@@ -154,7 +154,7 @@ export function LiveOrdersView({
                       {pkg.content && (
                         <div>
                           <p className="text-xs text-slate-600">Paket İçeriği:</p>
-                          <p className="text-xs text-slate-800 bg-blue-50 p-1.5 rounded">
+                          <p className="text-xs text-slate-800 bg-orange-50 p-1.5 rounded">
                             📝 {pkg.content}
                           </p>
                         </div>
@@ -171,7 +171,7 @@ export function LiveOrdersView({
                         <span className={`px-2 py-1 rounded text-xs font-medium ${
                           pkg.payment_method === 'cash' 
                             ? 'bg-green-50 text-green-700' 
-                            : 'bg-blue-50 text-blue-700'
+                            : 'bg-orange-50 text-orange-700'
                         }`}>
                           {pkg.payment_method === 'cash' ? '💵 Nakit' : '💳 Kart'}
                         </span>
@@ -184,7 +184,7 @@ export function LiveOrdersView({
                         <select 
                           value={selectedCouriers[pkg.id] || ''}
                           onChange={(e) => handleCourierChange(pkg.id, e.target.value)}
-                          className="w-full bg-white border border-slate-300 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+                          className="w-full bg-slate-800 border-slate-700 border-slate-300 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-orange-500 focus:border-transparent"
                           disabled={assigningIds.has(pkg.id)}
                         >
                           <option value="">Kurye Seçin</option>
@@ -207,7 +207,7 @@ export function LiveOrdersView({
                         <button 
                           onClick={() => handleAssignCourier(pkg.id)}
                           disabled={!selectedCouriers[pkg.id] || assigningIds.has(pkg.id)}
-                          className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white px-3 py-1.5 rounded text-xs font-semibold transition-all"
+                          className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white px-3 py-1.5 rounded text-xs font-semibold transition-all"
                         >
                           {assigningIds.has(pkg.id) ? '⏳ Atanıyor...' : '✅ Kurye Ata'}
                         </button>
@@ -218,7 +218,7 @@ export function LiveOrdersView({
                     {pkg.courier_id && (pkg.status === 'assigned' || pkg.status === 'picking_up' || pkg.status === 'on_the_way') && (
                       <div className="border-t border-slate-200 pt-2">
                         <div className="flex items-center justify-center">
-                          <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-medium">
+                          <span className="bg-orange-50 text-orange-700 px-2 py-1 rounded text-xs font-medium">
                             🚴 {couriers.find(c => c.id === pkg.courier_id)?.full_name || 'Bilinmeyen'}
                           </span>
                         </div>
@@ -233,7 +233,7 @@ export function LiveOrdersView({
 
         {/* SAĞ PANEL: KURYELERİN DURUMU - PADDING AZALTILDI */}
         <div className="lg:col-span-1 space-y-3">
-          <div className="bg-white shadow-xl rounded-2xl p-3">
+          <div className="bg-slate-900 shadow-xl rounded-2xl p-3">
             <h2 className="text-sm font-bold mb-2">🚴 Kurye Durumları</h2>
             <div className="space-y-2">
               {couriers.map(c => {
@@ -251,7 +251,7 @@ export function LiveOrdersView({
                         <span className="text-[10px] text-green-600 block font-semibold">
                           📦 {c.todayDeliveryCount || 0} bugün
                         </span>
-                        <span className="text-[10px] text-blue-600 block font-semibold">
+                        <span className="text-[10px] text-orange-600 block font-semibold">
                           🚚 {c.activePackageCount || 0} üzerinde
                         </span>
                       </div>
@@ -270,7 +270,7 @@ export function LiveOrdersView({
                           <div key={pkg.id} className="text-[10px] flex items-center gap-1">
                             <span className={`px-2 py-0.5 rounded-full font-semibold ${
                               pkg.status === 'pending' || pkg.status === 'waiting' ? 'bg-yellow-100 text-yellow-700' :
-                              pkg.status === 'assigned' ? 'bg-blue-100 text-blue-700' :
+                              pkg.status === 'assigned' ? 'bg-orange-100 text-orange-700' :
                               pkg.status === 'picking_up' ? 'bg-orange-100 text-orange-700' :
                               'bg-red-100 text-red-700'
                             }`}>

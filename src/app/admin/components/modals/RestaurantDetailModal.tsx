@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file src/app/admin/components/modals/RestaurantDetailModal.tsx
  * @description Restoran Detay ve Rapor Modalı.
  * Seçili restoranın belirli bir tarih aralığındaki sipariş hacmini ve toplam 
@@ -98,12 +98,12 @@ export function RestaurantDetailModal({
                         <div className="mb-6">
                             <h4 className="text-lg font-bold mb-4 text-slate-900">💰 Ödenmesi Gereken Hesap</h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="bg-blue-100 p-4 rounded-xl border-2 border-blue-300">
+                                <div className="bg-orange-100 p-4 rounded-xl border-2 border-orange-300">
                                     <div className="text-center">
-                                        <div className="text-3xl font-black text-blue-700">
+                                        <div className="text-3xl font-black text-orange-700">
                                             {selectedRestaurantOrders.length}
                                         </div>
-                                        <div className="text-sm font-semibold text-blue-600 mt-1">
+                                        <div className="text-sm font-semibold text-orange-600 mt-1">
                                             📦 TOPLAM SİPARİŞ
                                         </div>
                                     </div>
@@ -149,7 +149,7 @@ export function RestaurantDetailModal({
                                                 }`}>
                                                 <td className="py-3 px-4">
                                                     <div className="flex items-center gap-2">
-                                                        <span className="font-bold text-blue-600">
+                                                        <span className="font-bold text-orange-600">
                                                             {order.order_number || '......'}
                                                         </span>
                                                         {order.platform && (
@@ -177,7 +177,7 @@ export function RestaurantDetailModal({
                                                 <td className="py-3 px-4">
                                                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${order.payment_method === 'cash'
                                                         ? 'bg-green-100 text-green-700'
-                                                        : 'bg-blue-100 text-blue-700'
+                                                        : 'bg-orange-100 text-orange-700'
                                                         }`}>
                                                         {order.payment_method === 'cash' ? '💵 Nakit' : '💳 Kart'}
                                                     </span>

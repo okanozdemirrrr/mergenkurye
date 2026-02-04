@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file src/app/admin/components/CouriersTab.tsx
  * @description Kurye Yönetim Paneli Bileşeni.
  * Kuryelerin listelendiği, performans grafiklerinin (son 30 gün) ve 
@@ -32,7 +32,7 @@ export function CouriersTab({
     // Kurye Hesapları
     if (courierSubTab === 'accounts') {
         return (
-            <div className="bg-white shadow-xl rounded-2xl p-6">
+            <div className="bg-slate-900 shadow-xl rounded-2xl p-6">
                 <h2 className="text-2xl font-bold mb-6">👥 Kurye Listesi</h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -63,25 +63,25 @@ export function CouriersTab({
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-3">
-                                    <div className="bg-white p-3 rounded-lg">
+                                    <div className="bg-slate-900 p-3 rounded-lg">
                                         <div className="text-xs text-slate-600 mb-1">Bugün</div>
                                         <div className="text-xl font-bold text-green-600">
                                             {courier.todayDeliveryCount || 0}
                                         </div>
                                     </div>
-                                    <div className="bg-white p-3 rounded-lg">
+                                    <div className="bg-slate-900 p-3 rounded-lg">
                                         <div className="text-xs text-slate-600 mb-1">Aktif</div>
-                                        <div className="text-xl font-bold text-blue-600">
+                                        <div className="text-xl font-bold text-orange-600">
                                             {courier.activePackageCount || 0}
                                         </div>
                                     </div>
-                                    <div className="bg-white p-3 rounded-lg">
+                                    <div className="bg-slate-900 p-3 rounded-lg">
                                         <div className="text-xs text-slate-600 mb-1">Toplam</div>
                                         <div className="text-xl font-bold text-indigo-600">
                                             {courier.deliveryCount || 0}
                                         </div>
                                     </div>
-                                    <div className="bg-white p-3 rounded-lg">
+                                    <div className="bg-slate-900 p-3 rounded-lg">
                                         <div className="text-xs text-slate-600 mb-1">Borç</div>
                                         <div className={`text-xl font-bold ${(courier.totalDebt || 0) > 0
                                             ? 'text-red-600'
@@ -97,7 +97,7 @@ export function CouriersTab({
                                         e.stopPropagation()
                                         onCourierClick(courier.id)
                                     }}
-                                    className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-medium transition-colors"
+                                    className="w-full mt-4 bg-orange-600 hover:bg-orange-700 text-white py-2 rounded-lg font-medium transition-colors"
                                 >
                                     📊 Detaylı Rapor Görüntüle
                                 </button>
@@ -185,7 +185,7 @@ export function CouriersTab({
         }
 
         return (
-            <div className="bg-white shadow-xl rounded-2xl p-6">
+            <div className="bg-slate-900 shadow-xl rounded-2xl p-6">
                 <h2 className="text-2xl font-bold mb-6">📊 Kurye Performansları</h2>
 
                 <div className="mb-8">
@@ -195,7 +195,7 @@ export function CouriersTab({
                     <select
                         value={selectedCourierId}
                         onChange={(e) => setSelectedCourierId(e.target.value)}
-                        className="w-full max-w-md px-4 py-3 bg-slate-50 text-slate-900 rounded-xl border-2 border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-base font-medium"
+                        className="w-full max-w-md px-4 py-3 bg-slate-50 text-slate-900 rounded-xl border-2 border-slate-300 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all text-base font-medium"
                     >
                         <option value="">-- Kurye Seçin --</option>
                         {couriers.map(courier => (
@@ -216,7 +216,7 @@ export function CouriersTab({
 
                 {selectedCourierId && loadingPerformance && (
                     <div className="text-center py-16">
-                        <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                        <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                         <p className="text-slate-500">Performans verileri yükleniyor...</p>
                     </div>
                 )}
@@ -224,11 +224,11 @@ export function CouriersTab({
                 {selectedCourierId && !loadingPerformance && performanceData.length > 0 && (
                     <div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                            <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl border-2 border-blue-200">
-                                <div className="text-sm font-medium text-blue-700 mb-1">
+                            <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl border-2 border-orange-200">
+                                <div className="text-sm font-medium text-orange-700 mb-1">
                                     Toplam Teslimat (30 Gün)
                                 </div>
-                                <div className="text-3xl font-black text-blue-600">
+                                <div className="text-3xl font-black text-orange-600">
                                     {performanceData.reduce((sum, d) => sum + d.count, 0)}
                                 </div>
                             </div>
@@ -379,7 +379,7 @@ export function CouriersTab({
         const totalDeliveries = courierEarnings.reduce((sum, c) => sum + c.deliveredCount, 0)
 
         return (
-            <div className="bg-white shadow-xl rounded-2xl p-6">
+            <div className="bg-slate-900 shadow-xl rounded-2xl p-6">
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-2xl font-bold">💰 Kurye Kazançları (Hakediş)</h2>
 
@@ -406,12 +406,12 @@ export function CouriersTab({
                         </div>
                     </div>
 
-                    <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-4 rounded-xl border-2 border-blue-300">
+                    <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-4 rounded-xl border-2 border-orange-300">
                         <div className="text-center">
-                            <div className="text-3xl font-black text-blue-700">
+                            <div className="text-3xl font-black text-orange-700">
                                 {totalDeliveries}
                             </div>
-                            <div className="text-sm font-semibold text-blue-600 mt-1">
+                            <div className="text-sm font-semibold text-orange-600 mt-1">
                                 📦 TOPLAM TESLİMAT
                             </div>
                         </div>
@@ -472,7 +472,7 @@ export function CouriersTab({
                                                 e.stopPropagation()
                                                 onCourierClick(courier.id)
                                             }}
-                                            className="px-4 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold hover:bg-blue-200:bg-blue-800 transition-colors"
+                                            className="px-4 py-1.5 bg-orange-100 text-orange-700 rounded-lg text-xs font-bold hover:bg-orange-200:bg-orange-800 transition-colors"
                                         >
                                             📊 Rapor
                                         </button>

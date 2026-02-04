@@ -183,15 +183,15 @@ export default function Home() {
 
       // Tarihe göre sırala (delivered_at veya cancelled_at)
       transformedData.sort((a, b) => {
-        const dateA = a.status === 'cancelled' && a.cancelled_at 
+        const dateA = a.status === 'cancelled' && a.cancelled_at
           ? new Date(a.cancelled_at).getTime()
-          : a.delivered_at 
-            ? new Date(a.delivered_at).getTime() 
+          : a.delivered_at
+            ? new Date(a.delivered_at).getTime()
             : 0
-        const dateB = b.status === 'cancelled' && b.cancelled_at 
+        const dateB = b.status === 'cancelled' && b.cancelled_at
           ? new Date(b.cancelled_at).getTime()
-          : b.delivered_at 
-            ? new Date(b.delivered_at).getTime() 
+          : b.delivered_at
+            ? new Date(b.delivered_at).getTime()
             : 0
         return dateB - dateA // En yeni önce
       })
@@ -402,9 +402,19 @@ export default function Home() {
       })
       .subscribe()
 
+    // 1 dakikalık otomatik yenileme (realtime'a ek olarak)
+    const refreshInterval = setInterval(() => {
+      console.log('🔄 1 dakikalık otomatik yenileme başlatıldı')
+      fetchPackages()
+      fetchDeliveredPackages()
+      fetchCouriers()
+      fetchRestaurants()
+    }, 60000) // 60 saniye = 1 dakika
+
     return () => {
       packagesChannel.unsubscribe()
       couriersChannel.unsubscribe()
+      clearInterval(refreshInterval)
     }
   }, [isLoggedIn])
 
@@ -427,13 +437,25 @@ export default function Home() {
   // ========== EVENT HANDLERS ==========
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+    console.log('🔐 Giriş denemesi başladı', { username: loginForm.username })
 
-    if (loginForm.username === 'admin' && loginForm.password === 'admin123') {
+    const adminUser = process.env.NEXT_PUBLIC_ADMIN_USERNAME || 'admin'
+    const adminPass = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'admin123'
+
+    console.log('🔑 Kontrol ediliyor...', { 
+      girilen: loginForm.username, 
+      beklenen: adminUser,
+      sifreUzunluk: loginForm.password.length 
+    })
+
+    if (loginForm.username === adminUser && loginForm.password === adminPass) {
+      console.log('✅ Giriş başarılı!')
       localStorage.setItem('admin_logged_in', 'true')
       setIsLoggedIn(true)
       setSuccessMessage('Giriş başarılı!')
       setTimeout(() => setSuccessMessage(''), 2000)
     } else {
+      console.log('❌ Giriş başarısız - Kullanıcı adı veya şifre hatalı')
       setErrorMessage('Kullanıcı adı veya şifre hatalı!')
       setTimeout(() => setErrorMessage(''), 3000)
     }
@@ -473,25 +495,25 @@ export default function Home() {
   const handleCancelOrder = async (packageId: number, details: string = '') => {
     try {
       const result = await cancelOrder(packageId, details)
-      
+
       if (result.cancelled) {
         // Kullanıcı iptal etti
         return
       }
-      
+
       if (result.success) {
         console.log('✅ Sipariş iptal edildi, UI güncelleniyor...')
-        
+
         // Local state'i anında güncelle (optimistic update)
-        setPackages(prev => prev.map(pkg => 
-          pkg.id === packageId 
+        setPackages(prev => prev.map(pkg =>
+          pkg.id === packageId
             ? { ...pkg, status: 'cancelled' as const, courier_id: null, cancelled_at: new Date().toISOString() }
             : pkg
         ))
-        
+
         setSuccessMessage('Sipariş iptal edildi!')
         setTimeout(() => setSuccessMessage(''), 2000)
-        
+
         // Veritabanından da çek (doğrulama için)
         await fetchPackages()
         await fetchDeliveredPackages()
@@ -641,18 +663,18 @@ export default function Home() {
           <input
             type="text"
             placeholder="Kullanıcı Adı"
-            className="w-full p-3 mb-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-blue-500 transition-colors"
+            className="w-full p-3 mb-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors"
             value={loginForm.username}
             onChange={e => setLoginForm({ ...loginForm, username: e.target.value })}
           />
           <input
             type="password"
             placeholder="Şifre"
-            className="w-full p-3 mb-4 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-blue-500 transition-colors"
+            className="w-full p-3 mb-4 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors"
             value={loginForm.password}
             onChange={e => setLoginForm({ ...loginForm, password: e.target.value })}
           />
-          <button className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+          <button className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-lg transition-colors">
             Giriş Yap
           </button>
           {errorMessage && <p className="text-red-400 text-sm mt-3 text-center">{errorMessage}</p>}
@@ -662,7 +684,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-950">
       {/* Hamburger Menu Button */}
       <button
         onClick={() => setShowMenu(!showMenu)}
@@ -702,7 +724,7 @@ export default function Home() {
                   setShowCourierSubmenu(false)
                 }}
                 className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${activeTab === 'live'
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-orange-600 text-white'
                   : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                   }`}
               >
@@ -719,7 +741,7 @@ export default function Home() {
                   setShowCourierSubmenu(false)
                 }}
                 className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${activeTab === 'history'
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-orange-600 text-white'
                   : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                   }`}
               >
@@ -732,7 +754,7 @@ export default function Home() {
                 <button
                   onClick={() => setShowCourierSubmenu(!showCourierSubmenu)}
                   className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${activeTab === 'couriers'
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-orange-600 text-white'
                     : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                     }`}
                 >
@@ -751,7 +773,7 @@ export default function Home() {
                         setShowMenu(false)
                       }}
                       className={`w-full text-left px-4 py-2 rounded-lg text-sm transition-all ${activeTab === 'couriers' && courierSubTab === 'accounts'
-                        ? 'bg-blue-500 text-white'
+                        ? 'bg-orange-500 text-white'
                         : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                         }`}
                     >
@@ -764,7 +786,7 @@ export default function Home() {
                         setShowMenu(false)
                       }}
                       className={`w-full text-left px-4 py-2 rounded-lg text-sm transition-all ${activeTab === 'couriers' && courierSubTab === 'performance'
-                        ? 'bg-blue-500 text-white'
+                        ? 'bg-orange-500 text-white'
                         : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                         }`}
                     >
@@ -777,7 +799,7 @@ export default function Home() {
                         setShowMenu(false)
                       }}
                       className={`w-full text-left px-4 py-2 rounded-lg text-sm transition-all ${activeTab === 'couriers' && courierSubTab === 'earnings'
-                        ? 'bg-blue-500 text-white'
+                        ? 'bg-orange-500 text-white'
                         : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                         }`}
                     >
@@ -792,7 +814,7 @@ export default function Home() {
                 <button
                   onClick={() => setShowRestaurantSubmenu(!showRestaurantSubmenu)}
                   className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${activeTab === 'restaurants'
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-orange-600 text-white'
                     : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                     }`}
                 >
@@ -811,7 +833,7 @@ export default function Home() {
                         setShowMenu(false)
                       }}
                       className={`w-full text-left px-4 py-2 rounded-lg text-sm transition-all ${activeTab === 'restaurants' && restaurantSubTab === 'list'
-                        ? 'bg-blue-500 text-white'
+                        ? 'bg-orange-500 text-white'
                         : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                         }`}
                     >
@@ -824,7 +846,7 @@ export default function Home() {
                         setShowMenu(false)
                       }}
                       className={`w-full text-left px-4 py-2 rounded-lg text-sm transition-all ${activeTab === 'restaurants' && restaurantSubTab === 'details'
-                        ? 'bg-blue-500 text-white'
+                        ? 'bg-orange-500 text-white'
                         : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                         }`}
                     >
@@ -837,7 +859,7 @@ export default function Home() {
                         setShowMenu(false)
                       }}
                       className={`w-full text-left px-4 py-2 rounded-lg text-sm transition-all ${activeTab === 'restaurants' && restaurantSubTab === 'debt'
-                        ? 'bg-blue-500 text-white'
+                        ? 'bg-orange-500 text-white'
                         : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                         }`}
                     >
@@ -850,7 +872,7 @@ export default function Home() {
                         setShowMenu(false)
                       }}
                       className={`w-full text-left px-4 py-2 rounded-lg text-sm transition-all ${activeTab === 'restaurants' && restaurantSubTab === 'payments'
-                        ? 'bg-blue-500 text-white'
+                        ? 'bg-orange-500 text-white'
                         : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                         }`}
                     >
@@ -875,32 +897,30 @@ export default function Home() {
       )}
 
       {/* Sticky Navbar */}
-      <div className="sticky top-0 z-30 bg-white shadow-lg border-b border-slate-200">
+      <div className="sticky top-0 z-30 bg-slate-900 shadow-lg border-b border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-center items-center h-16">
-            <h1 className="text-3xl font-black tracking-wider bg-gradient-to-r from-gray-200 to-gray-500 bg-clip-text text-transparent" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-              ADMIN PANEL
-            </h1>
+            {/* Boş - Başlık kaldırıldı */}
           </div>
         </div>
       </div>
 
       {/* Tab Content */}
-      <div className="py-8 px-4 sm:px-6 lg:px-8">
+      <div className="py-8 px-4 sm:px-6 lg:px-8 bg-slate-950 min-h-screen">
         <div className="max-w-7xl mx-auto">
           {/* Messages */}
           {notificationMessage && (
-            <div className="mb-4 p-3 bg-blue-100 border border-blue-300 rounded-lg text-blue-800 animate-pulse">
+            <div className="mb-4 p-3 bg-orange-900/30 border border-orange-500 rounded-lg text-orange-300 animate-pulse">
               {notificationMessage}
             </div>
           )}
           {successMessage && (
-            <div className="mb-4 p-3 bg-green-100 border border-green-300 rounded-lg text-green-800">
+            <div className="mb-4 p-3 bg-green-900/30 border border-green-500 rounded-lg text-green-300">
               {successMessage}
             </div>
           )}
           {errorMessage && (
-            <div className="mb-4 p-3 bg-red-100 border border-red-300 rounded-lg text-red-800">
+            <div className="mb-4 p-3 bg-red-900/30 border border-red-500 rounded-lg text-red-300">
               {errorMessage}
             </div>
           )}
@@ -910,6 +930,7 @@ export default function Home() {
             <LiveTrackingTab
               packages={packages}
               couriers={couriers}
+              restaurants={restaurants}
               isLoading={isLoading}
               selectedCouriers={selectedCouriers}
               assigningIds={assigningIds}

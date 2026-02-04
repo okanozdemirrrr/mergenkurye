@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file src/app/admin/components/modals/PayDebtModal.tsx
  * @description Kurye Borç Ödeme Modalı.
  * Kuryelerin geçmişten kalan borçlarını (açıklarını) kapatmak için kullanılır. 
@@ -113,7 +113,7 @@ export function PayDebtModal({
                                             onChange={(e) => setPayDebtAmount(e.target.value)}
                                             placeholder="Örn: 50.00"
                                             autoFocus
-                                            className="w-full px-4 py-3 bg-white border-2 border-slate-300 rounded-xl text-lg font-bold text-slate-900 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none"
+                                            className="w-full px-4 py-3 bg-slate-800 border-slate-700-2 border-slate-300 rounded-xl text-lg font-bold text-slate-900 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none"
                                         />
                                     </div>
 
@@ -140,16 +140,16 @@ export function PayDebtModal({
                                         } else if (remaining > 0) {
                                             return (
                                                 <div className="mb-6">
-                                                    <div className="bg-blue-50 p-4 rounded-xl border-2 border-blue-300">
+                                                    <div className="bg-orange-50 p-4 rounded-xl border-2 border-orange-300">
                                                         <div className="flex justify-between items-center">
-                                                            <span className="text-base font-bold text-blue-700">
+                                                            <span className="text-base font-bold text-orange-700">
                                                                 📉 KALAN BORÇ
                                                             </span>
-                                                            <span className="text-3xl font-black text-blue-700">
+                                                            <span className="text-3xl font-black text-orange-700">
                                                                 {remaining.toFixed(2)} ₺
                                                             </span>
                                                         </div>
-                                                        <p className="text-xs text-blue-600 mt-2">
+                                                        <p className="text-xs text-orange-600 mt-2">
                                                             Kısmi ödeme yapılıyor
                                                         </p>
                                                     </div>
