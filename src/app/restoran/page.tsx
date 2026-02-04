@@ -231,39 +231,55 @@ export default function RestoranPage() {
 
   // İstatistik verilerini çek
   const fetchStatisticsData = async () => {
-    if (!selectedRestaurantId || !startDate || !endDate) return
+    if (!selectedRestaurantId) return
 
     try {
+      // Otomatik tarih aralığı hesapla
+      const end = new Date()
+      const start = new Date()
+
+      if (statisticsFilter === 'daily') {
+        // Son 30 gün
+        start.setDate(end.getDate() - 29) // Bugün dahil 30 gün
+      } else if (statisticsFilter === 'weekly') {
+        // Son 12 hafta
+        start.setDate(end.getDate() - (12 * 7 - 1)) // 12 hafta
+      } else {
+        // Son 12 ay
+        start.setMonth(end.getMonth() - 11) // Bugünkü ay dahil 12 ay
+      }
+
+      start.setHours(0, 0, 0, 0)
+      end.setHours(23, 59, 59, 999)
+
       // Seçilen tarih aralığındaki paketleri çek
       const { data, error } = await supabase
         .from('packages')
         .select('created_at, amount, status, delivery_address')
         .eq('restaurant_id', selectedRestaurantId)
-        .gte('created_at', new Date(startDate).toISOString())
-        .lte('created_at', new Date(endDate + 'T23:59:59').toISOString())
+        .gte('created_at', start.toISOString())
+        .lte('created_at', end.toISOString())
         .order('created_at', { ascending: true })
 
       if (error) throw error
 
       // Tüm tarih aralığını oluştur (veri olmasa bile)
-      const start = new Date(startDate)
-      const end = new Date(endDate)
       const allPeriods: string[] = []
 
       if (statisticsFilter === 'daily') {
-        // Günlük: Her günü ekle
+        // Günlük: Son 30 günü ekle
         const current = new Date(start)
         while (current <= end) {
           const day = current.getDate().toString().padStart(2, '0')
           const month = (current.getMonth() + 1).toString().padStart(2, '0')
-          const year = current.getFullYear()
-          allPeriods.push(`${day}.${month}.${year}`)
+          allPeriods.push(`${day}.${month}`)
           current.setDate(current.getDate() + 1)
         }
       } else if (statisticsFilter === 'weekly') {
-        // Haftalık: Her haftayı ekle
+        // Haftalık: Son 12 haftayı ekle
         const current = new Date(start)
-        while (current <= end) {
+        let weekCount = 0
+        while (weekCount < 12) {
           const dayOfWeek = current.getDay()
           const diff = current.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1)
           const weekStart = new Date(current.getFullYear(), current.getMonth(), diff)
@@ -272,28 +288,27 @@ export default function RestoranPage() {
 
           const startDay = weekStart.getDate().toString().padStart(2, '0')
           const startMonth = (weekStart.getMonth() + 1).toString().padStart(2, '0')
-          const startYear = weekStart.getFullYear()
           const endDay = weekEnd.getDate().toString().padStart(2, '0')
           const endMonth = (weekEnd.getMonth() + 1).toString().padStart(2, '0')
-          const endYear = weekEnd.getFullYear()
 
-          const key = `${startDay}.${startMonth}.${startYear}-${endDay}.${endMonth}.${endYear}`
+          const key = `${startDay}.${startMonth}-${endDay}.${endMonth}`
           if (!allPeriods.includes(key)) {
             allPeriods.push(key)
+            weekCount++
           }
 
           current.setDate(current.getDate() + 7)
         }
       } else {
-        // Aylık: Her ayı ekle
+        // Aylık: Son 12 ayı ekle
         const current = new Date(start)
-        const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-          'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık']
+        const monthNames = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz',
+          'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara']
 
-        while (current <= end) {
+        for (let i = 0; i < 12; i++) {
           const month = monthNames[current.getMonth()]
-          const year = current.getFullYear()
-          const key = `${year} ${month}`
+          const year = current.getFullYear().toString().slice(-2) // Son 2 rakam
+          const key = `${month} '${year}`
           if (!allPeriods.includes(key)) {
             allPeriods.push(key)
           }
@@ -302,15 +317,15 @@ export default function RestoranPage() {
       }
 
       // Tüm periyotlar için başlangıç değerleri
-      const grouped: { [key: string]: { count: number; revenue: number; deliveredRevenue: number } } = {}
+      const grouped: { [key: string]: { count: number; revenue: number } } = {}
       allPeriods.forEach(period => {
-        grouped[period] = { count: 0, revenue: 0, deliveredRevenue: 0 }
+        grouped[period] = { count: 0, revenue: 0 }
       })
 
-      // Verileri grupla
+      // Verileri grupla (SADECE TESLİM EDİLEN PAKETLER)
       if (data && data.length > 0) {
         data.forEach((pkg) => {
-          if (!pkg.created_at) return
+          if (!pkg.created_at || pkg.status !== 'delivered') return // Sadece teslim edilenler
 
           const date = new Date(pkg.created_at)
           let key = ''
@@ -318,8 +333,7 @@ export default function RestoranPage() {
           if (statisticsFilter === 'daily') {
             const day = date.getDate().toString().padStart(2, '0')
             const month = (date.getMonth() + 1).toString().padStart(2, '0')
-            const year = date.getFullYear()
-            key = `${day}.${month}.${year}`
+            key = `${day}.${month}`
           } else if (statisticsFilter === 'weekly') {
             const dayOfWeek = date.getDay()
             const diff = date.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1)
@@ -329,26 +343,21 @@ export default function RestoranPage() {
 
             const startDay = weekStart.getDate().toString().padStart(2, '0')
             const startMonth = (weekStart.getMonth() + 1).toString().padStart(2, '0')
-            const startYear = weekStart.getFullYear()
             const endDay = weekEnd.getDate().toString().padStart(2, '0')
             const endMonth = (weekEnd.getMonth() + 1).toString().padStart(2, '0')
-            const endYear = weekEnd.getFullYear()
 
-            key = `${startDay}.${startMonth}.${startYear}-${endDay}.${endMonth}.${endYear}`
+            key = `${startDay}.${startMonth}-${endDay}.${endMonth}`
           } else {
-            const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-              'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık']
+            const monthNames = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz',
+              'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara']
             const month = monthNames[date.getMonth()]
-            const year = date.getFullYear()
-            key = `${year} ${month}`
+            const year = date.getFullYear().toString().slice(-2)
+            key = `${month} '${year}`
           }
 
           if (grouped[key]) {
             grouped[key].count++
             grouped[key].revenue += pkg.amount || 0
-            if (pkg.status === 'delivered') {
-              grouped[key].deliveredRevenue += pkg.amount || 0
-            }
           }
         })
       }
@@ -357,8 +366,7 @@ export default function RestoranPage() {
       const chartData = allPeriods.map(name => ({
         name,
         count: grouped[name].count,
-        revenue: grouped[name].revenue,
-        deliveredRevenue: grouped[name].deliveredRevenue
+        revenue: grouped[name].revenue
       }))
 
       setStatisticsData(chartData)
@@ -370,16 +378,16 @@ export default function RestoranPage() {
         return
       }
 
-      console.error('İstatistik verileri yüklenirken hata:', error)
+      console.error('❌ İstatistik yüklenemedi:', error)
     }
   }
 
-  // İstatistikler açıldığında veya filtre/tarih değiştiğinde veri çek
+  // İstatistikler açıldığında veya filtre değiştiğinde veri çek
   useEffect(() => {
-    if (showStatistics && selectedRestaurantId && startDate && endDate) {
+    if (showStatistics && selectedRestaurantId) {
       fetchStatisticsData()
     }
-  }, [showStatistics, statisticsFilter, selectedRestaurantId, startDate, endDate])
+  }, [showStatistics, statisticsFilter, selectedRestaurantId])
 
   // Build-safe mount kontrolü
 
@@ -987,71 +995,42 @@ export default function RestoranPage() {
               </button>
             </div>
 
-            {/* Tarih Aralığı Seçimi */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              <div>
-                <label className="block text-sm text-slate-400 mb-2">Başlangıç Tarihi</label>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-blue-500 outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-sm text-slate-400 mb-2">Bitiş Tarihi</label>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-blue-500 outline-none"
-                />
-              </div>
-            </div>
-
             {/* Görünüm Butonları */}
             <div className="flex gap-2 mb-6">
               <button
                 onClick={() => setStatisticsFilter('daily')}
-                disabled={!startDate || !endDate}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${statisticsFilter === 'daily'
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${statisticsFilter === 'daily'
                     ? 'bg-purple-600 text-white'
                     : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                   }`}
               >
-                Günlük
+                Günlük (Son 30 Gün)
               </button>
               <button
                 onClick={() => setStatisticsFilter('weekly')}
-                disabled={!startDate || !endDate}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${statisticsFilter === 'weekly'
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${statisticsFilter === 'weekly'
                     ? 'bg-purple-600 text-white'
                     : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                   }`}
               >
-                Haftalık
+                Haftalık (Son 12 Hafta)
               </button>
               <button
                 onClick={() => setStatisticsFilter('monthly')}
-                disabled={!startDate || !endDate}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${statisticsFilter === 'monthly'
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${statisticsFilter === 'monthly'
                     ? 'bg-purple-600 text-white'
                     : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                   }`}
               >
-                Aylık
+                Aylık (Son 12 Ay)
               </button>
             </div>
 
             {/* Grafik */}
             <div className="bg-slate-800/50 rounded-lg p-4" style={{ height: '400px' }}>
-              {!startDate || !endDate ? (
+              {statisticsData.length === 0 ? (
                 <div className="flex items-center justify-center h-full text-slate-400">
-                  Lütfen tarih aralığı seçin
-                </div>
-              ) : statisticsData.length === 0 ? (
-                <div className="flex items-center justify-center h-full text-slate-400">
-                  Seçilen tarih aralığında veri bulunamadı
+                  Seçilen dönemde veri bulunamadı
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
@@ -1082,20 +1061,12 @@ export default function RestoranPage() {
                         radius={[8, 8, 0, 0]}
                       />
                     ) : (
-                      <>
-                        <Bar
-                          dataKey="deliveredRevenue"
-                          stackId="a"
-                          fill="#10b981"
-                          name="Gerçekleşen Ciro (₺)"
-                          radius={[0, 0, 0, 0]}
-                        />
-                        <Bar
-                          dataKey="revenue"
-                          name="Gerçekleşen Ciro (₺)"
-                          radius={[8, 8, 0, 0]}
-                        />
-                      </>
+                      <Bar
+                        dataKey="revenue"
+                        fill="#10b981"
+                        name="Gerçekleşen Ciro (₺)"
+                        radius={[8, 8, 0, 0]}
+                      />
                     )}
                   </BarChart>
                 </ResponsiveContainer>

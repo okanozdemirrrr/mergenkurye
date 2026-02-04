@@ -78,6 +78,9 @@ export default function KuryePage() {
   const [showMenu, setShowMenu] = useState(false) // Hamburger menü
   const [activeTab, setActiveTab] = useState<'packages' | 'history' | 'earnings'>('packages') // Aktif sekme
   const [courierName, setCourierName] = useState<string>('Kurye') // Giriş yapan kuryenin ismi
+  const lastNotificationTimeRef = useRef<number>(0) // Son bildirim zamanı (debounce için)
+  const audioRef = useRef<HTMLAudioElement | null>(null) // Audio instance referansı
+  const [notificationSoundEnabled, setNotificationSoundEnabled] = useState(false) // Bildirim sesi açık mı?
   const [todayDeliveredPackages, setTodayDeliveredPackages] = useState<Package[]>([]) // Bugünkü teslim edilenler
   const [filteredPackages, setFilteredPackages] = useState<Package[]>([]) // Filtrelenmiş paketler
   const [currentPage, setCurrentPage] = useState(1) // Mevcut sayfa
@@ -180,11 +183,32 @@ export default function KuryePage() {
   // Bildirim sesi çal
   const playNotificationSound = () => {
     if (typeof window === 'undefined') return
+    
+    // SES KAPALI - SADECE MANUEL AÇILIRSA ÇALAR
+    if (!notificationSoundEnabled) {
+      console.log('🔇 Bildirim sesi kapalı, çalmıyor')
+      return
+    }
 
     try {
-      console.log('🔊 Ses çalınıyor...')
+      console.log('🔊 Ses çalma isteği alındı')
+      
+      // Eğer hala bir ses çalıyorsa, yeni ses çalma
+      if (audioRef.current && !audioRef.current.paused) {
+        console.log('⏭️ Ses zaten çalıyor, yeni ses çalmıyorum')
+        return
+      }
+
+      console.log('🔊 Yeni ses çalınıyor...')
       const audio = new Audio(`/notification.mp3?t=${Date.now()}`)
       audio.volume = 1.0 // Maksimum ses
+      audioRef.current = audio
+
+      // Ses bittiğinde referansı temizle
+      audio.onended = () => {
+        console.log('✅ Ses bitti, referans temizlendi')
+        audioRef.current = null
+      }
 
       // Ses çalma promise'ini handle et
       const playPromise = audio.play()
@@ -196,6 +220,7 @@ export default function KuryePage() {
           })
           .catch((err) => {
             console.error('❌ Ses çalma hatası:', err)
+            audioRef.current = null // Hata durumunda referansı temizle
             console.error('Hata detayı:', {
               name: err.name,
               message: err.message,
@@ -213,6 +238,7 @@ export default function KuryePage() {
       }
     } catch (err) {
       console.error('Ses hatası:', err)
+      audioRef.current = null
     }
   }
 
@@ -1453,21 +1479,39 @@ export default function KuryePage() {
       // Realtime callback fonksiyonları - her zaman güncel state'e erişmek için burada tanımla
       const handlePackageChange = async (payload: any) => {
         console.log('📦 Paket değişikliği algılandı:', payload.eventType, 'ID:', payload.new?.id || payload.old?.id)
+        console.log('📦 Old courier_id:', payload.old?.courier_id, 'New courier_id:', payload.new?.courier_id)
+        console.log('📦 Status:', payload.new?.status)
 
-        // Yeni paket atandı mı kontrol et (INSERT veya UPDATE ile courier_id eklendi)
+        // Yeni paket atandı mı kontrol et (SADECE courier_id değiştiğinde)
         const isNewAssignment = (
-          (payload.eventType === 'INSERT' && payload.new?.courier_id === courierId) ||
-          (payload.eventType === 'UPDATE' && payload.new?.courier_id === courierId && payload.old?.courier_id !== courierId)
+          payload.eventType === 'UPDATE' && 
+          payload.new?.courier_id === courierId && 
+          payload.old?.courier_id !== courierId &&
+          payload.new?.status !== 'delivered' &&
+          payload.new?.status !== 'cancelled'
         )
 
+        console.log('📦 isNewAssignment:', isNewAssignment)
+
         if (isNewAssignment) {
-          console.log('🎯 Yeni paket atandı!')
-          playNotificationSound()
-          sendBrowserNotification(
-            '📦 Üzerine Paket Atandı!',
-            `Sipariş No: ${payload.new?.order_number || 'Yeni'} - ${payload.new?.amount || 0}₺`,
-            '/kurye'
-          )
+          // Debounce: Son bildirimden en az 3 saniye geçmiş olmalı
+          const now = Date.now()
+          const timeSinceLastNotification = now - lastNotificationTimeRef.current
+          
+          if (timeSinceLastNotification < 3000) {
+            console.log('⏭️ Bildirim atlandı (çok sık)', timeSinceLastNotification, 'ms')
+          } else {
+            console.log('🎯 Yeni paket atandı! Bildirim çalınıyor...')
+            lastNotificationTimeRef.current = now
+            playNotificationSound()
+            sendBrowserNotification(
+              '📦 Üzerine Paket Atandı!',
+              `Sipariş No: ${payload.new?.order_number || 'Yeni'} - ${payload.new?.amount || 0}₺`,
+              '/kurye'
+            )
+          }
+        } else {
+          console.log('ℹ️ Paket güncellendi ama yeni atama değil, bildirim çalmıyor')
         }
 
         // State'i güncelle - sayfa yenileme YOK!
@@ -1759,6 +1803,22 @@ export default function KuryePage() {
               >
                 <span className="mr-3">💰</span>
                 Verilecek Hesap
+              </button>
+
+              {/* Bildirim Sesi Toggle */}
+              <button
+                onClick={() => {
+                  setNotificationSoundEnabled(!notificationSoundEnabled)
+                  setSuccessMessage(notificationSoundEnabled ? '🔇 Bildirim sesi kapatıldı' : '🔊 Bildirim sesi açıldı')
+                  setTimeout(() => setSuccessMessage(''), 2000)
+                }}
+                className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${notificationSoundEnabled
+                  ? 'bg-green-600 text-white'
+                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  }`}
+              >
+                <span className="mr-3">{notificationSoundEnabled ? '🔊' : '�'}</span>
+                Bildirim Sesi {notificationSoundEnabled ? 'Açık' : 'Kapalı'}
               </button>
 
               <button
