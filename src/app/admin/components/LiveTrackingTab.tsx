@@ -68,7 +68,7 @@ export function LiveTrackingTab({
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-2">
                 {/* SOL: Canlı Harita (3/4) */}
                 <div className="lg:col-span-3">
-                    <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-2" style={{ position: 'relative', zIndex: 1 }}>
+                    <div className="bg-white shadow-xl rounded-2xl p-2" style={{ position: 'relative', zIndex: 1 }}>
                         <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
                             <span>🗺️</span>
                             <span>Canlı Harita</span>
@@ -81,7 +81,7 @@ export function LiveTrackingTab({
 
                 {/* SAĞ: Kurye Durumları (1/4) */}
                 <div className="lg:col-span-1">
-                    <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-2 sticky top-4">
+                    <div className="bg-white shadow-xl rounded-2xl p-2 sticky top-4">
                         <h2 className="text-sm font-bold mb-2">🚴 Kurye Durumları</h2>
                         <div className="space-y-2 max-h-[500px] overflow-y-auto">
                             {couriers.map(c => {
@@ -90,15 +90,15 @@ export function LiveTrackingTab({
                                 return (
                                     <div
                                         key={c.id}
-                                        className="p-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg border dark:border-slate-600"
+                                        className="p-2 bg-slate-50 rounded-lg border"
                                     >
                                         <div className="flex justify-between items-center mb-1.5">
                                             <span className="font-bold text-xs">{c.full_name}</span>
                                             <div className="text-right">
-                                                <span className="text-[10px] text-green-600 dark:text-green-400 block font-semibold">
+                                                <span className="text-[10px] text-green-600 block font-semibold">
                                                     📦 {c.todayDeliveryCount || 0} bugün
                                                 </span>
-                                                <span className="text-[10px] text-blue-600 dark:text-blue-400 block font-semibold">
+                                                <span className="text-[10px] text-blue-600 block font-semibold">
                                                     🚚 {c.activePackageCount || 0} üzerinde
                                                 </span>
                                             </div>
@@ -113,16 +113,16 @@ export function LiveTrackingTab({
                                             <div className="mt-2 space-y-1">
                                                 {courierPackages.map(pkg => (
                                                     <div key={pkg.id} className="text-[10px] flex items-center gap-1">
-                                                        <span className={`px-2 py-0.5 rounded-full font-semibold ${pkg.status === 'waiting' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                                                            pkg.status === 'assigned' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                                                                pkg.status === 'picking_up' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
-                                                                    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                                        <span className={`px-2 py-0.5 rounded-full font-semibold ${pkg.status === 'waiting' ? 'bg-yellow-100 text-yellow-700' :
+                                                            pkg.status === 'assigned' ? 'bg-blue-100 text-blue-700' :
+                                                                pkg.status === 'picking_up' ? 'bg-orange-100 text-orange-700' :
+                                                                    'bg-red-100 text-red-700'
                                                             }`}>
                                                             {pkg.status === 'waiting' ? '⏳ Bekliyor' :
                                                                 pkg.status === 'assigned' ? '👤 Atandı' :
                                                                     pkg.status === 'picking_up' ? '🏃 Alıyor' : '🚗 Yolda'}
                                                         </span>
-                                                        <span className="text-slate-600 dark:text-slate-400 truncate">
+                                                        <span className="text-slate-600 truncate">
                                                             {pkg.customer_name}
                                                         </span>
                                                     </div>
@@ -140,7 +140,7 @@ export function LiveTrackingTab({
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-2">
                 <div className="lg:col-span-3 space-y-2">
                     {/* SİPARİŞ KARTLARI */}
-                    <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-3">
+                    <div className="bg-white shadow-xl rounded-2xl p-3">
                         <h2 className="text-xl font-bold mb-3">📦 Canlı Sipariş Takibi</h2>
 
                         {/* Sipariş Kartları */}
@@ -151,11 +151,11 @@ export function LiveTrackingTab({
                                 <div className="col-span-full text-center py-8 text-slate-500">Kurye bekleyen sipariş bulunmuyor.</div>
                             ) : (
                                 unassignedPackages.map(pkg => (
-                                    <div key={pkg.id} className={`relative bg-white dark:bg-slate-800 p-3 rounded-lg border-l-4 shadow-sm ${pkg.status === 'waiting' ? 'border-l-yellow-500' :
+                                    <div key={pkg.id} className={`relative bg-white p-3 rounded-lg border-l-4 shadow-sm ${pkg.status === 'waiting' ? 'border-l-yellow-500' :
                                         pkg.status === 'assigned' ? 'border-l-blue-500' :
                                             pkg.status === 'picking_up' ? 'border-l-orange-500' :
                                                 'border-l-red-500'
-                                        } border-r border-t border-b border-slate-200 dark:border-slate-600`}>
+                                        } border-r border-t border-b border-slate-200`}>
 
                                         {/* 3 Nokta Menüsü */}
                                         <div className="absolute top-2 left-2 z-10">
@@ -171,8 +171,8 @@ export function LiveTrackingTab({
                                         <div className="flex justify-between items-center mb-2 ml-8">
                                             <div className="flex items-center gap-2">
                                                 <span className={`text-xs font-bold px-2 py-1 rounded ${pkg.order_number
-                                                    ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30'
-                                                    : 'text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-700/50 animate-pulse'
+                                                    ? 'text-blue-600 bg-blue-50'
+                                                    : 'text-slate-400 bg-slate-100 animate-pulse'
                                                     }`}>
                                                     {pkg.order_number || '......'}
                                                 </span>
@@ -182,17 +182,17 @@ export function LiveTrackingTab({
                                                     </span>
                                                 )}
                                             </div>
-                                            <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                            <span className="text-xs text-gray-500 flex items-center gap-1">
                                                 🕐 {formatTurkishTime(pkg.created_at)}
                                             </span>
                                         </div>
 
                                         {/* Restoran ve Tutar */}
                                         <div className="flex justify-between items-start mb-2 ml-8">
-                                            <span className="bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 px-2 py-1 rounded text-sm font-bold">
+                                            <span className="bg-orange-50 text-orange-700 px-2 py-1 rounded text-sm font-bold">
                                                 🍽️ {pkg.restaurant?.name || 'Bilinmeyen'}
                                             </span>
-                                            <span className="text-lg font-bold text-green-600 dark:text-green-400">
+                                            <span className="text-lg font-bold text-green-600">
                                                 {pkg.amount}₺
                                             </span>
                                         </div>
@@ -200,13 +200,13 @@ export function LiveTrackingTab({
                                         {/* Durum */}
                                         <div className="mb-2 ml-8">
                                             <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                                                pkg.status === 'cancelled' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                                                pkg.status === 'cancelled' ? 'bg-red-100 text-red-700' :
                                                 !pkg.courier_id && pkg.status !== 'waiting' && pkg.status !== 'delivered' && pkg.status !== 'cancelled'
-                                                ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 animate-pulse'
-                                                : pkg.status === 'waiting' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                                                    pkg.status === 'assigned' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                                                        pkg.status === 'picking_up' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
-                                                            'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                                ? 'bg-red-100 text-red-700 animate-pulse'
+                                                : pkg.status === 'waiting' ? 'bg-yellow-100 text-yellow-700' :
+                                                    pkg.status === 'assigned' ? 'bg-blue-100 text-blue-700' :
+                                                        pkg.status === 'picking_up' ? 'bg-orange-100 text-orange-700' :
+                                                            'bg-red-100 text-red-700'
                                                 }`}>
                                                 {pkg.status === 'cancelled' ? '🚫 İPTAL EDİLDİ' :
                                                 !pkg.courier_id && pkg.status !== 'waiting' && pkg.status !== 'delivered' && pkg.status !== 'cancelled'
@@ -219,36 +219,36 @@ export function LiveTrackingTab({
 
                                         {/* Müşteri Bilgileri */}
                                         <div className="space-y-2 mb-3 ml-8">
-                                            <h3 className="font-semibold text-sm text-slate-900 dark:text-white">
+                                            <h3 className="font-semibold text-sm text-slate-900">
                                                 👤 {pkg.customer_name}
                                             </h3>
 
                                             {pkg.customer_phone && (
-                                                <p className="text-xs text-slate-600 dark:text-slate-400">
+                                                <p className="text-xs text-slate-600">
                                                     📞 {pkg.customer_phone}
                                                 </p>
                                             )}
 
                                             {pkg.content && (
                                                 <div>
-                                                    <p className="text-xs text-slate-600 dark:text-slate-400">Paket İçeriği:</p>
-                                                    <p className="text-xs text-slate-800 dark:text-slate-200 bg-blue-50 dark:bg-blue-900/20 p-1.5 rounded">
+                                                    <p className="text-xs text-slate-600">Paket İçeriği:</p>
+                                                    <p className="text-xs text-slate-800 bg-blue-50 p-1.5 rounded">
                                                         📝 {pkg.content}
                                                     </p>
                                                 </div>
                                             )}
 
                                             <div>
-                                                <p className="text-xs text-slate-600 dark:text-slate-400">Adres:</p>
-                                                <p className="text-xs text-slate-700 dark:text-slate-300 overflow-hidden" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                                                <p className="text-xs text-slate-600">Adres:</p>
+                                                <p className="text-xs text-slate-700 overflow-hidden" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                                                     📍 {pkg.delivery_address}
                                                 </p>
                                             </div>
 
                                             <div className="flex justify-between items-center">
                                                 <span className={`px-2 py-1 rounded text-xs font-medium ${pkg.payment_method === 'cash'
-                                                    ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400'
-                                                    : 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400'
+                                                    ? 'bg-green-50 text-green-700'
+                                                    : 'bg-blue-50 text-blue-700'
                                                     }`}>
                                                     {pkg.payment_method === 'cash' ? '💵 Nakit' : '💳 Kart'}
                                                 </span>
@@ -257,11 +257,11 @@ export function LiveTrackingTab({
 
                                         {/* Kurye Atama */}
                                         {!pkg.courier_id && pkg.status !== 'delivered' && pkg.status !== 'cancelled' && (
-                                            <div className="border-t border-slate-200 dark:border-slate-600 pt-2 space-y-2">
+                                            <div className="border-t border-slate-200 pt-2 space-y-2">
                                                 <select
                                                     value={selectedCouriers[pkg.id] || ''}
                                                     onChange={(e) => handleCourierChange(pkg.id, e.target.value)}
-                                                    className="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+                                                    className="w-full bg-white border border-slate-300 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-transparent"
                                                     disabled={assigningIds.has(pkg.id)}
                                                 >
                                                     <option value="">Kurye Seçin</option>
@@ -293,9 +293,9 @@ export function LiveTrackingTab({
 
                                         {/* Atanmış Kurye */}
                                         {pkg.courier_id && (pkg.status === 'assigned' || pkg.status === 'picking_up' || pkg.status === 'on_the_way') && (
-                                            <div className="border-t border-slate-200 dark:border-slate-600 pt-2">
+                                            <div className="border-t border-slate-200 pt-2">
                                                 <div className="flex items-center justify-center">
-                                                    <span className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 px-2 py-1 rounded text-xs font-medium">
+                                                    <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-medium">
                                                         🚴 {couriers.find(c => c.id === pkg.courier_id)?.full_name || 'Bilinmeyen'}
                                                     </span>
                                                 </div>

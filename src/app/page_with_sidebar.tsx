@@ -1492,11 +1492,11 @@ export default function Home() {
             }
           }}
         >
-          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
+          <div className="bg-white rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
             {/* Modal Header */}
-            <div className="flex justify-between items-center p-6 border-b border-slate-200 dark:border-slate-700">
+            <div className="flex justify-between items-center p-6 border-b border-slate-200">
               <div className="flex items-center gap-4 flex-1">
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
+                <h3 className="text-2xl font-bold text-slate-900">
                   🍽️ {restaurants.find(r => r.id === selectedRestaurantId)?.name} - Detaylı Rapor
                 </h3>
                 
@@ -1506,14 +1506,14 @@ export default function Home() {
                     type="date"
                     value={restaurantStartDate}
                     onChange={(e) => setRestaurantStartDate(e.target.value)}
-                    className="px-3 py-2 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-600 text-sm"
+                    className="px-3 py-2 bg-slate-100 text-slate-900 rounded-lg border border-slate-300 text-sm"
                   />
-                  <span className="text-slate-500 dark:text-slate-400">-</span>
+                  <span className="text-slate-500">-</span>
                   <input
                     type="date"
                     value={restaurantEndDate}
                     onChange={(e) => setRestaurantEndDate(e.target.value)}
-                    className="px-3 py-2 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-600 text-sm"
+                    className="px-3 py-2 bg-slate-100 text-slate-900 rounded-lg border border-slate-300 text-sm"
                   />
                 </div>
                 
@@ -1534,7 +1534,7 @@ export default function Home() {
                   setRestaurantStartDate('')
                   setRestaurantEndDate('')
                 }}
-                className="flex items-center justify-center w-8 h-8 ml-4 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors text-2xl font-light"
+                className="flex items-center justify-center w-8 h-8 ml-4 text-slate-500 hover:text-slate-700:text-slate-200 hover:bg-slate-100:bg-slate-700 rounded-lg transition-colors text-2xl font-light"
               >
                 ×
               </button>
@@ -1545,25 +1545,25 @@ export default function Home() {
               {/* Ödenmesi Gereken Hesap */}
               {selectedRestaurantOrders.length > 0 && (
                 <div className="mb-6">
-                  <h4 className="text-lg font-bold mb-4 text-slate-900 dark:text-white">💰 Ödenmesi Gereken Hesap</h4>
+                  <h4 className="text-lg font-bold mb-4 text-slate-900">💰 Ödenmesi Gereken Hesap</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-blue-100 dark:bg-blue-900/30 p-4 rounded-xl border-2 border-blue-300 dark:border-blue-700">
+                    <div className="bg-blue-100 p-4 rounded-xl border-2 border-blue-300">
                       <div className="text-center">
-                        <div className="text-3xl font-black text-blue-700 dark:text-blue-400">
+                        <div className="text-3xl font-black text-blue-700">
                           {selectedRestaurantOrders.length}
                         </div>
-                        <div className="text-sm font-semibold text-blue-600 dark:text-blue-500 mt-1">
+                        <div className="text-sm font-semibold text-blue-600 mt-1">
                           📦 TOPLAM SİPARİŞ
                         </div>
                       </div>
                     </div>
 
-                    <div className="bg-green-100 dark:bg-green-900/30 p-4 rounded-xl border-2 border-green-300 dark:border-green-700">
+                    <div className="bg-green-100 p-4 rounded-xl border-2 border-green-300">
                       <div className="text-center">
-                        <div className="text-3xl font-black text-green-700 dark:text-green-400">
+                        <div className="text-3xl font-black text-green-700">
                           {selectedRestaurantOrders.reduce((sum, o) => sum + (o.amount || 0), 0).toFixed(2)} ₺
                         </div>
-                        <div className="text-sm font-semibold text-green-600 dark:text-green-500 mt-1">
+                        <div className="text-sm font-semibold text-green-600 mt-1">
                           💵 TOPLAM TUTAR
                         </div>
                       </div>
@@ -1574,7 +1574,7 @@ export default function Home() {
 
               {/* Sipariş Detay Tablosu */}
               <div>
-                <h4 className="text-lg font-bold mb-4 text-slate-900 dark:text-white">📋 Sipariş Detayları</h4>
+                <h4 className="text-lg font-bold mb-4 text-slate-900">📋 Sipariş Detayları</h4>
                 {selectedRestaurantOrders.length === 0 ? (
                   <div className="text-center py-8 text-slate-500">
                     Bu restoran henüz sipariş almamış.
@@ -1583,7 +1583,7 @@ export default function Home() {
                   <div className="overflow-x-auto admin-scrollbar">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
+                        <tr className="border-b-2 border-slate-200 bg-slate-50">
                           <th className="text-left py-3 px-4 font-semibold">Sipariş No</th>
                           <th className="text-left py-3 px-4 font-semibold">Tarih/Saat</th>
                           <th className="text-left py-3 px-4 font-semibold">Müşteri</th>
@@ -1594,12 +1594,12 @@ export default function Home() {
                       </thead>
                       <tbody>
                         {selectedRestaurantOrders.map((order, index) => (
-                          <tr key={order.id} className={`border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/30 ${
-                            index % 2 === 0 ? 'bg-white dark:bg-slate-800' : 'bg-slate-50/50 dark:bg-slate-700/20'
+                          <tr key={order.id} className={`border-b border-slate-200 hover:bg-slate-50:bg-slate-700/30 ${
+                            index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'
                           }`}>
                             <td className="py-3 px-4">
                               <div className="flex items-center gap-2">
-                                <span className="font-bold text-blue-600 dark:text-blue-400">
+                                <span className="font-bold text-blue-600">
                                   {order.order_number || '......'}
                                 </span>
                                 {order.platform && (
@@ -1620,15 +1620,15 @@ export default function Home() {
                             <td className="py-3 px-4 font-medium">{order.customer_name}</td>
                             <td className="py-3 px-4">{order.courier_name || 'Bilinmeyen'}</td>
                             <td className="py-3 px-4">
-                              <span className="font-bold text-green-600 dark:text-green-400">
+                              <span className="font-bold text-green-600">
                                 {order.amount} ₺
                               </span>
                             </td>
                             <td className="py-3 px-4">
                               <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                                 order.payment_method === 'cash' 
-                                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
-                                  : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                                  ? 'bg-green-100 text-green-700' 
+                                  : 'bg-blue-100 text-blue-700'
                               }`}>
                                 {order.payment_method === 'cash' ? '💵 Nakit' : '💳 Kart'}
                               </span>
@@ -1648,14 +1648,14 @@ export default function Home() {
       {/* RESTORAN HESAP ÖDEME MODALI */}
       {showRestaurantPaymentModal && selectedRestaurantId && (
         <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto admin-scrollbar">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto admin-scrollbar">
             {/* Modal Header */}
-            <div className="flex justify-between items-center p-6 border-b border-slate-200 dark:border-slate-700">
+            <div className="flex justify-between items-center p-6 border-b border-slate-200">
               <div>
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
+                <h3 className="text-2xl font-bold text-slate-900">
                   💰 Hesap Ödemesi - {restaurants.find(r => r.id === selectedRestaurantId)?.name}
                 </h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                <p className="text-sm text-slate-500 mt-1">
                   {new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' })}
                 </p>
               </div>
@@ -1664,7 +1664,7 @@ export default function Home() {
                   setShowRestaurantPaymentModal(false)
                   setRestaurantPaymentAmount('')
                 }}
-                className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 text-2xl ml-4"
+                className="text-slate-500 hover:text-slate-700:text-slate-200 text-2xl ml-4"
               >
                 ×
               </button>
@@ -1681,38 +1681,38 @@ export default function Home() {
                 <>
                   {/* Seçilen Tarih Aralığı Toplam Tutar */}
                   <div className="mb-6 space-y-3">
-                    <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border border-green-200 dark:border-green-800">
+                    <div className="bg-green-50 p-4 rounded-xl border border-green-200">
                       <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                        <span className="text-sm font-medium text-green-700">
                           💵 Seçilen Tarih Aralığı Toplam Tutar
                         </span>
-                        <span className="text-2xl font-bold text-green-700 dark:text-green-300">
+                        <span className="text-2xl font-bold text-green-700">
                           {selectedRestaurantOrders.reduce((sum, o) => sum + (o.amount || 0), 0).toFixed(2)} ₺
                         </span>
                       </div>
-                      <p className="text-xs text-green-600 dark:text-green-500 mt-1">
+                      <p className="text-xs text-green-600 mt-1">
                         {selectedRestaurantOrders.length} sipariş ({restaurantStartDate} - {restaurantEndDate})
                       </p>
                     </div>
 
                     {/* Geçmiş Borçlar */}
                     {restaurantDebts.length > 0 && (
-                      <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border border-red-200 dark:border-red-800">
+                      <div className="bg-red-50 p-4 rounded-xl border border-red-200">
                         <div className="flex justify-between items-center mb-3">
-                          <span className="text-sm font-medium text-red-700 dark:text-red-400">
+                          <span className="text-sm font-medium text-red-700">
                             📋 Geçmiş Borçlar
                           </span>
-                          <span className="text-2xl font-bold text-red-700 dark:text-red-300">
+                          <span className="text-2xl font-bold text-red-700">
                             {restaurantDebts.reduce((sum, d) => sum + d.remaining_amount, 0).toFixed(2)} ₺
                           </span>
                         </div>
                         <div className="space-y-2">
                           {restaurantDebts.map((debt) => (
-                            <div key={debt.id} className="flex justify-between items-center text-xs bg-white dark:bg-slate-700 p-2 rounded">
-                              <span className="text-slate-600 dark:text-slate-400">
+                            <div key={debt.id} className="flex justify-between items-center text-xs bg-white p-2 rounded">
+                              <span className="text-slate-600">
                                 📅 {formatTurkishDate(debt.debt_date)} tarihinden kalan
                               </span>
-                              <span className="font-bold text-red-600 dark:text-red-400">
+                              <span className="font-bold text-red-600">
                                 {debt.remaining_amount.toFixed(2)} ₺
                               </span>
                             </div>
@@ -1722,16 +1722,16 @@ export default function Home() {
                     )}
 
                     {/* Genel Toplam */}
-                    <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-xl border-2 border-purple-300 dark:border-purple-700">
+                    <div className="bg-purple-50 p-4 rounded-xl border-2 border-purple-300">
                       <div className="flex justify-between items-center">
-                        <span className="text-base font-bold text-purple-700 dark:text-purple-300">
+                        <span className="text-base font-bold text-purple-700">
                           🎯 GENEL TOPLAM (Ödenmesi Gereken)
                         </span>
-                        <span className="text-3xl font-black text-purple-700 dark:text-purple-300">
+                        <span className="text-3xl font-black text-purple-700">
                           {(selectedRestaurantOrders.reduce((sum, o) => sum + (o.amount || 0), 0) + restaurantDebts.reduce((sum, d) => sum + d.remaining_amount, 0)).toFixed(2)} ₺
                         </span>
                       </div>
-                      <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
+                      <p className="text-xs text-purple-600 mt-1">
                         Seçilen tarih aralığı toplam + Geçmiş borçlar
                       </p>
                     </div>
@@ -1739,7 +1739,7 @@ export default function Home() {
 
                   {/* Ödenen Para Input */}
                   <div className="mb-6">
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
                       💰 Restorana Ödenen Para
                     </label>
                     <input
@@ -1749,7 +1749,7 @@ export default function Home() {
                       onChange={(e) => setRestaurantPaymentAmount(e.target.value)}
                       placeholder="Örn: 30000.00"
                       autoFocus
-                      className="w-full px-4 py-3 bg-white dark:bg-slate-700 border-2 border-slate-300 dark:border-slate-600 rounded-xl text-lg font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                      className="w-full px-4 py-3 bg-white border-2 border-slate-300 rounded-xl text-lg font-bold text-slate-900 focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
                     />
                   </div>
 
@@ -1764,12 +1764,12 @@ export default function Home() {
                     if (paid > grandTotal) {
                       return (
                         <div className="mb-6">
-                          <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-xl border-2 border-yellow-300 dark:border-yellow-700">
+                          <div className="bg-yellow-50 p-4 rounded-xl border-2 border-yellow-300">
                             <div className="text-center">
-                              <span className="text-2xl font-black text-yellow-700 dark:text-yellow-300">
+                              <span className="text-2xl font-black text-yellow-700">
                                 ⚠️ FAZLA TUTAR
                               </span>
-                              <p className="text-sm text-yellow-600 dark:text-yellow-400 mt-2">
+                              <p className="text-sm text-yellow-600 mt-2">
                                 Fazla tutar girdiniz, lütfen ödemeyi kontrol edin!
                               </p>
                             </div>
@@ -1779,16 +1779,16 @@ export default function Home() {
                     } else if (difference > 0) {
                       return (
                         <div className="mb-6">
-                          <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border-2 border-red-300 dark:border-red-700">
+                          <div className="bg-red-50 p-4 rounded-xl border-2 border-red-300">
                             <div className="flex justify-between items-center">
-                              <span className="text-base font-bold text-red-700 dark:text-red-300">
+                              <span className="text-base font-bold text-red-700">
                                 ⚠️ EKSİK ÖDEME
                               </span>
-                              <span className="text-3xl font-black text-red-700 dark:text-red-300">
+                              <span className="text-3xl font-black text-red-700">
                                 {difference.toFixed(2)} ₺
                               </span>
                             </div>
-                            <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+                            <p className="text-xs text-red-600 mt-2">
                               Bu miktar restoran borcuna eklenecek
                             </p>
                           </div>
@@ -1797,12 +1797,12 @@ export default function Home() {
                     } else {
                       return (
                         <div className="mb-6">
-                          <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border-2 border-green-300 dark:border-green-700">
+                          <div className="bg-green-50 p-4 rounded-xl border-2 border-green-300">
                             <div className="text-center">
-                              <span className="text-2xl font-black text-green-700 dark:text-green-300">
+                              <span className="text-2xl font-black text-green-700">
                                 ✓ TAM ÖDEME
                               </span>
-                              <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                              <p className="text-xs text-green-600 mt-2">
                                 Hesap tam olarak kapandı
                               </p>
                             </div>
@@ -1819,7 +1819,7 @@ export default function Home() {
                         setShowRestaurantPaymentModal(false)
                         setRestaurantPaymentAmount('')
                       }}
-                      className="flex-1 px-4 py-3 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-medium hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
+                      className="flex-1 px-4 py-3 bg-slate-200 text-slate-700 rounded-xl font-medium hover:bg-slate-300:bg-slate-600 transition-colors"
                     >
                       İptal
                     </button>
@@ -1848,13 +1848,13 @@ export default function Home() {
       {/* RESTORAN BORÇ ÖDEME MODALI */}
       {showRestaurantDebtPayModal && selectedRestaurantId && (
         <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto admin-scrollbar">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto admin-scrollbar">
             {/* Modal Header */}
-            <div className="p-6 border-b border-slate-200 dark:border-slate-700">
-              <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
+            <div className="p-6 border-b border-slate-200">
+              <h3 className="text-2xl font-bold text-slate-900">
                 💳 Borç Ödemesi - {restaurants.find(r => r.id === selectedRestaurantId)?.name}
               </h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+              <p className="text-sm text-slate-500 mt-1">
                 {new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' })}
               </p>
             </div>
@@ -1870,7 +1870,7 @@ export default function Home() {
                 <>
                   {/* Borç Listesi */}
                   <div className="mb-6">
-                    <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-4">📋 Mevcut Borçlar</h4>
+                    <h4 className="text-lg font-bold text-slate-900 mb-4">📋 Mevcut Borçlar</h4>
                     
                     {restaurantDebts.length === 0 ? (
                       <div className="text-center py-8 text-slate-500">
@@ -1880,11 +1880,11 @@ export default function Home() {
                     ) : (
                       <div className="space-y-2 mb-4">
                         {restaurantDebts.map((debt) => (
-                          <div key={debt.id} className="flex justify-between items-center bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-200 dark:border-red-800">
-                            <span className="text-sm text-slate-700 dark:text-slate-300">
+                          <div key={debt.id} className="flex justify-between items-center bg-red-50 p-3 rounded-lg border border-red-200">
+                            <span className="text-sm text-slate-700">
                               📅 {formatTurkishDate(debt.debt_date)} gününden kalan
                             </span>
-                            <span className="text-lg font-bold text-red-600 dark:text-red-400">
+                            <span className="text-lg font-bold text-red-600">
                               {debt.remaining_amount.toFixed(2)} ₺
                             </span>
                           </div>
@@ -1894,12 +1894,12 @@ export default function Home() {
 
                     {/* Toplam Borç */}
                     {restaurantDebts.length > 0 && (
-                      <div className="bg-red-100 dark:bg-red-900/30 p-4 rounded-xl border-2 border-red-300 dark:border-red-700">
+                      <div className="bg-red-100 p-4 rounded-xl border-2 border-red-300">
                         <div className="flex justify-between items-center">
-                          <span className="text-base font-bold text-red-700 dark:text-red-300">
+                          <span className="text-base font-bold text-red-700">
                             💰 TOPLAM BORÇ
                           </span>
-                          <span className="text-3xl font-black text-red-700 dark:text-red-300">
+                          <span className="text-3xl font-black text-red-700">
                             {restaurantDebts.reduce((sum, d) => sum + d.remaining_amount, 0).toFixed(2)} ₺
                           </span>
                         </div>
@@ -1911,7 +1911,7 @@ export default function Home() {
                   {restaurantDebts.length > 0 && (
                     <>
                       <div className="mb-6">
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
                           💵 Ödenen Tutar
                         </label>
                         <input
@@ -1921,7 +1921,7 @@ export default function Home() {
                           onChange={(e) => setRestaurantDebtPayAmount(e.target.value)}
                           placeholder="Örn: 5000.00"
                           autoFocus
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-700 border-2 border-slate-300 dark:border-slate-600 rounded-xl text-lg font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none"
+                          className="w-full px-4 py-3 bg-white border-2 border-slate-300 rounded-xl text-lg font-bold text-slate-900 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none"
                         />
                       </div>
 
@@ -1934,12 +1934,12 @@ export default function Home() {
                         if (payment > totalDebt) {
                           return (
                             <div className="mb-6">
-                              <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-xl border-2 border-yellow-300 dark:border-yellow-700">
+                              <div className="bg-yellow-50 p-4 rounded-xl border-2 border-yellow-300">
                                 <div className="text-center">
-                                  <span className="text-2xl font-black text-yellow-700 dark:text-yellow-300">
+                                  <span className="text-2xl font-black text-yellow-700">
                                     ⚠️ UYARI
                                   </span>
-                                  <p className="text-sm text-yellow-600 dark:text-yellow-400 mt-2">
+                                  <p className="text-sm text-yellow-600 mt-2">
                                     Ödeme tutarı toplam borçtan fazla olamaz!
                                   </p>
                                 </div>
@@ -1949,16 +1949,16 @@ export default function Home() {
                         } else if (remaining > 0) {
                           return (
                             <div className="mb-6">
-                              <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-xl border-2 border-orange-300 dark:border-orange-700">
+                              <div className="bg-orange-50 p-4 rounded-xl border-2 border-orange-300">
                                 <div className="flex justify-between items-center">
-                                  <span className="text-base font-bold text-orange-700 dark:text-orange-300">
+                                  <span className="text-base font-bold text-orange-700">
                                     📊 KALAN BORÇ
                                   </span>
-                                  <span className="text-3xl font-black text-orange-700 dark:text-orange-300">
+                                  <span className="text-3xl font-black text-orange-700">
                                     {remaining.toFixed(2)} ₺
                                   </span>
                                 </div>
-                                <p className="text-xs text-orange-600 dark:text-orange-400 mt-2">
+                                <p className="text-xs text-orange-600 mt-2">
                                   Bu miktar bugün tarihine aktarılacak
                                 </p>
                               </div>
@@ -1967,12 +1967,12 @@ export default function Home() {
                         } else {
                           return (
                             <div className="mb-6">
-                              <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border-2 border-green-300 dark:border-green-700">
+                              <div className="bg-green-50 p-4 rounded-xl border-2 border-green-300">
                                 <div className="text-center">
-                                  <span className="text-2xl font-black text-green-700 dark:text-green-300">
+                                  <span className="text-2xl font-black text-green-700">
                                     ✅ TÜM BORÇ ÖDENDİ
                                   </span>
-                                  <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                                  <p className="text-xs text-green-600 mt-2">
                                     Restoran borçsuz olacak
                                   </p>
                                 </div>
@@ -1989,7 +1989,7 @@ export default function Home() {
                             setShowRestaurantDebtPayModal(false)
                             setRestaurantDebtPayAmount('')
                           }}
-                          className="flex-1 px-4 py-3 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-medium hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
+                          className="flex-1 px-4 py-3 bg-slate-200 text-slate-700 rounded-xl font-medium hover:bg-slate-300:bg-slate-600 transition-colors"
                         >
                           İptal
                         </button>
@@ -2017,7 +2017,7 @@ export default function Home() {
         </div>
       )}
 
-    <div className={`min-h-screen ${darkMode ? 'bg-slate-50 dark:bg-slate-900' : 'bg-white'}`}>
+    <div className={`min-h-screen ${darkMode ? 'bg-slate-50' : 'bg-white'}`}>
       {/* Hamburger Menü Butonu - Sol Üst */}
       <button 
         onClick={() => setShowMenu(!showMenu)} 
@@ -2261,7 +2261,7 @@ export default function Home() {
       {/* YENİ SİPARİŞ POPUP BİLDİRİMİ */}
       {showNotificationPopup && newOrderDetails && (
         <div className="fixed top-4 right-4 z-[100]">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border-4 border-red-500 p-6 max-w-md relative">
+          <div className="bg-white rounded-2xl shadow-2xl border-4 border-red-500 p-6 max-w-md relative">
             {/* Kırmızı Alarm İkonu */}
             <div className="absolute -top-3 -right-3 w-12 h-12 bg-red-500 rounded-full flex items-center justify-center animate-pulse">
               <span className="text-2xl">🚨</span>
@@ -2277,36 +2277,36 @@ export default function Home() {
             
             {/* Başlık */}
             <div className="mb-4">
-              <h2 className="text-2xl font-black text-red-600 dark:text-red-400 mb-1">
+              <h2 className="text-2xl font-black text-red-600 mb-1">
                 📦 YENİ SİPARİŞ GELDİ!
               </h2>
               <p className="text-sm text-slate-500">Hemen kurye atayın</p>
             </div>
             
             {/* Sipariş Detayları */}
-            <div className="space-y-2 bg-slate-50 dark:bg-slate-700 p-4 rounded-xl">
+            <div className="space-y-2 bg-slate-50 p-4 rounded-xl">
               <div className="flex justify-between">
-                <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">Restoran:</span>
-                <span className="text-sm font-bold text-slate-900 dark:text-white">
+                <span className="text-sm font-semibold text-slate-600">Restoran:</span>
+                <span className="text-sm font-bold text-slate-900">
                   {newOrderDetails.restaurant?.name}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">Müşteri:</span>
-                <span className="text-sm font-bold text-slate-900 dark:text-white">
+                <span className="text-sm font-semibold text-slate-600">Müşteri:</span>
+                <span className="text-sm font-bold text-slate-900">
                   {newOrderDetails.customer_name}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">Tutar:</span>
-                <span className="text-lg font-black text-green-600 dark:text-green-400">
+                <span className="text-sm font-semibold text-slate-600">Tutar:</span>
+                <span className="text-lg font-black text-green-600">
                   {newOrderDetails.amount}₺
                 </span>
               </div>
               {newOrderDetails.content && (
-                <div className="pt-2 border-t border-slate-200 dark:border-slate-600">
+                <div className="pt-2 border-t border-slate-200">
                   <span className="text-xs text-slate-500">İçerik:</span>
-                  <p className="text-sm text-slate-700 dark:text-slate-300">{newOrderDetails.content}</p>
+                  <p className="text-sm text-slate-700">{newOrderDetails.content}</p>
                 </div>
               )}
             </div>
@@ -2330,17 +2330,17 @@ export default function Home() {
         <div className="max-w-full mx-auto">
           {/* Başarı/Hata/Bildirim Mesajları */}
           {notificationMessage && (
-            <div className="mb-3 p-2 bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700 rounded-lg text-blue-800 dark:text-blue-300 animate-pulse text-sm">
+            <div className="mb-3 p-2 bg-blue-100 border border-blue-300 rounded-lg text-blue-800 animate-pulse text-sm">
               {notificationMessage}
             </div>
           )}
           {successMessage && (
-            <div className="mb-3 p-2 bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700 rounded-lg text-green-800 dark:text-green-300 text-sm">
+            <div className="mb-3 p-2 bg-green-100 border border-green-300 rounded-lg text-green-800 text-sm">
               {successMessage}
             </div>
           )}
           {errorMessage && (
-            <div className="mb-3 p-2 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg text-red-800 dark:text-red-300 text-sm">
+            <div className="mb-3 p-2 bg-red-100 border border-red-300 rounded-lg text-red-800 text-sm">
               {errorMessage}
             </div>
           )}
@@ -2389,7 +2389,7 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
           <div className="lg:col-span-4 space-y-6">
             {/* SİPARİŞ KARTLARI */}
-            <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
+            <div className="bg-white shadow-xl rounded-2xl p-6">
               <h2 className="text-2xl font-bold mb-6">� Canlı Sipariş Takibi</h2>
           
           {/* Sipariş Kartları */}
@@ -2400,20 +2400,20 @@ export default function Home() {
               <div className="col-span-full text-center py-8 text-slate-500">Aktif sipariş bulunmuyor.</div>
             ) : (
               packages.map(pkg => (
-                <div key={pkg.id} className={`bg-white dark:bg-slate-800 p-3 rounded-lg border-l-4 shadow-sm ${
+                <div key={pkg.id} className={`bg-white p-3 rounded-lg border-l-4 shadow-sm ${
                   pkg.status === 'pending' || pkg.status === 'waiting' ? 'border-l-yellow-500' :
                   pkg.status === 'assigned' ? 'border-l-blue-500' :
                   pkg.status === 'picking_up' ? 'border-l-orange-500' :
                   'border-l-red-500'
-                } border-r border-t border-b border-slate-200 dark:border-slate-600`}>
+                } border-r border-t border-b border-slate-200`}>
                   
                   {/* Oluşturulma Saati ve Sipariş No */}
                   <div className="flex justify-between items-center mb-2">
                     <div className="flex items-center gap-2">
                       <span className={`text-xs font-bold px-2 py-1 rounded ${
                         pkg.order_number 
-                          ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30'
-                          : 'text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-700/50 animate-pulse'
+                          ? 'text-blue-600 bg-blue-50'
+                          : 'text-slate-400 bg-slate-100 animate-pulse'
                       }`}>
                         {pkg.order_number || '......'}
                       </span>
@@ -2423,17 +2423,17 @@ export default function Home() {
                         </span>
                       )}
                     </div>
-                    <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                    <span className="text-xs text-gray-500 flex items-center gap-1">
                       🕐 {formatTurkishTime(pkg.created_at)}
                     </span>
                   </div>
 
                   {/* Üst Kısım - Restoran ve Durum */}
                   <div className="flex justify-between items-start mb-2">
-                    <span className="bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 px-2 py-1 rounded text-sm font-bold">
+                    <span className="bg-orange-50 text-orange-700 px-2 py-1 rounded text-sm font-bold">
                       🍽️ {pkg.restaurant?.name || 'Bilinmeyen'}
                     </span>
-                    <span className="text-lg font-bold text-green-600 dark:text-green-400">
+                    <span className="text-lg font-bold text-green-600">
                       {pkg.amount}₺
                     </span>
                   </div>
@@ -2441,10 +2441,10 @@ export default function Home() {
                   {/* Durum Rozeti */}
                   <div className="mb-2">
                     <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                      pkg.status === 'pending' || pkg.status === 'waiting' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                      pkg.status === 'assigned' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                      pkg.status === 'picking_up' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
-                      'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                      pkg.status === 'pending' || pkg.status === 'waiting' ? 'bg-yellow-100 text-yellow-700' :
+                      pkg.status === 'assigned' ? 'bg-blue-100 text-blue-700' :
+                      pkg.status === 'picking_up' ? 'bg-orange-100 text-orange-700' :
+                      'bg-red-100 text-red-700'
                     }`}>
                       {pkg.status === 'pending' || pkg.status === 'waiting' ? '⏳ Kurye Bekliyor' : 
                        pkg.status === 'assigned' ? '👤 Atandı' :
@@ -2454,28 +2454,28 @@ export default function Home() {
 
                   {/* Müşteri Bilgileri */}
                   <div className="space-y-2 mb-3">
-                    <h3 className="font-semibold text-sm text-slate-900 dark:text-white">
+                    <h3 className="font-semibold text-sm text-slate-900">
                       👤 {pkg.customer_name}
                     </h3>
                     
                     {pkg.customer_phone && (
-                      <p className="text-xs text-slate-600 dark:text-slate-400">
+                      <p className="text-xs text-slate-600">
                         📞 {pkg.customer_phone}
                       </p>
                     )}
                     
                     {pkg.content && (
                       <div>
-                        <p className="text-xs text-slate-600 dark:text-slate-400">Paket İçeriği:</p>
-                        <p className="text-xs text-slate-800 dark:text-slate-200 bg-blue-50 dark:bg-blue-900/20 p-1.5 rounded">
+                        <p className="text-xs text-slate-600">Paket İçeriği:</p>
+                        <p className="text-xs text-slate-800 bg-blue-50 p-1.5 rounded">
                           📝 {pkg.content}
                         </p>
                       </div>
                     )}
                     
                     <div>
-                      <p className="text-xs text-slate-600 dark:text-slate-400">Adres:</p>
-                      <p className="text-xs text-slate-700 dark:text-slate-300 overflow-hidden" style={{display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'}}>
+                      <p className="text-xs text-slate-600">Adres:</p>
+                      <p className="text-xs text-slate-700 overflow-hidden" style={{display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'}}>
                         📍 {pkg.delivery_address}
                       </p>
                     </div>
@@ -2483,8 +2483,8 @@ export default function Home() {
                     <div className="flex justify-between items-center">
                       <span className={`px-2 py-1 rounded text-xs font-medium ${
                         pkg.payment_method === 'cash' 
-                          ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400' 
-                          : 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400'
+                          ? 'bg-green-50 text-green-700' 
+                          : 'bg-blue-50 text-blue-700'
                       }`}>
                         {pkg.payment_method === 'cash' ? '💵 Nakit' : '💳 Kart'}
                       </span>
@@ -2493,11 +2493,11 @@ export default function Home() {
 
                   {/* Kurye Atama */}
                   {(pkg.status === 'pending' || pkg.status === 'waiting') && !pkg.courier_id && (
-                    <div className="border-t border-slate-200 dark:border-slate-600 pt-2 space-y-2">
+                    <div className="border-t border-slate-200 pt-2 space-y-2">
                       <select 
                         value={selectedCouriers[pkg.id] || ''}
                         onChange={(e) => handleCourierChange(pkg.id, e.target.value)}
-                        className="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full bg-white border border-slate-300 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-transparent"
                         disabled={assigningIds.has(pkg.id)}
                       >
                         <option value="">Kurye Seçin</option>
@@ -2529,9 +2529,9 @@ export default function Home() {
 
                   {/* Atanmış Kurye Bilgisi */}
                   {pkg.courier_id && (pkg.status === 'assigned' || pkg.status === 'picking_up' || pkg.status === 'on_the_way') && (
-                    <div className="border-t border-slate-200 dark:border-slate-600 pt-2">
+                    <div className="border-t border-slate-200 pt-2">
                       <div className="flex items-center justify-center">
-                        <span className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 px-2 py-1 rounded text-xs font-medium">
+                        <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-medium">
                           🚴 {couriers.find(c => c.id === pkg.courier_id)?.full_name || 'Bilinmeyen'}
                         </span>
                       </div>
@@ -2546,7 +2546,7 @@ export default function Home() {
 
         {/* SAĞ PANEL: KURYELERİN DURUMU */}
         <div className="lg:col-span-1 space-y-4">
-          <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-4">
+          <div className="bg-white shadow-xl rounded-2xl p-4">
             <h2 className="text-base font-bold mb-3">🚴 Kurye Durumları</h2>
             <div className="space-y-2">
               {couriers.map(c => {
@@ -2556,15 +2556,15 @@ export default function Home() {
                 return (
                   <div 
                     key={c.id} 
-                    className="p-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg border dark:border-slate-600"
+                    className="p-2 bg-slate-50 rounded-lg border"
                   >
                     <div className="flex justify-between items-center mb-1.5">
                       <span className="font-bold text-xs">{c.full_name}</span>
                       <div className="text-right">
-                        <span className="text-[10px] text-green-600 dark:text-green-400 block font-semibold">
+                        <span className="text-[10px] text-green-600 block font-semibold">
                           📦 {c.todayDeliveryCount || 0} bugün
                         </span>
-                        <span className="text-[10px] text-blue-600 dark:text-blue-400 block font-semibold">
+                        <span className="text-[10px] text-blue-600 block font-semibold">
                           🚚 {c.activePackageCount || 0} üzerinde
                         </span>
                       </div>
@@ -2582,16 +2582,16 @@ export default function Home() {
                         {courierPackages.map(pkg => (
                           <div key={pkg.id} className="text-[10px] flex items-center gap-1">
                             <span className={`px-2 py-0.5 rounded-full font-semibold ${
-                              pkg.status === 'pending' || pkg.status === 'waiting' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                              pkg.status === 'assigned' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                              pkg.status === 'picking_up' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
-                              'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                              pkg.status === 'pending' || pkg.status === 'waiting' ? 'bg-yellow-100 text-yellow-700' :
+                              pkg.status === 'assigned' ? 'bg-blue-100 text-blue-700' :
+                              pkg.status === 'picking_up' ? 'bg-orange-100 text-orange-700' :
+                              'bg-red-100 text-red-700'
                             }`}>
                               {pkg.status === 'pending' || pkg.status === 'waiting' ? '⏳ Bekliyor' :
                                pkg.status === 'assigned' ? '👤 Atandı' :
                                pkg.status === 'picking_up' ? '🏃 Alıyor' : '🚗 Yolda'}
                             </span>
-                            <span className="text-slate-600 dark:text-slate-400 truncate">
+                            <span className="text-slate-600 truncate">
                               {pkg.customer_name}
                             </span>
                           </div>
@@ -2668,7 +2668,7 @@ export default function Home() {
               className={`px-4 py-2 rounded-lg font-medium transition-all ${
                 historyCurrentPage === i
                   ? 'bg-blue-600 text-white shadow-lg scale-105'
-                  : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'
+                  : 'bg-slate-200 text-slate-700 hover:bg-slate-300:bg-slate-600'
               }`}
             >
               {i}
@@ -2684,7 +2684,7 @@ export default function Home() {
             className={`px-4 py-2 rounded-lg font-medium transition-all ${
               historyCurrentPage === 1
                 ? 'bg-blue-600 text-white shadow-lg scale-105'
-                : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'
+                : 'bg-slate-200 text-slate-700 hover:bg-slate-300:bg-slate-600'
             }`}
           >
             1
@@ -2710,7 +2710,7 @@ export default function Home() {
               className={`px-4 py-2 rounded-lg font-medium transition-all ${
                 historyCurrentPage === i
                   ? 'bg-blue-600 text-white shadow-lg scale-105'
-                  : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'
+                  : 'bg-slate-200 text-slate-700 hover:bg-slate-300:bg-slate-600'
               }`}
             >
               {i}
@@ -2733,7 +2733,7 @@ export default function Home() {
             className={`px-4 py-2 rounded-lg font-medium transition-all ${
               historyCurrentPage === totalPages
                 ? 'bg-blue-600 text-white shadow-lg scale-105'
-                : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'
+                : 'bg-slate-200 text-slate-700 hover:bg-slate-300:bg-slate-600'
             }`}
           >
             {totalPages}
@@ -2745,13 +2745,13 @@ export default function Home() {
     }
 
     return (
-      <div id="history-container" className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
+      <div id="history-container" className="bg-white shadow-xl rounded-2xl p-6">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">📋 Geçmiş Siparişler</h2>
           
           {/* Tarih Filtresi Dropdown */}
           <div className="flex items-center gap-3">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+            <label className="text-sm font-medium text-slate-700">
               Filtrele:
             </label>
             <select
@@ -2760,7 +2760,7 @@ export default function Home() {
                 setDateFilter(e.target.value as any)
                 setHistoryCurrentPage(1) // Filtre değiştiğinde sayfa 1'e dön
               }}
-              className="px-4 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="px-4 py-2 bg-white border border-slate-300 rounded-lg text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="today">📅 Son 24 Saat</option>
               <option value="week">📅 Son 7 Gün</option>
@@ -2772,31 +2772,31 @@ export default function Home() {
 
         {/* İstatistikler - TÜM filtrelenmiş veriden hesaplanıyor */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl">
-            <div className="text-sm text-blue-600 dark:text-blue-400 font-medium">Toplam Sipariş</div>
-            <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">{filteredHistory.length}</div>
+          <div className="bg-blue-50 p-4 rounded-xl">
+            <div className="text-sm text-blue-600 font-medium">Toplam Sipariş</div>
+            <div className="text-2xl font-bold text-blue-700">{filteredHistory.length}</div>
             <div className="text-xs text-slate-500 mt-1">
               Sayfa {historyCurrentPage} / {totalPages || 1}
             </div>
           </div>
-          <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl">
-            <div className="text-sm text-green-600 dark:text-green-400 font-medium">Toplam Tutar</div>
-            <div className="text-2xl font-bold text-green-700 dark:text-green-300">{totalAmount.toFixed(2)} ₺</div>
+          <div className="bg-green-50 p-4 rounded-xl">
+            <div className="text-sm text-green-600 font-medium">Toplam Tutar</div>
+            <div className="text-2xl font-bold text-green-700">{totalAmount.toFixed(2)} ₺</div>
           </div>
-          <div className="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-xl">
-            <div className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Nakit</div>
-            <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">{cashAmount.toFixed(2)} ₺</div>
+          <div className="bg-emerald-50 p-4 rounded-xl">
+            <div className="text-sm text-emerald-600 font-medium">Nakit</div>
+            <div className="text-2xl font-bold text-emerald-700">{cashAmount.toFixed(2)} ₺</div>
           </div>
-          <div className="bg-sky-50 dark:bg-sky-900/20 p-4 rounded-xl">
-            <div className="text-sm text-sky-600 dark:text-sky-400 font-medium">Kart</div>
-            <div className="text-2xl font-bold text-sky-700 dark:text-sky-300">{cardAmount.toFixed(2)} ₺</div>
+          <div className="bg-sky-50 p-4 rounded-xl">
+            <div className="text-sm text-sky-600 font-medium">Kart</div>
+            <div className="text-2xl font-bold text-sky-700">{cardAmount.toFixed(2)} ₺</div>
           </div>
         </div>
 
         <div className="overflow-x-auto admin-scrollbar">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b dark:border-slate-700">
+              <tr className="border-b">
                 <th className="text-left py-3 px-4">Sipariş No</th>
                 <th className="text-left py-3 px-4">Tarih/Saat</th>
                 <th className="text-left py-3 px-4">Müşteri</th>
@@ -2815,10 +2815,10 @@ export default function Home() {
                 </tr>
               ) : (
                 currentPageData.map(pkg => (
-                  <tr key={pkg.id} className="border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                  <tr key={pkg.id} className="border-b hover:bg-slate-50:bg-slate-700/50">
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-blue-600 dark:text-blue-400">
+                        <span className="font-bold text-blue-600">
                           {pkg.order_number || '......'}
                         </span>
                         {pkg.platform && (
@@ -2868,7 +2868,7 @@ export default function Home() {
             <button
               onClick={() => handlePageChange(Math.max(1, historyCurrentPage - 1))}
               disabled={historyCurrentPage === 1}
-              className="px-4 py-2 rounded-lg font-medium transition-all bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 rounded-lg font-medium transition-all bg-slate-200 text-slate-700 hover:bg-slate-300:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               ← Önceki
             </button>
@@ -2880,7 +2880,7 @@ export default function Home() {
             <button
               onClick={() => handlePageChange(Math.min(totalPages, historyCurrentPage + 1))}
               disabled={historyCurrentPage === totalPages}
-              className="px-4 py-2 rounded-lg font-medium transition-all bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 rounded-lg font-medium transition-all bg-slate-200 text-slate-700 hover:bg-slate-300:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Sonraki →
             </button>
@@ -2902,7 +2902,7 @@ export default function Home() {
     if (courierSubTab === 'accounts') {
       return (
         <>
-          <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
+          <div className="bg-white shadow-xl rounded-2xl p-6">
             <h2 className="text-2xl font-bold mb-6">👥 Kurye Listesi</h2>
           
             {/* Kurye Kartları */}
@@ -2917,17 +2917,17 @@ export default function Home() {
                 <div
                   key={courier.id}
                   onClick={() => handleCourierClick(courier.id)}
-                  className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-700/50 dark:to-slate-800/50 p-5 rounded-xl border-2 border-slate-200 dark:border-slate-600 shadow-lg hover:shadow-xl transition-all cursor-pointer hover:scale-105"
+                  className="bg-gradient-to-br from-slate-50 to-slate-100 p-5 rounded-xl border-2 border-slate-200 shadow-lg hover:shadow-xl transition-all cursor-pointer hover:scale-105"
                 >
                   {/* Kurye Başlık */}
                   <div className="flex justify-between items-start mb-4">
                     <div>
-                      <h3 className="font-bold text-lg text-slate-900 dark:text-white">
+                      <h3 className="font-bold text-lg text-slate-900">
                         {courier.full_name}
                       </h3>
                       <div className="flex items-center gap-2 mt-1">
                         <div className={`w-2 h-2 rounded-full ${courier.is_active ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                        <span className="text-xs text-slate-600 dark:text-slate-400">
+                        <span className="text-xs text-slate-600">
                           {courier.is_active ? 'Aktif' : 'Pasif'}
                         </span>
                       </div>
@@ -2936,26 +2936,26 @@ export default function Home() {
 
                   {/* İstatistikler */}
                   <div className="grid grid-cols-2 gap-3 mb-4">
-                    <div className="bg-white dark:bg-slate-900/50 p-3 rounded-lg">
-                      <div className="text-xs text-slate-500 dark:text-slate-400">Bugün</div>
-                      <div className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                    <div className="bg-white p-3 rounded-lg">
+                      <div className="text-xs text-slate-500">Bugün</div>
+                      <div className="text-xl font-bold text-blue-600">
                         {courier.todayDeliveryCount || 0}
                       </div>
                     </div>
-                    <div className="bg-white dark:bg-slate-900/50 p-3 rounded-lg">
-                      <div className="text-xs text-slate-500 dark:text-slate-400">Toplam</div>
-                      <div className="text-xl font-bold text-green-600 dark:text-green-400">
+                    <div className="bg-white p-3 rounded-lg">
+                      <div className="text-xs text-slate-500">Toplam</div>
+                      <div className="text-xl font-bold text-green-600">
                         {courier.deliveryCount || 0}
                       </div>
                     </div>
                   </div>
 
                   {/* Aktif Paketler */}
-                  <div className="bg-orange-100 dark:bg-orange-900/30 p-3 rounded-lg">
-                    <div className="text-xs text-orange-700 dark:text-orange-400 mb-1">
+                  <div className="bg-orange-100 p-3 rounded-lg">
+                    <div className="text-xs text-orange-700 mb-1">
                       Aktif Paketler
                     </div>
-                    <div className="text-2xl font-black text-orange-600 dark:text-orange-400">
+                    <div className="text-2xl font-black text-orange-600">
                       {courier.activePackageCount || 0}
                     </div>
                   </div>
@@ -2966,7 +2966,7 @@ export default function Home() {
                       e.stopPropagation()
                       handleCourierClick(courier.id)
                     }}
-                    className="w-full mt-4 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-lg text-xs font-medium hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+                    className="w-full mt-4 py-2 bg-blue-100 text-blue-700 rounded-lg text-xs font-medium hover:bg-blue-200:bg-blue-900/50 transition-colors"
                   >
                     📊 Detaylı Rapor
                   </button>
@@ -2979,11 +2979,11 @@ export default function Home() {
           {/* Kurye Detay Modalı */}
           {showCourierModal && selectedCourierId && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
+            <div className="bg-white rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
               {/* Modal Header */}
-              <div className="flex justify-between items-center p-6 border-b border-slate-200 dark:border-slate-700">
+              <div className="flex justify-between items-center p-6 border-b border-slate-200">
                 <div className="flex items-center gap-4 flex-1">
-                  <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
+                  <h3 className="text-2xl font-bold text-slate-900">
                     🚴 {couriers.find(c => c.id === selectedCourierId)?.full_name} - Detaylı Rapor
                   </h3>
                   
@@ -2993,14 +2993,14 @@ export default function Home() {
                       type="date"
                       value={courierStartDate}
                       onChange={(e) => setCourierStartDate(e.target.value)}
-                      className="px-3 py-2 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-600 text-sm"
+                      className="px-3 py-2 bg-slate-100 text-slate-900 rounded-lg border border-slate-300 text-sm"
                     />
-                    <span className="text-slate-500 dark:text-slate-400">-</span>
+                    <span className="text-slate-500">-</span>
                     <input
                       type="date"
                       value={courierEndDate}
                       onChange={(e) => setCourierEndDate(e.target.value)}
-                      className="px-3 py-2 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-600 text-sm"
+                      className="px-3 py-2 bg-slate-100 text-slate-900 rounded-lg border border-slate-300 text-sm"
                     />
                   </div>
                   
@@ -3026,7 +3026,7 @@ export default function Home() {
                 </div>
                 <button
                   onClick={() => setShowCourierModal(false)}
-                  className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 text-2xl ml-4"
+                  className="text-slate-500 hover:text-slate-700:text-slate-200 text-2xl ml-4"
                 >
                   ×
                 </button>
@@ -3037,49 +3037,49 @@ export default function Home() {
                 {/* Kasa Özeti */}
                 {selectedCourierOrders.length > 0 && (
                   <div className="mb-6">
-                    <h4 className="text-lg font-bold mb-4 text-slate-900 dark:text-white">💰 Kasa Özeti</h4>
+                    <h4 className="text-lg font-bold mb-4 text-slate-900">💰 Kasa Özeti</h4>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       {(() => {
                         const summary = calculateCashSummary(selectedCourierOrders)
                         return (
                           <>
-                            <div className="bg-green-100 dark:bg-green-900/30 p-4 rounded-xl border-2 border-green-300 dark:border-green-700">
+                            <div className="bg-green-100 p-4 rounded-xl border-2 border-green-300">
                               <div className="text-center">
-                                <div className="text-3xl font-black text-green-700 dark:text-green-400">
+                                <div className="text-3xl font-black text-green-700">
                                   {summary.cashTotal.toFixed(2)} ₺
                                 </div>
-                                <div className="text-sm font-semibold text-green-600 dark:text-green-500 mt-1">
+                                <div className="text-sm font-semibold text-green-600 mt-1">
                                   💵 NAKİT TOPLAM
                                 </div>
-                                <div className="text-xs text-green-600 dark:text-green-500 mt-1">
+                                <div className="text-xs text-green-600 mt-1">
                                   {selectedCourierOrders.filter(o => o.payment_method === 'cash').length} sipariş
                                 </div>
                               </div>
                             </div>
 
-                            <div className="bg-blue-100 dark:bg-blue-900/30 p-4 rounded-xl border-2 border-blue-300 dark:border-blue-700">
+                            <div className="bg-blue-100 p-4 rounded-xl border-2 border-blue-300">
                               <div className="text-center">
-                                <div className="text-3xl font-black text-blue-700 dark:text-blue-400">
+                                <div className="text-3xl font-black text-blue-700">
                                   {summary.cardTotal.toFixed(2)} ₺
                                 </div>
-                                <div className="text-sm font-semibold text-blue-600 dark:text-blue-500 mt-1">
+                                <div className="text-sm font-semibold text-blue-600 mt-1">
                                   💳 KART TOPLAM
                                 </div>
-                                <div className="text-xs text-blue-600 dark:text-blue-500 mt-1">
+                                <div className="text-xs text-blue-600 mt-1">
                                   {selectedCourierOrders.filter(o => o.payment_method === 'card').length} sipariş
                                 </div>
                               </div>
                             </div>
 
-                            <div className="bg-purple-100 dark:bg-purple-900/30 p-4 rounded-xl border-2 border-purple-300 dark:border-purple-700">
+                            <div className="bg-purple-100 p-4 rounded-xl border-2 border-purple-300">
                               <div className="text-center">
-                                <div className="text-3xl font-black text-purple-700 dark:text-purple-400">
+                                <div className="text-3xl font-black text-purple-700">
                                   {summary.grandTotal.toFixed(2)} ₺
                                 </div>
-                                <div className="text-sm font-semibold text-purple-600 dark:text-purple-500 mt-1">
+                                <div className="text-sm font-semibold text-purple-600 mt-1">
                                   🎯 GENEL TOPLAM
                                 </div>
-                                <div className="text-xs text-purple-600 dark:text-purple-500 mt-1">
+                                <div className="text-xs text-purple-600 mt-1">
                                   {selectedCourierOrders.length} toplam sipariş
                                 </div>
                               </div>
@@ -3093,7 +3093,7 @@ export default function Home() {
 
                 {/* Sipariş Detay Tablosu */}
                 <div>
-                  <h4 className="text-lg font-bold mb-4 text-slate-900 dark:text-white">📋 Teslim Edilen Siparişler</h4>
+                  <h4 className="text-lg font-bold mb-4 text-slate-900">📋 Teslim Edilen Siparişler</h4>
                   {selectedCourierOrders.length === 0 ? (
                     <div className="text-center py-8 text-slate-500">
                       Bu kurye henüz sipariş teslim etmemiş.
@@ -3102,7 +3102,7 @@ export default function Home() {
                     <div className="overflow-x-auto admin-scrollbar">
                       <table className="w-full text-sm">
                         <thead>
-                          <tr className="border-b-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
+                          <tr className="border-b-2 border-slate-200 bg-slate-50">
                             <th className="text-left py-3 px-4 font-semibold">Sipariş No</th>
                             <th className="text-left py-3 px-4 font-semibold">Tarih/Saat</th>
                             <th className="text-left py-3 px-4 font-semibold">Müşteri</th>
@@ -3116,12 +3116,12 @@ export default function Home() {
                         </thead>
                         <tbody>
                           {selectedCourierOrders.map((order, index) => (
-                            <tr key={order.id} className={`border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/30 ${
-                              index % 2 === 0 ? 'bg-white dark:bg-slate-800' : 'bg-slate-50/50 dark:bg-slate-700/20'
+                            <tr key={order.id} className={`border-b border-slate-200 hover:bg-slate-50:bg-slate-700/30 ${
+                              index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'
                             }`}>
                               <td className="py-3 px-4">
                                 <div className="flex items-center gap-2">
-                                  <span className="font-bold text-blue-600 dark:text-blue-400">
+                                  <span className="font-bold text-blue-600">
                                     {order.order_number || '......'}
                                   </span>
                                   {order.platform && (
@@ -3141,38 +3141,38 @@ export default function Home() {
                               </td>
                               <td className="py-3 px-4 font-medium">{order.customer_name}</td>
                               <td className="py-3 px-4">
-                                <span className="bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 px-2 py-1 rounded text-xs font-medium">
+                                <span className="bg-orange-50 text-orange-700 px-2 py-1 rounded text-xs font-medium">
                                   🍽️ {order.restaurant?.name || 'Bilinmeyen'}
                                 </span>
                               </td>
                               <td className="py-3 px-4">
                                 <div className="max-w-xs">
-                                  <div className="text-xs text-slate-600 dark:text-slate-400 truncate">
+                                  <div className="text-xs text-slate-600 truncate">
                                     {order.content || 'Belirtilmemiş'}
                                   </div>
                                 </div>
                               </td>
                               <td className="py-3 px-4">
-                                <span className="font-bold text-green-600 dark:text-green-400">
+                                <span className="font-bold text-green-600">
                                   {order.amount} ₺
                                 </span>
                               </td>
                               <td className="py-3 px-4">
-                                <div className="max-w-xs text-xs text-slate-600 dark:text-slate-400 truncate">
+                                <div className="max-w-xs text-xs text-slate-600 truncate">
                                   📍 {order.delivery_address}
                                 </div>
                               </td>
                               <td className="py-3 px-4">
                                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                                   order.payment_method === 'cash' 
-                                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
-                                    : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                                    ? 'bg-green-100 text-green-700' 
+                                    : 'bg-blue-100 text-blue-700'
                                 }`}>
                                   {order.payment_method === 'cash' ? '💵 Nakit' : '💳 Kart'}
                                 </span>
                               </td>
                               <td className="py-3 px-4">
-                                <span className="font-medium text-purple-600 dark:text-purple-400">
+                                <span className="font-medium text-purple-600">
                                   ⏱️ {calculateDeliveryDuration(order.picked_up_at, order.delivered_at)}
                                 </span>
                               </td>
@@ -3186,19 +3186,19 @@ export default function Home() {
 
                 {/* Restoran Bazlı Özet */}
                 {selectedCourierOrders.length > 0 && (
-                  <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-                    <h4 className="text-lg font-bold mb-4 text-slate-900 dark:text-white">🍽️ Restoran Bazlı Özet</h4>
+                  <div className="mt-6 pt-6 border-t border-slate-200">
+                    <h4 className="text-lg font-bold mb-4 text-slate-900">🍽️ Restoran Bazlı Özet</h4>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                       {calculateRestaurantSummary(selectedCourierOrders).map((restaurant, index) => (
-                        <div key={restaurant.name} className="bg-slate-50 dark:bg-slate-700/50 p-3 rounded-lg border dark:border-slate-600">
+                        <div key={restaurant.name} className="bg-slate-50 p-3 rounded-lg border">
                           <div className="text-center">
-                            <div className="text-lg font-bold text-orange-600 dark:text-orange-400">
+                            <div className="text-lg font-bold text-orange-600">
                               {restaurant.count}
                             </div>
-                            <div className="text-xs font-medium text-slate-700 dark:text-slate-300 mt-1">
+                            <div className="text-xs font-medium text-slate-700 mt-1">
                               {restaurant.name}
                             </div>
-                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                            <div className="text-xs text-slate-500 mt-1">
                               {restaurant.count === 1 ? 'paket' : 'paket'}
                             </div>
                           </div>
@@ -3207,8 +3207,8 @@ export default function Home() {
                     </div>
                     
                     {/* Özet İstatistik */}
-                    <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                      <div className="text-center text-sm text-blue-700 dark:text-blue-400">
+                    <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                      <div className="text-center text-sm text-blue-700">
                         <span className="font-semibold">
                           Toplam {calculateRestaurantSummary(selectedCourierOrders).length} farklı restorandan 
                           {' '}{selectedCourierOrders.length} paket teslim edildi
@@ -3225,13 +3225,13 @@ export default function Home() {
         {/* GÜN SONU MODAL */}
         {showEndOfDayModal && selectedCourierId && (
           <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto admin-scrollbar">
+            <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto admin-scrollbar">
               {/* Modal Header */}
-              <div className="p-6 border-b border-slate-200 dark:border-slate-700">
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
+              <div className="p-6 border-b border-slate-200">
+                <h3 className="text-2xl font-bold text-slate-900">
                   💰 Gün Sonu Kasası - {couriers.find(c => c.id === selectedCourierId)?.full_name}
                 </h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                <p className="text-sm text-slate-500 mt-1">
                   {new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' })}
                 </p>
               </div>
@@ -3258,59 +3258,59 @@ export default function Home() {
                     
                     {/* Seçilen Tarih Aralığı Nakit Toplam */}
                     <div className="mb-6 space-y-3">
-                      <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border border-green-200 dark:border-green-800">
+                      <div className="bg-green-50 p-4 rounded-xl border border-green-200">
                         <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                          <span className="text-sm font-medium text-green-700">
                             💵 Seçilen Tarih Aralığı Nakit Toplam
                           </span>
-                          <span className="text-2xl font-bold text-green-700 dark:text-green-300">
+                          <span className="text-2xl font-bold text-green-700">
                             {calculateCashSummary(selectedCourierOrders).cashTotal.toFixed(2)} ₺
                           </span>
                         </div>
-                        <p className="text-xs text-green-600 dark:text-green-500 mt-1">
+                        <p className="text-xs text-green-600 mt-1">
                           {selectedCourierOrders.filter(o => o.payment_method === 'cash').length} nakit sipariş ({courierStartDate} - {courierEndDate})
                         </p>
-                        <p className="text-xs text-green-700 dark:text-green-600 mt-2 font-medium">
+                        <p className="text-xs text-green-700 mt-2 font-medium">
                           ℹ️ Bu değer değişmez (bilgi amaçlı)
                         </p>
                       </div>
 
                       {/* Seçilen Tarih Aralığı Kart Toplam */}
-                      <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-200 dark:border-blue-800">
+                      <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
                         <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium text-blue-700 dark:text-blue-400">
+                          <span className="text-sm font-medium text-blue-700">
                             💳 Seçilen Tarih Aralığı Kart Toplam
                           </span>
-                          <span className="text-2xl font-bold text-blue-700 dark:text-blue-300">
+                          <span className="text-2xl font-bold text-blue-700">
                             {calculateCashSummary(selectedCourierOrders).cardTotal.toFixed(2)} ₺
                           </span>
                         </div>
-                        <p className="text-xs text-blue-600 dark:text-blue-500 mt-1">
+                        <p className="text-xs text-blue-600 mt-1">
                           {selectedCourierOrders.filter(o => o.payment_method === 'card').length} kart sipariş ({courierStartDate} - {courierEndDate})
                         </p>
-                        <p className="text-xs text-blue-700 dark:text-blue-600 mt-2 font-medium">
+                        <p className="text-xs text-blue-700 mt-2 font-medium">
                           ℹ️ Bu değer değişmez (bilgi amaçlı)
                         </p>
                       </div>
 
                       {/* Geçmiş Borçlar */}
                       {courierDebts.length > 0 && (
-                        <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border border-red-200 dark:border-red-800">
+                        <div className="bg-red-50 p-4 rounded-xl border border-red-200">
                           <div className="flex justify-between items-center mb-3">
-                            <span className="text-sm font-medium text-red-700 dark:text-red-400">
+                            <span className="text-sm font-medium text-red-700">
                               📋 Geçmiş Borçlar
                             </span>
-                            <span className="text-2xl font-bold text-red-700 dark:text-red-300">
+                            <span className="text-2xl font-bold text-red-700">
                               {courierDebts.reduce((sum, d) => sum + d.remaining_amount, 0).toFixed(2)} ₺
                             </span>
                           </div>
                           <div className="space-y-2">
                             {courierDebts.map((debt) => (
-                              <div key={debt.id} className="flex justify-between items-center text-xs bg-white dark:bg-slate-700 p-2 rounded">
-                                <span className="text-slate-600 dark:text-slate-400">
+                              <div key={debt.id} className="flex justify-between items-center text-xs bg-white p-2 rounded">
+                                <span className="text-slate-600">
                                   📅 {formatTurkishDate(debt.debt_date)} tarihinden kalan
                                 </span>
-                                <span className="font-bold text-red-600 dark:text-red-400">
+                                <span className="font-bold text-red-600">
                                   {debt.remaining_amount.toFixed(2)} ₺
                                 </span>
                               </div>
@@ -3320,19 +3320,19 @@ export default function Home() {
                       )}
 
                       {/* Genel Toplam */}
-                      <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-xl border-2 border-purple-300 dark:border-purple-700">
+                      <div className="bg-purple-50 p-4 rounded-xl border-2 border-purple-300">
                         <div className="flex justify-between items-center">
-                          <span className="text-base font-bold text-purple-700 dark:text-purple-300">
+                          <span className="text-base font-bold text-purple-700">
                             🎯 GENEL TOPLAM (Beklenen)
                           </span>
-                          <span className="text-3xl font-black text-purple-700 dark:text-purple-300">
+                          <span className="text-3xl font-black text-purple-700">
                             {(calculateCashSummary(selectedCourierOrders).grandTotal + courierDebts.reduce((sum, d) => sum + d.remaining_amount, 0)).toFixed(2)} ₺
                           </span>
                         </div>
-                        <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
+                        <p className="text-xs text-purple-600 mt-1">
                           Seçilen tarih aralığı (settled_at NULL) + Geçmiş borçlar
                         </p>
-                        <p className="text-xs text-purple-700 dark:text-purple-500 mt-2 font-medium">
+                        <p className="text-xs text-purple-700 mt-2 font-medium">
                           ⚡ Gün sonu alındığında bu değer sıfırlanır
                         </p>
                       </div>
@@ -3340,7 +3340,7 @@ export default function Home() {
 
                     {/* Alınan Para Input */}
                     <div className="mb-6">
-                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
                         💰 Kuryeden Alınan Para
                       </label>
                       <input
@@ -3350,7 +3350,7 @@ export default function Home() {
                         onChange={(e) => setEndOfDayAmount(e.target.value)}
                         placeholder="Örn: 1250.00"
                         autoFocus
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-700 border-2 border-slate-300 dark:border-slate-600 rounded-xl text-lg font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                        className="w-full px-4 py-3 bg-white border-2 border-slate-300 rounded-xl text-lg font-bold text-slate-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                       />
                     </div>
 
@@ -3365,16 +3365,16 @@ export default function Home() {
                       if (difference < 0) {
                         return (
                           <div className="mb-6">
-                            <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border-2 border-red-300 dark:border-red-700">
+                            <div className="bg-red-50 p-4 rounded-xl border-2 border-red-300">
                               <div className="flex justify-between items-center">
-                                <span className="text-base font-bold text-red-700 dark:text-red-300">
+                                <span className="text-base font-bold text-red-700">
                                   ⚠️ AÇIK
                                 </span>
-                                <span className="text-3xl font-black text-red-700 dark:text-red-300">
+                                <span className="text-3xl font-black text-red-700">
                                   {Math.abs(difference).toFixed(2)} ₺
                                 </span>
                               </div>
-                              <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+                              <p className="text-xs text-red-600 mt-2">
                                 Bu miktar kurye borcuna eklenecek
                               </p>
                             </div>
@@ -3383,16 +3383,16 @@ export default function Home() {
                       } else if (difference > 0) {
                         return (
                           <div className="mb-6">
-                            <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border-2 border-green-300 dark:border-green-700">
+                            <div className="bg-green-50 p-4 rounded-xl border-2 border-green-300">
                               <div className="flex justify-between items-center">
-                                <span className="text-base font-bold text-green-700 dark:text-green-300">
+                                <span className="text-base font-bold text-green-700">
                                   ✅ BAHŞİŞ
                                 </span>
-                                <span className="text-3xl font-black text-green-700 dark:text-green-300">
+                                <span className="text-3xl font-black text-green-700">
                                   {difference.toFixed(2)} ₺
                                 </span>
                               </div>
-                              <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                              <p className="text-xs text-green-600 mt-2">
                                 Kurye fazla para getirdi
                               </p>
                             </div>
@@ -3401,12 +3401,12 @@ export default function Home() {
                       } else {
                         return (
                           <div className="mb-6">
-                            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border-2 border-blue-300 dark:border-blue-700">
+                            <div className="bg-blue-50 p-4 rounded-xl border-2 border-blue-300">
                               <div className="text-center">
-                                <span className="text-2xl font-black text-blue-700 dark:text-blue-300">
+                                <span className="text-2xl font-black text-blue-700">
                                   ✓ TAM ÖDEME
                                 </span>
-                                <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                                <p className="text-xs text-blue-600 mt-2">
                                   Hesap tam olarak kapandı
                                 </p>
                               </div>
@@ -3423,7 +3423,7 @@ export default function Home() {
                           setShowEndOfDayModal(false)
                           setEndOfDayAmount('')
                         }}
-                        className="flex-1 px-4 py-3 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-medium hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
+                        className="flex-1 px-4 py-3 bg-slate-200 text-slate-700 rounded-xl font-medium hover:bg-slate-300:bg-slate-600 transition-colors"
                       >
                         İptal
                       </button>
@@ -3452,13 +3452,13 @@ export default function Home() {
         {/* BORÇ ÖDE MODAL */}
         {showPayDebtModal && selectedCourierId && (
           <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto admin-scrollbar">
+            <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto admin-scrollbar">
               {/* Modal Header */}
-              <div className="p-6 border-b border-slate-200 dark:border-slate-700">
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
+              <div className="p-6 border-b border-slate-200">
+                <h3 className="text-2xl font-bold text-slate-900">
                   💳 Borç Ödemesi - {couriers.find(c => c.id === selectedCourierId)?.full_name}
                 </h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                <p className="text-sm text-slate-500 mt-1">
                   {new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' })}
                 </p>
               </div>
@@ -3474,7 +3474,7 @@ export default function Home() {
                   <>
                     {/* Borç Listesi */}
                     <div className="mb-6">
-                      <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-4">📋 Mevcut Borçlar</h4>
+                      <h4 className="text-lg font-bold text-slate-900 mb-4">📋 Mevcut Borçlar</h4>
                       
                       {courierDebts.length === 0 ? (
                         <div className="text-center py-8 text-slate-500">
@@ -3484,11 +3484,11 @@ export default function Home() {
                       ) : (
                         <div className="space-y-2 mb-4">
                           {courierDebts.map((debt) => (
-                            <div key={debt.id} className="flex justify-between items-center bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-200 dark:border-red-800">
-                              <span className="text-sm text-slate-700 dark:text-slate-300">
+                            <div key={debt.id} className="flex justify-between items-center bg-red-50 p-3 rounded-lg border border-red-200">
+                              <span className="text-sm text-slate-700">
                                 📅 {formatTurkishDate(debt.debt_date)} gününden kalan
                               </span>
-                              <span className="text-lg font-bold text-red-600 dark:text-red-400">
+                              <span className="text-lg font-bold text-red-600">
                                 {debt.remaining_amount.toFixed(2)} ₺
                               </span>
                             </div>
@@ -3498,12 +3498,12 @@ export default function Home() {
 
                       {/* Toplam Borç */}
                       {courierDebts.length > 0 && (
-                        <div className="bg-red-100 dark:bg-red-900/30 p-4 rounded-xl border-2 border-red-300 dark:border-red-700">
+                        <div className="bg-red-100 p-4 rounded-xl border-2 border-red-300">
                           <div className="flex justify-between items-center">
-                            <span className="text-base font-bold text-red-700 dark:text-red-300">
+                            <span className="text-base font-bold text-red-700">
                               💰 TOPLAM BORÇ
                             </span>
-                            <span className="text-3xl font-black text-red-700 dark:text-red-300">
+                            <span className="text-3xl font-black text-red-700">
                               {courierDebts.reduce((sum, d) => sum + d.remaining_amount, 0).toFixed(2)} ₺
                             </span>
                           </div>
@@ -3515,7 +3515,7 @@ export default function Home() {
                     {courierDebts.length > 0 && (
                       <>
                         <div className="mb-6">
-                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
                             💵 Ödenen Tutar
                           </label>
                           <input
@@ -3525,7 +3525,7 @@ export default function Home() {
                             onChange={(e) => setPayDebtAmount(e.target.value)}
                             placeholder="Örn: 500.00"
                             autoFocus
-                            className="w-full px-4 py-3 bg-white dark:bg-slate-700 border-2 border-slate-300 dark:border-slate-600 rounded-xl text-lg font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none"
+                            className="w-full px-4 py-3 bg-white border-2 border-slate-300 rounded-xl text-lg font-bold text-slate-900 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none"
                           />
                         </div>
 
@@ -3538,12 +3538,12 @@ export default function Home() {
                           if (payment > totalDebt) {
                             return (
                               <div className="mb-6">
-                                <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-xl border-2 border-yellow-300 dark:border-yellow-700">
+                                <div className="bg-yellow-50 p-4 rounded-xl border-2 border-yellow-300">
                                   <div className="text-center">
-                                    <span className="text-2xl font-black text-yellow-700 dark:text-yellow-300">
+                                    <span className="text-2xl font-black text-yellow-700">
                                       ⚠️ UYARI
                                     </span>
-                                    <p className="text-sm text-yellow-600 dark:text-yellow-400 mt-2">
+                                    <p className="text-sm text-yellow-600 mt-2">
                                       Ödeme tutarı toplam borçtan fazla olamaz!
                                     </p>
                                   </div>
@@ -3553,16 +3553,16 @@ export default function Home() {
                           } else if (remaining > 0) {
                             return (
                               <div className="mb-6">
-                                <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-xl border-2 border-orange-300 dark:border-orange-700">
+                                <div className="bg-orange-50 p-4 rounded-xl border-2 border-orange-300">
                                   <div className="flex justify-between items-center">
-                                    <span className="text-base font-bold text-orange-700 dark:text-orange-300">
+                                    <span className="text-base font-bold text-orange-700">
                                       📊 KALAN BORÇ
                                     </span>
-                                    <span className="text-3xl font-black text-orange-700 dark:text-orange-300">
+                                    <span className="text-3xl font-black text-orange-700">
                                       {remaining.toFixed(2)} ₺
                                     </span>
                                   </div>
-                                  <p className="text-xs text-orange-600 dark:text-orange-400 mt-2">
+                                  <p className="text-xs text-orange-600 mt-2">
                                     Bu miktar bugün tarihine aktarılacak
                                   </p>
                                 </div>
@@ -3571,12 +3571,12 @@ export default function Home() {
                           } else {
                             return (
                               <div className="mb-6">
-                                <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border-2 border-green-300 dark:border-green-700">
+                                <div className="bg-green-50 p-4 rounded-xl border-2 border-green-300">
                                   <div className="text-center">
-                                    <span className="text-2xl font-black text-green-700 dark:text-green-300">
+                                    <span className="text-2xl font-black text-green-700">
                                       ✅ TÜM BORÇ ÖDENDİ
                                     </span>
-                                    <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                                    <p className="text-xs text-green-600 mt-2">
                                       Kurye borçsuz olacak
                                     </p>
                                   </div>
@@ -3593,7 +3593,7 @@ export default function Home() {
                               setShowPayDebtModal(false)
                               setPayDebtAmount('')
                             }}
-                            className="flex-1 px-4 py-3 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-medium hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
+                            className="flex-1 px-4 py-3 bg-slate-200 text-slate-700 rounded-xl font-medium hover:bg-slate-300:bg-slate-600 transition-colors"
                           >
                             İptal
                           </button>
@@ -3718,18 +3718,18 @@ export default function Home() {
       }
 
       return (
-        <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
+        <div className="bg-white shadow-xl rounded-2xl p-6">
           <h2 className="text-2xl font-bold mb-6">📊 Kurye Performansları</h2>
 
           {/* Kurye Seçim Dropdown */}
           <div className="mb-8">
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+            <label className="block text-sm font-medium text-slate-700 mb-2">
               Performansını görüntülemek istediğiniz kuryeyi seçin
             </label>
             <select
               value={selectedCourierId}
               onChange={(e) => setSelectedPerformanceCourierId(e.target.value)}
-              className="w-full max-w-md px-4 py-3 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white rounded-xl border-2 border-slate-300 dark:border-slate-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-base font-medium"
+              className="w-full max-w-md px-4 py-3 bg-slate-50 text-slate-900 rounded-xl border-2 border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-base font-medium"
             >
               <option value="">-- Kurye Seçin --</option>
               {couriers.map(courier => (
@@ -3742,7 +3742,7 @@ export default function Home() {
 
           {/* Grafik Alanı */}
           {!selectedCourierId && (
-            <div className="text-center py-16 text-slate-500 dark:text-slate-400">
+            <div className="text-center py-16 text-slate-500">
               <div className="text-6xl mb-4">📈</div>
               <p className="text-lg font-medium">Lütfen bir kurye seçin</p>
               <p className="text-sm mt-2">Seçilen kuryenin son 30 günlük performansı burada görünecek</p>
@@ -3752,7 +3752,7 @@ export default function Home() {
           {selectedCourierId && loadingPerformance && (
             <div className="text-center py-16">
               <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-slate-500 dark:text-slate-400">Performans verileri yükleniyor...</p>
+              <p className="text-slate-500">Performans verileri yükleniyor...</p>
             </div>
           )}
 
@@ -3760,37 +3760,37 @@ export default function Home() {
             <div>
               {/* İstatistik Kartları */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 p-4 rounded-xl border-2 border-blue-200 dark:border-blue-700">
-                  <div className="text-sm font-medium text-blue-700 dark:text-blue-400 mb-1">
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl border-2 border-blue-200">
+                  <div className="text-sm font-medium text-blue-700 mb-1">
                     Toplam Teslimat (30 Gün)
                   </div>
-                  <div className="text-3xl font-black text-blue-600 dark:text-blue-300">
+                  <div className="text-3xl font-black text-blue-600">
                     {performanceData.reduce((sum, d) => sum + d.count, 0)}
                   </div>
                 </div>
 
-                <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30 p-4 rounded-xl border-2 border-green-200 dark:border-green-700">
-                  <div className="text-sm font-medium text-green-700 dark:text-green-400 mb-1">
+                <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-xl border-2 border-green-200">
+                  <div className="text-sm font-medium text-green-700 mb-1">
                     Günlük Ortalama
                   </div>
-                  <div className="text-3xl font-black text-green-600 dark:text-green-300">
+                  <div className="text-3xl font-black text-green-600">
                     {(performanceData.reduce((sum, d) => sum + d.count, 0) / 30).toFixed(1)}
                   </div>
                 </div>
 
-                <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/30 p-4 rounded-xl border-2 border-purple-200 dark:border-purple-700">
-                  <div className="text-sm font-medium text-purple-700 dark:text-purple-400 mb-1">
+                <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-xl border-2 border-purple-200">
+                  <div className="text-sm font-medium text-purple-700 mb-1">
                     En Yüksek Günlük
                   </div>
-                  <div className="text-3xl font-black text-purple-600 dark:text-purple-300">
+                  <div className="text-3xl font-black text-purple-600">
                     {Math.max(...performanceData.map(d => d.count))}
                   </div>
                 </div>
               </div>
 
               {/* Çizgi Grafik */}
-              <div className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-xl border-2 border-slate-200 dark:border-slate-700">
-                <h3 className="text-lg font-bold mb-4 text-slate-900 dark:text-white">
+              <div className="bg-slate-50 p-6 rounded-xl border-2 border-slate-200">
+                <h3 className="text-lg font-bold mb-4 text-slate-900">
                   Son 30 Günlük Performans Trendi
                 </h3>
                 <ResponsiveContainer width="100%" height={400}>
@@ -3836,15 +3836,15 @@ export default function Home() {
               </div>
 
               {/* Detaylı Tablo */}
-              <div className="mt-6 bg-white dark:bg-slate-800 rounded-xl border-2 border-slate-200 dark:border-slate-700 overflow-hidden">
-                <div className="p-4 bg-slate-100 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600">
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+              <div className="mt-6 bg-white rounded-xl border-2 border-slate-200 overflow-hidden">
+                <div className="p-4 bg-slate-100 border-b border-slate-200">
+                  <h3 className="text-lg font-bold text-slate-900">
                     📋 Günlük Detay
                   </h3>
                 </div>
                 <div className="max-h-96 overflow-y-auto admin-scrollbar">
                   <table className="w-full text-sm">
-                    <thead className="sticky top-0 bg-slate-50 dark:bg-slate-700 border-b-2 border-slate-200 dark:border-slate-600">
+                    <thead className="sticky top-0 bg-slate-50 border-b-2 border-slate-200">
                       <tr>
                         <th className="text-left py-3 px-4 font-semibold">Tarih</th>
                         <th className="text-right py-3 px-4 font-semibold">Teslimat Sayısı</th>
@@ -3854,16 +3854,16 @@ export default function Home() {
                       {performanceData.slice().reverse().map((day, index) => (
                         <tr 
                           key={index}
-                          className={`border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/30 ${
-                            index % 2 === 0 ? 'bg-white dark:bg-slate-800' : 'bg-slate-50/50 dark:bg-slate-700/20'
+                          className={`border-b border-slate-200 hover:bg-slate-50:bg-slate-700/30 ${
+                            index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'
                           }`}
                         >
                           <td className="py-3 px-4 font-medium">{day.date}</td>
                           <td className="py-3 px-4 text-right">
                             <span className={`font-bold ${
                               day.count > 0 
-                                ? 'text-green-600 dark:text-green-400' 
-                                : 'text-slate-400 dark:text-slate-600'
+                                ? 'text-green-600' 
+                                : 'text-slate-400'
                             }`}>
                               {day.count}
                             </span>
@@ -3922,7 +3922,7 @@ export default function Home() {
       const totalDeliveries = courierEarnings.reduce((sum, c) => sum + c.deliveredCount, 0)
 
       return (
-        <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
+        <div className="bg-white shadow-xl rounded-2xl p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold">💰 Kurye Kazançları (Hakediş)</h2>
             
@@ -3930,7 +3930,7 @@ export default function Home() {
             <select
               value={courierEarningsFilter}
               onChange={(e) => setCourierEarningsFilter(e.target.value as 'today' | 'week' | 'month')}
-              className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-600 font-medium"
+              className="px-4 py-2 bg-slate-100 text-slate-900 rounded-lg border border-slate-300 font-medium"
             >
               <option value="today">📅 Bugün</option>
               <option value="week">📅 Haftalık (7 Gün)</option>
@@ -3940,34 +3940,34 @@ export default function Home() {
 
           {/* Genel Özet */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-4 rounded-xl border-2 border-green-300 dark:border-green-700">
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl border-2 border-green-300">
               <div className="text-center">
-                <div className="text-3xl font-black text-green-700 dark:text-green-400">
+                <div className="text-3xl font-black text-green-700">
                   {totalEarnings.toFixed(2)} ₺
                 </div>
-                <div className="text-sm font-semibold text-green-600 dark:text-green-500 mt-1">
+                <div className="text-sm font-semibold text-green-600 mt-1">
                   💰 TOPLAM HAKEDİŞ
                 </div>
               </div>
             </div>
 
-            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 p-4 rounded-xl border-2 border-blue-300 dark:border-blue-700">
+            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-4 rounded-xl border-2 border-blue-300">
               <div className="text-center">
-                <div className="text-3xl font-black text-blue-700 dark:text-blue-400">
+                <div className="text-3xl font-black text-blue-700">
                   {totalDeliveries}
                 </div>
-                <div className="text-sm font-semibold text-blue-600 dark:text-blue-500 mt-1">
+                <div className="text-sm font-semibold text-blue-600 mt-1">
                   📦 TOPLAM TESLİMAT
                 </div>
               </div>
             </div>
 
-            <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 p-4 rounded-xl border-2 border-purple-300 dark:border-purple-700">
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-xl border-2 border-purple-300">
               <div className="text-center">
-                <div className="text-3xl font-black text-purple-700 dark:text-purple-400">
+                <div className="text-3xl font-black text-purple-700">
                   {couriers.length}
                 </div>
-                <div className="text-sm font-semibold text-purple-600 dark:text-purple-500 mt-1">
+                <div className="text-sm font-semibold text-purple-600 mt-1">
                   👥 TOPLAM KURYE
                 </div>
               </div>
@@ -3987,8 +3987,8 @@ export default function Home() {
                   key={courier.id}
                   className={`p-4 rounded-xl border transition-all ${
                     courier.earnings > 0
-                      ? 'bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600'
-                      : 'bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-700 opacity-60'
+                      ? 'bg-slate-50 border-slate-200'
+                      : 'bg-slate-100 border-slate-300 opacity-60'
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -3997,24 +3997,24 @@ export default function Home() {
                         #{index + 1}
                       </div>
                       <div>
-                        <h4 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                        <h4 className="font-bold text-lg text-slate-900 flex items-center gap-2">
                           {courier.full_name}
                           {courier.is_active && (
-                            <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded">
+                            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
                               Aktif
                             </span>
                           )}
                         </h4>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                        <p className="text-sm text-slate-500">
                           {courier.deliveredCount} paket × 80₺
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-3xl font-black text-green-600 dark:text-green-400">
+                      <div className="text-3xl font-black text-green-600">
                         {courier.earnings.toFixed(2)} ₺
                       </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">hakediş</p>
+                      <p className="text-xs text-slate-500">hakediş</p>
                     </div>
                   </div>
                 </div>
@@ -4023,8 +4023,8 @@ export default function Home() {
           </div>
 
           {/* Bilgilendirme */}
-          <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-            <p className="text-sm text-blue-700 dark:text-blue-400">
+          <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <p className="text-sm text-blue-700">
               ℹ️ <strong>Not:</strong> Kurye kazançları, teslim edilen her paket için 80₺ üzerinden hesaplanmaktadır. 
               Sadece <strong>status = 'delivered'</strong> olan paketler hesaplamaya dahildir.
             </p>
@@ -4075,14 +4075,14 @@ export default function Home() {
       const totalDeliveries = courierEarnings.reduce((sum, c) => sum + c.deliveredCount, 0)
 
       return (
-        <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
+        <div className="bg-white shadow-xl rounded-2xl p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold">💰 Kurye Kazançları (Hakediş)</h2>
             
             <select
               value={courierEarningsFilter}
               onChange={(e) => setCourierEarningsFilter(e.target.value as 'today' | 'week' | 'month')}
-              className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-600 font-medium"
+              className="px-4 py-2 bg-slate-100 text-slate-900 rounded-lg border border-slate-300 font-medium"
             >
               <option value="today">📅 Bugün</option>
               <option value="week">📅 Haftalık (7 Gün)</option>
@@ -4091,34 +4091,34 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-4 rounded-xl border-2 border-green-300 dark:border-green-700">
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl border-2 border-green-300">
               <div className="text-center">
-                <div className="text-3xl font-black text-green-700 dark:text-green-400">
+                <div className="text-3xl font-black text-green-700">
                   {totalEarnings.toFixed(2)} ₺
                 </div>
-                <div className="text-sm font-semibold text-green-600 dark:text-green-500 mt-1">
+                <div className="text-sm font-semibold text-green-600 mt-1">
                   💰 TOPLAM HAKEDİŞ
                 </div>
               </div>
             </div>
 
-            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 p-4 rounded-xl border-2 border-blue-300 dark:border-blue-700">
+            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-4 rounded-xl border-2 border-blue-300">
               <div className="text-center">
-                <div className="text-3xl font-black text-blue-700 dark:text-blue-400">
+                <div className="text-3xl font-black text-blue-700">
                   {totalDeliveries}
                 </div>
-                <div className="text-sm font-semibold text-blue-600 dark:text-blue-500 mt-1">
+                <div className="text-sm font-semibold text-blue-600 mt-1">
                   📦 TOPLAM TESLİMAT
                 </div>
               </div>
             </div>
 
-            <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 p-4 rounded-xl border-2 border-purple-300 dark:border-purple-700">
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-xl border-2 border-purple-300">
               <div className="text-center">
-                <div className="text-3xl font-black text-purple-700 dark:text-purple-400">
+                <div className="text-3xl font-black text-purple-700">
                   {couriers.length}
                 </div>
-                <div className="text-sm font-semibold text-purple-600 dark:text-purple-500 mt-1">
+                <div className="text-sm font-semibold text-purple-600 mt-1">
                   👥 TOPLAM KURYE
                 </div>
               </div>
@@ -4137,8 +4137,8 @@ export default function Home() {
                   key={courier.id}
                   className={`p-4 rounded-xl border transition-all ${
                     courier.earnings > 0
-                      ? 'bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600'
-                      : 'bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-700 opacity-60'
+                      ? 'bg-slate-50 border-slate-200'
+                      : 'bg-slate-100 border-slate-300 opacity-60'
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -4147,24 +4147,24 @@ export default function Home() {
                         #{index + 1}
                       </div>
                       <div>
-                        <h4 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                        <h4 className="font-bold text-lg text-slate-900 flex items-center gap-2">
                           {courier.full_name}
                           {courier.is_active && (
-                            <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded">
+                            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
                               Aktif
                             </span>
                           )}
                         </h4>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                        <p className="text-sm text-slate-500">
                           {courier.deliveredCount} paket × 80₺
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-3xl font-black text-green-600 dark:text-green-400">
+                      <div className="text-3xl font-black text-green-600">
                         {courier.earnings.toFixed(2)} ₺
                       </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">hakediş</p>
+                      <p className="text-xs text-slate-500">hakediş</p>
                     </div>
                   </div>
                 </div>
@@ -4172,8 +4172,8 @@ export default function Home() {
             )}
           </div>
 
-          <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-            <p className="text-sm text-blue-700 dark:text-blue-400">
+          <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <p className="text-sm text-blue-700">
               ℹ️ <strong>Not:</strong> Kurye kazançları, teslim edilen her paket için 80₺ üzerinden hesaplanmaktadır. 
               Sadece <strong>status = 'delivered'</strong> olan paketler hesaplamaya dahildir.
             </p>
@@ -4189,12 +4189,12 @@ export default function Home() {
     )
     
     return (
-      <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
+      <div className="bg-white shadow-xl rounded-2xl p-6">
         <h2 className="text-2xl font-bold mb-6">📊 Kurye Performansları</h2>
         
         {/* Günün En Hızlısı */}
         <div className="mb-6">
-          <h3 className="text-xl font-bold mb-4 text-orange-600 dark:text-orange-400">🏆 Günün En Hızlısı</h3>
+          <h3 className="text-xl font-bold mb-4 text-orange-600">🏆 Günün En Hızlısı</h3>
           
           {sortedByPerformance.length === 0 ? (
             <div className="text-center py-8 text-slate-500">
@@ -4208,8 +4208,8 @@ export default function Home() {
                   key={courier.id} 
                   className={`p-4 rounded-xl border transition-all ${
                     index === 0 
-                      ? 'bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-orange-300 dark:border-orange-700' 
-                      : 'bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600'
+                      ? 'bg-gradient-to-r from-yellow-50 to-orange-50 border-orange-300' 
+                      : 'bg-slate-50 border-slate-200'
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -4222,10 +4222,10 @@ export default function Home() {
                         {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
                       </div>
                       <div>
-                        <h4 className="font-bold text-lg text-slate-900 dark:text-white">
+                        <h4 className="font-bold text-lg text-slate-900">
                           {courier.full_name}
                         </h4>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                        <p className="text-xs text-slate-500">
                           {courier.activePackageCount || 0} aktif paket
                         </p>
                       </div>
@@ -4236,7 +4236,7 @@ export default function Home() {
                       }`}>
                         {courier.todayDeliveryCount || 0}
                       </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">bugün teslim</p>
+                      <p className="text-xs text-slate-500">bugün teslim</p>
                     </div>
                   </div>
                 </div>
@@ -4290,7 +4290,7 @@ export default function Home() {
     const totalDeliveries = courierEarnings.reduce((sum, c) => sum + c.deliveredCount, 0)
 
     return (
-      <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
+      <div className="bg-white shadow-xl rounded-2xl p-6">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">💰 Kurye Kazançları (Hakediş)</h2>
           
@@ -4298,7 +4298,7 @@ export default function Home() {
           <select
             value={courierEarningsFilter}
             onChange={(e) => setCourierEarningsFilter(e.target.value as 'today' | 'week' | 'month')}
-            className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-600 font-medium"
+            className="px-4 py-2 bg-slate-100 text-slate-900 rounded-lg border border-slate-300 font-medium"
           >
             <option value="today">📅 Bugün</option>
             <option value="week">📅 Haftalık (7 Gün)</option>
@@ -4308,34 +4308,34 @@ export default function Home() {
 
         {/* Genel Özet */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-4 rounded-xl border-2 border-green-300 dark:border-green-700">
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl border-2 border-green-300">
             <div className="text-center">
-              <div className="text-3xl font-black text-green-700 dark:text-green-400">
+              <div className="text-3xl font-black text-green-700">
                 {totalEarnings.toFixed(2)} ₺
               </div>
-              <div className="text-sm font-semibold text-green-600 dark:text-green-500 mt-1">
+              <div className="text-sm font-semibold text-green-600 mt-1">
                 💰 TOPLAM HAKEDİŞ
               </div>
             </div>
           </div>
 
-          <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 p-4 rounded-xl border-2 border-blue-300 dark:border-blue-700">
+          <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-4 rounded-xl border-2 border-blue-300">
             <div className="text-center">
-              <div className="text-3xl font-black text-blue-700 dark:text-blue-400">
+              <div className="text-3xl font-black text-blue-700">
                 {totalDeliveries}
               </div>
-              <div className="text-sm font-semibold text-blue-600 dark:text-blue-500 mt-1">
+              <div className="text-sm font-semibold text-blue-600 mt-1">
                 📦 TOPLAM TESLİMAT
               </div>
             </div>
           </div>
 
-          <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 p-4 rounded-xl border-2 border-purple-300 dark:border-purple-700">
+          <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-xl border-2 border-purple-300">
             <div className="text-center">
-              <div className="text-3xl font-black text-purple-700 dark:text-purple-400">
+              <div className="text-3xl font-black text-purple-700">
                 {couriers.length}
               </div>
-              <div className="text-sm font-semibold text-purple-600 dark:text-purple-500 mt-1">
+              <div className="text-sm font-semibold text-purple-600 mt-1">
                 👥 TOPLAM KURYE
               </div>
             </div>
@@ -4355,8 +4355,8 @@ export default function Home() {
                 key={courier.id}
                 className={`p-4 rounded-xl border transition-all ${
                   courier.earnings > 0
-                    ? 'bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600'
-                    : 'bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-700 opacity-60'
+                    ? 'bg-slate-50 border-slate-200'
+                    : 'bg-slate-100 border-slate-300 opacity-60'
                 }`}
               >
                 <div className="flex items-center justify-between">
@@ -4365,24 +4365,24 @@ export default function Home() {
                       #{index + 1}
                     </div>
                     <div>
-                      <h4 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                      <h4 className="font-bold text-lg text-slate-900 flex items-center gap-2">
                         {courier.full_name}
                         {courier.is_active && (
-                          <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded">
+                          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
                             Aktif
                           </span>
                         )}
                       </h4>
-                      <p className="text-sm text-slate-500 dark:text-slate-400">
+                      <p className="text-sm text-slate-500">
                         {courier.deliveredCount} paket × 80₺
                       </p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-3xl font-black text-green-600 dark:text-green-400">
+                    <div className="text-3xl font-black text-green-600">
                       {courier.earnings.toFixed(2)} ₺
                     </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">hakediş</p>
+                    <p className="text-xs text-slate-500">hakediş</p>
                   </div>
                 </div>
               </div>
@@ -4391,8 +4391,8 @@ export default function Home() {
         </div>
 
         {/* Bilgilendirme */}
-        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-          <p className="text-sm text-blue-700 dark:text-blue-400">
+        <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+          <p className="text-sm text-blue-700">
             ℹ️ <strong>Not:</strong> Kurye kazançları, teslim edilen her paket için 80₺ üzerinden hesaplanmaktadır. 
             Sadece <strong>status = 'delivered'</strong> olan paketler hesaplamaya dahildir.
           </p>
@@ -4405,7 +4405,7 @@ export default function Home() {
     // Liste görünümü
     if (restaurantSubTab === 'list') {
       return (
-        <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
+        <div className="bg-white shadow-xl rounded-2xl p-6">
           <h2 className="text-2xl font-bold mb-6">📋 Restoranlar Listesi</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {restaurants.map(r => {
@@ -4414,7 +4414,7 @@ export default function Home() {
               const totalOrders = activeOrders.length + deliveredOrders.length
               
               return (
-                <div key={r.id} className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border dark:border-slate-600">
+                <div key={r.id} className="bg-slate-50 p-4 rounded-xl border">
                   <div className="flex items-center mb-3">
                     <span className="text-2xl mr-3">🍽️</span>
                     <h3 className="font-bold text-lg">{r.name}</h3>
@@ -4433,7 +4433,7 @@ export default function Home() {
                     {r.address && (
                       <div className="flex items-start gap-2">
                         <span className="text-xs text-slate-500">📍</span>
-                        <p className="text-xs text-slate-600 dark:text-slate-400">
+                        <p className="text-xs text-slate-600">
                           {r.address}
                         </p>
                       </div>
@@ -4441,19 +4441,19 @@ export default function Home() {
                   </div>
                   
                   {/* İstatistikler */}
-                  <div className="space-y-2 text-sm pt-3 border-t dark:border-slate-600">
+                  <div className="space-y-2 text-sm pt-3 border-t">
                     <div className="flex justify-between">
-                      <span className="text-slate-600 dark:text-slate-400">Toplam Sipariş:</span>
+                      <span className="text-slate-600">Toplam Sipariş:</span>
                       <span className="font-bold text-blue-600">{totalOrders}</span>
                     </div>
                     
                     <div className="flex justify-between">
-                      <span className="text-slate-600 dark:text-slate-400">Aktif Sipariş:</span>
+                      <span className="text-slate-600">Aktif Sipariş:</span>
                       <span className="font-bold text-orange-600">{activeOrders.length}</span>
                     </div>
                     
                     <div className="flex justify-between">
-                      <span className="text-slate-600 dark:text-slate-400">Teslim Edilen:</span>
+                      <span className="text-slate-600">Teslim Edilen:</span>
                       <span className="font-bold text-green-600">{deliveredOrders.length}</span>
                     </div>
                   </div>
@@ -4497,65 +4497,65 @@ export default function Home() {
       const totalDeliveries = restaurantDebts.reduce((sum, r) => sum + r.deliveredCount, 0)
 
       return (
-        <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
+        <div className="bg-white shadow-xl rounded-2xl p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold">💳 Restoranların Borcu (Cari Takip)</h2>
             
             <div className="flex gap-3 items-center">
               <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                <label className="text-sm font-medium text-slate-700">
                   📅 Başlangıç:
                 </label>
                 <input
                   type="date"
                   value={restaurantDebtStartDate}
                   onChange={(e) => setRestaurantDebtStartDate(e.target.value)}
-                  className="px-3 py-2 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-600 font-medium"
+                  className="px-3 py-2 bg-slate-100 text-slate-900 rounded-lg border border-slate-300 font-medium"
                 />
               </div>
               <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                <label className="text-sm font-medium text-slate-700">
                   📅 Bitiş:
                 </label>
                 <input
                   type="date"
                   value={restaurantDebtEndDate}
                   onChange={(e) => setRestaurantDebtEndDate(e.target.value)}
-                  className="px-3 py-2 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-600 font-medium"
+                  className="px-3 py-2 bg-slate-100 text-slate-900 rounded-lg border border-slate-300 font-medium"
                 />
               </div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div className="bg-gradient-to-r from-red-50 to-pink-50 dark:from-red-900/20 dark:to-pink-900/20 p-4 rounded-xl border-2 border-red-300 dark:border-red-700">
+            <div className="bg-gradient-to-r from-red-50 to-pink-50 p-4 rounded-xl border-2 border-red-300">
               <div className="text-center">
-                <div className="text-3xl font-black text-red-700 dark:text-red-400">
+                <div className="text-3xl font-black text-red-700">
                   {totalDebt.toFixed(2)} ₺
                 </div>
-                <div className="text-sm font-semibold text-red-600 dark:text-red-500 mt-1">
+                <div className="text-sm font-semibold text-red-600 mt-1">
                   💳 TOPLAM ALACAK
                 </div>
               </div>
             </div>
 
-            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 p-4 rounded-xl border-2 border-blue-300 dark:border-blue-700">
+            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-4 rounded-xl border-2 border-blue-300">
               <div className="text-center">
-                <div className="text-3xl font-black text-blue-700 dark:text-blue-400">
+                <div className="text-3xl font-black text-blue-700">
                   {totalDeliveries}
                 </div>
-                <div className="text-sm font-semibold text-blue-600 dark:text-blue-500 mt-1">
+                <div className="text-sm font-semibold text-blue-600 mt-1">
                   📦 TOPLAM TESLİMAT
                 </div>
               </div>
             </div>
 
-            <div className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 p-4 rounded-xl border-2 border-purple-300 dark:border-purple-700">
+            <div className="bg-gradient-to-r from-purple-50 to-indigo-50 p-4 rounded-xl border-2 border-purple-300">
               <div className="text-center">
-                <div className="text-3xl font-black text-purple-700 dark:text-purple-400">
+                <div className="text-3xl font-black text-purple-700">
                   {restaurants.length}
                 </div>
-                <div className="text-sm font-semibold text-purple-600 dark:text-purple-500 mt-1">
+                <div className="text-sm font-semibold text-purple-600 mt-1">
                   🍽️ TOPLAM RESTORAN
                 </div>
               </div>
@@ -4574,8 +4574,8 @@ export default function Home() {
                   key={restaurant.id}
                   className={`p-4 rounded-xl border transition-all ${
                     restaurant.debt > 0
-                      ? 'bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600'
-                      : 'bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-700 opacity-60'
+                      ? 'bg-slate-50 border-slate-200'
+                      : 'bg-slate-100 border-slate-300 opacity-60'
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -4584,10 +4584,10 @@ export default function Home() {
                         #{index + 1}
                       </div>
                       <div>
-                        <h4 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                        <h4 className="font-bold text-lg text-slate-900 flex items-center gap-2">
                           🍽️ {restaurant.name}
                         </h4>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                        <p className="text-sm text-slate-500">
                           {restaurant.deliveredCount} paket × 100₺
                         </p>
                         {restaurant.phone && (
@@ -4598,10 +4598,10 @@ export default function Home() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-3xl font-black text-red-600 dark:text-red-400">
+                      <div className="text-3xl font-black text-red-600">
                         {restaurant.debt.toFixed(2)} ₺
                       </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">borç</p>
+                      <p className="text-xs text-slate-500">borç</p>
                     </div>
                   </div>
                 </div>
@@ -4609,8 +4609,8 @@ export default function Home() {
             )}
           </div>
 
-          <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-            <p className="text-sm text-blue-700 dark:text-blue-400">
+          <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <p className="text-sm text-blue-700">
               ℹ️ <strong>Not:</strong> Restoran borçları, teslim edilen her paket için 100₺ üzerinden hesaplanmaktadır. 
               Sadece <strong>status = 'delivered'</strong> olan paketler hesaplamaya dahildir.
               <br />
@@ -4695,13 +4695,13 @@ export default function Home() {
     const hasData = pieChartData.length > 0
     
     return (
-      <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
+      <div className="bg-white shadow-xl rounded-2xl p-6">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">📊 Restoran Sipariş Detayları</h2>
           <select
             value={restaurantChartFilter}
             onChange={(e) => setRestaurantChartFilter(e.target.value as any)}
-            className="px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-sm"
+            className="px-3 py-2 bg-slate-100 border border-slate-300 rounded-lg text-sm"
           >
             <option value="today">Bugün</option>
             <option value="week">Bu Hafta</option>
@@ -4711,7 +4711,7 @@ export default function Home() {
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Restoran Paket Dağılımı - Pie Chart */}
-          <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border dark:border-slate-600">
+          <div className="bg-slate-50 p-4 rounded-xl border">
             <h3 className="text-lg font-bold mb-4">📦 Restoran Paket Dağılımı</h3>
             {!hasData ? (
               <div className="flex items-center justify-center h-[300px] text-slate-500">
@@ -4754,7 +4754,7 @@ export default function Home() {
           </div>
           
           {/* Restoran Ciroları - Bar Chart */}
-          <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border dark:border-slate-600">
+          <div className="bg-slate-50 p-4 rounded-xl border">
             <h3 className="text-lg font-bold mb-4">💰 Restoran Ciroları</h3>
             {!hasData ? (
               <div className="flex items-center justify-center h-[300px] text-slate-500">
@@ -4811,37 +4811,37 @@ export default function Home() {
     // Restoranların Ödemesi görünümü
     if (restaurantSubTab === 'payments') {
       return (
-        <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
+        <div className="bg-white shadow-xl rounded-2xl p-6">
           <h2 className="text-2xl font-bold mb-6">💰 Restoranların Ödemesi</h2>
           
           {/* Restoran Durumu Özeti */}
-          <div className="mb-6 p-4 bg-slate-100 dark:bg-slate-700 rounded-lg">
+          <div className="mb-6 p-4 bg-slate-100 rounded-lg">
             <div className="font-bold mb-2">📊 Restoran Ödeme Durumu Özeti:</div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div className="text-center">
                 <div className="text-2xl font-bold text-blue-600">{restaurants.length}</div>
-                <div className="text-xs text-slate-600 dark:text-slate-400">Toplam Restoran</div>
+                <div className="text-xs text-slate-600">Toplam Restoran</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-green-600">
                   {restaurants.reduce((sum, r) => sum + (r.totalOrders || 0), 0)}
                 </div>
-                <div className="text-xs text-slate-600 dark:text-slate-400">Toplam Sipariş</div>
+                <div className="text-xs text-slate-600">Toplam Sipariş</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-purple-600">
                   {restaurants.reduce((sum, r) => sum + (r.totalRevenue || 0), 0).toFixed(2)} ₺
                 </div>
-                <div className="text-xs text-slate-600 dark:text-slate-400">Toplam Ciro</div>
+                <div className="text-xs text-slate-600">Toplam Ciro</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-red-600">
                   {restaurants.reduce((sum, r) => sum + (r.totalRevenue || 0) + (r.totalDebt || 0), 0).toFixed(2)} ₺
                 </div>
-                <div className="text-xs text-slate-600 dark:text-slate-400">Toplam Borç</div>
+                <div className="text-xs text-slate-600">Toplam Borç</div>
               </div>
             </div>
-            <div className="mt-3 text-xs text-slate-600 dark:text-slate-400 text-center">
+            <div className="mt-3 text-xs text-slate-600 text-center">
               Son güncelleme: {new Date().toLocaleTimeString('tr-TR')} • Otomatik güncelleme: 30 saniye
             </div>
           </div>
@@ -4855,11 +4855,11 @@ export default function Home() {
               </div>
             ) : (
               restaurants.map(r => (
-                <div key={r.id} className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border dark:border-slate-600">
+                <div key={r.id} className="bg-slate-50 p-4 rounded-xl border">
                   <div className="flex justify-between items-start mb-3">
                     <button
                       onClick={() => handleRestaurantClick(r.id)}
-                      className="font-bold text-lg text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors cursor-pointer text-left"
+                      className="font-bold text-lg text-blue-600 hover:text-blue-800:text-blue-300 transition-colors cursor-pointer text-left"
                     >
                       🍽️ {r.name}
                     </button>
@@ -4867,28 +4867,28 @@ export default function Home() {
                   
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-slate-600 dark:text-slate-400">Toplam Sipariş:</span>
+                      <span className="text-slate-600">Toplam Sipariş:</span>
                       <span className="font-bold text-blue-600">{r.totalOrders || 0}</span>
                     </div>
                     
                     <div className="flex justify-between">
-                      <span className="text-slate-600 dark:text-slate-400">Toplam Ciro:</span>
+                      <span className="text-slate-600">Toplam Ciro:</span>
                       <span className="font-bold text-green-600">{(r.totalRevenue || 0).toFixed(2)} ₺</span>
                     </div>
                     
                     <div className="flex justify-between">
-                      <span className="text-slate-600 dark:text-slate-400">Restorana Borcum:</span>
+                      <span className="text-slate-600">Restorana Borcum:</span>
                       <span className={`font-bold ${
-                        ((r.totalRevenue || 0) + (r.totalDebt || 0)) > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
+                        ((r.totalRevenue || 0) + (r.totalDebt || 0)) > 0 ? 'text-red-600' : 'text-green-600'
                       }`}>
                         {((r.totalRevenue || 0) + (r.totalDebt || 0)).toFixed(2)} ₺
                       </span>
                     </div>
 
-                    <div className="mt-3 pt-2 border-t border-slate-200 dark:border-slate-600 space-y-2">
+                    <div className="mt-3 pt-2 border-t border-slate-200 space-y-2">
                       <button
                         onClick={() => handleRestaurantClick(r.id)}
-                        className="w-full text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 py-2 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+                        className="w-full text-xs bg-blue-100 text-blue-700 py-2 rounded-lg hover:bg-blue-200:bg-blue-900/50 transition-colors"
                       >
                         📊 Detaylı Rapor Görüntüle
                       </button>
@@ -4900,7 +4900,7 @@ export default function Home() {
                             fetchRestaurantDebts(r.id)
                             setShowRestaurantDebtPayModal(true)
                           }}
-                          className="w-full text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 py-2 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+                          className="w-full text-xs bg-red-100 text-red-700 py-2 rounded-lg hover:bg-red-200:bg-red-900/50 transition-colors"
                         >
                           💳 Borç Öde
                         </button>

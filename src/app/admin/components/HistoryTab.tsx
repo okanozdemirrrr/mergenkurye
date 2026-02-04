@@ -85,7 +85,7 @@ export function HistoryTab({
         .reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
 
     return (
-        <div id="history-container" className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
+        <div id="history-container" className="bg-white shadow-xl rounded-2xl p-6">
             <div className="flex flex-col gap-4 mb-6">
                 {/* Başlık ve Kategorik Filtre */}
                 <div className="flex justify-between items-center">
@@ -98,7 +98,7 @@ export function HistoryTab({
                                 onClick={() => setStatusFilter('all')}
                                 className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${statusFilter === 'all'
                                     ? 'bg-blue-600 text-white shadow-lg'
-                                    : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'
+                                    : 'bg-slate-200 text-slate-700 hover:bg-slate-300:bg-slate-600'
                                     }`}
                             >
                                 📦 Tümü
@@ -107,7 +107,7 @@ export function HistoryTab({
                                 onClick={() => setStatusFilter('delivered')}
                                 className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${statusFilter === 'delivered'
                                     ? 'bg-green-600 text-white shadow-lg'
-                                    : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'
+                                    : 'bg-slate-200 text-slate-700 hover:bg-slate-300:bg-slate-600'
                                     }`}
                             >
                                 ✅ Teslim Edilen
@@ -116,7 +116,7 @@ export function HistoryTab({
                                 onClick={() => setStatusFilter('cancelled')}
                                 className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${statusFilter === 'cancelled'
                                     ? 'bg-red-600 text-white shadow-lg'
-                                    : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'
+                                    : 'bg-slate-200 text-slate-700 hover:bg-slate-300:bg-slate-600'
                                     }`}
                             >
                                 🚫 İptal Edilen
@@ -127,14 +127,14 @@ export function HistoryTab({
 
                 {/* Tarih Aralığı Filtresi */}
                 <div className="flex items-center gap-3">
-                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    <label className="text-sm font-medium text-slate-700">
                         Tarih Aralığı:
                     </label>
                     <input
                         type="date"
                         value={startDate}
                         onChange={(e) => setStartDate(e.target.value)}
-                        className="px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="Başlangıç"
                     />
                     <span className="text-slate-500">-</span>
@@ -142,7 +142,7 @@ export function HistoryTab({
                         type="date"
                         value={endDate}
                         onChange={(e) => setEndDate(e.target.value)}
-                        className="px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-sm text-slate-700 dark:text-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="Bitiş"
                     />
                     {(startDate || endDate) && (
@@ -151,7 +151,7 @@ export function HistoryTab({
                                 setStartDate('')
                                 setEndDate('')
                             }}
-                            className="px-3 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
+                            className="px-3 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-300:bg-slate-600 transition-colors"
                         >
                             ✕ Temizle
                         </button>
@@ -161,28 +161,28 @@ export function HistoryTab({
 
             {/* İstatistikler */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl">
-                    <div className="text-sm text-blue-600 dark:text-blue-400 font-medium">Toplam Sipariş</div>
-                    <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">{filteredHistory.length}</div>
+                <div className="bg-blue-50 p-4 rounded-xl">
+                    <div className="text-sm text-blue-600 font-medium">Toplam Sipariş</div>
+                    <div className="text-2xl font-bold text-blue-700">{filteredHistory.length}</div>
                 </div>
-                <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl">
-                    <div className="text-sm text-green-600 dark:text-green-400 font-medium">Toplam Tutar</div>
-                    <div className="text-2xl font-bold text-green-700 dark:text-green-300">{totalAmount.toFixed(2)} ₺</div>
+                <div className="bg-green-50 p-4 rounded-xl">
+                    <div className="text-sm text-green-600 font-medium">Toplam Tutar</div>
+                    <div className="text-2xl font-bold text-green-700">{totalAmount.toFixed(2)} ₺</div>
                 </div>
-                <div className="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-xl">
-                    <div className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Nakit</div>
-                    <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">{cashAmount.toFixed(2)} ₺</div>
+                <div className="bg-emerald-50 p-4 rounded-xl">
+                    <div className="text-sm text-emerald-600 font-medium">Nakit</div>
+                    <div className="text-2xl font-bold text-emerald-700">{cashAmount.toFixed(2)} ₺</div>
                 </div>
-                <div className="bg-sky-50 dark:bg-sky-900/20 p-4 rounded-xl">
-                    <div className="text-sm text-sky-600 dark:text-sky-400 font-medium">Kart</div>
-                    <div className="text-2xl font-bold text-sky-700 dark:text-sky-300">{cardAmount.toFixed(2)} ₺</div>
+                <div className="bg-sky-50 p-4 rounded-xl">
+                    <div className="text-sm text-sky-600 font-medium">Kart</div>
+                    <div className="text-2xl font-bold text-sky-700">{cardAmount.toFixed(2)} ₺</div>
                 </div>
             </div>
 
             <div className="overflow-x-auto admin-scrollbar">
                 <table className="w-full text-sm">
                     <thead>
-                        <tr className="border-b dark:border-slate-700">
+                        <tr className="border-b">
                             <th className="text-left py-3 px-4 w-8"></th>
                             <th className="text-left py-3 px-4">Sipariş No</th>
                             <th className="text-left py-3 px-4">Tarih/Saat</th>
@@ -210,8 +210,8 @@ export function HistoryTab({
                             </tr>
                         ) : (
                             filteredHistory.slice(0, HISTORY_ITEMS_PER_PAGE).map(pkg => (
-                                <tr key={pkg.id} className={`border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 ${pkg.status === 'cancelled'
-                                    ? 'opacity-60 bg-red-50 dark:bg-red-900/10'
+                                <tr key={pkg.id} className={`border-b hover:bg-slate-50:bg-slate-700/50 ${pkg.status === 'cancelled'
+                                    ? 'opacity-60 bg-red-50'
                                     : ''
                                     }`}>
                                     <td className="py-3 px-4">
@@ -226,7 +226,7 @@ export function HistoryTab({
                                     </td>
                                     <td className="py-3 px-4">
                                         <div className="flex items-center gap-2">
-                                            <span className="font-bold text-blue-600 dark:text-blue-400">
+                                            <span className="font-bold text-blue-600">
                                                 {pkg.order_number || '......'}
                                             </span>
                                             {pkg.platform && (
@@ -235,7 +235,7 @@ export function HistoryTab({
                                                 </span>
                                             )}
                                             {pkg.status === 'cancelled' && (
-                                                <span className="text-xs py-0.5 px-2 rounded bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-semibold">
+                                                <span className="text-xs py-0.5 px-2 rounded bg-red-100 text-red-600 font-semibold">
                                                     🚫 İPTAL
                                                 </span>
                                             )}
@@ -273,10 +273,10 @@ export function HistoryTab({
                                     </td>
                                     <td className="py-3 px-4">
                                         <span className={`px-2 py-1 rounded text-xs font-semibold ${pkg.status === 'delivered'
-                                            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                            ? 'bg-green-100 text-green-700'
                                             : pkg.status === 'cancelled'
-                                                ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                                : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+                                                ? 'bg-red-100 text-red-700'
+                                                : 'bg-slate-100 text-slate-700'
                                             }`}>
                                             {pkg.status === 'delivered' ? '✅ Teslim Edildi' : pkg.status === 'cancelled' ? '🚫 İptal Edildi' : pkg.status}
                                         </span>

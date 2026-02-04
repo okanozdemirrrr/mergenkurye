@@ -74,7 +74,7 @@ export function OrderDrawer({
 
             {/* DRAWER PANEL */}
             <div
-                className={`fixed top-0 right-0 h-screen w-[90%] max-w-7xl bg-white dark:bg-slate-900 shadow-2xl transform transition-transform duration-300 ease-out overflow-hidden ${
+                className={`fixed top-0 right-0 h-screen w-[90%] max-w-7xl bg-white shadow-2xl transform transition-transform duration-300 ease-out overflow-hidden ${
                     isOpen ? 'translate-x-0' : 'translate-x-full'
                 }`}
                 style={{ zIndex: 9999 }}
@@ -113,7 +113,7 @@ export function OrderDrawer({
                             {activeOperationPackages.map(pkg => (
                                 <div
                                     key={pkg.id}
-                                    className="relative bg-white dark:bg-slate-800 rounded-xl border-2 border-slate-200 dark:border-slate-600 p-4 hover:shadow-xl transition-all hover:scale-105"
+                                    className="relative bg-white rounded-xl border-2 border-slate-200 p-4 hover:shadow-xl transition-all hover:scale-105"
                                 >
                                     {/* 3 Nokta Menüsü */}
                                     <div className="absolute top-2 left-2 z-10">
@@ -137,26 +137,26 @@ export function OrderDrawer({
                                     <div className="space-y-3 mt-6">
                                         {/* Sipariş No */}
                                         <div className="text-center">
-                                            <div className="text-xs font-bold text-blue-600 dark:text-blue-400">
+                                            <div className="text-xs font-bold text-blue-600">
                                                 #{pkg.order_number || '...'}
                                             </div>
                                         </div>
 
                                         {/* Restoran */}
                                         <div className="text-center">
-                                            <div className="text-[10px] text-slate-700 dark:text-slate-300 font-medium truncate px-1">
+                                            <div className="text-[10px] text-slate-700 font-medium truncate px-1">
                                                 {pkg.restaurant?.name || 'Bilinmeyen'}
                                             </div>
                                         </div>
 
-                                        <div className="border-t border-slate-200 dark:border-slate-600"></div>
+                                        <div className="border-t border-slate-200"></div>
 
                                         {/* Durum Badge */}
                                         <div className="flex justify-center">
                                             <span className={`text-[9px] px-2 py-1 rounded font-semibold ${
-                                                pkg.status === 'assigned' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                                                pkg.status === 'picking_up' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
-                                                'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                                pkg.status === 'assigned' ? 'bg-blue-100 text-blue-700' :
+                                                pkg.status === 'picking_up' ? 'bg-orange-100 text-orange-700' :
+                                                'bg-red-100 text-red-700'
                                             }`}>
                                                 {pkg.status === 'assigned' ? '👤 Atandı' :
                                                  pkg.status === 'picking_up' ? '🏃 Alınıyor' : '🚗 Yolda'}
@@ -166,17 +166,17 @@ export function OrderDrawer({
                                         {/* Kurye */}
                                         {pkg.courier_id && (
                                             <div className="flex justify-center">
-                                                <span className="text-[9px] bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 px-2 py-1 rounded font-semibold truncate max-w-full">
+                                                <span className="text-[9px] bg-indigo-50 text-indigo-700 px-2 py-1 rounded font-semibold truncate max-w-full">
                                                     🚴 {couriers.find(c => c.id === pkg.courier_id)?.full_name || 'Bilinmeyen'}
                                                 </span>
                                             </div>
                                         )}
 
-                                        <div className="border-t border-slate-200 dark:border-slate-600"></div>
+                                        <div className="border-t border-slate-200"></div>
 
                                         {/* Tutar */}
                                         <div className="text-center">
-                                            <div className="text-xl font-black text-green-600 dark:text-green-400">
+                                            <div className="text-xl font-black text-green-600">
                                                 {pkg.amount}₺
                                             </div>
                                         </div>
@@ -184,7 +184,7 @@ export function OrderDrawer({
                                         {/* Paket İçeriği */}
                                         {pkg.content && (
                                             <div className="text-center">
-                                                <div className="text-[9px] text-slate-600 dark:text-slate-400 truncate px-1">
+                                                <div className="text-[9px] text-slate-600 truncate px-1">
                                                     {pkg.content}
                                                 </div>
                                             </div>
@@ -192,7 +192,7 @@ export function OrderDrawer({
 
                                         {/* Müşteri */}
                                         <div className="text-center">
-                                            <div className="text-[9px] text-slate-600 dark:text-slate-400 truncate px-1">
+                                            <div className="text-[9px] text-slate-600 truncate px-1">
                                                 {pkg.customer_name}
                                             </div>
                                         </div>
@@ -201,8 +201,8 @@ export function OrderDrawer({
                                         <div className="flex justify-center">
                                             <span className={`text-[9px] px-2 py-1 rounded font-medium ${
                                                 pkg.payment_method === 'cash'
-                                                    ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400'
-                                                    : 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400'
+                                                    ? 'bg-green-50 text-green-700'
+                                                    : 'bg-blue-50 text-blue-700'
                                             }`}>
                                                 {pkg.payment_method === 'cash' ? '💵 Nakit' : '💳 Kart'}
                                             </span>

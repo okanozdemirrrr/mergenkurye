@@ -394,7 +394,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+    <div className="min-h-screen bg-slate-50">
       {/* Hamburger Menu Button */}
       <button
         onClick={() => setShowMenu(!showMenu)}
@@ -608,7 +608,7 @@ export default function Home() {
       )}
 
       {/* Sticky Navbar */}
-      <div className="sticky top-0 z-30 bg-white dark:bg-slate-800 shadow-lg border-b border-slate-200 dark:border-slate-700">
+      <div className="sticky top-0 z-30 bg-white shadow-lg border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-center items-center h-16">
             <h1 className="text-3xl font-black tracking-wider bg-gradient-to-r from-gray-200 to-gray-500 bg-clip-text text-transparent" style={{ fontFamily: 'Orbitron, sans-serif' }}>
@@ -623,17 +623,17 @@ export default function Home() {
         <div className="max-w-7xl mx-auto">
           {/* Messages */}
           {notificationMessage && (
-            <div className="mb-4 p-3 bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700 rounded-lg text-blue-800 dark:text-blue-300 animate-pulse">
+            <div className="mb-4 p-3 bg-blue-100 border border-blue-300 rounded-lg text-blue-800 animate-pulse">
               {notificationMessage}
             </div>
           )}
           {successMessage && (
-            <div className="mb-4 p-3 bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700 rounded-lg text-green-800 dark:text-green-300">
+            <div className="mb-4 p-3 bg-green-100 border border-green-300 rounded-lg text-green-800">
               {successMessage}
             </div>
           )}
           {errorMessage && (
-            <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg text-red-800 dark:text-red-300">
+            <div className="mb-4 p-3 bg-red-100 border border-red-300 rounded-lg text-red-800">
               {errorMessage}
             </div>
           )}

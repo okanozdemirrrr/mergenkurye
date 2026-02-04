@@ -38,7 +38,7 @@ export function OrderActivityFeed({
     )
 
     return (
-        <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-3 mb-3">
+        <div className="bg-white shadow-xl rounded-2xl p-3 mb-3">
             <h2 className="text-base font-bold mb-2">🚀 Anlık Sipariş Durumu & Canlı Harita</h2>
             
             {/* Dikey Layout: ÜSTTE Harita, ALTTA Kartlar */}
@@ -50,7 +50,7 @@ export function OrderActivityFeed({
 
                 {/* ALTTA: Sipariş Kartları (Yatay Scroll) */}
                 <div>
-                    <h3 className="text-sm font-semibold mb-2 text-slate-700 dark:text-slate-300">
+                    <h3 className="text-sm font-semibold mb-2 text-slate-700">
                         📦 Canlı Sipariş Takibi ({activeOperationPackages.length})
                     </h3>
                     {activeOperationPackages.length === 0 ? (
@@ -64,7 +64,7 @@ export function OrderActivityFeed({
                                 {activeOperationPackages.map(pkg => (
                                     <div 
                                         key={pkg.id} 
-                                        className="relative bg-white dark:bg-slate-800 rounded-lg border-2 border-slate-200 dark:border-slate-600 p-3 w-[160px] flex-shrink-0 hover:shadow-lg transition-shadow"
+                                        className="relative bg-white rounded-lg border-2 border-slate-200 p-3 w-[160px] flex-shrink-0 hover:shadow-lg transition-shadow"
                                     >
                                         {/* 3 Nokta Menüsü */}
                                         <div className="absolute top-1.5 left-1.5 z-10">
@@ -88,27 +88,27 @@ export function OrderActivityFeed({
                                         <div className="space-y-2 mt-5">
                                             {/* Sipariş No - Merkez */}
                                             <div className="text-center">
-                                                <div className="text-[11px] font-bold text-blue-600 dark:text-blue-400">
+                                                <div className="text-[11px] font-bold text-blue-600">
                                                     #{pkg.order_number || '...'}
                                                 </div>
                                             </div>
 
                                             {/* Restoran - Merkez */}
                                             <div className="text-center">
-                                                <div className="text-[9px] text-slate-700 dark:text-slate-300 font-medium truncate px-1">
+                                                <div className="text-[9px] text-slate-700 font-medium truncate px-1">
                                                     {pkg.restaurant?.name || 'Bilinmeyen'}
                                                 </div>
                                             </div>
 
                                             {/* Divider */}
-                                            <div className="border-t border-slate-200 dark:border-slate-600"></div>
+                                            <div className="border-t border-slate-200"></div>
 
                                             {/* Durum Badge - Merkez */}
                                             <div className="flex justify-center">
                                                 <span className={`text-[8px] px-2 py-1 rounded font-semibold ${
-                                                    pkg.status === 'assigned' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                                                    pkg.status === 'picking_up' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
-                                                    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                                    pkg.status === 'assigned' ? 'bg-blue-100 text-blue-700' :
+                                                    pkg.status === 'picking_up' ? 'bg-orange-100 text-orange-700' :
+                                                    'bg-red-100 text-red-700'
                                                 }`}>
                                                     {pkg.status === 'assigned' ? '👤 Atandı' :
                                                      pkg.status === 'picking_up' ? '🏃 Alınıyor' : '🚗 Yolda'}
@@ -118,18 +118,18 @@ export function OrderActivityFeed({
                                             {/* Kurye - Merkez */}
                                             {pkg.courier_id && (
                                                 <div className="flex justify-center">
-                                                    <span className="text-[8px] bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 px-2 py-1 rounded font-semibold truncate max-w-full">
+                                                    <span className="text-[8px] bg-indigo-50 text-indigo-700 px-2 py-1 rounded font-semibold truncate max-w-full">
                                                         🚴 {couriers.find(c => c.id === pkg.courier_id)?.full_name || 'Bilinmeyen'}
                                                     </span>
                                                 </div>
                                             )}
 
                                             {/* Divider */}
-                                            <div className="border-t border-slate-200 dark:border-slate-600"></div>
+                                            <div className="border-t border-slate-200"></div>
 
                                             {/* Tutar - Merkez, Büyük */}
                                             <div className="text-center">
-                                                <div className="text-[16px] font-black text-green-600 dark:text-green-400">
+                                                <div className="text-[16px] font-black text-green-600">
                                                     {pkg.amount}₺
                                                 </div>
                                             </div>
@@ -137,7 +137,7 @@ export function OrderActivityFeed({
                                             {/* Paket İçeriği */}
                                             {pkg.content && (
                                                 <div className="text-center">
-                                                    <div className="text-[8px] text-slate-600 dark:text-slate-400 truncate px-1">
+                                                    <div className="text-[8px] text-slate-600 truncate px-1">
                                                         {pkg.content}
                                                     </div>
                                                 </div>
@@ -145,7 +145,7 @@ export function OrderActivityFeed({
 
                                             {/* Müşteri */}
                                             <div className="text-center">
-                                                <div className="text-[8px] text-slate-600 dark:text-slate-400 truncate px-1">
+                                                <div className="text-[8px] text-slate-600 truncate px-1">
                                                     {pkg.customer_name}
                                                 </div>
                                             </div>
@@ -154,8 +154,8 @@ export function OrderActivityFeed({
                                             <div className="flex justify-center">
                                                 <span className={`text-[8px] px-2 py-1 rounded font-medium ${
                                                     pkg.payment_method === 'cash'
-                                                        ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400'
-                                                        : 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400'
+                                                        ? 'bg-green-50 text-green-700'
+                                                        : 'bg-blue-50 text-blue-700'
                                                 }`}>
                                                     {pkg.payment_method === 'cash' ? '💵 Nakit' : '💳 Kart'}
                                                 </span>

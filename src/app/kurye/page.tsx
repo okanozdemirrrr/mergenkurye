@@ -1389,7 +1389,7 @@ export default function KuryePage() {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords
-        
+
         try {
           const { error } = await supabase
             .from('couriers')
@@ -1719,8 +1719,8 @@ export default function KuryePage() {
                   setShowMenu(false)
                 }}
                 className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${activeTab === 'packages'
-                    ? 'bg-blue-600 text-white'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                   }`}
               >
                 <span className="mr-3">📦</span>
@@ -1733,8 +1733,8 @@ export default function KuryePage() {
                   setShowMenu(false)
                 }}
                 className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${activeTab === 'history'
-                    ? 'bg-blue-600 text-white'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                   }`}
               >
                 <span className="mr-3">📋</span>
@@ -1747,8 +1747,8 @@ export default function KuryePage() {
                   setShowMenu(false)
                 }}
                 className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${activeTab === 'earnings'
-                    ? 'bg-blue-600 text-white'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                   }`}
               >
                 <span className="mr-3">💰</span>
@@ -1790,8 +1790,12 @@ export default function KuryePage() {
           <div className="flex items-center justify-between gap-3 mb-3 sm:mb-4">
             <img
               src="/logo.png"
-              alt="Logo"
-              className="w-20 h-20 sm:w-24 sm:h-24"
+              alt="Mergen Kurye Logo"
+              className="w-24 h-24 object-contain"
+              style={{
+                filter: 'grayscale(0) invert(0) brightness(1) contrast(1)',
+                WebkitFilter: 'grayscale(0) invert(0) brightness(1) contrast(1)'
+              }}
             />
             <div className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-800 flex-1">
               <p className="text-slate-400 text-xs mb-1">Bugün Teslim</p>
@@ -1823,8 +1827,8 @@ export default function KuryePage() {
                 }
               }}
               className={`w-16 h-16 rounded-full shadow-2xl transition-all duration-300 flex items-center justify-center text-2xl ${isListening
-                  ? 'bg-red-600 animate-pulse'
-                  : 'bg-blue-600 hover:bg-blue-700 active:scale-95'
+                ? 'bg-red-600 animate-pulse'
+                : 'bg-blue-600 hover:bg-blue-700 active:scale-95'
                 }`}
             >
               {isListening ? '🔴' : '🎤'}
@@ -2063,18 +2067,18 @@ export default function KuryePage() {
 
                         {/* Restoran bilgileri - Mobil Responsive */}
                         {(pkg.status === 'assigned' || pkg.status === 'picking_up' || pkg.status === 'on_the_way') && pkg.restaurant?.phone && (
-                          <div className="mt-2 p-2 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+                          <div className="mt-2 p-2 bg-orange-50 rounded-lg border border-orange-200">
                             <div className="flex items-start gap-2 mb-1">
                               <span className="text-xs">🍽️</span>
                               <div className="flex-1">
-                                <p className="text-xs font-medium text-orange-900 dark:text-orange-300">
+                                <p className="text-xs font-medium text-orange-900">
                                   {pkg.restaurant.name}
                                 </p>
-                                <p className="text-xs text-orange-700 dark:text-orange-400 break-all">
+                                <p className="text-xs text-orange-700 break-all">
                                   📞 {pkg.restaurant.phone}
                                 </p>
                                 {pkg.restaurant.address && (
-                                  <p className="text-xs text-orange-700 dark:text-orange-400 mt-1">
+                                  <p className="text-xs text-orange-700 mt-1">
                                     📍 {pkg.restaurant.address}
                                   </p>
                                 )}
@@ -2116,8 +2120,8 @@ export default function KuryePage() {
                     {/* Durum Badge */}
                     <div className="mb-3">
                       <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${pkg.status === 'assigned' ? 'bg-blue-500/20 text-blue-400' :
-                          pkg.status === 'picking_up' ? 'bg-yellow-500/20 text-yellow-400' :
-                            'bg-red-500/20 text-red-400'
+                        pkg.status === 'picking_up' ? 'bg-yellow-500/20 text-yellow-400' :
+                          'bg-red-500/20 text-red-400'
                         }`}>
                         {pkg.status === 'assigned' ? 'Yeni Paket' :
                           pkg.status === 'picking_up' ? 'Almaya Git' :
@@ -2152,8 +2156,8 @@ export default function KuryePage() {
                           <button
                             onClick={() => setSelectedPaymentMethods({ ...selectedPaymentMethods, [pkg.id]: 'cash' })}
                             className={`py-2 rounded-lg border font-medium text-sm transition-colors ${selectedPaymentMethods[pkg.id] === 'cash'
-                                ? 'bg-green-600 border-green-600 text-white'
-                                : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600'
+                              ? 'bg-green-600 border-green-600 text-white'
+                              : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600'
                               }`}
                           >
                             Nakit
@@ -2161,8 +2165,8 @@ export default function KuryePage() {
                           <button
                             onClick={() => setSelectedPaymentMethods({ ...selectedPaymentMethods, [pkg.id]: 'card' })}
                             className={`py-2 rounded-lg border font-medium text-sm transition-colors ${selectedPaymentMethods[pkg.id] === 'card'
-                                ? 'bg-blue-600 border-blue-600 text-white'
-                                : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600'
+                              ? 'bg-blue-600 border-blue-600 text-white'
+                              : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600'
                               }`}
                           >
                             Kart
@@ -2485,8 +2489,8 @@ export default function KuryePage() {
                               key={page}
                               onClick={() => setCurrentPage(page)}
                               className={`px-3 py-1.5 text-xs rounded transition-colors ${currentPage === page
-                                  ? 'bg-blue-600 text-white font-bold'
-                                  : 'bg-slate-800 hover:bg-slate-700 text-white'
+                                ? 'bg-blue-600 text-white font-bold'
+                                : 'bg-slate-800 hover:bg-slate-700 text-white'
                                 }`}
                             >
                               {page}
@@ -2606,10 +2610,10 @@ export default function KuryePage() {
                     <div
                       key={courier.id}
                       className={`flex items-center justify-between p-3 rounded-lg transition-all ${isMe
-                          ? 'bg-purple-500/30 border border-purple-400 scale-105'
-                          : rank <= 3
-                            ? `bg-gradient-to-r ${badgeColor} bg-opacity-20`
-                            : 'bg-purple-800/30'
+                        ? 'bg-purple-500/30 border border-purple-400 scale-105'
+                        : rank <= 3
+                          ? `bg-gradient-to-r ${badgeColor} bg-opacity-20`
+                          : 'bg-purple-800/30'
                         }`}
                     >
                       <div className="flex items-center gap-3">

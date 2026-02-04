@@ -33,7 +33,7 @@ export function RestaurantsTab({
     // Liste
     if (restaurantSubTab === 'list') {
         return (
-            <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
+            <div className="bg-white shadow-xl rounded-2xl p-6">
                 <h2 className="text-2xl font-bold mb-6">📋 Restoranlar Listesi</h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -44,11 +44,11 @@ export function RestaurantsTab({
                         </div>
                     ) : (
                         restaurants.map(r => (
-                            <div key={r.id} className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border dark:border-slate-600 hover:shadow-lg transition-all">
+                            <div key={r.id} className="bg-slate-50 p-4 rounded-xl border hover:shadow-lg transition-all">
                                 <div className="flex justify-between items-start mb-3">
                                     <button
                                         onClick={() => onRestaurantClick(r.id)}
-                                        className="font-bold text-lg text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors cursor-pointer text-left"
+                                        className="font-bold text-lg text-blue-600 hover:text-blue-800:text-blue-300 transition-colors cursor-pointer text-left"
                                     >
                                         🍽️ {r.name}
                                     </button>
@@ -56,19 +56,19 @@ export function RestaurantsTab({
 
                                 <div className="space-y-2 text-sm">
                                     {r.phone && (
-                                        <div className="text-slate-600 dark:text-slate-400">
+                                        <div className="text-slate-600">
                                             📞 {r.phone}
                                         </div>
                                     )}
                                     {r.address && (
-                                        <div className="text-slate-600 dark:text-slate-400 text-xs">
+                                        <div className="text-slate-600 text-xs">
                                             📍 {r.address}
                                         </div>
                                     )}
 
                                     <button
                                         onClick={() => onRestaurantClick(r.id)}
-                                        className="w-full mt-3 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 py-2 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+                                        className="w-full mt-3 text-xs bg-blue-100 text-blue-700 py-2 rounded-lg hover:bg-blue-200:bg-blue-900/50 transition-colors"
                                     >
                                         📊 Detaylı Rapor Görüntüle
                                     </button>
@@ -134,13 +134,13 @@ export function RestaurantsTab({
         const hasData = pieChartData.length > 0
 
         return (
-            <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
+            <div className="bg-white shadow-xl rounded-2xl p-6">
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-2xl font-bold">📊 Restoran Sipariş Detayları</h2>
                     <select
                         value={restaurantChartFilter}
                         onChange={(e) => setRestaurantChartFilter(e.target.value as any)}
-                        className="px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-sm"
+                        className="px-3 py-2 bg-slate-100 border border-slate-300 rounded-lg text-sm"
                     >
                         <option value="today">Bugün</option>
                         <option value="week">Bu Hafta</option>
@@ -149,7 +149,7 @@ export function RestaurantsTab({
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border dark:border-slate-600">
+                    <div className="bg-slate-50 p-4 rounded-xl border">
                         <h3 className="text-lg font-bold mb-4">📦 Restoran Paket Dağılımı</h3>
                         {!hasData ? (
                             <div className="flex items-center justify-center h-[300px] text-slate-500">
@@ -189,7 +189,7 @@ export function RestaurantsTab({
                         )}
                     </div>
 
-                    <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border dark:border-slate-600">
+                    <div className="bg-slate-50 p-4 rounded-xl border">
                         <h3 className="text-lg font-bold mb-4">💰 Restoran Ciroları</h3>
                         {!hasData ? (
                             <div className="flex items-center justify-center h-[300px] text-slate-500">
@@ -243,27 +243,27 @@ export function RestaurantsTab({
         const totalDeliveries = restaurantDebts.reduce((sum, r) => sum + r.deliveredCount, 0)
 
         return (
-            <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
+            <div className="bg-white shadow-xl rounded-2xl p-6">
                 <h2 className="text-2xl font-bold mb-6">💳 Restoranların Borcu</h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <div className="bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 p-4 rounded-xl border-2 border-red-300 dark:border-red-700">
+                    <div className="bg-gradient-to-r from-red-50 to-orange-50 p-4 rounded-xl border-2 border-red-300">
                         <div className="text-center">
-                            <div className="text-3xl font-black text-red-700 dark:text-red-400">
+                            <div className="text-3xl font-black text-red-700">
                                 {totalDebt.toFixed(2)} ₺
                             </div>
-                            <div className="text-sm font-semibold text-red-600 dark:text-red-500 mt-1">
+                            <div className="text-sm font-semibold text-red-600 mt-1">
                                 💳 TOPLAM BORÇ
                             </div>
                         </div>
                     </div>
 
-                    <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 p-4 rounded-xl border-2 border-blue-300 dark:border-blue-700">
+                    <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-4 rounded-xl border-2 border-blue-300">
                         <div className="text-center">
-                            <div className="text-3xl font-black text-blue-700 dark:text-blue-400">
+                            <div className="text-3xl font-black text-blue-700">
                                 {totalDeliveries}
                             </div>
-                            <div className="text-sm font-semibold text-blue-600 dark:text-blue-500 mt-1">
+                            <div className="text-sm font-semibold text-blue-600 mt-1">
                                 📦 TOPLAM TESLİMAT
                             </div>
                         </div>
@@ -281,8 +281,8 @@ export function RestaurantsTab({
                             <div
                                 key={restaurant.id}
                                 className={`p-4 rounded-xl border transition-all ${restaurant.debt > 0
-                                    ? 'bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600'
-                                    : 'bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-700 opacity-60'
+                                    ? 'bg-slate-50 border-slate-200'
+                                    : 'bg-slate-100 border-slate-300 opacity-60'
                                     }`}
                             >
                                 <div className="flex items-center justify-between">
@@ -291,10 +291,10 @@ export function RestaurantsTab({
                                             #{index + 1}
                                         </div>
                                         <div>
-                                            <h4 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                                            <h4 className="font-bold text-lg text-slate-900 flex items-center gap-2">
                                                 🍽️ {restaurant.name}
                                             </h4>
-                                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                                            <p className="text-sm text-slate-500">
                                                 {restaurant.deliveredCount} paket × 100₺
                                             </p>
                                             {restaurant.phone && (
@@ -305,7 +305,7 @@ export function RestaurantsTab({
                                         </div>
                                     </div>
                                     <div className="text-right flex flex-col items-end gap-2">
-                                        <div className="text-3xl font-black text-red-600 dark:text-red-400">
+                                        <div className="text-3xl font-black text-red-600">
                                             {restaurant.debt.toFixed(2)} ₺
                                         </div>
                                         <button
@@ -313,7 +313,7 @@ export function RestaurantsTab({
                                                 e.stopPropagation()
                                                 onRestaurantClick(restaurant.id)
                                             }}
-                                            className="px-4 py-1.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-lg text-xs font-bold hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+                                            className="px-4 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold hover:bg-blue-200:bg-blue-800 transition-colors"
                                         >
                                             📊 Rapor
                                         </button>
@@ -324,8 +324,8 @@ export function RestaurantsTab({
                     )}
                 </div>
 
-                <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                    <p className="text-sm text-blue-700 dark:text-blue-400">
+                <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <p className="text-sm text-blue-700">
                         ℹ️ <strong>Not:</strong> Restoran borçları, teslim edilen her paket için 100₺ üzerinden hesaplanmaktadır.
                         Sadece <strong>status = 'delivered'</strong> olan paketler hesaplamaya dahildir.
                         <br />
@@ -339,7 +339,7 @@ export function RestaurantsTab({
     // Ödemeler
     if (restaurantSubTab === 'payments') {
         return (
-            <div className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6">
+            <div className="bg-white shadow-xl rounded-2xl p-6">
                 <h2 className="text-2xl font-bold mb-6">💰 Restoranların Ödemesi</h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -350,11 +350,11 @@ export function RestaurantsTab({
                         </div>
                     ) : (
                         restaurants.map(r => (
-                            <div key={r.id} className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border dark:border-slate-600">
+                            <div key={r.id} className="bg-slate-50 p-4 rounded-xl border">
                                 <div className="flex justify-between items-start mb-3">
                                     <button
                                         onClick={() => onRestaurantClick(r.id)}
-                                        className="font-bold text-lg text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors cursor-pointer text-left"
+                                        className="font-bold text-lg text-blue-600 hover:text-blue-800:text-blue-300 transition-colors cursor-pointer text-left"
                                     >
                                         🍽️ {r.name}
                                     </button>
@@ -362,27 +362,27 @@ export function RestaurantsTab({
 
                                 <div className="space-y-2 text-sm">
                                     <div className="flex justify-between">
-                                        <span className="text-slate-600 dark:text-slate-400">Toplam Sipariş:</span>
+                                        <span className="text-slate-600">Toplam Sipariş:</span>
                                         <span className="font-bold text-blue-600">{r.totalOrders || 0}</span>
                                     </div>
 
                                     <div className="flex justify-between">
-                                        <span className="text-slate-600 dark:text-slate-400">Toplam Ciro:</span>
+                                        <span className="text-slate-600">Toplam Ciro:</span>
                                         <span className="font-bold text-green-600">{(r.totalRevenue || 0).toFixed(2)} ₺</span>
                                     </div>
 
                                     <div className="flex justify-between">
-                                        <span className="text-slate-600 dark:text-slate-400">Restorana Borcum:</span>
-                                        <span className={`font-bold ${((r.totalRevenue || 0) + (r.totalDebt || 0)) > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
+                                        <span className="text-slate-600">Restorana Borcum:</span>
+                                        <span className={`font-bold ${((r.totalRevenue || 0) + (r.totalDebt || 0)) > 0 ? 'text-red-600' : 'text-green-600'
                                             }`}>
                                             {((r.totalRevenue || 0) + (r.totalDebt || 0)).toFixed(2)} ₺
                                         </span>
                                     </div>
 
-                                    <div className="mt-3 pt-2 border-t border-slate-200 dark:border-slate-600 space-y-2">
+                                    <div className="mt-3 pt-2 border-t border-slate-200 space-y-2">
                                         <button
                                             onClick={() => onRestaurantClick(r.id)}
-                                            className="w-full text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 py-2 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+                                            className="w-full text-xs bg-blue-100 text-blue-700 py-2 rounded-lg hover:bg-blue-200:bg-blue-900/50 transition-colors"
                                         >
                                             📊 Detaylı Rapor Görüntüle
                                         </button>
@@ -390,7 +390,7 @@ export function RestaurantsTab({
                                         {((r.totalRevenue || 0) + (r.totalDebt || 0)) > 0 && onDebtPayClick && (
                                             <button
                                                 onClick={() => onDebtPayClick(r.id)}
-                                                className="w-full text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 py-2 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+                                                className="w-full text-xs bg-red-100 text-red-700 py-2 rounded-lg hover:bg-red-200:bg-red-900/50 transition-colors"
                                             >
                                                 💳 Borç Öde
                                             </button>

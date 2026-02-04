@@ -1170,38 +1170,38 @@ export default function RestoranPage() {
                 <>
                   {/* Genel Özet */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <div className="bg-gradient-to-r from-red-50 to-pink-50 dark:from-red-900/20 dark:to-pink-900/20 p-6 rounded-xl border-2 border-red-300 dark:border-red-700">
+                    <div className="bg-gradient-to-r from-red-50 to-pink-50 p-6 rounded-xl border-2 border-red-300">
                       <div className="text-center">
-                        <div className="text-4xl font-black text-red-700 dark:text-red-400">
+                        <div className="text-4xl font-black text-red-700">
                           {totalDebt.toFixed(2)} ₺
                         </div>
-                        <div className="text-sm font-semibold text-red-600 dark:text-red-500 mt-2">
+                        <div className="text-sm font-semibold text-red-600 mt-2">
                           💳 TOPLAM BORÇ
                         </div>
                       </div>
                     </div>
 
-                    <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 p-6 rounded-xl border-2 border-blue-300 dark:border-blue-700">
+                    <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-6 rounded-xl border-2 border-blue-300">
                       <div className="text-center">
-                        <div className="text-4xl font-black text-blue-700 dark:text-blue-400">
+                        <div className="text-4xl font-black text-blue-700">
                           {deliveredCount}
                         </div>
-                        <div className="text-sm font-semibold text-blue-600 dark:text-blue-500 mt-2">
+                        <div className="text-sm font-semibold text-blue-600 mt-2">
                           📦 TESLİM EDİLEN PAKET
                         </div>
                       </div>
                     </div>
 
-                    <div className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 p-6 rounded-xl border-2 border-purple-300 dark:border-purple-700">
+                    <div className="bg-gradient-to-r from-purple-50 to-indigo-50 p-6 rounded-xl border-2 border-purple-300">
                       <div className="text-center">
-                        <div className="text-4xl font-black text-purple-700 dark:text-purple-400">
+                        <div className="text-4xl font-black text-purple-700">
                           {deliveryFee} ₺
                         </div>
-                        <div className="text-sm font-semibold text-purple-600 dark:text-purple-500 mt-2">
+                        <div className="text-sm font-semibold text-purple-600 mt-2">
                           💰 PAKET BAŞI ÜCRET
                         </div>
                         {!selectedRestaurant?.delivery_fee && (
-                          <div className="text-xs text-purple-500 dark:text-purple-400 mt-1">
+                          <div className="text-xs text-purple-500 mt-1">
                             (Varsayılan)
                           </div>
                         )}
@@ -1259,8 +1259,8 @@ export default function RestoranPage() {
                   )}
 
                   {/* Bilgilendirme */}
-                  <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                    <p className="text-sm text-blue-700 dark:text-blue-400">
+                  <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <p className="text-sm text-blue-700">
                       ℹ️ <strong>Not:</strong> Paket ücretleri, teslim edilen her paket için {deliveryFee}₺ {!selectedRestaurant?.delivery_fee && '(varsayılan) '}üzerinden hesaplanmaktadır.
                       Sadece <strong>status = 'delivered'</strong> olan paketler hesaplamaya dahildir.
                       {!selectedRestaurant?.delivery_fee && ' Özel ücret tanımlaması için lütfen yöneticinizle iletişime geçin.'}

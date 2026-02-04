@@ -148,3 +148,10 @@ html {
 .leaflet-control-zoom a:hover {
   background: #334155 !important;
 }
+
+/* Logo Koruma - Üst öğelerden gelen renk ve filtre baskısını engelle */
+img[src*="logo.png"] {
+  filter: none !important;
+  color: transparent !important;
+  opacity: 1 !important;
+}

@@ -105,7 +105,7 @@ export function HistoryView({
             className={`px-4 py-2 rounded-lg font-medium transition-all ${
               historyCurrentPage === i
                 ? 'bg-blue-600 text-white shadow-lg scale-105'
-                : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'
+                : 'bg-slate-200 text-slate-700 hover:bg-slate-300:bg-slate-600'
             }`}
           >
             {i}
@@ -121,7 +121,7 @@ export function HistoryView({
           className={`px-4 py-2 rounded-lg font-medium transition-all ${
             historyCurrentPage === 1
               ? 'bg-blue-600 text-white shadow-lg scale-105'
-              : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'
+              : 'bg-slate-200 text-slate-700 hover:bg-slate-300:bg-slate-600'
           }`}
         >
           1
@@ -147,7 +147,7 @@ export function HistoryView({
             className={`px-4 py-2 rounded-lg font-medium transition-all ${
               historyCurrentPage === i
                 ? 'bg-blue-600 text-white shadow-lg scale-105'
-                : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'
+                : 'bg-slate-200 text-slate-700 hover:bg-slate-300:bg-slate-600'
             }`}
           >
             {i}
@@ -170,7 +170,7 @@ export function HistoryView({
           className={`px-4 py-2 rounded-lg font-medium transition-all ${
             historyCurrentPage === totalPages
               ? 'bg-blue-600 text-white shadow-lg scale-105'
-              : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'
+              : 'bg-slate-200 text-slate-700 hover:bg-slate-300:bg-slate-600'
           }`}
         >
           {totalPages}
@@ -182,13 +182,13 @@ export function HistoryView({
   }
 
   return (
-    <div id="history-container" className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-4">
+    <div id="history-container" className="bg-white shadow-xl rounded-2xl p-4">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold">📋 Geçmiş Siparişler</h2>
         
         {/* Tarih Filtresi Dropdown */}
         <div className="flex items-center gap-3">
-          <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+          <label className="text-sm font-medium text-slate-700">
             Filtrele:
           </label>
           <select
@@ -197,7 +197,7 @@ export function HistoryView({
               setDateFilter(e.target.value as 'today' | 'week' | 'month' | 'all')
               setHistoryCurrentPage(1) // Filtre değiştiğinde sayfa 1'e dön
             }}
-            className="px-4 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="px-4 py-2 bg-white border border-slate-300 rounded-lg text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="today">📅 Son 24 Saat</option>
             <option value="week">📅 Son 7 Gün</option>
@@ -209,31 +209,31 @@ export function HistoryView({
 
       {/* İstatistikler - TÜM filtrelenmiş veriden hesaplanıyor - PADDING AZALTILDI */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
-        <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-xl">
-          <div className="text-xs text-blue-600 dark:text-blue-400 font-medium">Toplam Sipariş</div>
-          <div className="text-xl font-bold text-blue-700 dark:text-blue-300">{filteredHistory.length}</div>
+        <div className="bg-blue-50 p-3 rounded-xl">
+          <div className="text-xs text-blue-600 font-medium">Toplam Sipariş</div>
+          <div className="text-xl font-bold text-blue-700">{filteredHistory.length}</div>
           <div className="text-[10px] text-slate-500 mt-1">
             Sayfa {historyCurrentPage} / {totalPages || 1}
           </div>
         </div>
-        <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-xl">
-          <div className="text-xs text-green-600 dark:text-green-400 font-medium">Toplam Tutar</div>
-          <div className="text-xl font-bold text-green-700 dark:text-green-300">{totalAmount.toFixed(2)} ₺</div>
+        <div className="bg-green-50 p-3 rounded-xl">
+          <div className="text-xs text-green-600 font-medium">Toplam Tutar</div>
+          <div className="text-xl font-bold text-green-700">{totalAmount.toFixed(2)} ₺</div>
         </div>
-        <div className="bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded-xl">
-          <div className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Nakit</div>
-          <div className="text-xl font-bold text-emerald-700 dark:text-emerald-300">{cashAmount.toFixed(2)} ₺</div>
+        <div className="bg-emerald-50 p-3 rounded-xl">
+          <div className="text-xs text-emerald-600 font-medium">Nakit</div>
+          <div className="text-xl font-bold text-emerald-700">{cashAmount.toFixed(2)} ₺</div>
         </div>
-        <div className="bg-sky-50 dark:bg-sky-900/20 p-3 rounded-xl">
-          <div className="text-xs text-sky-600 dark:text-sky-400 font-medium">Kart</div>
-          <div className="text-xl font-bold text-sky-700 dark:text-sky-300">{cardAmount.toFixed(2)} ₺</div>
+        <div className="bg-sky-50 p-3 rounded-xl">
+          <div className="text-xs text-sky-600 font-medium">Kart</div>
+          <div className="text-xl font-bold text-sky-700">{cardAmount.toFixed(2)} ₺</div>
         </div>
       </div>
 
       <div className="overflow-x-auto admin-scrollbar">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b dark:border-slate-700">
+            <tr className="border-b">
               <th className="text-left py-3 px-4">Sipariş No</th>
               <th className="text-left py-3 px-4">Tarih/Saat</th>
               <th className="text-left py-3 px-4">Müşteri</th>
@@ -252,10 +252,10 @@ export function HistoryView({
               </tr>
             ) : (
               currentPageData.map(pkg => (
-                <tr key={pkg.id} className="border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                <tr key={pkg.id} className="border-b hover:bg-slate-50:bg-slate-700/50">
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-blue-600 dark:text-blue-400">
+                      <span className="font-bold text-blue-600">
                         {pkg.order_number || '......'}
                       </span>
                       {pkg.platform && (
@@ -305,7 +305,7 @@ export function HistoryView({
           <button
             onClick={() => handlePageChange(Math.max(1, historyCurrentPage - 1))}
             disabled={historyCurrentPage === 1}
-            className="px-4 py-2 rounded-lg font-medium transition-all bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 rounded-lg font-medium transition-all bg-slate-200 text-slate-700 hover:bg-slate-300:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             ← Önceki
           </button>
@@ -317,7 +317,7 @@ export function HistoryView({
           <button
             onClick={() => handlePageChange(Math.min(totalPages, historyCurrentPage + 1))}
             disabled={historyCurrentPage === totalPages}
-            className="px-4 py-2 rounded-lg font-medium transition-all bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 rounded-lg font-medium transition-all bg-slate-200 text-slate-700 hover:bg-slate-300:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Sonraki →
           </button>
