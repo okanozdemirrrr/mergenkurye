@@ -8,6 +8,7 @@
  */
 'use client'
 
+import { useState } from 'react'
 import dynamic from 'next/dynamic'
 import { Package, Courier } from '@/types'
 import { OrderActionMenu } from '@/components/ui/OrderActionMenu'
@@ -48,14 +49,166 @@ export function LiveTrackingTab({
     handleAssignCourier,
     handleCancelOrder
 }: LiveTrackingTabProps) {
+    const [selectedPackage, setSelectedPackage] = useState<Package | null>(null)
+    
     // Sol panel: Sadece sahipsiz paketler (kurye atanmamış ve iptal edilmemiş)
     const unassignedPackages = packages.filter(pkg => !pkg.courier_id && pkg.status !== 'cancelled')
     
     // Sağ panel: Kurye atanmış paketler (iptal edilmemiş)
     const assignedPackages = packages.filter(pkg => pkg.courier_id && pkg.status !== 'cancelled')
 
+    const getStatusText = (status: string) => {
+        switch (status) {
+            case 'waiting': return 'Beklemede'
+            case 'assigned': return 'Atandı'
+            case 'picking_up': return 'Alınıyor'
+            case 'on_the_way': return 'Yolda'
+            case 'delivered': return 'Teslim Edildi'
+            case 'cancelled': return 'İptal Edildi'
+            default: return status
+        }
+    }
+
     return (
         <>
+            {/* DETAY MODAL */}
+            {selectedPackage && (
+                <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4" onClick={() => setSelectedPackage(null)}>
+                    <div className="bg-slate-900 rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-700 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                        {/* Başlık ve Kapat Butonu */}
+                        <div className="flex justify-between items-center mb-4 sticky top-0 bg-slate-900 pb-4 border-b border-slate-700 z-10">
+                            <h3 className="text-xl font-bold text-white">📦 Sipariş Detayları</h3>
+                            <button
+                                onClick={() => setSelectedPackage(null)}
+                                className="text-slate-400 hover:text-white text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-800 transition-colors"
+                            >
+                                ×
+                            </button>
+                        </div>
+
+                        {/* İçerik */}
+                        <div className="space-y-4 pt-2">
+                            {/* Sipariş No ve Platform */}
+                            <div className="flex items-center gap-3">
+                                <span className="text-lg font-bold text-orange-400">
+                                    {selectedPackage.order_number || '......'}
+                                </span>
+                                {selectedPackage.platform && (
+                                    <span className={`text-sm py-1 px-3 rounded ${getPlatformBadgeClass(selectedPackage.platform)}`}>
+                                        {getPlatformDisplayName(selectedPackage.platform)}
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Durum */}
+                            <div className="bg-slate-800 p-4 rounded-lg">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-slate-400 text-sm">Durum:</span>
+                                    <span className={`px-3 py-1.5 rounded-full text-sm font-semibold ${
+                                        selectedPackage.status === 'cancelled' ? 'bg-red-900/50 text-red-300' :
+                                        selectedPackage.status === 'waiting' ? 'bg-yellow-900/50 text-yellow-300' :
+                                        selectedPackage.status === 'assigned' ? 'bg-orange-900/50 text-orange-300' :
+                                        selectedPackage.status === 'picking_up' ? 'bg-orange-900/50 text-orange-300' :
+                                        selectedPackage.status === 'on_the_way' ? 'bg-blue-900/50 text-blue-300' :
+                                        'bg-green-900/50 text-green-300'
+                                    }`}>
+                                        {getStatusText(selectedPackage.status)}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Restoran ve Tutar */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-slate-800 p-4 rounded-lg">
+                                    <p className="text-slate-400 text-xs mb-1">Restoran</p>
+                                    <p className="text-white font-semibold">🍽️ {selectedPackage.restaurant?.name || 'Bilinmeyen'}</p>
+                                </div>
+                                <div className="bg-slate-800 p-4 rounded-lg">
+                                    <p className="text-slate-400 text-xs mb-1">Tutar</p>
+                                    <p className="text-green-400 font-bold text-xl">{selectedPackage.amount}₺</p>
+                                </div>
+                            </div>
+
+                            {/* Müşteri Bilgileri */}
+                            <div className="bg-slate-800 p-4 rounded-lg space-y-3">
+                                <h4 className="text-white font-semibold mb-2">Müşteri Bilgileri</h4>
+                                <div>
+                                    <p className="text-slate-400 text-xs mb-1">Ad Soyad</p>
+                                    <p className="text-white">👤 {selectedPackage.customer_name}</p>
+                                </div>
+                                {selectedPackage.customer_phone && (
+                                    <div>
+                                        <p className="text-slate-400 text-xs mb-1">Telefon</p>
+                                        <p className="text-white">📞 {selectedPackage.customer_phone}</p>
+                                    </div>
+                                )}
+                                <div>
+                                    <p className="text-slate-400 text-xs mb-1">Teslimat Adresi</p>
+                                    <p className="text-white">📍 {selectedPackage.delivery_address}</p>
+                                </div>
+                            </div>
+
+                            {/* Paket İçeriği */}
+                            {selectedPackage.content && (
+                                <div className="bg-slate-800 p-4 rounded-lg">
+                                    <p className="text-slate-400 text-xs mb-1">Paket İçeriği</p>
+                                    <p className="text-orange-200">📝 {selectedPackage.content}</p>
+                                </div>
+                            )}
+
+                            {/* Ödeme Yöntemi */}
+                            <div className="bg-slate-800 p-4 rounded-lg">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-slate-400 text-sm">Ödeme Yöntemi:</span>
+                                    <span className={`px-3 py-1 rounded text-sm font-medium ${
+                                        selectedPackage.payment_method === 'cash'
+                                            ? 'bg-green-900/50 text-green-300'
+                                            : 'bg-orange-900/50 text-orange-300'
+                                    }`}>
+                                        {selectedPackage.payment_method === 'cash' ? '💵 Nakit' : '💳 Kart'}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Kurye Bilgisi */}
+                            {selectedPackage.courier_id && (
+                                <div className="bg-slate-800 p-4 rounded-lg">
+                                    <p className="text-slate-400 text-xs mb-1">Atanan Kurye</p>
+                                    <p className="text-white">🚴 {couriers.find(c => c.id === selectedPackage.courier_id)?.full_name || 'Bilinmeyen'}</p>
+                                </div>
+                            )}
+
+                            {/* Zaman Bilgileri */}
+                            <div className="bg-slate-800 p-4 rounded-lg space-y-2">
+                                <h4 className="text-white font-semibold mb-2">Zaman Bilgileri</h4>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-slate-400">Oluşturulma:</span>
+                                    <span className="text-white">🕐 {formatTurkishTime(selectedPackage.created_at)}</span>
+                                </div>
+                                {selectedPackage.assigned_at && (
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-slate-400">Atanma:</span>
+                                        <span className="text-white">🕐 {formatTurkishTime(selectedPackage.assigned_at)}</span>
+                                    </div>
+                                )}
+                                {selectedPackage.picked_up_at && (
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-slate-400">Alınma:</span>
+                                        <span className="text-white">🕐 {formatTurkishTime(selectedPackage.picked_up_at)}</span>
+                                    </div>
+                                )}
+                                {selectedPackage.delivered_at && (
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-slate-400">Teslim:</span>
+                                        <span className="text-white">🕐 {formatTurkishTime(selectedPackage.delivered_at)}</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* DRAWER BUTONU - EN ÜSTTE SABİT */}
             <OrderDrawer
                 packages={assignedPackages}
@@ -153,7 +306,11 @@ export function LiveTrackingTab({
                                         {courierPackages.length > 0 && (
                                             <div className="mt-2 space-y-1">
                                                 {courierPackages.map(pkg => (
-                                                    <div key={pkg.id} className="text-[10px] flex items-center gap-1">
+                                                    <div 
+                                                        key={pkg.id} 
+                                                        onClick={() => setSelectedPackage(pkg)}
+                                                        className="text-[10px] flex items-center gap-1 cursor-pointer hover:bg-slate-700 p-1 rounded transition-colors"
+                                                    >
                                                         <span className={`px-2 py-0.5 rounded-full font-semibold ${pkg.status === 'waiting' ? 'bg-yellow-900/50 text-yellow-300' :
                                                             pkg.status === 'assigned' ? 'bg-orange-900/50 text-orange-300' :
                                                                 pkg.status === 'picking_up' ? 'bg-orange-900/50 text-orange-300' :
@@ -192,14 +349,22 @@ export function LiveTrackingTab({
                                 <div className="col-span-full text-center py-8 text-slate-500">Kurye bekleyen sipariş bulunmuyor.</div>
                             ) : (
                                 unassignedPackages.map(pkg => (
-                                    <div key={pkg.id} className={`relative bg-slate-800 p-3 rounded-lg border-l-4 shadow-sm ${pkg.status === 'waiting' ? 'border-l-yellow-500' :
+                                    <div 
+                                        key={pkg.id} 
+                                        className={`relative bg-slate-800 p-3 rounded-lg border-l-4 shadow-sm cursor-pointer hover:bg-slate-700 transition-colors ${pkg.status === 'waiting' ? 'border-l-yellow-500' :
                                         pkg.status === 'assigned' ? 'border-l-orange-500' :
                                             pkg.status === 'picking_up' ? 'border-l-orange-500' :
                                                 'border-l-red-500'
-                                        } border-r border-t border-b border-slate-700`}>
+                                        } border-r border-t border-b border-slate-700`}
+                                    >
+                                        {/* Tıklanabilir Alan - Üstte */}
+                                        <div onClick={() => setSelectedPackage(pkg)} className="absolute inset-0 z-0"></div>
+
+                                        {/* Tıklanabilir Alan - Üstte */}
+                                        <div onClick={() => setSelectedPackage(pkg)} className="absolute inset-0 z-0"></div>
 
                                         {/* 3 Nokta Menüsü */}
-                                        <div className="absolute top-2 left-2 z-10">
+                                        <div className="absolute top-2 left-2 z-20" onClick={(e) => e.stopPropagation()}>
                                             <OrderActionMenu
                                                 package={pkg}
                                                 isOpen={openDropdownId === pkg.id}
@@ -209,7 +374,7 @@ export function LiveTrackingTab({
                                         </div>
 
                                         {/* Sipariş Bilgileri */}
-                                        <div className="flex justify-between items-center mb-2 ml-8">
+                                        <div className="flex justify-between items-center mb-2 ml-8 relative z-10">
                                             <div className="flex items-center gap-2">
                                                 <span className={`text-xs font-bold px-2 py-1 rounded ${pkg.order_number
                                                     ? 'text-orange-600 bg-orange-900/50'
@@ -229,7 +394,7 @@ export function LiveTrackingTab({
                                         </div>
 
                                         {/* Restoran ve Tutar */}
-                                        <div className="flex justify-between items-start mb-2 ml-8">
+                                        <div className="flex justify-between items-start mb-2 ml-8 relative z-10">
                                             <span className="bg-orange-900/50 text-orange-300 px-2 py-1 rounded text-sm font-bold">
                                                 🍽️ {pkg.restaurant?.name || 'Bilinmeyen'}
                                             </span>
@@ -239,7 +404,7 @@ export function LiveTrackingTab({
                                         </div>
 
                                         {/* Durum */}
-                                        <div className="mb-2 ml-8">
+                                        <div className="mb-2 ml-8 relative z-10">
                                             <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                                                 pkg.status === 'cancelled' ? 'bg-red-900/50 text-red-300' :
                                                 !pkg.courier_id && pkg.status !== 'waiting' && pkg.status !== 'delivered' && pkg.status !== 'cancelled'
@@ -252,14 +417,14 @@ export function LiveTrackingTab({
                                                 {pkg.status === 'cancelled' ? '🚫 İPTAL EDİLDİ' :
                                                 !pkg.courier_id && pkg.status !== 'waiting' && pkg.status !== 'delivered' && pkg.status !== 'cancelled'
                                                     ? '⚠️ SAHİPSİZ PAKET'
-                                                    : pkg.status === 'waiting' ? '⏳ Kurye Bekliyor' :
+                                                    : pkg.status === 'waiting' ? '⏳ Beklemede' :
                                                         pkg.status === 'assigned' ? '👤 Atandı' :
                                                             pkg.status === 'picking_up' ? '🏃 Alınıyor' : '🚗 Yolda'}
                                             </span>
                                         </div>
 
                                         {/* Müşteri Bilgileri */}
-                                        <div className="space-y-2 mb-3 ml-8">
+                                        <div className="space-y-2 mb-3 ml-8 relative z-10">
                                             <h3 className="font-semibold text-sm text-white">
                                                 👤 {pkg.customer_name}
                                             </h3>
@@ -298,7 +463,7 @@ export function LiveTrackingTab({
 
                                         {/* Kurye Atama */}
                                         {!pkg.courier_id && pkg.status !== 'delivered' && pkg.status !== 'cancelled' && (
-                                            <div className="border-t border-slate-700 pt-2 space-y-2">
+                                            <div className="border-t border-slate-700 pt-2 space-y-2 relative z-20" onClick={(e) => e.stopPropagation()}>
                                                 <select
                                                     value={selectedCouriers[pkg.id] || ''}
                                                     onChange={(e) => handleCourierChange(pkg.id, e.target.value)}
@@ -334,7 +499,7 @@ export function LiveTrackingTab({
 
                                         {/* Atanmış Kurye */}
                                         {pkg.courier_id && (pkg.status === 'assigned' || pkg.status === 'picking_up' || pkg.status === 'on_the_way') && (
-                                            <div className="border-t border-slate-700 pt-2">
+                                            <div className="border-t border-slate-700 pt-2 relative z-10">
                                                 <div className="flex items-center justify-center">
                                                     <span className="bg-orange-900/50 text-orange-300 px-2 py-1 rounded text-xs font-medium">
                                                         🚴 {couriers.find(c => c.id === pkg.courier_id)?.full_name || 'Bilinmeyen'}

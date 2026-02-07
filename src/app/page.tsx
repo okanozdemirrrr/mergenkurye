@@ -36,11 +36,11 @@ export default function HomePage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
       <div className="max-w-6xl w-full">
         {/* Logo ve Başlık */}
-        <div className="text-center mb-16">
+        <div className="text-center mb-16 -mt-8">
           <img
             src="/logo.png"
             alt="Mergen Kurye Logo"
-            className="w-40 h-40 mx-auto mb-8 drop-shadow-2xl"
+            className="w-72 h-72 mx-auto mb-8 drop-shadow-2xl"
           />
           <h1 className="text-5xl md:text-6xl font-bold text-white mb-4 tracking-tight">
             Mergen Kurye Sistemi
@@ -69,7 +69,7 @@ export default function HomePage() {
               
               {/* Başlık */}
               <h2 className="text-3xl font-bold text-white mb-3 group-hover:text-purple-300 transition-colors">
-                Admin Girişi
+                Admin
               </h2>
               
               {/* Açıklama */}
@@ -107,7 +107,7 @@ export default function HomePage() {
               
               {/* Başlık */}
               <h2 className="text-3xl font-bold text-white mb-3 group-hover:text-orange-300 transition-colors">
-                Restoran Girişi
+                Restoran
               </h2>
               
               {/* Açıklama */}
@@ -145,7 +145,7 @@ export default function HomePage() {
               
               {/* Başlık */}
               <h2 className="text-3xl font-bold text-white mb-3 group-hover:text-blue-300 transition-colors">
-                Kurye Girişi
+                Kurye
               </h2>
               
               {/* Açıklama */}

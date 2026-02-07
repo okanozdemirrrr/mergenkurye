@@ -24,69 +24,24 @@ export async function handleEndOfDay(
         const grandTotal = dailyCashTotal + totalOldDebt
         const difference = grandTotal - amountReceived
 
-        let newDebtAmount = 0
-        let paymentToDebts = 0
-
-        if (difference > 0) {
-            // Eksik ödeme - önce eski borçları öde
-            let remainingPayment = amountReceived - dailyCashTotal
-
-            if (remainingPayment > 0) {
-                // Eski borçlara ödeme yap (en eskiden başlayarak)
-                const sortedDebts = [...oldDebts].sort((a, b) =>
-                    new Date(a.debt_date).getTime() - new Date(b.debt_date).getTime()
-                )
-
-                for (const debt of sortedDebts) {
-                    if (remainingPayment <= 0) break
-
-                    const paymentAmount = Math.min(remainingPayment, debt.remaining_amount)
-                    const newRemaining = debt.remaining_amount - paymentAmount
-
-                    await supabase
-                        .from('courier_debts')
-                        .update({
-                            remaining_amount: newRemaining,
-                            status: newRemaining === 0 ? 'paid' : 'pending'
-                        })
-                        .eq('id', debt.id)
-
-                    remainingPayment -= paymentAmount
-                    paymentToDebts += paymentAmount
-                }
-            }
-
-            newDebtAmount = difference - paymentToDebts
-        } else if (difference < 0) {
-            // Fazla ödeme - tüm borçları kapat
-            paymentToDebts = totalOldDebt
-
-            for (const debt of oldDebts) {
-                await supabase
-                    .from('courier_debts')
-                    .update({
-                        remaining_amount: 0,
-                        status: 'paid'
-                    })
-                    .eq('id', debt.id)
-            }
-        } else {
-            // Tam ödeme
-            paymentToDebts = totalOldDebt
-
-            for (const debt of oldDebts) {
-                await supabase
-                    .from('courier_debts')
-                    .update({
-                        remaining_amount: 0,
-                        status: 'paid'
-                    })
-                    .eq('id', debt.id)
-            }
+        // Tüm eski borçları sil (paid olarak işaretle)
+        for (const debt of oldDebts) {
+            await supabase
+                .from('courier_debts')
+                .update({
+                    remaining_amount: 0,
+                    status: 'paid'
+                })
+                .eq('id', debt.id)
         }
 
-        // Yeni borç kaydı oluştur (eğer varsa)
-        if (newDebtAmount > 0) {
+        let newDebtAmount = 0
+        let paymentToDebts = totalOldDebt
+
+        // Eğer ödeme yetersizse, farkı yeni borç olarak kaydet
+        if (difference > 0) {
+            newDebtAmount = difference
+
             await supabase
                 .from('courier_debts')
                 .insert({
@@ -129,40 +84,21 @@ export async function handlePayDebt(
     try {
         const totalDebt = debts.reduce((sum, d) => sum + d.remaining_amount, 0)
 
-        if (amount > totalDebt) {
-            throw new Error('Ödeme tutarı toplam borçtan fazla olamaz')
-        }
-
-        let remainingPayment = amount
-        let paidToDebts = 0
-
-        // En eski borçtan başlayarak öde
-        const sortedDebts = [...debts].sort((a, b) =>
-            new Date(a.debt_date).getTime() - new Date(b.debt_date).getTime()
-        )
-
-        for (const debt of sortedDebts) {
-            if (remainingPayment <= 0) break
-
-            const paymentAmount = Math.min(remainingPayment, debt.remaining_amount)
-            const newRemaining = debt.remaining_amount - paymentAmount
-
+        // Tüm eski borçları sil (paid olarak işaretle)
+        for (const debt of debts) {
             await supabase
                 .from('courier_debts')
                 .update({
-                    remaining_amount: newRemaining,
-                    status: newRemaining === 0 ? 'paid' : 'pending'
+                    remaining_amount: 0,
+                    status: 'paid'
                 })
                 .eq('id', debt.id)
-
-            remainingPayment -= paymentAmount
-            paidToDebts += paymentAmount
         }
 
-        // Kalan tutar varsa yeni borç olarak kaydet
-        const newDebtAmount = totalDebt - amount
+        // Eğer ödeme toplam borçtan azsa, farkı yeni borç olarak kaydet
+        if (amount < totalDebt) {
+            const newDebtAmount = totalDebt - amount
 
-        if (newDebtAmount > 0) {
             await supabase
                 .from('courier_debts')
                 .insert({
@@ -172,9 +108,12 @@ export async function handlePayDebt(
                     remaining_amount: newDebtAmount,
                     status: 'pending'
                 })
+
+            return { success: true, paidAmount: amount, newDebtAmount }
         }
 
-        return { success: true, paidAmount: paidToDebts, newDebtAmount }
+        // Tam ödeme veya fazla ödeme durumunda sadece eski borçları kapat
+        return { success: true, paidAmount: amount, newDebtAmount: 0 }
     } catch (error) {
         console.error('Borç ödeme hatası:', error)
         return { success: false, error }

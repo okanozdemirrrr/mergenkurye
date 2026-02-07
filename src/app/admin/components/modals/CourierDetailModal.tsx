@@ -21,6 +21,7 @@ interface CourierDetailModalProps {
     setCourierEndDate: (date: string) => void
     onEndOfDayClick: () => void
     onPayDebtClick: () => void
+    onFilterClick?: () => void
     selectedCourierOrders: Package[]
     courierDebts: CourierDebt[]
     calculateCashSummary: (orders: Package[]) => any
@@ -40,6 +41,7 @@ export function CourierDetailModal({
     setCourierEndDate,
     onEndOfDayClick,
     onPayDebtClick,
+    onFilterClick,
     selectedCourierOrders,
     courierDebts,
     calculateCashSummary,

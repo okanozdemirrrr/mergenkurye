@@ -338,6 +338,24 @@ export function RestaurantsTab({
 
     // Ödemeler
     if (restaurantSubTab === 'payments') {
+        // Her restoran için sipariş ve ciro hesapla
+        const restaurantsWithStats = restaurants.map(restaurant => {
+            const restaurantOrders = deliveredPackages.filter(
+                pkg => pkg.restaurant_id === restaurant.id && pkg.status === 'delivered'
+            )
+            
+            const totalOrders = restaurantOrders.length
+            const totalRevenue = restaurantOrders.reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
+            const totalDebt = totalOrders * 100 // Her paket için 100₺ borç
+            
+            return {
+                ...restaurant,
+                totalOrders,
+                totalRevenue,
+                totalDebt
+            }
+        })
+
         return (
             <div className="bg-slate-900 shadow-xl rounded-2xl p-6">
                 <h2 className="text-2xl font-bold mb-6">💰 Restoranların Ödemesi</h2>
@@ -349,12 +367,12 @@ export function RestaurantsTab({
                             <div className="font-bold">Restoran bulunamadı!</div>
                         </div>
                     ) : (
-                        restaurants.map(r => (
+                        restaurantsWithStats.map(r => (
                             <div key={r.id} className="bg-slate-50 p-4 rounded-xl border">
                                 <div className="flex justify-between items-start mb-3">
                                     <button
                                         onClick={() => onRestaurantClick(r.id)}
-                                        className="font-bold text-lg text-orange-600 hover:text-orange-800:text-orange-300 transition-colors cursor-pointer text-left"
+                                        className="font-bold text-lg text-orange-600 hover:text-orange-800 transition-colors cursor-pointer text-left"
                                     >
                                         🍽️ {r.name}
                                     </button>
@@ -363,34 +381,33 @@ export function RestaurantsTab({
                                 <div className="space-y-2 text-sm">
                                     <div className="flex justify-between">
                                         <span className="text-slate-600">Toplam Sipariş:</span>
-                                        <span className="font-bold text-orange-600">{r.totalOrders || 0}</span>
+                                        <span className="font-bold text-orange-600">{r.totalOrders}</span>
                                     </div>
 
                                     <div className="flex justify-between">
                                         <span className="text-slate-600">Toplam Ciro:</span>
-                                        <span className="font-bold text-green-600">{(r.totalRevenue || 0).toFixed(2)} ₺</span>
+                                        <span className="font-bold text-green-600">{r.totalRevenue.toFixed(2)} ₺</span>
                                     </div>
 
                                     <div className="flex justify-between">
                                         <span className="text-slate-600">Restorana Borcum:</span>
-                                        <span className={`font-bold ${((r.totalRevenue || 0) + (r.totalDebt || 0)) > 0 ? 'text-red-600' : 'text-green-600'
-                                            }`}>
-                                            {((r.totalRevenue || 0) + (r.totalDebt || 0)).toFixed(2)} ₺
+                                        <span className={`font-bold ${r.totalDebt > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                            {r.totalDebt.toFixed(2)} ₺
                                         </span>
                                     </div>
 
                                     <div className="mt-3 pt-2 border-t border-slate-200 space-y-2">
                                         <button
                                             onClick={() => onRestaurantClick(r.id)}
-                                            className="w-full text-xs bg-orange-100 text-orange-700 py-2 rounded-lg hover:bg-orange-200:bg-orange-900/50 transition-colors"
+                                            className="w-full text-xs bg-orange-100 text-orange-700 py-2 rounded-lg hover:bg-orange-200 transition-colors"
                                         >
                                             📊 Detaylı Rapor Görüntüle
                                         </button>
 
-                                        {((r.totalRevenue || 0) + (r.totalDebt || 0)) > 0 && onDebtPayClick && (
+                                        {r.totalDebt > 0 && onDebtPayClick && (
                                             <button
                                                 onClick={() => onDebtPayClick(r.id)}
-                                                className="w-full text-xs bg-red-100 text-red-700 py-2 rounded-lg hover:bg-red-200:bg-red-900/50 transition-colors"
+                                                className="w-full text-xs bg-red-100 text-red-700 py-2 rounded-lg hover:bg-red-200 transition-colors"
                                             >
                                                 💳 Borç Öde
                                             </button>

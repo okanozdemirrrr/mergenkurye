@@ -8,10 +8,11 @@
 'use client'
 
 import { useState } from 'react'
-import { Package } from '@/types'
+import { Package, Courier } from '@/types'
 import { OrderActionMenu } from '@/components/ui/OrderActionMenu'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
 import { formatTurkishTime } from '@/utils/dateHelpers'
+import { useAdminData } from '../AdminDataProvider'
 
 interface HistoryTabProps {
     deliveredPackages: Package[]
@@ -32,6 +33,9 @@ export function HistoryTab({
     setOpenDropdownId,
     handleCancelOrder
 }: HistoryTabProps) {
+    const { couriers } = useAdminData()
+    const [selectedPackage, setSelectedPackage] = useState<Package | null>(null)
+    
     // Kategorik filtre state'i
     const [statusFilter, setStatusFilter] = useState<'all' | 'delivered' | 'cancelled'>('all')
     
@@ -73,6 +77,18 @@ export function HistoryTab({
 
     const filteredHistory = getFilteredHistory()
 
+    const getStatusText = (status: string) => {
+        switch (status) {
+            case 'waiting': return 'Beklemede'
+            case 'assigned': return 'Atandı'
+            case 'picking_up': return 'Alınıyor'
+            case 'on_the_way': return 'Yolda'
+            case 'delivered': return 'Teslim Edildi'
+            case 'cancelled': return 'İptal Edildi'
+            default: return status
+        }
+    }
+
     // Toplam tutar hesapla (İPTAL EDİLENLER HARİÇ)
     const totalAmount = filteredHistory
         .filter(pkg => pkg.status !== 'cancelled')
@@ -85,6 +101,170 @@ export function HistoryTab({
         .reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
 
     return (
+        <>
+            {/* DETAY MODAL */}
+            {selectedPackage && (
+                <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4" onClick={() => setSelectedPackage(null)}>
+                    <div className="bg-slate-900 rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-700 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                        {/* Başlık ve Kapat Butonu */}
+                        <div className="flex justify-between items-center mb-4 sticky top-0 bg-slate-900 pb-4 border-b border-slate-700 z-10">
+                            <h3 className="text-xl font-bold text-white">📦 Sipariş Detayları</h3>
+                            <button
+                                onClick={() => setSelectedPackage(null)}
+                                className="text-slate-400 hover:text-white text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-800 transition-colors"
+                            >
+                                ×
+                            </button>
+                        </div>
+
+                        {/* İçerik */}
+                        <div className="space-y-4 pt-2">
+                            {/* Sipariş No ve Platform */}
+                            <div className="flex items-center gap-3">
+                                <span className="text-lg font-bold text-orange-400">
+                                    {selectedPackage.order_number || '......'}
+                                </span>
+                                {selectedPackage.platform && (
+                                    <span className={`text-sm py-1 px-3 rounded ${getPlatformBadgeClass(selectedPackage.platform)}`}>
+                                        {getPlatformDisplayName(selectedPackage.platform)}
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Durum */}
+                            <div className="bg-slate-800 p-4 rounded-lg">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-slate-400 text-sm">Durum:</span>
+                                    <span className={`px-3 py-1.5 rounded-full text-sm font-semibold ${
+                                        selectedPackage.status === 'cancelled' ? 'bg-red-900/50 text-red-300' :
+                                        selectedPackage.status === 'waiting' ? 'bg-yellow-900/50 text-yellow-300' :
+                                        selectedPackage.status === 'assigned' ? 'bg-orange-900/50 text-orange-300' :
+                                        selectedPackage.status === 'picking_up' ? 'bg-orange-900/50 text-orange-300' :
+                                        selectedPackage.status === 'on_the_way' ? 'bg-blue-900/50 text-blue-300' :
+                                        'bg-green-900/50 text-green-300'
+                                    }`}>
+                                        {getStatusText(selectedPackage.status)}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Restoran ve Tutar */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-slate-800 p-4 rounded-lg">
+                                    <p className="text-slate-400 text-xs mb-1">Restoran</p>
+                                    <p className="text-white font-semibold">🍽️ {selectedPackage.restaurant?.name || 'Bilinmeyen'}</p>
+                                </div>
+                                <div className="bg-slate-800 p-4 rounded-lg">
+                                    <p className="text-slate-400 text-xs mb-1">Tutar</p>
+                                    <p className="text-green-400 font-bold text-xl">{selectedPackage.amount}₺</p>
+                                </div>
+                            </div>
+
+                            {/* Müşteri Bilgileri */}
+                            <div className="bg-slate-800 p-4 rounded-lg space-y-3">
+                                <h4 className="text-white font-semibold mb-2">Müşteri Bilgileri</h4>
+                                <div>
+                                    <p className="text-slate-400 text-xs mb-1">Ad Soyad</p>
+                                    <p className="text-white">👤 {selectedPackage.customer_name}</p>
+                                </div>
+                                {selectedPackage.customer_phone && (
+                                    <div>
+                                        <p className="text-slate-400 text-xs mb-1">Telefon</p>
+                                        <p className="text-white">📞 {selectedPackage.customer_phone}</p>
+                                    </div>
+                                )}
+                                <div>
+                                    <p className="text-slate-400 text-xs mb-1">Teslimat Adresi</p>
+                                    <p className="text-white">📍 {selectedPackage.delivery_address}</p>
+                                </div>
+                            </div>
+
+                            {/* Paket İçeriği */}
+                            {selectedPackage.content && (
+                                <div className="bg-slate-800 p-4 rounded-lg">
+                                    <p className="text-slate-400 text-xs mb-1">Paket İçeriği</p>
+                                    <p className="text-orange-200">📝 {selectedPackage.content}</p>
+                                </div>
+                            )}
+
+                            {/* Ödeme Yöntemi */}
+                            <div className="bg-slate-800 p-4 rounded-lg">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-slate-400 text-sm">Ödeme Yöntemi:</span>
+                                    <span className={`px-3 py-1 rounded text-sm font-medium ${
+                                        selectedPackage.payment_method === 'cash'
+                                            ? 'bg-green-900/50 text-green-300'
+                                            : 'bg-orange-900/50 text-orange-300'
+                                    }`}>
+                                        {selectedPackage.payment_method === 'cash' ? '💵 Nakit' : '💳 Kart'}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Kurye Bilgisi */}
+                            {selectedPackage.courier_id && (
+                                <div className="bg-slate-800 p-4 rounded-lg">
+                                    <p className="text-slate-400 text-xs mb-1">Atanan Kurye</p>
+                                    <p className="text-white">🚴 {couriers.find(c => c.id === selectedPackage.courier_id)?.full_name || selectedPackage.courier_name || 'Bilinmeyen'}</p>
+                                </div>
+                            )}
+
+                            {/* Zaman Bilgileri */}
+                            <div className="bg-slate-800 p-4 rounded-lg space-y-2">
+                                <h4 className="text-white font-semibold mb-2">Zaman Bilgileri</h4>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-slate-400">Oluşturulma:</span>
+                                    <span className="text-white">🕐 {formatTurkishTime(selectedPackage.created_at)}</span>
+                                </div>
+                                {selectedPackage.assigned_at && (
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-slate-400">Atanma:</span>
+                                        <span className="text-white">🕐 {formatTurkishTime(selectedPackage.assigned_at)}</span>
+                                    </div>
+                                )}
+                                {selectedPackage.picked_up_at && (
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-slate-400">Alınma:</span>
+                                        <span className="text-white">🕐 {formatTurkishTime(selectedPackage.picked_up_at)}</span>
+                                    </div>
+                                )}
+                                {selectedPackage.delivered_at && (
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-slate-400">Teslim:</span>
+                                        <span className="text-white">🕐 {formatTurkishTime(selectedPackage.delivered_at)}</span>
+                                    </div>
+                                )}
+                                {selectedPackage.cancelled_at && (
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-slate-400">İptal:</span>
+                                        <span className="text-white">🕐 {formatTurkishTime(selectedPackage.cancelled_at)}</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* İptal Bilgisi */}
+                            {selectedPackage.status === 'cancelled' && (
+                                <div className="bg-red-900/20 p-4 rounded-lg border border-red-700">
+                                    <h4 className="text-red-300 font-semibold mb-2">İptal Bilgileri</h4>
+                                    {selectedPackage.cancelled_by && (
+                                        <div className="flex justify-between text-sm mb-1">
+                                            <span className="text-red-400">İptal Eden:</span>
+                                            <span className="text-red-300">{selectedPackage.cancelled_by === 'admin' ? 'Admin' : selectedPackage.cancelled_by === 'restaurant' ? 'Restoran' : 'Bilinmeyen'}</span>
+                                        </div>
+                                    )}
+                                    {selectedPackage.cancellation_reason && (
+                                        <div className="text-sm mt-2">
+                                            <span className="text-red-400">Sebep:</span>
+                                            <p className="text-red-300 mt-1">{selectedPackage.cancellation_reason}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
         <div id="history-container" className="bg-slate-900 shadow-xl rounded-2xl p-6">
             <div className="flex flex-col gap-4 mb-6">
                 {/* Başlık ve Kategorik Filtre */}
@@ -210,11 +390,15 @@ export function HistoryTab({
                             </tr>
                         ) : (
                             filteredHistory.slice(0, HISTORY_ITEMS_PER_PAGE).map(pkg => (
-                                <tr key={pkg.id} className={`border-b hover:bg-slate-50:bg-slate-700/50 ${pkg.status === 'cancelled'
-                                    ? 'opacity-60 bg-red-50'
+                                <tr 
+                                    key={pkg.id} 
+                                    onClick={() => setSelectedPackage(pkg)}
+                                    className={`border-b hover:bg-slate-700 cursor-pointer transition-colors ${pkg.status === 'cancelled'
+                                    ? 'opacity-60 bg-red-900/10'
                                     : ''
-                                    }`}>
-                                    <td className="py-3 px-4">
+                                    }`}
+                                >
+                                    <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
                                         <div className="relative">
                                             <OrderActionMenu
                                                 package={pkg}
@@ -308,5 +492,6 @@ export function HistoryTab({
                 </table>
             </div>
         </div>
+        </>
     )
 }

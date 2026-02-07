@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Mergen Kurye</string>
+    <string name="title_activity_main">Mergen Kurye</string>
+    <string name="package_name">com.mergen.kurye</string>
+    <string name="custom_url_scheme">com.mergen.kurye</string>
+</resources>

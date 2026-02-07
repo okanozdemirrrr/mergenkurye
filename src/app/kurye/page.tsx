@@ -72,15 +72,10 @@ export default function KuryePage() {
   const [darkMode, setDarkMode] = useState(true) // Varsayılan dark mode
   const [leaderboard, setLeaderboard] = useState<CourierLeaderboard[]>([])
   const [myRank, setMyRank] = useState<number | null>(null)
-  const [notificationPermission, setNotificationPermission] = useState<'default' | 'granted' | 'denied'>('default')
-  const [showNotificationButton, setShowNotificationButton] = useState(false)
   const [showLeaderboard, setShowLeaderboard] = useState(false) // Leaderboard modal
   const [showMenu, setShowMenu] = useState(false) // Hamburger menü
   const [activeTab, setActiveTab] = useState<'packages' | 'history' | 'earnings'>('packages') // Aktif sekme
   const [courierName, setCourierName] = useState<string>('Kurye') // Giriş yapan kuryenin ismi
-  const lastNotificationTimeRef = useRef<number>(0) // Son bildirim zamanı (debounce için)
-  const audioRef = useRef<HTMLAudioElement | null>(null) // Audio instance referansı
-  const [notificationSoundEnabled, setNotificationSoundEnabled] = useState(false) // Bildirim sesi açık mı?
   const [todayDeliveredPackages, setTodayDeliveredPackages] = useState<Package[]>([]) // Bugünkü teslim edilenler
   const [filteredPackages, setFilteredPackages] = useState<Package[]>([]) // Filtrelenmiş paketler
   const [currentPage, setCurrentPage] = useState(1) // Mevcut sayfa
@@ -180,215 +175,6 @@ export default function KuryePage() {
     setIsMounted(true)
   }, [])
 
-  // Bildirim sesi çal
-  const playNotificationSound = () => {
-    if (typeof window === 'undefined') return
-    
-    // SES KAPALI - SADECE MANUEL AÇILIRSA ÇALAR
-    if (!notificationSoundEnabled) {
-      console.log('🔇 Bildirim sesi kapalı, çalmıyor')
-      return
-    }
-
-    try {
-      console.log('🔊 Ses çalma isteği alındı')
-      
-      // Eğer hala bir ses çalıyorsa, yeni ses çalma
-      if (audioRef.current && !audioRef.current.paused) {
-        console.log('⏭️ Ses zaten çalıyor, yeni ses çalmıyorum')
-        return
-      }
-
-      console.log('🔊 Yeni ses çalınıyor...')
-      const audio = new Audio(`/notification.mp3?t=${Date.now()}`)
-      audio.volume = 1.0 // Maksimum ses
-      audioRef.current = audio
-
-      // Ses bittiğinde referansı temizle
-      audio.onended = () => {
-        console.log('✅ Ses bitti, referans temizlendi')
-        audioRef.current = null
-      }
-
-      // Ses çalma promise'ini handle et
-      const playPromise = audio.play()
-
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => {
-            console.log('✅ Bildirim sesi başarıyla çalındı')
-          })
-          .catch((err) => {
-            console.error('❌ Ses çalma hatası:', err)
-            audioRef.current = null // Hata durumunda referansı temizle
-            console.error('Hata detayı:', {
-              name: err.name,
-              message: err.message,
-              code: err.code
-            })
-
-            // Kullanıcı etkileşimi gerekiyorsa
-            if (err.name === 'NotAllowedError') {
-              console.warn('⚠️ Ses çalmak için kullanıcı etkileşimi gerekli')
-              console.warn('💡 Çözüm: Bildirimleri Aç butonuna tıklayın')
-            } else if (err.name === 'NotSupportedError') {
-              console.warn('⚠️ Tarayıcı ses formatını desteklemiyor')
-            }
-          })
-      }
-    } catch (err) {
-      console.error('Ses hatası:', err)
-      audioRef.current = null
-    }
-  }
-
-  // Tarayıcı bildirimi gönder
-  const sendBrowserNotification = (title: string, body: string, url: string = '/kurye') => {
-    if (typeof window === 'undefined') return
-
-    console.log('📱 Bildirim gönderiliyor:', { title, body, permission: notificationPermission })
-
-    if (notificationPermission !== 'granted') {
-      console.warn('⚠️ Bildirim izni verilmemiş:', notificationPermission)
-      return
-    }
-
-    try {
-      if ('serviceWorker' in navigator && 'Notification' in window) {
-        navigator.serviceWorker.ready.then((registration) => {
-          console.log('✅ Service Worker hazır, bildirim gösteriliyor')
-          registration.showNotification(title, {
-            body: body,
-            icon: '/icon-192x192.png',
-            badge: '/icon-192x192.png',
-            tag: 'courier-package',
-            requireInteraction: true,
-            data: { url: url }
-          }).then(() => {
-            console.log('✅ Bildirim başarıyla gösterildi')
-          }).catch((err) => {
-            console.error('❌ Bildirim gösterme hatası:', err)
-          })
-        }).catch((err) => {
-          console.error('❌ Service Worker hazır değil:', err)
-        })
-      } else {
-        console.warn('⚠️ Service Worker veya Notification API desteklenmiyor')
-      }
-    } catch (err) {
-      console.error('Bildirim hatası:', err)
-    }
-  }
-
-  // Service Worker kaydet ve bildirim izni al
-  const enableNotifications = async () => {
-    if (typeof window === 'undefined') return
-
-    try {
-      console.log('🔔 Bildirim sistemi başlatılıyor...')
-      console.log('📍 Tarayıcı:', navigator.userAgent)
-      console.log('📍 HTTPS:', window.location.protocol === 'https:')
-
-      // Service Worker kaydet
-      if ('serviceWorker' in navigator) {
-        try {
-          // Önce mevcut kayıtları kontrol et
-          const existingRegistration = await navigator.serviceWorker.getRegistration('/')
-          if (existingRegistration) {
-            console.log('✅ Service Worker zaten kayıtlı:', existingRegistration.scope)
-          } else {
-            console.log('📝 Service Worker kaydediliyor...')
-            const registration = await navigator.serviceWorker.register('/sw.js', {
-              scope: '/',
-              updateViaCache: 'none' // Cache'i bypass et
-            })
-            console.log('✅ Service Worker kaydedildi:', registration.scope)
-          }
-
-          // Service Worker'ın aktif olmasını bekle
-          await navigator.serviceWorker.ready
-          console.log('✅ Service Worker hazır ve aktif')
-        } catch (swError) {
-          console.error('❌ Service Worker kayıt hatası:', swError)
-          setErrorMessage('Service Worker kaydedilemedi. HTTPS bağlantısı gerekli olabilir.')
-          setTimeout(() => setErrorMessage(''), 5000)
-          return
-        }
-      } else {
-        console.error('❌ Service Worker desteklenmiyor')
-        setErrorMessage('Tarayıcınız Service Worker desteklemiyor')
-        setTimeout(() => setErrorMessage(''), 3000)
-        return
-      }
-
-      // Bildirim izni al
-      if ('Notification' in window) {
-        console.log('📱 Bildirim izni isteniyor...')
-        console.log('📱 Mevcut izin durumu:', Notification.permission)
-
-        const permission = await Notification.requestPermission()
-        console.log('📱 Yeni izin durumu:', permission)
-        setNotificationPermission(permission)
-
-        if (permission === 'granted') {
-          setSuccessMessage('✅ Bildirimler ve sesler aktif!')
-          setTimeout(() => setSuccessMessage(''), 3000)
-          setShowNotificationButton(false)
-
-          // Test bildirimi gönder
-          console.log('🧪 Test bildirimi gönderiliyor...')
-          sendBrowserNotification(
-            '✅ Bildirimler Aktif',
-            'Yeni paketler için bildirim alacaksınız',
-            '/kurye'
-          )
-
-          // Test sesi çal
-          console.log('🧪 Test sesi çalınıyor...')
-          playNotificationSound()
-        } else if (permission === 'denied') {
-          console.error('❌ Bildirim izni reddedildi')
-          setErrorMessage('❌ Bildirim izni reddedildi. Tarayıcı ayarlarından izin verebilirsiniz.')
-          setTimeout(() => setErrorMessage(''), 5000)
-        } else {
-          console.warn('⚠️ Bildirim izni belirsiz:', permission)
-          setErrorMessage('Bildirim izni alınamadı')
-          setTimeout(() => setErrorMessage(''), 3000)
-        }
-      } else {
-        console.error('❌ Notification API desteklenmiyor')
-        setErrorMessage('❌ Tarayıcınız bildirimleri desteklemiyor')
-        setTimeout(() => setErrorMessage(''), 3000)
-      }
-    } catch (err) {
-      console.error('❌ Bildirim aktifleştirme hatası:', err)
-      setErrorMessage('Bildirim sistemi başlatılamadı: ' + (err as Error).message)
-      setTimeout(() => setErrorMessage(''), 5000)
-    }
-  }
-
-  // Bildirim iznini kontrol et
-  useEffect(() => {
-    if (typeof window === 'undefined' || !isLoggedIn) return
-
-    console.log('🔍 Bildirim izni kontrol ediliyor...')
-
-    if ('Notification' in window) {
-      const currentPermission = Notification.permission
-      setNotificationPermission(currentPermission)
-      console.log('📱 Mevcut bildirim izni:', currentPermission)
-
-      // İzin verilmemişse butonu göster
-      if (currentPermission === 'default') {
-        setShowNotificationButton(true)
-        console.log('🔔 Bildirim butonu gösteriliyor')
-      } else {
-        console.log('✅ Bildirim izni zaten verilmiş')
-      }
-    } else {
-      console.warn('⚠️ Tarayıcı bildirimleri desteklemiyor')
-    }
-  }, [isLoggedIn])
 
   // ÇELİK GİBİ OTURUM KONTROLÜ - SAYFA YENİLENDİĞİNDE DIŞARI ATMA!
   useEffect(() => {
@@ -1480,38 +1266,48 @@ export default function KuryePage() {
       const handlePackageChange = async (payload: any) => {
         console.log('📦 Paket değişikliği algılandı:', payload.eventType, 'ID:', payload.new?.id || payload.old?.id)
         console.log('📦 Old courier_id:', payload.old?.courier_id, 'New courier_id:', payload.new?.courier_id)
-        console.log('📦 Status:', payload.new?.status)
+        console.log('📦 Old status:', payload.old?.status, 'New status:', payload.new?.status)
 
-        // Yeni paket atandı mı kontrol et (SADECE courier_id değiştiğinde)
-        const isNewAssignment = (
-          payload.eventType === 'UPDATE' && 
-          payload.new?.courier_id === courierId && 
-          payload.old?.courier_id !== courierId &&
-          payload.new?.status !== 'delivered' &&
-          payload.new?.status !== 'cancelled'
+        // ⚠️ ERKEN ÇIKIŞ: Bu paket bu kuryeyle alakalı değilse, işlem yapma
+        const isRelevantToThisCourier = (
+          payload.new?.courier_id === courierId || // Şu an bu kuryeye ait
+          payload.old?.courier_id === courierId    // Önceden bu kuryeye aitti
         )
 
-        console.log('📦 isNewAssignment:', isNewAssignment)
+        if (!isRelevantToThisCourier) {
+          console.log('⏭️ Bu paket başka kuryeye ait, atlanıyor')
+          return // Gereksiz state güncellemesini önle
+        }
 
-        if (isNewAssignment) {
-          // Debounce: Son bildirimden en az 3 saniye geçmiş olmalı
-          const now = Date.now()
-          const timeSinceLastNotification = now - lastNotificationTimeRef.current
-          
-          if (timeSinceLastNotification < 3000) {
-            console.log('⏭️ Bildirim atlandı (çok sık)', timeSinceLastNotification, 'ms')
-          } else {
-            console.log('🎯 Yeni paket atandı! Bildirim çalınıyor...')
-            lastNotificationTimeRef.current = now
-            playNotificationSound()
-            sendBrowserNotification(
-              '📦 Üzerine Paket Atandı!',
-              `Sipariş No: ${payload.new?.order_number || 'Yeni'} - ${payload.new?.amount || 0}₺`,
-              '/kurye'
-            )
-          }
-        } else {
-          console.log('ℹ️ Paket güncellendi ama yeni atama değil, bildirim çalmıyor')
+        // 1. Kuryenin kendi yaptığı işlemleri filtrele (assigned → picking_up → on_the_way → delivered)
+        const isSelfAction = (
+          payload.old?.courier_id === courierId && // Zaten bu kuryeye aitti
+          payload.new?.courier_id === courierId && // Hala bu kuryeye ait
+          payload.old?.status !== payload.new?.status // Sadece status değişti (kendi işlemi)
+        )
+
+        // 2. Yeni paket atandı mı kontrol et (courier_id DEĞİŞTİ - NULL/başka kuryeden bu kuryeye)
+        const isNewAssignment = (
+          payload.eventType === 'UPDATE' &&
+          payload.new?.courier_id === courierId && // Şimdi bu kuryeye ait
+          payload.old?.courier_id !== courierId && // Önceden bu kuryeye ait DEĞİLDİ (null veya başka kurye)
+          payload.new?.status !== 'delivered' && // Teslim edilmemiş
+          payload.new?.status !== 'cancelled' // İptal edilmemiş
+        )
+
+        console.log('📦 isSelfAction:', isSelfAction, '| isNewAssignment:', isNewAssignment)
+
+        // Self-action ise bildirim ÇALMA
+        if (isSelfAction) {
+          console.log('🔇 Kuryenin kendi işlemi (status: ' + payload.old?.status + ' → ' + payload.new?.status + ')')
+        }
+        // Yeni atama ise log kaydet
+        else if (isNewAssignment) {
+          console.log('🎯 Yeni paket atandı! Sipariş No:', payload.new?.order_number || 'Yeni', '- Tutar:', payload.new?.amount || 0, '₺')
+        }
+        // Diğer durumlar (başka güncelleme)
+        else {
+          console.log('ℹ️ Paket güncellendi ama yeni atama değil')
         }
 
         // State'i güncelle - sayfa yenileme YOK!
@@ -1547,7 +1343,7 @@ export default function KuryePage() {
         }
       }
 
-      // Paket değişikliklerini dinle (sadece bu kuryenin paketleri)
+      // Paket değişikliklerini dinle (TÜM paketleri dinle - filtre kod içinde)
       const packagesChannel = supabase
         .channel(`courier-packages-${courierId}`, {
           config: {
@@ -1559,8 +1355,10 @@ export default function KuryePage() {
           {
             event: '*', // Tüm olaylar
             schema: 'public',
-            table: 'packages',
-            filter: `courier_id=eq.${courierId}` // Sadece bu kuryenin paketleri
+            table: 'packages'
+            // ⚠️ FİLTRE KALDIRILDI: courier_id DEĞİŞİKLİKLERİNİ YAKALAMAK İÇİN
+            // Eski filter: `courier_id=eq.${courierId}` sadece MEVCUT paketleri yakalar
+            // Yeni atamada courier_id NULL → kuryeID değişir, bu değişiklik filter dışında kalır!
           },
           handlePackageChange
         )
@@ -1691,6 +1489,18 @@ export default function KuryePage() {
             Giriş Yap
           </button>
           {errorMessage && <p className="text-red-400 text-sm mt-3 text-center">{errorMessage}</p>}
+
+          {/* Kayıt Ol Linki */}
+          <div className="mt-6 text-center">
+            <p className="text-slate-400 text-sm mb-2">Henüz sisteme dahil değil misin?</p>
+            <button
+              type="button"
+              onClick={() => window.location.href = '/register-kurye'}
+              className="text-blue-400 hover:text-blue-300 font-medium transition-colors"
+            >
+              Kayıt Ol →
+            </button>
+          </div>
         </form>
       </div>
     )
@@ -1701,17 +1511,6 @@ export default function KuryePage() {
       {/* Sağ Üst Butonlar - Mobil Responsive */}
       {isLoggedIn && (
         <div className="fixed top-2 right-2 sm:top-4 sm:right-4 z-50 flex items-center gap-1 sm:gap-2">
-          {/* Bildirim Aktifleştirme Butonu */}
-          {showNotificationButton && (
-            <button
-              onClick={enableNotifications}
-              className="bg-red-600 hover:bg-red-700 text-white px-2 py-1.5 sm:px-3 sm:py-2 rounded-lg shadow-lg transition-colors font-medium text-xs sm:text-sm animate-pulse"
-              title="Bildirimleri Aktif Et"
-            >
-              🔔
-            </button>
-          )}
-
           {/* Hız Simgesi - Leaderboard */}
           <button
             onClick={() => setShowLeaderboard(true)}
@@ -1803,22 +1602,6 @@ export default function KuryePage() {
               >
                 <span className="mr-3">💰</span>
                 Verilecek Hesap
-              </button>
-
-              {/* Bildirim Sesi Toggle */}
-              <button
-                onClick={() => {
-                  setNotificationSoundEnabled(!notificationSoundEnabled)
-                  setSuccessMessage(notificationSoundEnabled ? '🔇 Bildirim sesi kapatıldı' : '🔊 Bildirim sesi açıldı')
-                  setTimeout(() => setSuccessMessage(''), 2000)
-                }}
-                className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${notificationSoundEnabled
-                  ? 'bg-green-600 text-white'
-                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                  }`}
-              >
-                <span className="mr-3">{notificationSoundEnabled ? '🔊' : '�'}</span>
-                Bildirim Sesi {notificationSoundEnabled ? 'Açık' : 'Kapalı'}
               </button>
 
               <button
