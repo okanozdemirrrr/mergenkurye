@@ -36,7 +36,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
       <div className="max-w-6xl w-full">
         {/* Logo ve Başlık */}
-        <div className="text-center mb-16 -mt-8">
+        <div className="text-center mb-16 mt-[22px]">
           <img
             src="/logo.png"
             alt="Mergen Kurye Logo"
@@ -59,27 +59,27 @@ export default function HomePage() {
           >
             {/* Arka Plan Efekti */}
             <div className="absolute inset-0 bg-gradient-to-br from-purple-500/0 to-purple-500/0 group-hover:from-purple-500/10 group-hover:to-transparent transition-all duration-500"></div>
-            
+
             {/* İçerik */}
             <div className="relative z-10">
               {/* İkon */}
               <div className="text-7xl mb-6 group-hover:scale-110 transition-transform duration-500">
                 🔑
               </div>
-              
+
               {/* Başlık */}
               <h2 className="text-3xl font-bold text-white mb-3 group-hover:text-purple-300 transition-colors">
                 Admin
               </h2>
-              
+
               {/* Açıklama */}
               <p className="text-slate-400 text-base mb-6 group-hover:text-slate-300 transition-colors">
                 Sistem yönetimi ve kontrol paneli
               </p>
-              
+
               {/* Alt Çizgi */}
               <div className="h-1 w-0 group-hover:w-full bg-gradient-to-r from-purple-500 to-purple-600 transition-all duration-500 rounded-full mx-auto"></div>
-              
+
               {/* Ok İkonu */}
               <div className="mt-6 flex items-center justify-center text-purple-400 font-semibold opacity-0 group-hover:opacity-100 transition-all duration-300">
                 <span className="mr-2">Giriş Yap</span>
@@ -97,27 +97,27 @@ export default function HomePage() {
           >
             {/* Arka Plan Efekti */}
             <div className="absolute inset-0 bg-gradient-to-br from-orange-500/0 to-orange-500/0 group-hover:from-orange-500/10 group-hover:to-transparent transition-all duration-500"></div>
-            
+
             {/* İçerik */}
             <div className="relative z-10">
               {/* İkon */}
               <div className="text-7xl mb-6 group-hover:scale-110 transition-transform duration-500">
                 🍽️
               </div>
-              
+
               {/* Başlık */}
               <h2 className="text-3xl font-bold text-white mb-3 group-hover:text-orange-300 transition-colors">
                 Restoran
               </h2>
-              
+
               {/* Açıklama */}
               <p className="text-slate-400 text-base mb-6 group-hover:text-slate-300 transition-colors">
                 Sipariş yönetimi ve raporlama
               </p>
-              
+
               {/* Alt Çizgi */}
               <div className="h-1 w-0 group-hover:w-full bg-gradient-to-r from-orange-500 to-orange-600 transition-all duration-500 rounded-full mx-auto"></div>
-              
+
               {/* Ok İkonu */}
               <div className="mt-6 flex items-center justify-center text-orange-400 font-semibold opacity-0 group-hover:opacity-100 transition-all duration-300">
                 <span className="mr-2">Giriş Yap</span>
@@ -135,27 +135,27 @@ export default function HomePage() {
           >
             {/* Arka Plan Efekti */}
             <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 to-blue-500/0 group-hover:from-blue-500/10 group-hover:to-transparent transition-all duration-500"></div>
-            
+
             {/* İçerik */}
             <div className="relative z-10">
               {/* İkon */}
               <div className="text-7xl mb-6 group-hover:scale-110 transition-transform duration-500">
                 🏍️
               </div>
-              
+
               {/* Başlık */}
               <h2 className="text-3xl font-bold text-white mb-3 group-hover:text-blue-300 transition-colors">
                 Kurye
               </h2>
-              
+
               {/* Açıklama */}
               <p className="text-slate-400 text-base mb-6 group-hover:text-slate-300 transition-colors">
                 Paket teslimatı ve takip sistemi
               </p>
-              
+
               {/* Alt Çizgi */}
               <div className="h-1 w-0 group-hover:w-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-500 rounded-full mx-auto"></div>
-              
+
               {/* Ok İkonu */}
               <div className="mt-6 flex items-center justify-center text-blue-400 font-semibold opacity-0 group-hover:opacity-100 transition-all duration-300">
                 <span className="mr-2">Giriş Yap</span>
