@@ -22,7 +22,7 @@ interface Package {
   status: 'waiting' | 'assigned' | 'picking_up' | 'on_the_way' | 'delivered' | 'cancelled'
   content?: string
   courier_id?: string | null
-  payment_method?: 'cash' | 'card' | null
+  payment_method?: 'cash' | 'card' | 'iban' | null
   platform?: string
   created_at?: string
   assigned_at?: string
@@ -60,7 +60,10 @@ export default function KuryePage() {
   const [deliveredCount, setDeliveredCount] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
   const [isUpdating, setIsUpdating] = useState<Set<number>>(new Set())
-  const [selectedPaymentMethods, setSelectedPaymentMethods] = useState<{ [key: number]: 'cash' | 'card' }>({})
+  const [selectedPaymentMethods, setSelectedPaymentMethods] = useState<{ [key: number]: 'cash' | 'card' | 'iban' }>({})
+  const [showIbanModal, setShowIbanModal] = useState(false)
+  const [ibanPackageId, setIbanPackageId] = useState<number | null>(null)
+  const [ibanPackageAmount, setIbanPackageAmount] = useState<number>(0)
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [cashTotal, setCashTotal] = useState(0)
@@ -1140,6 +1143,17 @@ export default function KuryePage() {
       return
     }
 
+    // IBAN seçildiyse modal aç
+    if (paymentMethod === 'iban') {
+      const pkg = packages.find(p => p.id === packageId)
+      if (pkg) {
+        setIbanPackageId(packageId)
+        setIbanPackageAmount(pkg.amount)
+        setShowIbanModal(true)
+      }
+      return
+    }
+
     setIsUpdating(prev => new Set(prev).add(packageId))
 
     try {
@@ -1191,6 +1205,57 @@ export default function KuryePage() {
         return newSet
       })
     }
+  }
+
+  // IBAN ile ödeme gönderildi
+  const handleIbanPaymentSent = async () => {
+    if (!ibanPackageId) return
+
+    setIsUpdating(prev => new Set(prev).add(ibanPackageId))
+    setShowIbanModal(false)
+
+    try {
+      const { error } = await supabase
+        .from('packages')
+        .update({
+          status: 'delivered',
+          delivered_at: new Date().toISOString(),
+          payment_method: 'iban'
+        })
+        .eq('id', ibanPackageId)
+
+      if (error) throw error
+
+      // Yerel state'i anında güncelle - paketi listeden çıkar
+      setPackages(prev => prev.filter(pkg => pkg.id !== ibanPackageId))
+
+      // İstatistikleri güncelle
+      setDeliveredCount(prev => prev + 1)
+
+      setSuccessMessage('✅ IBAN ödemesi kaydedildi, paket teslim edildi!')
+      setTimeout(() => setSuccessMessage(''), 2000)
+
+    } catch (error: any) {
+      console.error('IBAN teslim hatası:', error)
+      setErrorMessage('❌ Hata: ' + error.message)
+      setTimeout(() => setErrorMessage(''), 3000)
+    } finally {
+      setIsUpdating(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(ibanPackageId)
+        return newSet
+      })
+      setIbanPackageId(null)
+      setIbanPackageAmount(0)
+    }
+  }
+
+  // IBAN kopyalama fonksiyonu
+  const copyIbanToClipboard = () => {
+    const iban = 'TR79 0001 0090 1065 9157 6050 01'
+    navigator.clipboard.writeText(iban.replace(/\s/g, ''))
+    setSuccessMessage('✅ IBAN kopyalandı!')
+    setTimeout(() => setSuccessMessage(''), 2000)
   }
 
   // Konum güncellemesi fonksiyonu
@@ -1409,8 +1474,19 @@ export default function KuryePage() {
     }
   }, [isLoggedIn])
 
-  const handleUpdateStatus = async (packageId: number, nextStatus: Package['status'], additionalData = {}) => {
+  const handleUpdateStatus = async (packageId: number, nextStatus: Package['status'], additionalData: any = {}) => {
     try {
+      // IBAN seçildiyse ve delivered durumuna geçiliyorsa modal aç
+      if (nextStatus === 'delivered' && additionalData.payment_method === 'iban') {
+        const pkg = packages.find(p => p.id === packageId)
+        if (pkg) {
+          setIbanPackageId(packageId)
+          setIbanPackageAmount(pkg.amount)
+          setShowIbanModal(true)
+        }
+        return
+      }
+
       setIsUpdating(prev => new Set(prev).add(packageId))
 
       // Basit UPDATE
@@ -1422,11 +1498,30 @@ export default function KuryePage() {
       if (error) throw error
 
       // Yerel state'i anında güncelle
-      setPackages(prev => prev.map(pkg =>
-        pkg.id === packageId
-          ? { ...pkg, status: nextStatus, ...additionalData }
-          : pkg
-      ))
+      if (nextStatus === 'delivered') {
+        // Teslim edilenler listeden çıkar
+        setPackages(prev => prev.filter(pkg => pkg.id !== packageId))
+        setDeliveredCount(prev => prev + 1)
+        
+        // İstatistikleri güncelle
+        const pkg = packages.find(p => p.id === packageId)
+        if (pkg && additionalData.payment_method) {
+          if (additionalData.payment_method === 'cash') {
+            setCashTotal(prev => prev + pkg.amount)
+          } else if (additionalData.payment_method === 'card') {
+            setCardTotal(prev => prev + pkg.amount)
+          }
+        }
+        
+        fetchTodayDeliveredPackages()
+        fetchLeaderboard()
+      } else {
+        setPackages(prev => prev.map(pkg =>
+          pkg.id === packageId
+            ? { ...pkg, status: nextStatus, ...additionalData }
+            : pkg
+        ))
+      }
 
       setSuccessMessage('✅ Durum güncellendi!')
       setTimeout(() => setSuccessMessage(''), 2000)
@@ -2002,7 +2097,7 @@ export default function KuryePage() {
 
                     {pkg.status === 'on_the_way' && (
                       <div className="space-y-2">
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-3 gap-2">
                           <button
                             onClick={() => setSelectedPaymentMethods({ ...selectedPaymentMethods, [pkg.id]: 'cash' })}
                             className={`py-2 rounded-lg border font-medium text-sm transition-colors ${selectedPaymentMethods[pkg.id] === 'cash'
@@ -2010,7 +2105,7 @@ export default function KuryePage() {
                               : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600'
                               }`}
                           >
-                            Nakit
+                            💵 Nakit
                           </button>
                           <button
                             onClick={() => setSelectedPaymentMethods({ ...selectedPaymentMethods, [pkg.id]: 'card' })}
@@ -2019,7 +2114,16 @@ export default function KuryePage() {
                               : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600'
                               }`}
                           >
-                            Kart
+                            💳 Kart
+                          </button>
+                          <button
+                            onClick={() => setSelectedPaymentMethods({ ...selectedPaymentMethods, [pkg.id]: 'iban' })}
+                            className={`py-2 rounded-lg border font-medium text-sm transition-colors ${selectedPaymentMethods[pkg.id] === 'iban'
+                              ? 'bg-purple-600 border-purple-600 text-white'
+                              : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600'
+                              }`}
+                          >
+                            🏦 IBAN
                           </button>
                         </div>
                         <button
@@ -2127,7 +2231,7 @@ export default function KuryePage() {
                       <div className="text-right">
                         <p className="text-xl font-bold text-green-400">{pkg.amount}₺</p>
                         <p className="text-xs text-slate-500">
-                          {pkg.payment_method === 'cash' ? '💵 Nakit' : '💳 Kart'}
+                          {pkg.payment_method === 'cash' ? '💵 Nakit' : pkg.payment_method === 'iban' ? '🏦 IBAN' : '💳 Kart'}
                         </p>
                       </div>
                     </div>
@@ -2303,7 +2407,7 @@ export default function KuryePage() {
                             <div className="text-right">
                               <p className="text-lg font-bold text-green-400">{pkg.amount}₺</p>
                               <p className="text-xs text-slate-500">
-                                {pkg.payment_method === 'cash' ? '💵 Nakit' : '💳 Kart'}
+                                {pkg.payment_method === 'cash' ? '💵 Nakit' : pkg.payment_method === 'iban' ? '🏦 IBAN' : '💳 Kart'}
                               </p>
                             </div>
                           </div>
@@ -2504,6 +2608,86 @@ export default function KuryePage() {
           </div>
         </div>
       )}
+
+      {/* IBAN ÖDEME MODAL */}
+      {showIbanModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="bg-slate-900 rounded-2xl border-2 border-purple-500/50 shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="sticky top-0 bg-slate-900 border-b border-slate-800 p-4 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-white">💳 Ödeme Bilgileri</h2>
+              <button
+                onClick={() => {
+                  setShowIbanModal(false)
+                  setIbanPackageId(null)
+                  setIbanPackageAmount(0)
+                }}
+                className="text-slate-400 hover:text-white transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-6">
+              {/* Tutar */}
+              <div className="text-center bg-gradient-to-br from-purple-600 to-blue-600 p-6 rounded-xl">
+                <p className="text-slate-200 text-sm mb-2">Ödenecek Tutar</p>
+                <p className="text-white text-4xl font-bold">{ibanPackageAmount}₺</p>
+              </div>
+
+              {/* İsim */}
+              <div className="bg-slate-800 p-4 rounded-xl">
+                <p className="text-slate-400 text-xs mb-1">Alıcı Adı</p>
+                <p className="text-white font-semibold text-lg">İbrahim Okan Özdemir</p>
+              </div>
+
+              {/* IBAN */}
+              <div className="bg-slate-800 p-4 rounded-xl">
+                <p className="text-slate-400 text-xs mb-2">IBAN Numarası</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-white font-mono text-sm flex-1 break-all">
+                    TR79 0001 0090 1065 9157 6050 01
+                  </p>
+                  <button
+                    onClick={copyIbanToClipboard}
+                    className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex-shrink-0"
+                  >
+                    📋 Kopyala
+                  </button>
+                </div>
+              </div>
+
+              {/* QR Kod */}
+              <div className="bg-white p-6 rounded-xl flex flex-col items-center">
+                <img 
+                  src="/iban-qr.png" 
+                  alt="IBAN QR Kod" 
+                  className="w-64 h-64 object-contain"
+                />
+              </div>
+              <p className="text-center text-slate-400 text-xs -mt-3">
+                QR kodu okutarak IBAN'a ödeme yapabilirsiniz
+              </p>
+
+              {/* Onay Butonu */}
+              <button
+                onClick={handleIbanPaymentSent}
+                disabled={isUpdating.has(ibanPackageId || 0)}
+                className="w-full py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white text-lg font-bold rounded-xl transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isUpdating.has(ibanPackageId || 0) ? 'İşleniyor...' : '✅ Ödeme Gönderildi'}
+              </button>
+
+              <p className="text-center text-slate-500 text-xs">
+                Bu butona bastığınızda paket "Teslim Edildi" olarak işaretlenecektir
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 
@@ -2569,7 +2753,9 @@ function SummaryList({ courierId, calculateDuration }: { courierId: string, calc
         <div key={p.id} className="bg-slate-800/50 p-3 rounded-lg flex justify-between items-center">
           <div>
             <p className="font-medium text-sm text-white">{p.customer_name}</p>
-            <p className="text-xs text-slate-400">{p.payment_method === 'cash' ? 'Nakit' : 'Kart'}</p>
+            <p className="text-xs text-slate-400">
+              {p.payment_method === 'cash' ? 'Nakit' : p.payment_method === 'iban' ? 'IBAN' : 'Kart'}
+            </p>
           </div>
           <div className="text-right">
             <p className="text-xs text-blue-400 font-medium">{calculateDuration(p.picked_up_at, p.delivered_at)}</p>

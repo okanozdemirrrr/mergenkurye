@@ -26,7 +26,7 @@ interface Package {
   status: string
   content?: string
   courier_id?: string | null
-  payment_method?: 'cash' | 'card' | null
+  payment_method?: 'cash' | 'card' | 'iban' | null
   restaurant_id?: number | string | null
   restaurant?: Restaurant | null
   platform?: string
@@ -170,10 +170,12 @@ export function LiveOrdersView({
                       <div className="flex justify-between items-center">
                         <span className={`px-2 py-1 rounded text-xs font-medium ${
                           pkg.payment_method === 'cash' 
-                            ? 'bg-green-50 text-green-700' 
+                            ? 'bg-green-50 text-green-700'
+                            : pkg.payment_method === 'iban'
+                            ? 'bg-purple-50 text-purple-700'
                             : 'bg-orange-50 text-orange-700'
                         }`}>
-                          {pkg.payment_method === 'cash' ? '💵 Nakit' : '💳 Kart'}
+                          {pkg.payment_method === 'cash' ? '💵 Nakit' : pkg.payment_method === 'iban' ? '🏦 IBAN' : '💳 Kart'}
                         </span>
                       </div>
                     </div>

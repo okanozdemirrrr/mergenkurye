@@ -194,9 +194,11 @@ export function HistoryTab({
                                     <span className={`px-3 py-1 rounded text-sm font-medium ${
                                         selectedPackage.payment_method === 'cash'
                                             ? 'bg-green-900/50 text-green-300'
+                                            : selectedPackage.payment_method === 'iban'
+                                            ? 'bg-purple-900/50 text-purple-300'
                                             : 'bg-orange-900/50 text-orange-300'
                                     }`}>
-                                        {selectedPackage.payment_method === 'cash' ? '💵 Nakit' : '💳 Kart'}
+                                        {selectedPackage.payment_method === 'cash' ? '💵 Nakit' : selectedPackage.payment_method === 'iban' ? '🏦 IBAN' : '💳 Kart'}
                                     </span>
                                 </div>
                             </div>
@@ -479,9 +481,11 @@ export function HistoryTab({
                                         ) : (
                                             <span className={`px-2 py-1 rounded text-xs font-medium ${pkg.payment_method === 'cash'
                                                 ? 'bg-green-100 text-green-700'
+                                                : pkg.payment_method === 'iban'
+                                                ? 'bg-purple-100 text-purple-700'
                                                 : 'bg-orange-100 text-orange-700'
                                                 }`}>
-                                                {pkg.payment_method === 'cash' ? '💵 Nakit' : '💳 Kart'}
+                                                {pkg.payment_method === 'cash' ? '💵 Nakit' : pkg.payment_method === 'iban' ? '🏦 IBAN' : '💳 Kart'}
                                             </span>
                                         )}
                                     </td>

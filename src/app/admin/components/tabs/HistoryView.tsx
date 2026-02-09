@@ -21,7 +21,7 @@ interface Package {
   delivery_address: string
   amount: number
   status: string
-  payment_method?: 'cash' | 'card' | null
+  payment_method?: 'cash' | 'card' | 'iban' | null
   restaurant?: Restaurant | null
   platform?: string
   delivered_at?: string
@@ -73,6 +73,7 @@ export function HistoryView({
   const totalAmount = filteredHistory.reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
   const cashAmount = filteredHistory.filter(p => p.payment_method === 'cash').reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
   const cardAmount = filteredHistory.filter(p => p.payment_method === 'card').reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
+  const ibanAmount = filteredHistory.filter(p => p.payment_method === 'iban').reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
 
   // Sayfalama hesaplamaları
   const totalPages = Math.ceil(filteredHistory.length / HISTORY_ITEMS_PER_PAGE)
@@ -221,12 +222,16 @@ export function HistoryView({
           <div className="text-xl font-bold text-green-700">{totalAmount.toFixed(2)} ₺</div>
         </div>
         <div className="bg-emerald-50 p-3 rounded-xl">
-          <div className="text-xs text-emerald-600 font-medium">Nakit</div>
+          <div className="text-xs text-emerald-600 font-medium">💵 Nakit</div>
           <div className="text-xl font-bold text-emerald-700">{cashAmount.toFixed(2)} ₺</div>
         </div>
         <div className="bg-sky-50 p-3 rounded-xl">
-          <div className="text-xs text-sky-600 font-medium">Kart</div>
+          <div className="text-xs text-sky-600 font-medium">💳 Kart</div>
           <div className="text-xl font-bold text-sky-700">{cardAmount.toFixed(2)} ₺</div>
+        </div>
+        <div className="bg-purple-50 p-3 rounded-xl">
+          <div className="text-xs text-purple-600 font-medium">🏦 IBAN</div>
+          <div className="text-xl font-bold text-purple-700">{ibanAmount.toFixed(2)} ₺</div>
         </div>
       </div>
 
@@ -285,10 +290,12 @@ export function HistoryView({
                   <td className="py-3 px-4">
                     <span className={`px-2 py-1 rounded text-xs font-medium ${
                       pkg.payment_method === 'cash' 
-                        ? 'bg-green-100 text-green-700' 
+                        ? 'bg-green-100 text-green-700'
+                        : pkg.payment_method === 'iban'
+                        ? 'bg-purple-100 text-purple-700'
                         : 'bg-orange-100 text-orange-700'
                     }`}>
-                      {pkg.payment_method === 'cash' ? '💵 Nakit' : '💳 Kart'}
+                      {pkg.payment_method === 'cash' ? '💵 Nakit' : pkg.payment_method === 'iban' ? '🏦 IBAN' : '💳 Kart'}
                     </span>
                   </td>
                 </tr>

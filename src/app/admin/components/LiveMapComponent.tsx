@@ -38,9 +38,72 @@ export function LiveMapComponent({ packages, couriers, restaurants }: LiveMapCom
   const [isClient, setIsClient] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [mapCenter] = useState<[number, number]>([38.3552, 38.3095]) // Malatya merkez
+  const [todayHeatmapPoints, setTodayHeatmapPoints] = useState<Array<{ lat: number, lng: number }>>([])
+
+  // Bugünün tüm siparişlerinin koordinatlarını çek
+  useEffect(() => {
+    console.log('🗺️ Yoğunluk noktaları effect çalıştı, isClient:', isClient)
+    
+    if (!isClient) {
+      console.log('⏳ Client henüz hazır değil, bekleniyor...')
+      return
+    }
+
+    const fetchTodayOrders = async () => {
+      try {
+        console.log('🗺️ fetchTodayOrders başladı')
+        
+        // Test için: Son 30 günün siparişlerini göster
+        const thirtyDaysAgo = new Date()
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+        const { supabase } = await import('../../lib/supabase')
+        console.log('🗺️ Supabase import edildi')
+        
+        const { data, error } = await supabase
+          .from('packages')
+          .select('latitude, longitude, created_at')
+          .gte('created_at', thirtyDaysAgo.toISOString())
+
+        console.log('🗺️ Supabase sorgusu tamamlandı')
+        
+        if (error) {
+          console.error('❌ Supabase hatası:', error)
+          throw error
+        }
+
+        console.log('🗺️ Çekilen tüm paketler:', data?.length || 0)
+        console.log('🗺️ İlk 3 paket:', data?.slice(0, 3))
+
+        const points = (data || [])
+          .filter(pkg => {
+            const hasCoords = pkg.latitude && pkg.longitude
+            if (!hasCoords) {
+              console.log('❌ Koordinatsız paket:', pkg)
+            }
+            return hasCoords
+          })
+          .map(pkg => ({ lat: pkg.latitude!, lng: pkg.longitude! }))
+
+        setTodayHeatmapPoints(points)
+        console.log('✅ Yoğunluk noktaları set edildi:', points.length)
+        console.log('🗺️ İlk 3 nokta:', points.slice(0, 3))
+      } catch (error) {
+        console.error('❌ Yoğunluk noktaları yüklenemedi:', error)
+      }
+    }
+
+    console.log('🗺️ fetchTodayOrders çağrılıyor...')
+    fetchTodayOrders()
+
+    // Her 5 dakikada bir yenile
+    const interval = setInterval(fetchTodayOrders, 300000)
+    return () => clearInterval(interval)
+  }, [isClient])
 
   // Client-side rendering kontrolü
   useEffect(() => {
+    console.log('🗺️ setIsClient(true) çağrılıyor')
     setIsClient(true)
     
     // Leaflet CSS'ini dinamik olarak yükle
@@ -406,6 +469,35 @@ export function LiveMapComponent({ packages, couriers, restaurants }: LiveMapCom
                     </div>
                   </Popup>
                 </Marker>
+              )
+            })}
+
+            {/* Yoğunluk İzleme Noktaları - Bugünün tüm siparişleri */}
+            {todayHeatmapPoints.map((point, index) => {
+              const heatmapIcon = L.divIcon({
+                html: `
+                  <div style="
+                    width: 8px;
+                    height: 8px;
+                    background: #ef4444;
+                    border-radius: 50%;
+                    opacity: 0.7;
+                    pointer-events: none;
+                    box-shadow: 0 0 4px rgba(239, 68, 68, 0.5);
+                  "></div>
+                `,
+                className: '',
+                iconSize: [8, 8],
+                iconAnchor: [4, 4]
+              })
+
+              return (
+                <Marker
+                  key={`heatmap-${index}`}
+                  position={[point.lat, point.lng]}
+                  icon={heatmapIcon}
+                  interactive={false}
+                />
               )
             })}
           </MapContainer>

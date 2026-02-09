@@ -169,7 +169,7 @@ export default function LoginPage() {
 
           {/* Alt Bilgi */}
           <div className="text-center mt-12 text-slate-500 text-sm">
-            <p>© 2026 Mergen Kurye Sistemi - Tüm hakları saklıdır</p>
+            <p>© 2026 Mergen Teknoloji - Tüm hakları saklıdır</p>
           </div>
         </div>
       </div>

@@ -155,9 +155,11 @@ export function OrderActivityFeed({
                                                 <span className={`text-[8px] px-2 py-1 rounded font-medium ${
                                                     pkg.payment_method === 'cash'
                                                         ? 'bg-green-50 text-green-700'
+                                                        : pkg.payment_method === 'iban'
+                                                        ? 'bg-purple-50 text-purple-700'
                                                         : 'bg-orange-50 text-orange-700'
                                                 }`}>
-                                                    {pkg.payment_method === 'cash' ? '💵 Nakit' : '💳 Kart'}
+                                                    {pkg.payment_method === 'cash' ? '💵 Nakit' : pkg.payment_method === 'iban' ? '🏦 IBAN' : '💳 Kart'}
                                                 </span>
                                             </div>
                                         </div>

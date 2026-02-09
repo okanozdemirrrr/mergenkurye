@@ -151,6 +151,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 Geçmiş Siparişler
               </Link>
 
+              <Link
+                href="/admin/istatistikler"
+                onClick={() => setShowMenu(false)}
+                className={`block w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${
+                  isActive('/admin/istatistikler') ? 'bg-orange-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <span className="mr-3">📊</span>
+                Genel İstatistikler
+              </Link>
+
               {/* Kuryeler Submenu */}
               <div>
                 <button

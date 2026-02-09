@@ -170,7 +170,7 @@ export default function HomePage() {
         {/* Alt Bilgi */}
         <div className="text-center">
           <p className="text-slate-500 text-sm mb-2">
-            © 2026 Mergen Kurye Sistemi - Tüm hakları saklıdır
+            © 2026 Mergen Teknoloji - Tüm hakları saklıdır
           </p>
           <p className="text-slate-600 text-xs">
             Güvenli ve hızlı teslimat çözümleri

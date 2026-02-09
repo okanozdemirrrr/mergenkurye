@@ -152,9 +152,11 @@ export function OrderDrawer({
                                     <span className={`px-3 py-1 rounded text-sm font-medium ${
                                         selectedPackage.payment_method === 'cash'
                                             ? 'bg-green-900/50 text-green-300'
+                                            : selectedPackage.payment_method === 'iban'
+                                            ? 'bg-purple-900/50 text-purple-300'
                                             : 'bg-orange-900/50 text-orange-300'
                                     }`}>
-                                        {selectedPackage.payment_method === 'cash' ? '💵 Nakit' : '💳 Kart'}
+                                        {selectedPackage.payment_method === 'cash' ? '💵 Nakit' : selectedPackage.payment_method === 'iban' ? '🏦 IBAN' : '💳 Kart'}
                                     </span>
                                 </div>
                             </div>
@@ -357,9 +359,11 @@ export function OrderDrawer({
                                             <span className={`text-[9px] px-2 py-1 rounded font-medium ${
                                                 pkg.payment_method === 'cash'
                                                     ? 'bg-green-50 text-green-700'
+                                                    : pkg.payment_method === 'iban'
+                                                    ? 'bg-purple-50 text-purple-700'
                                                     : 'bg-orange-50 text-orange-700'
                                             }`}>
-                                                {pkg.payment_method === 'cash' ? '💵 Nakit' : '💳 Kart'}
+                                                {pkg.payment_method === 'cash' ? '💵 Nakit' : pkg.payment_method === 'iban' ? '🏦 IBAN' : '💳 Kart'}
                                             </span>
                                         </div>
                                     </div>
