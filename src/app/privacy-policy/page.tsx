@@ -11,7 +11,7 @@ export default function PrivacyPolicyPage() {
         {/* Header */}
         <div className="border-b-4 border-orange-500 pb-4 mb-6">
           <h1 className="text-4xl font-bold text-orange-600">🔒 Gizlilik Politikası</h1>
-          <p className="text-slate-600 italic mt-2">Son Güncelleme: 5 Şubat 2026</p>
+          <p className="text-slate-600 italic mt-2">Son Güncelleme: 9 Şubat 2026</p>
         </div>
 
         {/* Important Notice */}
@@ -263,7 +263,7 @@ export default function PrivacyPolicyPage() {
 
           {/* Final Notice */}
           <div className="bg-orange-50 border-l-4 border-orange-500 p-6 mt-8">
-            <p><strong>Son Güncelleme:</strong> 5 Şubat 2026</p>
+            <p><strong>Son Güncelleme:</strong> 9 Şubat 2026</p>
             <p><strong>Versiyon:</strong> 1.0.0</p>
             <p><strong>Geçerlilik:</strong> Bu politika, uygulamanın tüm sürümleri için geçerlidir.</p>
           </div>
