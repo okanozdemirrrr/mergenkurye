@@ -1,0 +1,52 @@
+2026/02/11-18:08:20.924 5c20 Reusing MANIFEST C:\Users\90505\Desktop\kurye_projesi\whatsapp-bot\whatsapp-session\session\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/02/11-18:08:20.924 5c20 Recovering log #427
+2026/02/11-18:08:20.925 5c20 Reusing old log C:\Users\90505\Desktop\kurye_projesi\whatsapp-bot\whatsapp-session\session\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/000427.log 
+2026/02/11-18:08:20.925 5c20 Delete type=2 #411
+2026/02/11-18:08:20.925 5c20 Delete type=2 #415
+2026/02/11-18:08:20.925 5c20 Delete type=2 #417
+2026/02/11-18:08:20.925 5c20 Delete type=2 #420
+2026/02/11-18:08:20.925 5c20 Delete type=2 #422
+2026/02/11-18:08:20.925 5c20 Delete type=2 #424
+2026/02/11-18:08:20.925 5c20 Delete type=2 #433
+2026/02/11-18:08:20.925 5c20 Delete type=2 #434
+2026/02/11-18:08:20.929 6dc0 Level-0 table #435: started
+2026/02/11-18:08:20.932 6dc0 Level-0 table #435: 10432 bytes OK
+2026/02/11-18:08:20.934 6dc0 Delete type=0 #427
+2026/02/11-18:08:20.939 5c20 Manual compaction at level-0 from '\x00\x1c\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x1d\x00\x00\x00' @ 0 : 0; will stop at '\x00\x10\x00\x00\x05' @ 2512997 : 0
+2026/02/11-18:08:20.939 5c20 Compacting 2@0 + 5@1 files
+2026/02/11-18:08:21.014 5c20 Generated table #436@0: 149222 keys, 2326892 bytes
+2026/02/11-18:08:21.070 5c20 Generated table #437@0: 55782 keys, 2232369 bytes
+2026/02/11-18:08:21.169 5c20 Generated table #438@0: 34277 keys, 2249766 bytes
+2026/02/11-18:08:21.207 5c20 Generated table #439@0: 56948 keys, 1321358 bytes
+2026/02/11-18:08:21.210 5c20 Generated table #440@0: 342 keys, 6547 bytes
+2026/02/11-18:08:21.210 5c20 Compacted 2@0 + 5@1 files => 8136932 bytes
+2026/02/11-18:08:21.212 5c20 compacted to: files[ 0 5 11 0 0 0 0 ]
+2026/02/11-18:08:21.212 5c20 Delete type=2 #435
+2026/02/11-18:08:21.212 5c20 Manual compaction at level-0 from '\x00\x10\x00\x00\x05' @ 2512997 : 0 .. '\x00\x1d\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/02/11-18:08:21.213 5c20 Level-0 table #442: started
+2026/02/11-18:08:21.222 5c20 Level-0 table #442: 3959 bytes OK
+2026/02/11-18:08:21.223 5c20 Delete type=2 #426
+2026/02/11-18:08:21.223 5c20 Delete type=2 #428
+2026/02/11-18:08:21.224 5c20 Delete type=2 #429
+2026/02/11-18:08:21.224 5c20 Delete type=2 #430
+2026/02/11-18:08:21.224 5c20 Delete type=2 #431
+2026/02/11-18:08:21.224 5c20 Delete type=2 #432
+2026/02/11-18:08:21.224 5c20 Delete type=0 #434
+2026/02/11-18:08:21.225 5c20 Manual compaction at level-0 from '\x00\x1a\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x1b\x00\x00\x00' @ 0 : 0; will stop at '\x00\x1f\x0a\x02\x03\x00\x00\x00\x00\x00\x00\xf0?' @ 2513581 : 1
+2026/02/11-18:08:21.225 5c20 Compacting 1@0 + 5@1 files
+2026/02/11-18:08:21.328 5c20 Generated table #443@0: 149222 keys, 2326928 bytes
+2026/02/11-18:08:21.393 5c20 Generated table #444@0: 55782 keys, 2232369 bytes
+2026/02/11-18:08:21.449 5c20 Generated table #445@0: 34277 keys, 2249766 bytes
+2026/02/11-18:08:21.495 5c20 Generated table #446@0: 56948 keys, 1321358 bytes
+2026/02/11-18:08:21.507 5c20 Generated table #447@0: 163 keys, 2646 bytes
+2026/02/11-18:08:21.507 5c20 Compacted 1@0 + 5@1 files => 8133067 bytes
+2026/02/11-18:08:21.508 5c20 compacted to: files[ 0 5 11 0 0 0 0 ]
+2026/02/11-18:08:21.508 5c20 Manual compaction at level-0 from '\x00\x1f\x0a\x02\x03\x00\x00\x00\x00\x00\x00\xf0?' @ 2513581 : 1 .. '\x00\x1b\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/02/11-18:08:21.509 5c20 Level-0 table #449: started
+2026/02/11-18:08:21.512 5c20 Level-0 table #449: 10610 bytes OK
+2026/02/11-18:08:21.513 5c20 Delete type=0 #441
+2026/02/11-18:08:21.520 5c20 Manual compaction at level-0 from '\x00\x16\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x17\x00\x00\x00' @ 0 : 0; will stop at '\x00!\x06 \x03\x00\x00\x00\x00\x00\x80V@\x00\x01\x0b\x00I\x00d\x00T\x00t\x00l\x009\x000\x00D\x00a\x00y\x00s' @ 2514192 : 1
+2026/02/11-18:08:21.520 5c20 Compacting 1@0 + 5@1 files
+2026/02/11-18:08:21.601 5c20 Generated table #450@0: 149386 keys, 2326424 bytes
+2026/02/11-18:08:21.647 5c20 Generated table #451@0: 55874 keys, 2232767 bytes
+2026/02/11-18:08:21.699 5c20 Generated table #452@0: 34295 keys, 2248319 bytes

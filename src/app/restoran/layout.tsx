@@ -7,6 +7,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
+import { App } from '@capacitor/app'
 import { supabase } from '../lib/supabase'
 import { RestoranProvider, useRestoran } from './RestoranProvider'
 
@@ -27,6 +28,35 @@ export default function RestoranLayout({ children }: { children: React.ReactNode
   useEffect(() => {
     setIsMounted(true)
   }, [])
+
+  // Android Back Button Handler
+  useEffect(() => {
+    if (typeof window === 'undefined' || !isMounted) return
+
+    let backButtonListener: any
+
+    const setupBackButton = async () => {
+      try {
+        backButtonListener = await App.addListener('backButton', ({ canGoBack }) => {
+          if (!canGoBack) {
+            App.minimizeApp()
+          } else {
+            window.history.back()
+          }
+        })
+      } catch (error) {
+        console.log('Back button listener eklenemedi:', error)
+      }
+    }
+
+    setupBackButton()
+
+    return () => {
+      if (backButtonListener) {
+        backButtonListener.remove()
+      }
+    }
+  }, [isMounted])
 
   useEffect(() => {
     const checkAuth = async () => {

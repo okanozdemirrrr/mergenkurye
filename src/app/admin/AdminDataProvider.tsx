@@ -92,6 +92,18 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
 
       if (error) throw error
 
+      console.log('📦 AdminDataProvider - Teslim edilmiş paketler:', {
+        count: data?.length || 0,
+        sample: data?.slice(0, 3).map(p => ({
+          id: p.id,
+          status: p.status,
+          amount: p.amount,
+          payment_method: p.payment_method,
+          delivered_at: p.delivered_at,
+          courier_id: p.courier_id
+        }))
+      })
+
       const transformedData = (data || []).map((pkg: any) => ({
         ...pkg,
         restaurant: pkg.restaurants,
@@ -112,6 +124,11 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
             ? new Date(b.delivered_at).getTime()
             : 0
         return dateB - dateA
+      })
+
+      console.log('📦 AdminDataProvider - Transform sonrası:', {
+        count: transformedData.length,
+        deliveredCount: transformedData.filter(p => p.status === 'delivered').length
       })
 
       setDeliveredPackages(transformedData)

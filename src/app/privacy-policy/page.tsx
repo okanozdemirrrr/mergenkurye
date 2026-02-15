@@ -138,6 +138,47 @@ export default function PrivacyPolicyPage() {
                   <li><strong>Hesap Yönetimi:</strong> Kullanıcı profilini yönetmek</li>
                 </ul>
               </div>
+
+              {/* 2.6 Financial Account Info */}
+              <div>
+                <h3 className="text-xl font-semibold text-orange-600 mb-3">2.6. 💳 Finansal Hesap Bilgileri</h3>
+                <p className="font-semibold mb-2">Toplanan Veri:</p>
+                <ul className="list-disc pl-6 space-y-1 mb-3">
+                  <li>Ödeme yöntemi tercihleri (Nakit, Kart, IBAN)</li>
+                  <li>Sipariş tutarları</li>
+                  <li>Ödeme geçmişi</li>
+                </ul>
+                <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mt-3 mb-3">
+                  <p className="font-semibold text-blue-900 mb-2">🏦 IBAN Tahsilat Bilgisi:</p>
+                  <p className="text-blue-800 text-sm">
+                    Müşteriler IBAN ile ödeme yapmayı seçtiklerinde, ödeme şu hesaba yapılır:
+                  </p>
+                  <div className="mt-2 bg-white rounded p-3 text-sm">
+                    <div><strong>Hesap Sahibi:</strong> İbrahim Okan Özdemir</div>
+                    <div><strong>IBAN:</strong> TR79 0001 0090 1065 9157 6050 01</div>
+                    <div><strong>Banka:</strong> Ziraat Bankası</div>
+                  </div>
+                  <p className="text-blue-700 text-xs mt-2">
+                    <strong>Önemli:</strong> Kredi kartı numaraları, CVV kodları veya banka hesap şifreleri 
+                    <strong> ASLA TOPLANMAZ</strong>. Sadece ödeme yöntemi tercihi ve tutar bilgisi saklanır.
+                  </p>
+                </div>
+                <p className="font-semibold mb-2">Kullanım Amacı:</p>
+                <ul className="list-disc pl-6 space-y-1">
+                  <li><strong>Ödeme Yönetimi:</strong> Sipariş ödemelerini takip etmek</li>
+                  <li><strong>Kurye Kazançları:</strong> Kuryelerin kazançlarını hesaplamak</li>
+                  <li><strong>Finansal Raporlama:</strong> Gelir istatistiklerini oluşturmak</li>
+                  <li><strong>Muhasebe:</strong> Yasal zorunluluklar için kayıt tutmak</li>
+                </ul>
+                <div className="bg-orange-50 border-l-4 border-orange-500 p-4 mt-3">
+                  <p className="font-semibold">Güvenlik Notu:</p>
+                  <p className="text-sm">
+                    Tüm finansal veriler SSL/TLS şifreleme ile korunur ve Supabase güvenli 
+                    veritabanında saklanır. Hassas finansal bilgiler (kart numaraları, şifreler) 
+                    hiçbir zaman sistemimizde depolanmaz.
+                  </p>
+                </div>
+              </div>
             </div>
           </section>
 
@@ -149,7 +190,9 @@ export default function PrivacyPolicyPage() {
               <li><strong>Konum Verileri:</strong> 90 gün boyunca saklanır, sonra otomatik silinir</li>
               <li><strong>Mikrofon Verileri:</strong> Hiç saklanmaz (anlık işlenir)</li>
               <li><strong>Hesap Bilgileri:</strong> Hesap aktif olduğu sürece saklanır</li>
+              <li><strong>Finansal Veriler:</strong> Ödeme yöntemi ve tutar bilgileri muhasebe için 5 yıl saklanır</li>
               <li><strong>Sipariş Geçmişi:</strong> Muhasebe ve raporlama için 5 yıl saklanır</li>
+              <li><strong>IBAN Bilgisi:</strong> Sistem tarafında sabit olarak saklanır (İbrahim Okan Özdemir - TR79 0001 0090 1065 9157 6050 01)</li>
             </ul>
 
             <h3 className="text-xl font-semibold text-orange-600 mb-3">3.2. Güvenlik Önlemleri</h3>

@@ -49,21 +49,26 @@ export default function IstatistiklerPage() {
     // Zaman filtresine göre başlangıç tarihi
     switch (timeFilter) {
       case 'today':
-        startDate = new Date(now.setHours(0, 0, 0, 0))
+        startDate = new Date()
+        startDate.setHours(0, 0, 0, 0)
         break
       case 'week':
-        startDate = new Date(now.setDate(now.getDate() - 7))
+        startDate = new Date()
+        startDate.setDate(startDate.getDate() - 7)
         break
       case 'month':
-        startDate = new Date(now.setMonth(now.getMonth() - 1))
+        startDate = new Date()
+        startDate.setMonth(startDate.getMonth() - 1)
         break
       default:
-        startDate = new Date(now.setHours(0, 0, 0, 0))
+        startDate = new Date()
+        startDate.setHours(0, 0, 0, 0)
     }
 
     console.log('📊 İstatistik Hesaplama:', {
       timeFilter,
       startDate: startDate.toISOString(),
+      now: now.toISOString(),
       totalDeliveredPackages: deliveredPackages.length,
       deliveredPackagesSample: deliveredPackages.slice(0, 3)
     })
@@ -122,16 +127,20 @@ export default function IstatistiklerPage() {
     // Zaman filtresine göre başlangıç tarihi
     switch (timeFilter) {
       case 'today':
-        startDate = new Date(now.setHours(0, 0, 0, 0))
+        startDate = new Date()
+        startDate.setHours(0, 0, 0, 0)
         break
       case 'week':
-        startDate = new Date(now.setDate(now.getDate() - 7))
+        startDate = new Date()
+        startDate.setDate(startDate.getDate() - 7)
         break
       case 'month':
-        startDate = new Date(now.setMonth(now.getMonth() - 1))
+        startDate = new Date()
+        startDate.setMonth(startDate.getMonth() - 1)
         break
       default:
-        startDate = new Date(now.setHours(0, 0, 0, 0))
+        startDate = new Date()
+        startDate.setHours(0, 0, 0, 0)
     }
 
     // Teslim edilmiş paketleri filtrele

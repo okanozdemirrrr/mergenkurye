@@ -44,6 +44,10 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     
+    <!-- Foreground Service İzinleri - Arka Plan Konum Takibi -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    
     <!-- Bildirim İzinleri -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     
@@ -52,4 +56,7 @@
     
     <!-- Mikrofon - Sesli Komut İçin -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    
+    <!-- Wake Lock - Arka Planda Çalışma -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 </manifest>

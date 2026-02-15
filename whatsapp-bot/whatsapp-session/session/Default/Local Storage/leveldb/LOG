@@ -1,0 +1,15 @@
+2026/02/11-18:13:15.002 54e8 Reusing MANIFEST C:\Users\90505\Desktop\kurye_projesi\whatsapp-bot\whatsapp-session\session\Default\Local Storage\leveldb/MANIFEST-000001
+2026/02/11-18:13:15.006 54e8 Recovering log #3
+2026/02/11-18:13:15.007 54e8 Reusing old log C:\Users\90505\Desktop\kurye_projesi\whatsapp-bot\whatsapp-session\session\Default\Local Storage\leveldb/000003.log 
+2026/02/11-18:15:15.669 67e4 Level-0 table #5: started
+2026/02/11-18:15:15.674 67e4 Level-0 table #5: 20542 bytes OK
+2026/02/11-18:15:15.677 67e4 Delete type=0 #3
+2026/02/11-20:24:21.351 67e4 Level-0 table #7: started
+2026/02/11-20:24:21.362 67e4 Level-0 table #7: 13062 bytes OK
+2026/02/11-20:24:21.365 67e4 Delete type=0 #4
+2026/02/12-01:15:08.274 67e4 Level-0 table #9: started
+2026/02/12-01:15:08.285 67e4 Level-0 table #9: 13622 bytes OK
+2026/02/12-01:15:08.288 67e4 Delete type=0 #6
+2026/02/12-22:57:51.248 67e4 Level-0 table #11: started
+2026/02/12-22:57:51.299 67e4 Level-0 table #11: 13501 bytes OK
+2026/02/12-22:57:51.323 67e4 Delete type=0 #8

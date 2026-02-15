@@ -21,6 +21,7 @@ interface LiveMapComponentProps {
   packages: Package[]
   couriers: Courier[]
   restaurants: Restaurant[]
+  onRefresh?: () => void
 }
 
 // Harita merkezini güncelleme komponenti
@@ -34,7 +35,7 @@ function MapUpdater({ center }: { center: [number, number] }) {
   return null
 }
 
-export function LiveMapComponent({ packages, couriers, restaurants }: LiveMapComponentProps) {
+export function LiveMapComponent({ packages, couriers, restaurants, onRefresh }: LiveMapComponentProps) {
   const [isClient, setIsClient] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [mapCenter] = useState<[number, number]>([38.3552, 38.3095]) // Malatya merkez
@@ -53,17 +54,19 @@ export function LiveMapComponent({ packages, couriers, restaurants }: LiveMapCom
       try {
         console.log('🗺️ fetchTodayOrders başladı')
         
-        // Test için: Son 30 günün siparişlerini göster
-        const thirtyDaysAgo = new Date()
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+        // Son 24 saatin siparişlerini göster
+        const twentyFourHoursAgo = new Date()
+        twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24)
 
         const { supabase } = await import('../../lib/supabase')
         console.log('🗺️ Supabase import edildi')
         
+        // Sadece aktif paketleri çek (teslim edilmemiş ve iptal edilmemiş)
         const { data, error } = await supabase
           .from('packages')
-          .select('latitude, longitude, created_at')
-          .gte('created_at', thirtyDaysAgo.toISOString())
+          .select('latitude, longitude, created_at, status')
+          .gte('created_at', twentyFourHoursAgo.toISOString())
+          .not('status', 'in', '("delivered","cancelled")')
 
         console.log('🗺️ Supabase sorgusu tamamlandı')
         
@@ -72,7 +75,7 @@ export function LiveMapComponent({ packages, couriers, restaurants }: LiveMapCom
           throw error
         }
 
-        console.log('🗺️ Çekilen tüm paketler:', data?.length || 0)
+        console.log('🗺️ Çekilen aktif paketler:', data?.length || 0)
         console.log('🗺️ İlk 3 paket:', data?.slice(0, 3))
 
         const points = (data || [])
@@ -85,9 +88,13 @@ export function LiveMapComponent({ packages, couriers, restaurants }: LiveMapCom
           })
           .map(pkg => ({ lat: pkg.latitude!, lng: pkg.longitude! }))
 
-        setTodayHeatmapPoints(points)
-        console.log('✅ Yoğunluk noktaları set edildi:', points.length)
-        console.log('🗺️ İlk 3 nokta:', points.slice(0, 3))
+        // Eski verileri temizle ve yeni verileri set et
+        setTodayHeatmapPoints([])
+        setTimeout(() => {
+          setTodayHeatmapPoints(points)
+          console.log('✅ Yoğunluk noktaları set edildi:', points.length)
+          console.log('🗺️ İlk 3 nokta:', points.slice(0, 3))
+        }, 100)
       } catch (error) {
         console.error('❌ Yoğunluk noktaları yüklenemedi:', error)
       }
@@ -96,8 +103,8 @@ export function LiveMapComponent({ packages, couriers, restaurants }: LiveMapCom
     console.log('🗺️ fetchTodayOrders çağrılıyor...')
     fetchTodayOrders()
 
-    // Her 5 dakikada bir yenile
-    const interval = setInterval(fetchTodayOrders, 300000)
+    // Her 2 dakikada bir yenile (daha sık güncelleme)
+    const interval = setInterval(fetchTodayOrders, 120000)
     return () => clearInterval(interval)
   }, [isClient])
 
@@ -116,6 +123,47 @@ export function LiveMapComponent({ packages, couriers, restaurants }: LiveMapCom
       document.head.appendChild(link)
     }
   }, [])
+
+  // Uygulama foreground'a geldiğinde haritayı yenile
+  useEffect(() => {
+    if (!isClient) return
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('🗺️ Uygulama foreground\'a geldi, harita yenileniyor...')
+        // Harita verilerini yeniden çek
+        const fetchData = async () => {
+          const twentyFourHoursAgo = new Date()
+          twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24)
+
+          const { supabase } = await import('../../lib/supabase')
+          
+          const { data, error } = await supabase
+            .from('packages')
+            .select('latitude, longitude, created_at, status')
+            .gte('created_at', twentyFourHoursAgo.toISOString())
+            .not('status', 'in', '("delivered","cancelled")')
+
+          if (!error && data) {
+            const points = data
+              .filter(pkg => pkg.latitude && pkg.longitude)
+              .map(pkg => ({ lat: pkg.latitude!, lng: pkg.longitude! }))
+            
+            // Eski verileri temizle
+            setTodayHeatmapPoints([])
+            setTimeout(() => {
+              setTodayHeatmapPoints(points)
+              console.log('✅ Harita yenilendi, nokta sayısı:', points.length)
+            }, 100)
+          }
+        }
+        fetchData()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [isClient])
 
   // SSR sırasında loading göster
   if (!isClient) {
@@ -339,6 +387,42 @@ export function LiveMapComponent({ packages, couriers, restaurants }: LiveMapCom
             title={isFullscreen ? 'Küçült' : 'Büyüt'}
           >
             {isFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+          </button>
+
+          {/* Manuel Temizlik Butonu */}
+          <button
+            onClick={async () => {
+              console.log('🧹 Manuel harita temizliği başlatıldı')
+              setTodayHeatmapPoints([])
+              
+              const twentyFourHoursAgo = new Date()
+              twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24)
+
+              const { supabase } = await import('../../lib/supabase')
+              
+              const { data, error } = await supabase
+                .from('packages')
+                .select('latitude, longitude, created_at, status')
+                .gte('created_at', twentyFourHoursAgo.toISOString())
+                .not('status', 'in', '("delivered","cancelled")')
+
+              if (!error && data) {
+                const points = data
+                  .filter(pkg => pkg.latitude && pkg.longitude)
+                  .map(pkg => ({ lat: pkg.latitude!, lng: pkg.longitude! }))
+                
+                setTimeout(() => {
+                  setTodayHeatmapPoints(points)
+                  console.log('✅ Manuel temizlik tamamlandı, nokta sayısı:', points.length)
+                }, 100)
+              }
+              
+              if (onRefresh) onRefresh()
+            }}
+            className="absolute top-4 right-16 z-[1000] bg-orange-600 hover:bg-orange-700 text-white px-3 py-2 rounded-lg shadow-lg transition-colors text-sm font-medium"
+            title="Haritayı Yenile"
+          >
+            🧹 Temizle
           </button>
 
           {/* Harita */}

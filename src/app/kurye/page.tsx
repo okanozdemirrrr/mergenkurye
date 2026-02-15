@@ -9,6 +9,8 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
+import { App } from '@capacitor/app'
 import { supabase } from '../lib/supabase'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '../lib/platformUtils'
 
@@ -76,8 +78,7 @@ export default function KuryePage() {
   const [leaderboard, setLeaderboard] = useState<CourierLeaderboard[]>([])
   const [myRank, setMyRank] = useState<number | null>(null)
   const [showLeaderboard, setShowLeaderboard] = useState(false) // Leaderboard modal
-  const [showMenu, setShowMenu] = useState(false) // Hamburger menü
-  const [activeTab, setActiveTab] = useState<'packages' | 'history' | 'earnings'>('packages') // Aktif sekme
+  const [activeTab, setActiveTab] = useState<'packages' | 'history' | 'earnings' | 'account'>('packages') // Aktif sekme
   const [courierName, setCourierName] = useState<string>('Kurye') // Giriş yapan kuryenin ismi
   const [todayDeliveredPackages, setTodayDeliveredPackages] = useState<Package[]>([]) // Bugünkü teslim edilenler
   const [filteredPackages, setFilteredPackages] = useState<Package[]>([]) // Filtrelenmiş paketler
@@ -178,6 +179,39 @@ export default function KuryePage() {
     setIsMounted(true)
   }, [])
 
+  // Android Back Button Handler
+  useEffect(() => {
+    if (typeof window === 'undefined' || !isMounted) return
+
+    let backButtonListener: any
+
+    const setupBackButton = async () => {
+      try {
+        // Android back button'a basıldığında
+        backButtonListener = await App.addListener('backButton', ({ canGoBack }) => {
+          if (!canGoBack) {
+            // Eğer geri gidilecek sayfa yoksa uygulamayı minimize et
+            App.minimizeApp()
+          } else {
+            // Geri gidilecek sayfa varsa tarayıcı history'sini kullan
+            window.history.back()
+          }
+        })
+      } catch (error) {
+        console.log('Back button listener eklenemedi (web ortamı olabilir):', error)
+      }
+    }
+
+    setupBackButton()
+
+    return () => {
+      // Cleanup
+      if (backButtonListener) {
+        backButtonListener.remove()
+      }
+    }
+  }, [isMounted])
+
 
   // ÇELİK GİBİ OTURUM KONTROLÜ - SAYFA YENİLENDİĞİNDE DIŞARI ATMA!
   useEffect(() => {
@@ -275,7 +309,7 @@ export default function KuryePage() {
         .select('amount, payment_method, status')
         .eq('courier_id', courierId)
         .eq('status', 'delivered')
-        .gte('created_at', todayStart.toISOString())
+        .gte('delivered_at', todayStart.toISOString())
 
       if (error) throw error
 
@@ -1258,47 +1292,333 @@ export default function KuryePage() {
     setTimeout(() => setSuccessMessage(''), 2000)
   }
 
-  // Konum güncellemesi fonksiyonu
-  const updateCourierLocation = async (courierId: string) => {
-    if (!navigator.geolocation) {
-      console.warn('⚠️ Tarayıcı konum servisini desteklemiyor')
-      return
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords
-
-        try {
-          const { error } = await supabase
-            .from('couriers')
-            .update({
-              last_location: {
-                latitude,
-                longitude,
-                updated_at: new Date().toISOString()
-              }
-            })
-            .eq('id', courierId)
-
+  // Arka plan konum takibi başlat
+  const startBackgroundLocationTracking = async (courierId: string) => {
+    try {
+      const { BackgroundGeolocationPlugin } = await import('@capacitor-community/background-geolocation')
+      
+      console.log('🔄 Arka plan konum takibi başlatılıyor...')
+      
+      // Watcher ekle
+      const watcherId = await BackgroundGeolocationPlugin.addWatcher(
+        {
+          backgroundMessage: 'Konumunuz Takip Ediliyor',
+          backgroundTitle: 'Mergen Kurye Aktif',
+          requestPermissions: true,
+          stale: false,
+          distanceFilter: 10 // 10 metre hareket ettiğinde güncelle
+        },
+        async (location, error) => {
           if (error) {
-            console.error('❌ Konum güncellenemedi:', error)
-          } else {
-            console.log('📍 Konum güncellendi:', { latitude, longitude })
+            console.error('❌ Arka plan konum hatası:', error)
+            return
           }
-        } catch (err) {
-          console.error('❌ Konum güncelleme hatası:', err)
+
+          if (!location) {
+            console.error('❌ Konum null geldi, işlenmiyor')
+            return
+          }
+
+          const { latitude, longitude, accuracy, speed, bearing, time } = location
+          const timestamp = time || Date.now()
+
+          console.log('📍 Arka plan konum alındı:', { latitude, longitude, accuracy })
+
+          // Aynı filtreleri uygula
+          // FİLTRE 1: NULL/ZERO
+          if (!latitude || !longitude || latitude === 0 || longitude === 0) {
+            console.error('❌ Arka plan FİLTRE 1: Geçersiz koordinatlar')
+            return
+          }
+
+          // FİLTRE 2: DOĞRULUK
+          if (accuracy && accuracy > 100) {
+            console.error('❌ Arka plan FİLTRE 2: Doğruluk düşük:', accuracy)
+            return
+          }
+
+          // FİLTRE 3: MALATYA SINIRI
+          const isInMalatya = 
+            latitude >= 38.0 && latitude <= 38.7 && 
+            longitude >= 37.8 && longitude <= 38.6
+
+          if (!isInMalatya) {
+            console.error('❌ Arka plan FİLTRE 3: Malatya dışı:', { latitude, longitude })
+            return
+          }
+
+          // FİLTRE 4: SIÇRAMA
+          if (lastValidLocationRef.current) {
+            const lastLoc = lastValidLocationRef.current
+            const distance = calculateDistance(lastLoc.latitude, lastLoc.longitude, latitude, longitude)
+            const timeDiff = (timestamp - lastLoc.timestamp) / 1000
+            const speedKmh = (distance / timeDiff) * 3.6
+
+            if (speedKmh > 120) {
+              console.error('❌ Arka plan FİLTRE 4: İmkansız hız:', speedKmh.toFixed(0), 'km/h')
+              return
+            }
+          }
+
+          console.log('✅ Arka plan konum geçerli, kaydediliyor')
+
+          // Son geçerli konumu güncelle
+          lastValidLocationRef.current = {
+            latitude,
+            longitude,
+            timestamp
+          }
+
+          // Veritabanına kaydet
+          try {
+            await supabase
+              .from('couriers')
+              .update({
+                last_location: {
+                  latitude,
+                  longitude,
+                  accuracy: accuracy || null,
+                  heading: bearing || null,
+                  speed: speed || null,
+                  updated_at: new Date(timestamp).toISOString(),
+                  last_seen: new Date().toISOString()
+                }
+              })
+              .eq('id', courierId)
+            
+            console.log('✅ Arka plan konum kaydedildi')
+          } catch (err) {
+            console.error('❌ Arka plan konum kaydetme hatası:', err)
+          }
         }
-      },
-      (error) => {
-        console.warn('⚠️ Konum alınamadı:', error.message)
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 30000
+      )
+
+      console.log('✅ Arka plan konum takibi başlatıldı, watcher ID:', watcherId)
+      
+      // Watcher ID'yi sakla (temizlik için)
+      return watcherId
+    } catch (error) {
+      console.error('❌ Arka plan konum takibi başlatılamadı:', error)
+      console.log('ℹ️ Web platformunda arka plan takip desteklenmiyor')
+      return null
+    }
+  }
+
+  // Arka plan konum takibini durdur
+  const stopBackgroundLocationTracking = async (watcherId: string) => {
+    try {
+      const { BackgroundGeolocationPlugin } = await import('@capacitor-community/background-geolocation')
+      await BackgroundGeolocationPlugin.removeWatcher({ id: watcherId })
+      console.log('🛑 Arka plan konum takibi durduruldu')
+    } catch (error) {
+      console.error('❌ Arka plan konum takibi durdurulamadı:', error)
+    }
+  }
+
+  // Son geçerli konum (sıçrama filtresi için)
+  const lastValidLocationRef = useRef<{ latitude: number, longitude: number, timestamp: number } | null>(null)
+
+  // İki konum arasındaki mesafeyi hesapla (Haversine formülü - metre cinsinden)
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371e3 // Dünya yarıçapı (metre)
+    const φ1 = lat1 * Math.PI / 180
+    const φ2 = lat2 * Math.PI / 180
+    const Δφ = (lat2 - lat1) * Math.PI / 180
+    const Δλ = (lon2 - lon1) * Math.PI / 180
+
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ / 2) * Math.sin(Δλ / 2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+
+    return R * c // Metre cinsinden mesafe
+  }
+
+  // Konum güncellemesi fonksiyonu - Gelişmiş Filtreleme
+  const updateCourierLocation = async (courierId: string) => {
+    try {
+      // Capacitor Geolocation plugin'ini kullan (daha güvenilir)
+      const { Geolocation } = await import('@capacitor/geolocation')
+      
+      // İzin kontrolü
+      const permission = await Geolocation.checkPermissions()
+      console.log('📍 Konum izni durumu:', permission)
+      
+      if (permission.location !== 'granted') {
+        console.log('📍 Konum izni isteniyor...')
+        const requestResult = await Geolocation.requestPermissions()
+        if (requestResult.location !== 'granted') {
+          console.error('❌ Konum izni reddedildi')
+          return
+        }
       }
-    )
+
+      // Konum al - En yüksek doğruluk (GPS only)
+      const position = await Geolocation.getCurrentPosition({
+        enableHighAccuracy: true,  // GPS kullan (WiFi/IP değil)
+        timeout: 20000,            // 20 saniye bekle
+        maximumAge: 0              // Cache kullanma, her zaman yeni konum al
+      })
+
+      const { latitude, longitude, accuracy, altitude, altitudeAccuracy, heading, speed } = position.coords
+      const timestamp = position.timestamp
+
+      // ============================================
+      // FİLTRE 1: NULL/ZERO KONTROLÜ
+      // ============================================
+      if (!latitude || !longitude || latitude === 0 || longitude === 0) {
+        console.error('❌ FİLTRE 1: Geçersiz koordinatlar (0,0 veya null)')
+        console.error('❌ Son geçerli konum korunuyor')
+        return
+      }
+
+      // ============================================
+      // FİLTRE 2: DOĞRULUK KONTROLÜ (100m threshold)
+      // ============================================
+      if (accuracy && accuracy > 100) {
+        console.error('❌ FİLTRE 2: Konum doğruluğu çok düşük:', accuracy.toFixed(0), 'metre')
+        console.error('❌ Minimum gereksinim: 100m, bu veri işlenmiyor')
+        return
+      }
+
+      // ============================================
+      // FİLTRE 3: MALATYA SINIR KONTROLÜ
+      // ============================================
+      const isInMalatya = 
+        latitude >= 38.0 && latitude <= 38.7 && 
+        longitude >= 37.8 && longitude <= 38.6
+
+      if (!isInMalatya) {
+        console.error('❌ FİLTRE 3: Konum Malatya dışında!', { latitude, longitude })
+        console.error('❌ Mock location veya GPS hatası - VERİ REDDEDİLDİ')
+        return
+      }
+
+      // ============================================
+      // FİLTRE 4: SIÇRAMA FİLTRESİ (Impossible Speed Check)
+      // ============================================
+      if (lastValidLocationRef.current) {
+        const lastLoc = lastValidLocationRef.current
+        const distance = calculateDistance(lastLoc.latitude, lastLoc.longitude, latitude, longitude)
+        const timeDiff = (timestamp - lastLoc.timestamp) / 1000 // saniye
+        const speed = distance / timeDiff // m/s
+        const speedKmh = speed * 3.6 // km/h
+
+        // Kurye maksimum 120 km/h hızla gidebilir (motor için makul)
+        const MAX_SPEED_KMH = 120
+        
+        if (speedKmh > MAX_SPEED_KMH) {
+          console.error('❌ FİLTRE 4: İmkansız hız tespit edildi!')
+          console.error(`❌ Mesafe: ${distance.toFixed(0)}m, Süre: ${timeDiff.toFixed(1)}s, Hız: ${speedKmh.toFixed(0)} km/h`)
+          console.error(`❌ Maksimum izin verilen: ${MAX_SPEED_KMH} km/h - VERİ REDDEDİLDİ`)
+          return
+        }
+
+        console.log(`✅ Hız kontrolü geçti: ${speedKmh.toFixed(1)} km/h (${distance.toFixed(0)}m / ${timeDiff.toFixed(1)}s)`)
+      }
+
+      // ============================================
+      // TÜM FİLTRELER GEÇTİ - VERİ GEÇERLİ
+      // ============================================
+      console.log('✅ Tüm filtreler geçti - Konum geçerli')
+      console.log('📍 Alınan konum:', { 
+        latitude: latitude.toFixed(6), 
+        longitude: longitude.toFixed(6), 
+        accuracy: accuracy ? `${accuracy.toFixed(0)}m` : 'bilinmiyor',
+        speed: speed ? `${(speed * 3.6).toFixed(1)} km/h` : 'bilinmiyor',
+        heading: heading ? `${heading.toFixed(0)}°` : 'bilinmiyor',
+        inMalatya: true 
+      })
+
+      // Son geçerli konumu güncelle
+      lastValidLocationRef.current = {
+        latitude,
+        longitude,
+        timestamp
+      }
+
+      // Veritabanına kaydet (timestamp ile)
+      const locationData = {
+        latitude,
+        longitude,
+        accuracy: accuracy || null,
+        altitude: altitude || null,
+        heading: heading || null,
+        speed: speed || null,
+        updated_at: new Date(timestamp).toISOString(),
+        last_seen: new Date().toISOString() // Müşteri paneli için
+      }
+
+      const { error } = await supabase
+        .from('couriers')
+        .update({
+          last_location: locationData
+        })
+        .eq('id', courierId)
+
+      if (error) {
+        console.error('❌ Konum güncellenemedi:', error)
+      } else {
+        console.log('✅ Konum veritabanına kaydedildi')
+        console.log('📊 Veri:', locationData)
+      }
+    } catch (error: any) {
+      console.error('❌ Konum alınamadı:', error)
+      console.error('❌ Hata mesajı:', error.message)
+      
+      // Fallback: Web API kullan (aynı filtrelerle)
+      console.log('🔄 Web Geolocation API deneniyor...')
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const { latitude, longitude, accuracy } = position.coords
+            const timestamp = position.timestamp
+            
+            // Aynı filtreleri uygula
+            if (!latitude || !longitude || latitude === 0 || longitude === 0) {
+              console.error('❌ Web API: Geçersiz koordinatlar')
+              return
+            }
+            
+            if (accuracy > 100) {
+              console.error('❌ Web API: Doğruluk çok düşük:', accuracy)
+              return
+            }
+            
+            const isInMalatya = 
+              latitude >= 38.0 && latitude <= 38.7 && 
+              longitude >= 37.8 && longitude <= 38.6
+            
+            if (!isInMalatya) {
+              console.error('❌ Web API: Malatya dışı konum')
+              return
+            }
+            
+            console.log('✅ Web API konum geçerli:', { latitude, longitude, accuracy })
+            
+            try {
+              await supabase
+                .from('couriers')
+                .update({
+                  last_location: {
+                    latitude,
+                    longitude,
+                    accuracy,
+                    updated_at: new Date(timestamp).toISOString(),
+                    last_seen: new Date().toISOString()
+                  }
+                })
+                .eq('id', courierId)
+              console.log('✅ Web API ile konum kaydedildi')
+            } catch (err) {
+              console.error('❌ Web API konum kaydetme hatası:', err)
+            }
+          },
+          (err) => console.error('❌ Web API konum hatası:', err),
+          { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+        )
+      }
+    }
   }
 
   useEffect(() => {
@@ -1317,7 +1637,13 @@ export default function KuryePage() {
       // İlk konum güncellemesi
       updateCourierLocation(courierId)
 
-      // Her 30 saniyede bir konum güncelle
+      // Arka plan konum takibini başlat
+      let backgroundWatcherId: string | null = null
+      startBackgroundLocationTracking(courierId).then(watcherId => {
+        backgroundWatcherId = watcherId
+      })
+
+      // Her 30 saniyede bir konum güncelle (foreground için yedek)
       const locationInterval = setInterval(() => {
         updateCourierLocation(courierId)
       }, 30000) // 30 saniye
@@ -1470,6 +1796,11 @@ export default function KuryePage() {
         supabase.removeChannel(packagesChannel)
         supabase.removeChannel(courierChannel)
         clearInterval(locationInterval) // Konum güncellemesini durdur
+        
+        // Arka plan konum takibini durdur
+        if (backgroundWatcherId) {
+          stopBackgroundLocationTracking(backgroundWatcherId)
+        }
       }
     }
   }, [isLoggedIn])
@@ -1502,7 +1833,7 @@ export default function KuryePage() {
         // Teslim edilenler listeden çıkar
         setPackages(prev => prev.filter(pkg => pkg.id !== packageId))
         setDeliveredCount(prev => prev + 1)
-        
+
         // İstatistikleri güncelle
         const pkg = packages.find(p => p.id === packageId)
         if (pkg && additionalData.payment_method) {
@@ -1512,7 +1843,7 @@ export default function KuryePage() {
             setCardTotal(prev => prev + pkg.amount)
           }
         }
-        
+
         fetchTodayDeliveredPackages()
         fetchLeaderboard()
       } else {
@@ -1588,13 +1919,12 @@ export default function KuryePage() {
           {/* Kayıt Ol Linki */}
           <div className="mt-6 text-center">
             <p className="text-slate-400 text-sm mb-2">Henüz sisteme dahil değil misin?</p>
-            <button
-              type="button"
-              onClick={() => window.location.href = '/register-kurye'}
-              className="text-blue-400 hover:text-blue-300 font-medium transition-colors"
+            <Link
+              href="/register-kurye"
+              className="text-blue-400 hover:text-blue-300 font-medium transition-colors inline-block"
             >
               Kayıt Ol →
-            </button>
+            </Link>
           </div>
         </form>
       </div>
@@ -1603,13 +1933,54 @@ export default function KuryePage() {
 
   return (
     <div className={`min-h-screen p-2 sm:p-4 pb-20 ${darkMode ? 'bg-slate-950 text-white' : 'bg-gray-100 text-gray-900'}`}>
-      {/* Sağ Üst Butonlar - Mobil Responsive */}
-      {isLoggedIn && (
-        <div className="fixed top-2 right-2 sm:top-4 sm:right-4 z-50 flex items-center gap-1 sm:gap-2">
+      {/* KOMPAKT HEADER - TEK SATIRDA TÜM BİLGİLER */}
+      {isLoggedIn && activeTab === 'packages' && (
+        <div className="fixed top-2 left-2 right-2 z-[9998] transition-all duration-300">
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-slate-900/95 backdrop-blur-sm rounded-lg p-2 border border-slate-800 shadow-lg">
+              <div className="flex items-center justify-between gap-2">
+                {/* Logo */}
+                <img
+                  src="/logo.png"
+                  alt="Mergen"
+                  className="w-12 h-12 object-contain flex-shrink-0"
+                  style={{
+                    filter: 'var(--logo-filter)',
+                    WebkitFilter: 'var(--logo-filter)',
+                    opacity: 'var(--logo-opacity)'
+                  }}
+                />
+
+                {/* Kurye Paneli + İsim */}
+                <div className="flex-shrink-0 min-w-0">
+                  <h1 className="text-xs font-bold truncate">📦 Kurye Paneli</h1>
+                  <p className="text-[10px] text-slate-400 truncate">{courierName}</p>
+                </div>
+
+                {/* Bugün Teslim */}
+                <div className="bg-slate-800 px-2 py-1 rounded border border-slate-700 flex-shrink-0">
+                  <p className="text-[10px] text-slate-400">Bugün</p>
+                  <p className="text-sm font-bold text-green-400">{deliveredCount}</p>
+                </div>
+
+                {/* Toplam Kazanç */}
+                <div className="bg-gradient-to-r from-green-900 to-emerald-900 px-2 py-1 rounded border border-green-700 flex-shrink-0">
+                  <p className="text-[10px] text-green-300">💰 Kazanç</p>
+                  <p className="text-sm font-bold text-green-100">{deliveredCount * 80}₺</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sağ Üst Butonlar - Sadece Aktif Paketler sekmesinde göster */}
+      {isLoggedIn && activeTab === 'packages' && (
+        <div className="fixed top-20 right-2 sm:top-20 sm:right-4 z-[9999] flex items-center gap-1 sm:gap-2 pointer-events-auto">
           {/* Hız Simgesi - Leaderboard */}
           <button
             onClick={() => setShowLeaderboard(true)}
-            className={`flex items-center gap-1 sm:gap-2 px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm rounded-lg shadow-lg transition-all active:scale-95 ${darkMode ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-purple-500 hover:bg-purple-600 text-white'
+            className={`flex items-center gap-2 px-4 py-3 text-base rounded-lg shadow-lg transition-all active:scale-95 pointer-events-auto ${darkMode ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-purple-500 hover:bg-purple-600 text-white'
               }`}
             title="Günün En Hızlıları"
           >
@@ -1618,141 +1989,69 @@ export default function KuryePage() {
             </svg>
             <span className="hidden xs:inline font-medium whitespace-nowrap">Sıralama</span>
           </button>
-
-          {/* Dark Mode Toggle */}
-          <button
-            onClick={() => setDarkMode(!darkMode)}
-            className={`p-1.5 sm:p-2 rounded-lg shadow-lg transition-colors ${darkMode ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-white hover:bg-gray-100 text-gray-900 border border-gray-300'
-              }`}
-            title={darkMode ? 'Gündüz Modu' : 'Gece Modu'}
-          >
-            <span className="text-sm sm:text-base">{darkMode ? '☀️' : '🌙'}</span>
-          </button>
         </div>
       )}
 
-      {/* Hamburger Menü Butonu - Sol Üst */}
+      {/* BOTTOM NAVIGATION BAR - Sadece Kurye Paneli */}
       {isLoggedIn && (
-        <button
-          onClick={() => setShowMenu(!showMenu)}
-          className="fixed top-2 left-2 sm:top-4 sm:left-4 z-50 bg-slate-800 hover:bg-slate-700 text-white p-2 sm:p-3 rounded-lg shadow-lg transition-colors active:scale-95"
-        >
-          <div className="space-y-1">
-            <div className="w-5 h-0.5 bg-white"></div>
-            <div className="w-5 h-0.5 bg-white"></div>
-            <div className="w-5 h-0.5 bg-white"></div>
-          </div>
-        </button>
-      )}
+        <div className="fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-800 z-50 safe-area-bottom">
+          <div className="flex items-center justify-around max-w-2xl mx-auto">
+            {/* Aktif Paketler */}
+            <button
+              onClick={() => setActiveTab('packages')}
+              className={`flex-1 flex flex-col items-center py-3 transition-all ${activeTab === 'packages'
+                ? 'text-blue-400'
+                : 'text-slate-400 active:text-slate-300'
+                }`}
+            >
+              <span className="text-2xl mb-1">📦</span>
+              <span className="text-xs font-medium">Aktif</span>
+            </button>
 
-      {/* Açılır Menü */}
-      {isLoggedIn && (
-        <div className={`fixed top-0 left-0 h-full w-64 sm:w-80 bg-slate-900 text-white z-40 transform transition-transform duration-300 ${showMenu ? 'translate-x-0' : '-translate-x-full'
-          } overflow-y-auto admin-scrollbar`}>
-          <div className="p-6 pt-20">
-            {/* Başlık ve Kurye İsmi */}
-            <div className="flex flex-col mb-6">
-              <h2 className="text-xl sm:text-2xl font-bold">📦 Kurye Panel</h2>
-              <p className="text-sm text-slate-400 mt-1">{courierName}</p>
-            </div>
+            {/* Geçmişim */}
+            <button
+              onClick={() => setActiveTab('history')}
+              className={`flex-1 flex flex-col items-center py-3 transition-all ${activeTab === 'history'
+                ? 'text-blue-400'
+                : 'text-slate-400 active:text-slate-300'
+                }`}
+            >
+              <span className="text-2xl mb-1">📋</span>
+              <span className="text-xs font-medium">Geçmişim</span>
+            </button>
 
-            <nav className="space-y-2">
-              <button
-                onClick={() => {
-                  setActiveTab('packages')
-                  setShowMenu(false)
-                }}
-                className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${activeTab === 'packages'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                  }`}
-              >
-                <span className="mr-3">📦</span>
-                Aktif Paketlerim
-              </button>
+            {/* Verilecek Hesap */}
+            <button
+              onClick={() => setActiveTab('earnings')}
+              className={`flex-1 flex flex-col items-center py-3 transition-all ${activeTab === 'earnings'
+                ? 'text-blue-400'
+                : 'text-slate-400 active:text-slate-300'
+                }`}
+            >
+              <span className="text-2xl mb-1">💰</span>
+              <span className="text-xs font-medium">Hesap</span>
+            </button>
 
-              <button
-                onClick={() => {
-                  setActiveTab('history')
-                  setShowMenu(false)
-                }}
-                className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${activeTab === 'history'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                  }`}
-              >
-                <span className="mr-3">📋</span>
-                Paket Geçmişim
-              </button>
-
-              <button
-                onClick={() => {
-                  setActiveTab('earnings')
-                  setShowMenu(false)
-                }}
-                className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${activeTab === 'earnings'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                  }`}
-              >
-                <span className="mr-3">💰</span>
-                Verilecek Hesap
-              </button>
-
-              <button
-                onClick={() => {
-                  localStorage.removeItem(LOGIN_STORAGE_KEY);
-                  localStorage.removeItem(LOGIN_COURIER_ID_KEY);
-                  window.location.href = '/kurye';
-                }}
-                className="w-full text-left px-4 py-3 rounded-lg font-medium text-red-400 hover:bg-red-900/20 hover:text-red-300 transition-all mt-4"
-              >
-                <span className="mr-3">🚪</span>
-                Çıkış Yap
-              </button>
-            </nav>
+            {/* Profil */}
+            <button
+              onClick={() => setActiveTab('account')}
+              className={`flex-1 flex flex-col items-center py-3 transition-all ${activeTab === 'account'
+                ? 'text-blue-400'
+                : 'text-slate-400 active:text-slate-300'
+                }`}
+            >
+              <span className="text-2xl mb-1">👤</span>
+              <span className="text-xs font-medium">Profil</span>
+            </button>
           </div>
         </div>
       )}
 
-      <div className="max-w-2xl mx-auto px-2 sm:px-0 relative">
-        {/* TOPLAM KAZANÇ - EN ÜSTTE */}
-        {activeTab === 'packages' && (
-          <div className="bg-gradient-to-r from-green-900 to-emerald-900 p-2 sm:p-3 rounded-xl border border-green-700 mb-3 sm:mb-4 mt-12 sm:mt-2">
-            <div className="flex justify-between items-center">
-              <p className="text-green-300 text-xs">💰 Toplam Kazanç</p>
-              <div className="text-right">
-                <p className="text-xl sm:text-2xl font-bold text-green-100">{deliveredCount * 80} ₺</p>
-                <p className="text-xs text-green-400">{deliveredCount} paket × 80₺</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* LOGO VE BUGÜN TESLİM YAN YANA */}
-        {activeTab === 'packages' && (
-          <div className="flex items-center justify-between gap-3 mb-3 sm:mb-4">
-            <img
-              src="/logo.png"
-              alt="Mergen Kurye Logo"
-              className="w-24 h-24 object-contain"
-              style={{
-                filter: 'var(--logo-filter)',
-                WebkitFilter: 'var(--logo-filter)',
-                opacity: 'var(--logo-opacity)'
-              }}
-            />
-            <div className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-800 flex-1">
-              <p className="text-slate-400 text-xs mb-1">Bugün Teslim</p>
-              <p className="text-xl sm:text-2xl font-bold text-green-400">{deliveredCount}</p>
-            </div>
-          </div>
-        )}
-
+      <div className="max-w-2xl mx-auto px-2 sm:px-0 relative pt-20 pb-20">{/* pb-20 bottom nav için boşluk */}
         {/* DURUM TOGGLE VE MİKROFON - SAĞ ALT KÖŞE */}
         {activeTab === 'packages' && (
-          <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-3">
-            {/* Mikrofon Butonu */}
+          <div className="fixed bottom-24 right-4 z-50">
+            {/* Mikrofon Butonu - Yukarıda */}
             <button
               onClick={toggleVoiceRecognition}
               onMouseUp={() => {
@@ -1771,29 +2070,13 @@ export default function KuryePage() {
                   setIsListening(false)
                 }
               }}
-              className={`w-16 h-16 rounded-full shadow-2xl transition-all duration-300 flex items-center justify-center text-2xl ${isListening
-                ? 'bg-red-600 animate-pulse'
-                : 'bg-blue-600 hover:bg-blue-700 active:scale-95'
-                }`}
+              className={`w-16 h-16 rounded-full shadow-2xl transition-all duration-300 flex items-center justify-center text-2xl ${
+                isListening
+                  ? 'bg-red-600 animate-pulse'
+                  : 'bg-blue-600 hover:bg-blue-700 active:scale-95'
+              }`}
             >
               {isListening ? '🔴' : '🎤'}
-            </button>
-
-            {/* Durum Toggle */}
-            <button
-              onClick={() => updateCourierStatus('idle', !is_active)}
-              disabled={statusUpdating}
-              className={`relative w-14 h-7 rounded-full transition-all duration-300 disabled:opacity-50 shadow-lg ${is_active ? 'bg-green-600' : 'bg-slate-700'
-                }`}
-            >
-              <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300 ${is_active ? 'left-7' : 'left-0.5'
-                }`}>
-                {statusUpdating && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
-                  </div>
-                )}
-              </div>
             </button>
           </div>
         )}
@@ -1949,11 +2232,13 @@ export default function KuryePage() {
               </div>
             ) : (
               <>
-                {/* Paket Sayısı Göstergesi - Mobil Responsive */}
-                <div className="bg-slate-900 p-2 sm:p-3 rounded-xl border border-slate-800">
-                  <p className="text-xs sm:text-sm text-slate-400">
-                    <span className="font-bold text-white">{packages.length}</span> aktif paket
-                  </p>
+                {/* Paket Sayısı Göstergesi - Merkeze Hizalı */}
+                <div className="flex justify-center mb-3 sm:mb-4">
+                  <div className="bg-blue-600 px-4 py-2 rounded-xl border border-blue-500 shadow-lg">
+                    <p className="text-sm sm:text-base text-white font-bold text-center">
+                      {packages.length} aktif paket
+                    </p>
+                  </div>
                 </div>
 
                 {/* Paket Listesi - Mobil Responsive */}
@@ -1993,19 +2278,43 @@ export default function KuryePage() {
                             {pkg.status === 'on_the_way' ? (
                               <>
                                 <p className="text-xs text-slate-400 mb-2">📞 {pkg.customer_phone}</p>
-                                <a
-                                  href={`tel:${pkg.customer_phone}`}
-                                  className="inline-flex items-center gap-2 py-3 px-6 bg-green-500 hover:bg-green-600 active:bg-green-700 text-white text-base font-bold rounded-xl transition-all shadow-lg hover:shadow-xl active:scale-95"
-                                >
-                                  <span className="text-xl">📞</span>
-                                  <span>Müşteriyi Ara</span>
-                                </a>
+                                <div className="flex gap-2">
+                                  <a
+                                    href={`tel:${pkg.customer_phone}`}
+                                    className="flex-1 inline-flex items-center justify-center gap-2 py-3 px-4 bg-green-500 hover:bg-green-600 active:bg-green-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg hover:shadow-xl active:scale-95"
+                                  >
+                                    <span className="text-xl">📞</span>
+                                    <span>Ara</span>
+                                  </a>
+                                  <a
+                                    href={`https://wa.me/${pkg.customer_phone.replace(/\D/g, '')}?text=${encodeURIComponent(`Merhaba ${pkg.customer_name}, siparişiniz yolda! 🏍️\n\nSiparişinizi buradan takip edebilirsiniz:\n${typeof window !== 'undefined' ? window.location.origin : ''}/takip?kod=${pkg.order_number}\n\nMergen Kurye`)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex-1 inline-flex items-center justify-center gap-2 py-3 px-4 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white text-sm font-bold rounded-xl transition-all shadow-lg hover:shadow-xl active:scale-95"
+                                  >
+                                    <span className="text-xl">💬</span>
+                                    <span>WhatsApp</span>
+                                  </a>
+                                </div>
                               </>
                             ) : (
-                              /* Diğer durumlarda: Maskelenmiş numara */
-                              <p className="text-xs text-slate-500">
-                                📞 {pkg.customer_phone.substring(0, 4)} **** {pkg.customer_phone.substring(pkg.customer_phone.length - 2)}
-                              </p>
+                              /* Diğer durumlarda: Maskelenmiş numara + WhatsApp butonu (assigned ve picking_up için) */
+                              <>
+                                <p className="text-xs text-slate-500">
+                                  📞 {pkg.customer_phone.substring(0, 4)} **** {pkg.customer_phone.substring(pkg.customer_phone.length - 2)}
+                                </p>
+                                {(pkg.status === 'assigned' || pkg.status === 'picking_up') && (
+                                  <a
+                                    href={`https://wa.me/${pkg.customer_phone.replace(/\D/g, '')}?text=${encodeURIComponent(`Merhaba ${pkg.customer_name}, siparişinizi aldım! 🏍️\n\nSiparişinizi buradan takip edebilirsiniz:\n${typeof window !== 'undefined' ? window.location.origin : ''}/takip?kod=${pkg.order_number}\n\nMergen Kurye`)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 mt-2 py-2 px-4 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white text-xs font-medium rounded-lg transition-all shadow-md hover:shadow-lg active:scale-95"
+                                  >
+                                    <span>💬</span>
+                                    <span>Takip Linki Gönder</span>
+                                  </a>
+                                )}
+                              </>
                             )}
                           </div>
                         )}
@@ -2148,9 +2457,9 @@ export default function KuryePage() {
         {/* PAKET GEÇMİŞİ SEKMESİ */}
         {activeTab === 'history' && (
           <div className="space-y-2 sm:space-y-3">
-            {/* Tarih Seçici */}
+            {/* Tarih Seçici - Merkeze Hizalı */}
             <div className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-800">
-              <h3 className="text-sm font-bold text-white mb-3">Tarih Aralığı Seçin</h3>
+              <h3 className="text-sm font-bold text-white mb-3 text-center">Tarih Aralığı Seçin</h3>
               <div className="flex gap-2 items-end">
                 <div className="flex-1">
                   <label className="text-xs text-slate-400 mb-1 block">Başlangıç</label>
@@ -2178,6 +2487,51 @@ export default function KuryePage() {
                 </button>
               </div>
             </div>
+
+            {/* Özet Bilgiler - Kompakt Grid */}
+            {filteredPackages.length > 0 && (
+              <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
+                <div className="grid grid-cols-3 gap-2">
+                  {/* Toplam Paket */}
+                  <div className="bg-slate-800/50 px-2 py-2 rounded-lg">
+                    <p className="text-[10px] text-slate-400 mb-1">Paket</p>
+                    <p className="text-base font-bold text-blue-400">{filteredPackages.length}</p>
+                  </div>
+
+                  {/* Nakit */}
+                  <div className="bg-slate-800/50 px-2 py-2 rounded-lg">
+                    <p className="text-[10px] text-slate-400 mb-1">💵 Nakit</p>
+                    <p className="text-base font-bold text-green-400">
+                      {filteredPackages.filter(p => p.payment_method === 'cash').reduce((sum, pkg) => sum + (pkg.amount || 0), 0).toFixed(0)}₺
+                    </p>
+                  </div>
+
+                  {/* Kart */}
+                  <div className="bg-slate-800/50 px-2 py-2 rounded-lg">
+                    <p className="text-[10px] text-slate-400 mb-1">💳 Kart</p>
+                    <p className="text-base font-bold text-blue-400">
+                      {filteredPackages.filter(p => p.payment_method === 'card').reduce((sum, pkg) => sum + (pkg.amount || 0), 0).toFixed(0)}₺
+                    </p>
+                  </div>
+
+                  {/* IBAN */}
+                  <div className="bg-slate-800/50 px-2 py-2 rounded-lg">
+                    <p className="text-[10px] text-slate-400 mb-1">🏦 IBAN</p>
+                    <p className="text-base font-bold text-orange-400">
+                      {filteredPackages.filter(p => p.payment_method === 'iban').reduce((sum, pkg) => sum + (pkg.amount || 0), 0).toFixed(0)}₺
+                    </p>
+                  </div>
+
+                  {/* Seçili Aralık - 2 kolon */}
+                  <div className="bg-slate-800/50 px-2 py-2 rounded-lg col-span-2">
+                    <p className="text-[10px] text-slate-400 mb-1">Seçili Aralık Toplam</p>
+                    <p className="text-base font-bold text-purple-400">
+                      {filteredPackages.reduce((sum, pkg) => sum + (pkg.amount || 0), 0).toFixed(0)}₺
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {filteredPackages.length === 0 ? (
               <div className="text-center py-8 sm:py-12 text-slate-500">
@@ -2294,9 +2648,9 @@ export default function KuryePage() {
         {/* VERİLECEK HESAP SEKMESİ */}
         {activeTab === 'earnings' && (
           <div className="space-y-2 sm:space-y-3">
-            {/* Tarih Seçici */}
+            {/* Tarih Seçici - Merkeze Hizalı */}
             <div className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-800">
-              <h3 className="text-sm font-bold text-white mb-3">Tarih Aralığı Seçin</h3>
+              <h3 className="text-sm font-bold text-white mb-3 text-center">Tarih Aralığı Seçin</h3>
               <div className="flex gap-2 items-end">
                 <div className="flex-1">
                   <label className="text-xs text-slate-400 mb-1 block">Başlangıç</label>
@@ -2325,370 +2679,521 @@ export default function KuryePage() {
               </div>
             </div>
 
-            {/* Özet Bilgiler */}
+            {/* Özet Bilgiler - Kompakt Grid (Geçmişim sekmesiyle aynı) */}
             {filteredPackages.length > 0 && (
-              <>
+              <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
                 <div className="grid grid-cols-3 gap-2">
-                  <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
-                    <p className="text-slate-400 text-xs mb-1">Toplam Paket</p>
-                    <p className="text-xl font-bold text-blue-400">
-                      {filteredPackages.length}
+                  {/* Toplam Paket */}
+                  <div className="bg-slate-800/50 px-2 py-2 rounded-lg">
+                    <p className="text-[10px] text-slate-400 mb-1">Paket</p>
+                    <p className="text-base font-bold text-blue-400">{filteredPackages.length}</p>
+                  </div>
+
+                  {/* Nakit */}
+                  <div className="bg-slate-800/50 px-2 py-2 rounded-lg">
+                    <p className="text-[10px] text-slate-400 mb-1">💵 Nakit</p>
+                    <p className="text-base font-bold text-green-400">
+                      {filteredPackages.filter(p => p.payment_method === 'cash').reduce((sum, pkg) => sum + (pkg.amount || 0), 0).toFixed(0)}₺
                     </p>
                   </div>
-                  <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
-                    <p className="text-slate-400 text-xs mb-1">Seçili Aralık</p>
-                    <p className="text-xl font-bold text-purple-400">
-                      {filteredPackages.reduce((sum, pkg) => sum + (pkg.amount || 0), 0).toFixed(2)} ₺
+
+                  {/* Kart */}
+                  <div className="bg-slate-800/50 px-2 py-2 rounded-lg">
+                    <p className="text-[10px] text-slate-400 mb-1">💳 Kart</p>
+                    <p className="text-base font-bold text-blue-400">
+                      {filteredPackages.filter(p => p.payment_method === 'card').reduce((sum, pkg) => sum + (pkg.amount || 0), 0).toFixed(0)}₺
                     </p>
                   </div>
-                  <div className="bg-gradient-to-br from-green-900 to-emerald-900 p-3 rounded-xl border-2 border-green-500">
-                    <p className="text-green-300 text-xs mb-1 font-bold">💰 Verilecek Hesap</p>
-                    <p className="text-xl font-bold text-green-100">
-                      {unsettledAmount.toFixed(2)} ₺
+
+                  {/* IBAN */}
+                  <div className="bg-slate-800/50 px-2 py-2 rounded-lg">
+                    <p className="text-[10px] text-slate-400 mb-1">🏦 IBAN</p>
+                    <p className="text-base font-bold text-orange-400">
+                      {filteredPackages.filter(p => p.payment_method === 'iban').reduce((sum, pkg) => sum + (pkg.amount || 0), 0).toFixed(0)}₺
+                    </p>
+                  </div>
+
+                  {/* Seçili Aralık - 2 kolon */}
+                  <div className="bg-slate-800/50 px-2 py-2 rounded-lg col-span-2">
+                    <p className="text-[10px] text-slate-400 mb-1">Seçili Aralık Toplam</p>
+                    <p className="text-base font-bold text-purple-400">
+                      {filteredPackages.reduce((sum, pkg) => sum + (pkg.amount || 0), 0).toFixed(2)}₺
                     </p>
                   </div>
                 </div>
+              </div>
+            )}
 
-                {/* Paket Listesi */}
-                <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
-                  <div className="flex justify-between items-center mb-3">
-                    <h3 className="text-sm font-bold text-white">Teslim Edilen Paketler</h3>
-                    <span className="text-xs text-slate-400">
-                      Sayfa {currentPage} / {totalPages}
-                    </span>
+            {/* Paket Listesi */}
+            <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-sm font-bold text-white">Teslim Edilen Paketler</h3>
+                <span className="text-xs text-slate-400">
+                  Sayfa {currentPage} / {totalPages}
+                </span>
+              </div>
+              <div
+                id="earnings-scroll-container"
+                className="space-y-2 max-h-96 overflow-y-auto admin-scrollbar"
+                style={{ WebkitOverflowScrolling: 'touch' }}
+                onScroll={() => saveScrollPosition('earnings-scroll-container')}
+              >
+                {getCurrentPagePackages().length === 0 ? (
+                  <div className="text-center py-8 text-slate-500">
+                    <div className="text-3xl mb-2">📦</div>
+                    <p className="text-xs">Göster butonuna basın</p>
                   </div>
-                  <div
-                    id="earnings-scroll-container"
-                    className="space-y-2 max-h-96 overflow-y-auto admin-scrollbar"
-                    style={{ WebkitOverflowScrolling: 'touch' }}
-                    onScroll={() => saveScrollPosition('earnings-scroll-container')}
-                  >
-                    {getCurrentPagePackages().length === 0 ? (
-                      <div className="text-center py-8 text-slate-500">
-                        <div className="text-3xl mb-2">📦</div>
-                        <p className="text-xs">Göster butonuna basın</p>
-                      </div>
-                    ) : (
-                      getCurrentPagePackages().map((pkg) => (
-                        <div key={pkg.id} className="bg-slate-800/50 p-2 rounded-lg border border-slate-700">
-                          <div className="flex justify-between items-start mb-1">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="text-xs font-bold text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded">
-                                  {pkg.order_number || '......'}
-                                </span>
-                                {pkg.platform && (
-                                  <span className={`text-xs font-bold px-2 py-0.5 rounded ${getPlatformBadgeClass(pkg.platform)}`}>
-                                    {getPlatformDisplayName(pkg.platform)}
-                                  </span>
-                                )}
-                              </div>
-                              <p className="font-medium text-sm text-white">{pkg.customer_name}</p>
-                              {pkg.customer_phone && (
-                                <p className="text-xs text-slate-500 mt-1">
-                                  📞 {pkg.customer_phone.substring(0, 4)} **** {pkg.customer_phone.substring(pkg.customer_phone.length - 2)}
-                                </p>
-                              )}
-                              <p className="text-xs text-slate-400 mt-1">
-                                📍 {pkg.delivery_address}
-                              </p>
-                              <div className="mt-2 space-y-1">
-                                <p className="text-xs text-slate-500">
-                                  📅 Sipariş: {new Date(pkg.created_at || '').toLocaleDateString('tr-TR')}
-                                </p>
-                                <p className="text-xs text-blue-400">
-                                  ✅ Kabul: {pkg.accepted_at ? new Date(pkg.accepted_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '-'}
-                                </p>
-                                <p className="text-xs text-green-400">
-                                  🚚 Teslim: {pkg.delivered_at ? new Date(pkg.delivered_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '-'}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-lg font-bold text-green-400">{pkg.amount}₺</p>
-                              <p className="text-xs text-slate-500">
-                                {pkg.payment_method === 'cash' ? '💵 Nakit' : pkg.payment_method === 'iban' ? '🏦 IBAN' : '💳 Kart'}
-                              </p>
-                            </div>
+                ) : (
+                  getCurrentPagePackages().map((pkg) => (
+                    <div key={pkg.id} className="bg-slate-800/50 p-2 rounded-lg border border-slate-700">
+                      <div className="flex justify-between items-start mb-1">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs font-bold text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded">
+                              {pkg.order_number || '......'}
+                            </span>
+                            {pkg.platform && (
+                              <span className={`text-xs font-bold px-2 py-0.5 rounded ${getPlatformBadgeClass(pkg.platform)}`}>
+                                {getPlatformDisplayName(pkg.platform)}
+                              </span>
+                            )}
+                          </div>
+                          <p className="font-medium text-sm text-white">{pkg.customer_name}</p>
+                          {pkg.customer_phone && (
+                            <p className="text-xs text-slate-500 mt-1">
+                              📞 {pkg.customer_phone.substring(0, 4)} **** {pkg.customer_phone.substring(pkg.customer_phone.length - 2)}
+                            </p>
+                          )}
+                          <p className="text-xs text-slate-400 mt-1">
+                            📍 {pkg.delivery_address}
+                          </p>
+                          <div className="mt-2 space-y-1">
+                            <p className="text-xs text-slate-500">
+                              📅 Sipariş: {new Date(pkg.created_at || '').toLocaleDateString('tr-TR')}
+                            </p>
+                            <p className="text-xs text-blue-400">
+                              ✅ Kabul: {pkg.accepted_at ? new Date(pkg.accepted_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '-'}
+                            </p>
+                            <p className="text-xs text-green-400">
+                              🚚 Teslim: {pkg.delivered_at ? new Date(pkg.delivered_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '-'}
+                            </p>
                           </div>
                         </div>
-                      ))
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-green-400">{pkg.amount}₺</p>
+                          <p className="text-xs text-slate-500">
+                            {pkg.payment_method === 'cash' ? '💵 Nakit' : pkg.payment_method === 'iban' ? '🏦 IBAN' : '💳 Kart'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* SAYFALAMA BUTONLARI */}
+              {totalPages > 1 && (
+                <div className="mt-4 flex justify-center items-center gap-1 flex-wrap">
+                  {/* Önceki Sayfa */}
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 text-white text-xs rounded transition-colors"
+                  >
+                    ‹
+                  </button>
+
+                  {/* Sayfa Numaraları */}
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => {
+                    // İlk 3, son 3 ve mevcut sayfa civarındaki 2 sayfayı göster
+                    if (
+                      page === 1 ||
+                      page === totalPages ||
+                      (page >= currentPage - 1 && page <= currentPage + 1) ||
+                      page <= 3 ||
+                      page > totalPages - 3
+                    ) {
+                      return (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`px-3 py-1.5 text-xs rounded transition-colors ${currentPage === page
+                            ? 'bg-blue-600 text-white font-bold'
+                            : 'bg-slate-800 hover:bg-slate-700 text-white'
+                            }`}
+                        >
+                          {page}
+                        </button>
+                      )
+                    } else if (
+                      page === currentPage - 2 ||
+                      page === currentPage + 2
+                    ) {
+                      return <span key={page} className="text-slate-500 px-1">...</span>
+                    }
+                    return null
+                  })}
+
+                  {/* Sonraki Sayfa */}
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 text-white text-xs rounded transition-colors"
+                  >
+                    ›
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* HESAP SEKMESİ */}
+        {activeTab === 'account' && (
+          <div className="space-y-3">
+            {/* Profil Bilgileri */}
+            <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center text-3xl">
+                  🏍️
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white">{courierName}</h2>
+                  <p className="text-sm text-slate-400">Kurye</p>
+                </div>
+              </div>
+
+              {/* Durum Toggle */}
+              <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
+                <div>
+                  <p className="text-sm font-medium text-white">Aktif Durum</p>
+                  <p className="text-xs text-slate-400">
+                    {is_active ? 'Yeni paketler alabilirsiniz' : 'Yeni paket alamazsınız'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => updateCourierStatus('idle', !is_active)}
+                  disabled={statusUpdating}
+                  className={`relative w-14 h-7 rounded-full transition-all duration-300 disabled:opacity-50 ${is_active ? 'bg-green-600' : 'bg-slate-700'
+                    }`}
+                >
+                  <div
+                    className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300 ${is_active ? 'left-7' : 'left-0.5'
+                      }`}
+                  >
+                    {statusUpdating && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
+                      </div>
                     )}
                   </div>
+                </button>
+              </div>
+            </div>
 
-                  {/* SAYFALAMA BUTONLARI */}
-                  {totalPages > 1 && (
-                    <div className="mt-4 flex justify-center items-center gap-1 flex-wrap">
-                      {/* Önceki Sayfa */}
-                      <button
-                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                        disabled={currentPage === 1}
-                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 text-white text-xs rounded transition-colors"
-                      >
-                        ‹
-                      </button>
-
-                      {/* Sayfa Numaraları */}
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => {
-                        // İlk 3, son 3 ve mevcut sayfa civarındaki 2 sayfayı göster
-                        if (
-                          page === 1 ||
-                          page === totalPages ||
-                          (page >= currentPage - 1 && page <= currentPage + 1) ||
-                          page <= 3 ||
-                          page > totalPages - 3
-                        ) {
-                          return (
-                            <button
-                              key={page}
-                              onClick={() => setCurrentPage(page)}
-                              className={`px-3 py-1.5 text-xs rounded transition-colors ${currentPage === page
-                                ? 'bg-blue-600 text-white font-bold'
-                                : 'bg-slate-800 hover:bg-slate-700 text-white'
-                                }`}
-                            >
-                              {page}
-                            </button>
-                          )
-                        } else if (
-                          page === currentPage - 2 ||
-                          page === currentPage + 2
-                        ) {
-                          return <span key={page} className="text-slate-500 px-1">...</span>
-                        }
-                        return null
-                      })}
-
-                      {/* Sonraki Sayfa */}
-                      <button
-                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                        disabled={currentPage === totalPages}
-                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 text-white text-xs rounded transition-colors"
-                      >
-                        ›
-                      </button>
-                    </div>
-                  )}
+            {/* İstatistikler - Kompakt Grid */}
+            <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
+              <h3 className="text-sm font-bold text-white mb-3">Bugünkü İstatistikler</h3>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="bg-slate-800/50 px-2 py-2 rounded-lg">
+                  <p className="text-[10px] text-slate-400 mb-1">Teslim</p>
+                  <p className="text-base font-bold text-green-400">{deliveredCount}</p>
                 </div>
-              </>
+                <div className="bg-slate-800/50 px-2 py-2 rounded-lg">
+                  <p className="text-[10px] text-slate-400 mb-1">💵 Nakit</p>
+                  <p className="text-base font-bold text-yellow-400">{cashTotal}₺</p>
+                </div>
+                <div className="bg-slate-800/50 px-2 py-2 rounded-lg">
+                  <p className="text-[10px] text-slate-400 mb-1">💳 Kart</p>
+                  <p className="text-base font-bold text-purple-400">{cardTotal}₺</p>
+                </div>
+                <div className="bg-slate-800/50 px-2 py-2 rounded-lg col-span-3">
+                  <p className="text-[10px] text-slate-400 mb-1">Toplam Kazanç</p>
+                  <p className="text-base font-bold text-blue-400">{deliveredCount * 80}₺</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Sıralama */}
+            {myRank !== null && (
+              <div className="bg-gradient-to-br from-purple-900 to-indigo-900 p-4 rounded-xl border border-purple-700">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-purple-200 mb-1">Günün Sıralaması</p>
+                    <p className="text-3xl font-bold text-white">
+                      #{myRank} <span className="text-lg text-purple-300">/ {leaderboard.length}</span>
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowLeaderboard(true)}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors"
+                  >
+                    Detay
+                  </button>
+                </div>
+              </div>
             )}
+
+            {/* Dark Mode Toggle */}
+            <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-white">Tema</p>
+                  <p className="text-xs text-slate-400">
+                    {darkMode ? 'Gece modu aktif' : 'Gündüz modu aktif'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setDarkMode(!darkMode)}
+                  className={`p-3 rounded-lg transition-colors ${darkMode ? 'bg-slate-800 text-white' : 'bg-white text-gray-900 border border-gray-300'
+                    }`}
+                >
+                  <span className="text-2xl">{darkMode ? '☀️' : '🌙'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Çıkış Yap */}
+            <button
+              onClick={() => {
+                // Eski sistem
+                localStorage.removeItem(LOGIN_STORAGE_KEY)
+                localStorage.removeItem(LOGIN_COURIER_ID_KEY)
+                // Yeni auth sistemi
+                localStorage.removeItem('auth_logged_in')
+                localStorage.removeItem('auth_user_type')
+                localStorage.removeItem('auth_user')
+                // Ana sayfaya yönlendir
+                window.location.href = '/'
+              }}
+              className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl transition-colors flex items-center justify-center gap-2"
+            >
+              <span className="text-xl">🚪</span>
+              <span>Çıkış Yap</span>
+            </button>
           </div>
         )}
       </div>
 
       {/* HESAP ÖZETİ MODAL - Mobil Responsive */}
-      {showSummary && (
-        <div className="fixed inset-0 bg-black/80 z-50 p-2 sm:p-4 overflow-y-auto flex items-center justify-center">
-          <div className="max-w-md w-full bg-slate-900 rounded-xl p-3 sm:p-4 border border-slate-800">
-            <div className="flex justify-between items-center mb-3 sm:mb-4">
-              <h2 className="text-base sm:text-lg font-bold text-white">Günlük Rapor</h2>
-              <button onClick={() => setShowSummary(false)} className="text-slate-400 hover:text-white text-2xl active:scale-90">×</button>
-            </div>
-
-            <SummaryList courierId={selectedCourierId!} calculateDuration={calculateDuration} />
-
-            <div className="mt-4 pt-4 border-t border-slate-800">
-              <div className="flex justify-between text-base font-bold mb-3">
-                <span className="text-slate-300">Toplam Kazanç:</span>
-                <span className="text-green-400">{(cashTotal + cardTotal).toFixed(2)} ₺</span>
+      {
+        showSummary && (
+          <div className="fixed inset-0 bg-black/80 z-50 p-2 sm:p-4 overflow-y-auto flex items-center justify-center">
+            <div className="max-w-md w-full bg-slate-900 rounded-xl p-3 sm:p-4 border border-slate-800">
+              <div className="flex justify-between items-center mb-3 sm:mb-4">
+                <h2 className="text-base sm:text-lg font-bold text-white">Günlük Rapor</h2>
+                <button onClick={() => setShowSummary(false)} className="text-slate-400 hover:text-white text-2xl active:scale-90">×</button>
               </div>
-              <button
-                onClick={() => setShowSummary(false)}
-                className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-medium transition-colors"
-              >
-                Kapat
-              </button>
+
+              <SummaryList courierId={selectedCourierId!} calculateDuration={calculateDuration} />
+
+              <div className="mt-4 pt-4 border-t border-slate-800">
+                <div className="flex justify-between text-base font-bold mb-3">
+                  <span className="text-slate-300">Toplam Kazanç:</span>
+                  <span className="text-green-400">{(cashTotal + cardTotal).toFixed(2)} ₺</span>
+                </div>
+                <button
+                  onClick={() => setShowSummary(false)}
+                  className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-medium transition-colors"
+                >
+                  Kapat
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* GÜNÜN EN HIZLILARI MODAL - Mobil Responsive */}
-      {showLeaderboard && (
-        <div className="fixed inset-0 bg-black/80 z-50 p-2 sm:p-4 overflow-y-auto flex items-center justify-center">
-          <div className="max-w-md w-full bg-gradient-to-br from-purple-900 to-indigo-900 rounded-xl p-4 sm:p-6 border border-purple-700">
-            <div className="flex justify-between items-center mb-3 sm:mb-4">
-              <h2 className="text-lg sm:text-xl font-bold text-purple-100 flex items-center gap-2">
-                🚀 <span className="hidden xs:inline">Günün En Hızlıları</span><span className="xs:hidden">Sıralama</span>
-              </h2>
-              <button
-                onClick={() => setShowLeaderboard(false)}
-                className="text-purple-300 hover:text-white text-2xl active:scale-90"
-              >
-                ×
-              </button>
-            </div>
+      {
+        showLeaderboard && (
+          <div className="fixed inset-0 bg-black/80 z-50 p-2 sm:p-4 overflow-y-auto flex items-center justify-center">
+            <div className="max-w-md w-full bg-gradient-to-br from-purple-900 to-indigo-900 rounded-xl p-4 sm:p-6 border border-purple-700">
+              <div className="flex justify-between items-center mb-3 sm:mb-4">
+                <h2 className="text-lg sm:text-xl font-bold text-purple-100 flex items-center gap-2">
+                  🚀 <span className="hidden xs:inline">Günün En Hızlıları</span><span className="xs:hidden">Sıralama</span>
+                </h2>
+                <button
+                  onClick={() => setShowLeaderboard(false)}
+                  className="text-purple-300 hover:text-white text-2xl active:scale-90"
+                >
+                  ×
+                </button>
+              </div>
 
-            {/* Kendi Sıralaman - Mobil Responsive */}
-            {myRank !== null && (
-              <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-2 sm:p-3 mb-3 sm:mb-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-yellow-200">🏆 Güncel Sıralaman:</span>
-                  <span className="text-xl font-bold text-yellow-100">
-                    {myRank}. / {leaderboard.length} Kurye
-                  </span>
+              {/* Kendi Sıralaman - Mobil Responsive */}
+              {myRank !== null && (
+                <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-2 sm:p-3 mb-3 sm:mb-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-yellow-200">🏆 Güncel Sıralaman:</span>
+                    <span className="text-xl font-bold text-yellow-100">
+                      {myRank}. / {leaderboard.length} Kurye
+                    </span>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Leaderboard Listesi */}
-            {leaderboard.length === 0 ? (
-              <div className="text-center py-8 text-purple-300">
-                <div className="text-4xl mb-2">🏁</div>
-                <p className="text-sm">Henüz bugün teslimat yapan kurye yok</p>
-              </div>
-            ) : (
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {leaderboard.slice(0, 10).map((courier, index) => {
-                  const isMe = courier.id === selectedCourierId
-                  const rank = index + 1
+              {/* Leaderboard Listesi */}
+              {leaderboard.length === 0 ? (
+                <div className="text-center py-8 text-purple-300">
+                  <div className="text-4xl mb-2">🏁</div>
+                  <p className="text-sm">Henüz bugün teslimat yapan kurye yok</p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {leaderboard.slice(0, 10).map((courier, index) => {
+                    const isMe = courier.id === selectedCourierId
+                    const rank = index + 1
 
-                  // Madalya veya sıra numarası
-                  let badge = ''
-                  let badgeColor = ''
-                  if (rank === 1) {
-                    badge = '🥇'
-                    badgeColor = 'from-yellow-600 to-yellow-500'
-                  } else if (rank === 2) {
-                    badge = '🥈'
-                    badgeColor = 'from-gray-400 to-gray-300'
-                  } else if (rank === 3) {
-                    badge = '🥉'
-                    badgeColor = 'from-orange-600 to-orange-500'
-                  } else {
-                    badge = `#${rank}`
-                    badgeColor = 'from-slate-700 to-slate-600'
-                  }
+                    // Madalya veya sıra numarası
+                    let badge = ''
+                    let badgeColor = ''
+                    if (rank === 1) {
+                      badge = '🥇'
+                      badgeColor = 'from-yellow-600 to-yellow-500'
+                    } else if (rank === 2) {
+                      badge = '🥈'
+                      badgeColor = 'from-gray-400 to-gray-300'
+                    } else if (rank === 3) {
+                      badge = '🥉'
+                      badgeColor = 'from-orange-600 to-orange-500'
+                    } else {
+                      badge = `#${rank}`
+                      badgeColor = 'from-slate-700 to-slate-600'
+                    }
 
-                  return (
-                    <div
-                      key={courier.id}
-                      className={`flex items-center justify-between p-3 rounded-lg transition-all ${isMe
-                        ? 'bg-purple-500/30 border border-purple-400 scale-105'
-                        : rank <= 3
-                          ? `bg-gradient-to-r ${badgeColor} bg-opacity-20`
-                          : 'bg-purple-800/30'
-                        }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-base font-bold ${rank <= 3 ? 'text-white' : 'text-purple-300'
-                          }`}>
-                          {badge}
-                        </div>
-                        <div>
-                          <p className={`text-sm font-medium ${isMe ? 'text-purple-100 font-bold' : 'text-purple-200'
+                    return (
+                      <div
+                        key={courier.id}
+                        className={`flex items-center justify-between p-3 rounded-lg transition-all ${isMe
+                          ? 'bg-purple-500/30 border border-purple-400 scale-105'
+                          : rank <= 3
+                            ? `bg-gradient-to-r ${badgeColor} bg-opacity-20`
+                            : 'bg-purple-800/30'
+                          }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-base font-bold ${rank <= 3 ? 'text-white' : 'text-purple-300'
                             }`}>
-                            {courier.full_name} {isMe && '(Sen)'}
+                            {badge}
+                          </div>
+                          <div>
+                            <p className={`text-sm font-medium ${isMe ? 'text-purple-100 font-bold' : 'text-purple-200'
+                              }`}>
+                              {courier.full_name} {isMe && '(Sen)'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xl font-bold text-purple-100">
+                            {courier.todayDeliveryCount}
                           </p>
+                          <p className="text-xs text-purple-300">paket</p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-xl font-bold text-purple-100">
-                          {courier.todayDeliveryCount}
-                        </p>
-                        <p className="text-xs text-purple-300">paket</p>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
+                    )
+                  })}
+                </div>
+              )}
 
-            <div className="mt-4 pt-4 border-t border-purple-700">
-              <div className="text-xs text-purple-400 text-center mb-3">
-                Son güncelleme: {new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+              <div className="mt-4 pt-4 border-t border-purple-700">
+                <div className="text-xs text-purple-400 text-center mb-3">
+                  Son güncelleme: {new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                </div>
+                <button
+                  onClick={() => setShowLeaderboard(false)}
+                  className="w-full py-2.5 bg-purple-700 hover:bg-purple-600 text-white rounded-lg font-medium transition-colors"
+                >
+                  Kapat
+                </button>
               </div>
-              <button
-                onClick={() => setShowLeaderboard(false)}
-                className="w-full py-2.5 bg-purple-700 hover:bg-purple-600 text-white rounded-lg font-medium transition-colors"
-              >
-                Kapat
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* IBAN ÖDEME MODAL */}
-      {showIbanModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="bg-slate-900 rounded-2xl border-2 border-purple-500/50 shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-            {/* Header */}
-            <div className="sticky top-0 bg-slate-900 border-b border-slate-800 p-4 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-white">💳 Ödeme Bilgileri</h2>
-              <button
-                onClick={() => {
-                  setShowIbanModal(false)
-                  setIbanPackageId(null)
-                  setIbanPackageAmount(0)
-                }}
-                className="text-slate-400 hover:text-white transition-colors"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Content */}
-            <div className="p-6 space-y-6">
-              {/* Tutar */}
-              <div className="text-center bg-gradient-to-br from-purple-600 to-blue-600 p-6 rounded-xl">
-                <p className="text-slate-200 text-sm mb-2">Ödenecek Tutar</p>
-                <p className="text-white text-4xl font-bold">{ibanPackageAmount}₺</p>
+      {
+        showIbanModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+            <div className="bg-slate-900 rounded-2xl border-2 border-purple-500/50 shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+              {/* Header */}
+              <div className="sticky top-0 bg-slate-900 border-b border-slate-800 p-4 flex justify-between items-center">
+                <h2 className="text-xl font-bold text-white">💳 Ödeme Bilgileri</h2>
+                <button
+                  onClick={() => {
+                    setShowIbanModal(false)
+                    setIbanPackageId(null)
+                    setIbanPackageAmount(0)
+                  }}
+                  className="text-slate-400 hover:text-white transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
 
-              {/* İsim */}
-              <div className="bg-slate-800 p-4 rounded-xl">
-                <p className="text-slate-400 text-xs mb-1">Alıcı Adı</p>
-                <p className="text-white font-semibold text-lg">İbrahim Okan Özdemir</p>
-              </div>
-
-              {/* IBAN */}
-              <div className="bg-slate-800 p-4 rounded-xl">
-                <p className="text-slate-400 text-xs mb-2">IBAN Numarası</p>
-                <div className="flex items-center gap-2">
-                  <p className="text-white font-mono text-sm flex-1 break-all">
-                    TR79 0001 0090 1065 9157 6050 01
-                  </p>
-                  <button
-                    onClick={copyIbanToClipboard}
-                    className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex-shrink-0"
-                  >
-                    📋 Kopyala
-                  </button>
+              {/* Content */}
+              <div className="p-6 space-y-6">
+                {/* Tutar */}
+                <div className="text-center bg-gradient-to-br from-purple-600 to-blue-600 p-6 rounded-xl">
+                  <p className="text-slate-200 text-sm mb-2">Ödenecek Tutar</p>
+                  <p className="text-white text-4xl font-bold">{ibanPackageAmount}₺</p>
                 </div>
+
+                {/* İsim */}
+                <div className="bg-slate-800 p-4 rounded-xl">
+                  <p className="text-slate-400 text-xs mb-1">Alıcı Adı</p>
+                  <p className="text-white font-semibold text-lg">İbrahim Okan Özdemir</p>
+                </div>
+
+                {/* IBAN */}
+                <div className="bg-slate-800 p-4 rounded-xl">
+                  <p className="text-slate-400 text-xs mb-2">IBAN Numarası</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-white font-mono text-sm flex-1 break-all">
+                      TR79 0001 0090 1065 9157 6050 01
+                    </p>
+                    <button
+                      onClick={copyIbanToClipboard}
+                      className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex-shrink-0"
+                    >
+                      📋 Kopyala
+                    </button>
+                  </div>
+                </div>
+
+                {/* QR Kod */}
+                <div className="bg-white p-6 rounded-xl flex flex-col items-center">
+                  <img
+                    src="/iban-qr.png"
+                    alt="IBAN QR Kod"
+                    className="w-64 h-64 object-contain"
+                  />
+                </div>
+                <p className="text-center text-slate-400 text-xs -mt-3">
+                  QR kodu okutarak IBAN'a ödeme yapabilirsiniz
+                </p>
+
+                {/* Onay Butonu */}
+                <button
+                  onClick={handleIbanPaymentSent}
+                  disabled={isUpdating.has(ibanPackageId || 0)}
+                  className="w-full py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white text-lg font-bold rounded-xl transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isUpdating.has(ibanPackageId || 0) ? 'İşleniyor...' : '✅ Ödeme Gönderildi'}
+                </button>
+
+                <p className="text-center text-slate-500 text-xs">
+                  Bu butona bastığınızda paket "Teslim Edildi" olarak işaretlenecektir
+                </p>
               </div>
-
-              {/* QR Kod */}
-              <div className="bg-white p-6 rounded-xl flex flex-col items-center">
-                <img 
-                  src="/iban-qr.png" 
-                  alt="IBAN QR Kod" 
-                  className="w-64 h-64 object-contain"
-                />
-              </div>
-              <p className="text-center text-slate-400 text-xs -mt-3">
-                QR kodu okutarak IBAN'a ödeme yapabilirsiniz
-              </p>
-
-              {/* Onay Butonu */}
-              <button
-                onClick={handleIbanPaymentSent}
-                disabled={isUpdating.has(ibanPackageId || 0)}
-                className="w-full py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white text-lg font-bold rounded-xl transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isUpdating.has(ibanPackageId || 0) ? 'İşleniyor...' : '✅ Ödeme Gönderildi'}
-              </button>
-
-              <p className="text-center text-slate-500 text-xs">
-                Bu butona bastığınızda paket "Teslim Edildi" olarak işaretlenecektir
-              </p>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   )
 
   async function handleLogin(e: any) {
@@ -2716,9 +3221,20 @@ export default function KuryePage() {
           .update({ is_active: true, status: 'idle' })
           .eq('id', data.id)
 
-        // Kurye oturumunu başlat
+        // Kurye oturumunu başlat (eski sistem)
         localStorage.setItem(LOGIN_STORAGE_KEY, 'true')
         localStorage.setItem(LOGIN_COURIER_ID_KEY, data.id)
+
+        // Yeni auth sistemi için de kaydet (otomatik giriş için)
+        localStorage.setItem('auth_logged_in', 'true')
+        localStorage.setItem('auth_user_type', 'courier')
+        localStorage.setItem('auth_user', JSON.stringify({
+          id: data.id,
+          username: data.username,
+          fullName: data.full_name,
+          userType: 'courier'
+        }))
+
         setIsLoggedIn(true)
         setSelectedCourierId(data.id)
       } else {
