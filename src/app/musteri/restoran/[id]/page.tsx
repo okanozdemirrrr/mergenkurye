@@ -21,10 +21,7 @@ interface Restaurant {
   cover_image_url?: string
 }
 
-// Static params for build
-export async function generateStaticParams() {
-  return []
-}
+export const dynamic = 'force-dynamic'
 
 export default function RestaurantMenuPage() {
   const params = useParams()
