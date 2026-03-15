@@ -21,6 +21,11 @@ interface Restaurant {
   cover_image_url?: string
 }
 
+// Static params for build
+export async function generateStaticParams() {
+  return []
+}
+
 export default function RestaurantMenuPage() {
   const params = useParams()
   const router = useRouter()
