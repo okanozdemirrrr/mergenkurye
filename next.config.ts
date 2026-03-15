@@ -4,10 +4,7 @@ const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
   
-  // Static export for Capacitor
-  output: 'export',
-  
-  // Disable image optimization for static export
+  // Disable image optimization for better performance
   images: {
     unoptimized: true,
   },
