@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
+import { CartProvider } from "@/app/context/CartContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,13 +15,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Mergen Kurye",
+  title: "Alda Gel",
   description: "Hızlı ve Güvenilir Kurye Takip Sistemi",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Mergen Kurye",
+    title: "Alda Gel",
     startupImage: [
       {
         url: "/icons/icon-512x512.png",
@@ -28,9 +29,9 @@ export const metadata: Metadata = {
       },
     ],
   },
-  applicationName: "Mergen Kurye",
+  applicationName: "Alda Gel",
   keywords: ["kurye", "teslimat", "sipariş takip", "restoran", "yemek"],
-  authors: [{ name: "Mergen Kurye" }],
+  authors: [{ name: "Alda Gel" }],
   icons: {
     icon: [
       { url: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
@@ -47,21 +48,21 @@ export const metadata: Metadata = {
     type: "website",
     locale: "tr_TR",
     url: "https://yourdomain.com",
-    title: "Mergen Kurye",
+    title: "Alda Gel",
     description: "Hızlı ve Güvenilir Kurye Takip Sistemi",
-    siteName: "Mergen Kurye",
+    siteName: "Alda Gel",
     images: [
       {
         url: "/icons/icon-512x512.png",
         width: 512,
         height: 512,
-        alt: "Mergen Kurye Logo",
+        alt: "Alda Gel Logo",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Mergen Kurye",
+    title: "Alda Gel",
     description: "Hızlı ve Güvenilir Kurye Takip Sistemi",
     images: ["/icons/icon-512x512.png"],
   },
@@ -91,13 +92,15 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="Mergen Kurye" />
+        <meta name="apple-mobile-web-app-title" content="Alda Gel" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
-        <PWAInstallPrompt />
+        <CartProvider>
+          {children}
+          <PWAInstallPrompt />
+        </CartProvider>
       </body>
     </html>
   );

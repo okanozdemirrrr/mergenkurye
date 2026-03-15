@@ -21,7 +21,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   // LocalStorage'dan sepeti yükle
   useEffect(() => {
-    const savedCart = localStorage.getItem('mergen_cart')
+    const savedCart = localStorage.getItem('alda_gel_cart')
     if (savedCart) {
       try {
         setCart(JSON.parse(savedCart))
@@ -33,7 +33,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   // Sepet değiştiğinde LocalStorage'a kaydet
   useEffect(() => {
-    localStorage.setItem('mergen_cart', JSON.stringify(cart))
+    localStorage.setItem('alda_gel_cart', JSON.stringify(cart))
   }, [cart])
 
   const addToCart = (product: Product, quantity: number = 1, note?: string) => {
@@ -80,7 +80,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const clearCart = () => {
     setCart([])
-    localStorage.removeItem('mergen_cart')
+    localStorage.removeItem('alda_gel_cart')
   }
 
   const getCartTotal = () => {

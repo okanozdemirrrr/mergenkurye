@@ -194,14 +194,16 @@ function RestoranContent({ children, pathname }: { children: React.ReactNode, pa
   return (
     <>
       {/* Hamburger Menu Button */}
-      <button
-        onClick={() => setShowMenu(!showMenu)}
-        className="fixed top-4 left-4 z-50 bg-slate-800 text-white p-3 rounded-lg shadow-lg hover:bg-slate-700 transition-colors"
-      >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
+      {!showMenu && (
+        <button
+          onClick={() => setShowMenu(true)}
+          className="fixed top-4 left-4 z-[60] bg-slate-800 text-white p-3 rounded-lg shadow-lg hover:bg-slate-700 transition-colors"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+      )}
 
       <RestoranMessages />
       <MenuSidebar showMenu={showMenu} setShowMenu={setShowMenu} isActive={isActive} />
@@ -246,9 +248,9 @@ function MenuSidebar({ showMenu, setShowMenu, isActive }: { showMenu: boolean, s
   if (!showMenu) return null
 
   return (
-    <div className="fixed inset-0 z-40 flex">
+    <div className="fixed inset-0 z-50 flex">
       <div className="fixed inset-0 bg-black/50" onClick={() => setShowMenu(false)} />
-      <div className="relative bg-slate-900 w-80 h-full overflow-y-auto p-6">
+      <div className="relative bg-slate-900 w-80 h-full overflow-y-auto p-6 shadow-2xl">
         <div className="mb-8 text-center">
           <img src="/logo.png" alt="Logo" className="w-24 h-24 mx-auto mb-3" />
           <h2 className="text-xl font-bold text-white">Restoran Panel</h2>
