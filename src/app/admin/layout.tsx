@@ -21,6 +21,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [showMenu, setShowMenu] = useState(false)
   const [showCourierSubmenu, setShowCourierSubmenu] = useState(false)
   const [showRestaurantSubmenu, setShowRestaurantSubmenu] = useState(false)
+  const [showCustomerSubmenu, setShowCustomerSubmenu] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
 
@@ -191,6 +192,34 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <span className="mr-3">📊</span>
                 Genel İstatistikler
               </Link>
+
+              {/* Müşteriler Submenu */}
+              <div>
+                <button
+                  onClick={() => setShowCustomerSubmenu(!showCustomerSubmenu)}
+                  className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${
+                    pathname?.startsWith('/admin/musteriler') ? 'bg-orange-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  }`}
+                >
+                  <span className="mr-3">👥</span>
+                  Müşteriler
+                  <span className="float-right">{showCustomerSubmenu ? '▼' : '▶'}</span>
+                </button>
+
+                {showCustomerSubmenu && (
+                  <div className="ml-4 mt-2 space-y-1">
+                    <Link
+                      href="/admin/musteriler/duyurular"
+                      onClick={() => setShowMenu(false)}
+                      className={`block w-full text-left px-4 py-2 rounded-lg text-sm transition-all ${
+                        isActive('/admin/musteriler/duyurular') ? 'bg-orange-500 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                      }`}
+                    >
+                      📢 Duyurular
+                    </Link>
+                  </div>
+                )}
+              </div>
 
               {/* Kuryeler Submenu */}
               <div>
