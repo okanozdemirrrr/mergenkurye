@@ -237,23 +237,35 @@ export default function RestoranımPage() {
 
   const saveReply = async (reviewId: string, reply: string) => {
     try {
-      const { error } = await supabase
+      setLoading(true)
+      
+      console.log('Yanıt kaydediliyor:', { reviewId, reply })
+      
+      const { data, error } = await supabase
         .from('reviews')
         .update({ 
           restaurant_reply: reply,
           replied_at: new Date().toISOString()
         })
         .eq('id', reviewId)
+        .select()
 
-      if (error) throw error
+      if (error) {
+        console.error('Supabase hatası:', error)
+        throw error
+      }
+
+      console.log('Yanıt kaydedildi:', data)
 
       setSuccessMessage('✅ Yanıt kaydedildi ve müşteriye bildirim gönderildi!')
       setTimeout(() => setSuccessMessage(''), 3000)
-      loadRestaurantData()
-    } catch (error) {
+      await loadRestaurantData()
+    } catch (error: any) {
       console.error('Yanıt kaydedilemedi:', error)
-      setErrorMessage('❌ Yanıt kaydedilemedi')
-      setTimeout(() => setErrorMessage(''), 3000)
+      setErrorMessage(`❌ Yanıt kaydedilemedi: ${error.message || 'Bilinmeyen hata'}`)
+      setTimeout(() => setErrorMessage(''), 5000)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -584,16 +596,19 @@ function MenuTab({ categories, products, toggleProductAvailability }: any) {
 // Reviews Tab Component
 function ReviewsTab({ reviews, saveReply }: any) {
   const [replyTexts, setReplyTexts] = useState<{ [key: string]: string }>({})
+  const [savingReplyId, setSavingReplyId] = useState<string | null>(null)
 
   const handleReplyChange = (reviewId: string, text: string) => {
     setReplyTexts(prev => ({ ...prev, [reviewId]: text }))
   }
 
-  const handleSaveReply = (reviewId: string) => {
+  const handleSaveReply = async (reviewId: string) => {
     const reply = replyTexts[reviewId]
     if (reply && reply.trim()) {
-      saveReply(reviewId, reply.trim())
+      setSavingReplyId(reviewId)
+      await saveReply(reviewId, reply.trim())
       setReplyTexts(prev => ({ ...prev, [reviewId]: '' }))
+      setSavingReplyId(null)
     }
   }
 
@@ -672,10 +687,10 @@ function ReviewsTab({ reviews, saveReply }: any) {
                 />
                 <button
                   onClick={() => handleSaveReply(review.id)}
-                  disabled={!replyTexts[review.id]?.trim()}
-                  className="bg-orange-600 hover:bg-orange-700 disabled:bg-slate-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                  disabled={!replyTexts[review.id]?.trim() || savingReplyId === review.id}
+                  className="bg-orange-600 hover:bg-orange-700 disabled:bg-slate-700 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-medium transition-colors"
                 >
-                  Yanıtı Gönder
+                  {savingReplyId === review.id ? 'Gönderiliyor...' : 'Yanıtı Gönder'}
                 </button>
               </div>
             )}

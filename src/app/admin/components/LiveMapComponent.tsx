@@ -38,7 +38,7 @@ function MapUpdater({ center }: { center: [number, number] }) {
 export function LiveMapComponent({ packages, couriers, restaurants, onRefresh }: LiveMapComponentProps) {
   const [isClient, setIsClient] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const [mapCenter] = useState<[number, number]>([38.3552, 38.3095]) // Malatya merkez
+  const [mapCenter] = useState<[number, number]>([41.494714153011856, 36.07827997146362]) // Samsun 19 Mayıs operasyon merkezi
   const [todayHeatmapPoints, setTodayHeatmapPoints] = useState<Array<{ lat: number, lng: number }>>([])
 
   // Bugünün tüm siparişlerinin koordinatlarını çek
@@ -428,7 +428,7 @@ export function LiveMapComponent({ packages, couriers, restaurants, onRefresh }:
           {/* Harita */}
           <MapContainer
             center={mapCenter}
-            zoom={13}
+            zoom={14}
             style={{ height: '100%', width: '100%' }}
             zoomControl={true}
           >
