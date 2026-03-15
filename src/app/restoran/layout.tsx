@@ -269,6 +269,17 @@ function MenuSidebar({ showMenu, setShowMenu, isActive }: { showMenu: boolean, s
           </Link>
 
           <Link
+            href="/restoran/restoranim"
+            onClick={() => setShowMenu(false)}
+            className={`block w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${
+              isActive('/restoran/restoranim') ? 'bg-orange-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+            }`}
+          >
+            <span className="mr-3">🏪</span>
+            Restoranım
+          </Link>
+
+          <Link
             href="/restoran/istatistikler"
             onClick={() => setShowMenu(false)}
             className={`block w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${
