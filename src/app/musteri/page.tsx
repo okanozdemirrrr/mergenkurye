@@ -4,12 +4,205 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, FileText, User } from 'lucide-react'
+import { Menu, FileText, User, ShoppingCart, UtensilsCrossed } from 'lucide-react'
 import AuthModal from './components/AuthModal'
 import AddressModal from './components/AddressModal'
 import WelcomeSplash from './components/WelcomeSplash'
 import NotificationBell from './components/NotificationBell'
 import PushNotificationPrompt from './components/PushNotificationPrompt'
+
+// Split Screen Selector Component
+function SplitScreenSelector() {
+  const router = useRouter()
+  const [showComingSoon, setShowComingSoon] = useState(false)
+
+  const handleYemekClick = () => {
+    router.push('/musteri/restoranlar')
+  }
+
+  const handleMarketClick = () => {
+    setShowComingSoon(true)
+    setTimeout(() => setShowComingSoon(false), 3000)
+  }
+
+  return (
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-0 h-[calc(100vh-200px)] min-h-[500px]">
+        {/* YEMEK Section */}
+        <motion.button
+          onClick={handleYemekClick}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className="relative overflow-hidden group cursor-pointer"
+        >
+          {/* Background Image */}
+          <div 
+            className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110"
+            style={{
+              backgroundImage: 'url(https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80)',
+            }}
+          />
+          
+          {/* Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-orange-600/80 to-orange-800/90 group-hover:from-orange-500/85 group-hover:to-orange-700/95 transition-all duration-300" />
+          
+          {/* Content */}
+          <div className="relative h-full flex flex-col items-center justify-center text-white p-8">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+              className="mb-6"
+            >
+              <UtensilsCrossed size={80} strokeWidth={1.5} />
+            </motion.div>
+            
+            <motion.h2
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="text-6xl md:text-7xl font-black tracking-tight mb-4"
+              style={{ fontFamily: 'Open Sans, sans-serif' }}
+            >
+              YEMEK
+            </motion.h2>
+            
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="text-xl md:text-2xl font-medium opacity-90"
+            >
+              Restoranlardan sipariş ver
+            </motion.p>
+
+            {/* Hover Arrow */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              whileHover={{ opacity: 1, x: 10 }}
+              className="absolute right-8 top-1/2 transform -translate-y-1/2"
+            >
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </motion.div>
+          </div>
+
+          {/* Decorative Elements */}
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 left-0 w-40 h-40 bg-white/5 rounded-full blur-3xl" />
+        </motion.button>
+
+        {/* MARKET Section */}
+        <motion.button
+          onClick={handleMarketClick}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className="relative overflow-hidden group cursor-pointer"
+        >
+          {/* Background Image */}
+          <div 
+            className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110"
+            style={{
+              backgroundImage: 'url(https://images.unsplash.com/photo-1578916171728-46686eac8d58?w=800&q=80)',
+            }}
+          />
+          
+          {/* Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-green-600/80 to-green-800/90 group-hover:from-green-500/85 group-hover:to-green-700/95 transition-all duration-300" />
+          
+          {/* Content */}
+          <div className="relative h-full flex flex-col items-center justify-center text-white p-8">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+              className="mb-6"
+            >
+              <ShoppingCart size={80} strokeWidth={1.5} />
+            </motion.div>
+            
+            <motion.h2
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="text-6xl md:text-7xl font-black tracking-tight mb-4"
+              style={{ fontFamily: 'Open Sans, sans-serif' }}
+            >
+              MARKET
+            </motion.h2>
+            
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="text-xl md:text-2xl font-medium opacity-90"
+            >
+              Marketlerden alışveriş yap
+            </motion.p>
+
+            {/* Coming Soon Badge */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.5 }}
+              className="absolute top-8 right-8 bg-yellow-400 text-green-900 px-4 py-2 rounded-full font-bold text-sm"
+            >
+              Yakında
+            </motion.div>
+
+            {/* Hover Arrow */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              whileHover={{ opacity: 1, x: 10 }}
+              className="absolute right-8 top-1/2 transform -translate-y-1/2"
+            >
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </motion.div>
+          </div>
+
+          {/* Decorative Elements */}
+          <div className="absolute top-0 left-0 w-32 h-32 bg-white/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 right-0 w-40 h-40 bg-white/5 rounded-full blur-3xl" />
+        </motion.button>
+      </div>
+
+      {/* Coming Soon Modal */}
+      <AnimatePresence>
+        {showComingSoon && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 px-4"
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              className="bg-white/95 backdrop-blur-xl rounded-3xl p-8 md:p-12 max-w-md text-center shadow-2xl border border-white/20"
+            >
+              <div className="text-6xl mb-4">🛒</div>
+              <h3 className="text-2xl font-bold text-[#3c4043] mb-3" style={{ fontFamily: 'Open Sans, sans-serif' }}>
+                Marketlerimiz Yüklenmekte
+              </h3>
+              <p className="text-[#6f6f6f] text-lg">
+                Beklemede kalın, çok yakında sizlerle!
+              </p>
+              <div className="mt-6 flex gap-2 justify-center">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  )
+}
 
 export default function MusteriAnaSayfa() {
   const router = useRouter()
@@ -33,8 +226,7 @@ export default function MusteriAnaSayfa() {
       setCustomerName(name)
       if (address) {
         setSelectedAddress(address)
-        // Adres varsa direkt restoranlar sayfasına yönlendir
-        router.push('/musteri/restoranlar')
+        // Adres varsa split screen göster (restoranlar sayfasına otomatik yönlendirme kaldırıldı)
       }
     }
   }, [])
@@ -214,22 +406,28 @@ export default function MusteriAnaSayfa() {
 
         {/* Main Content */}
         <main className="max-w-7xl mx-auto px-4 py-8">
-          <div className="text-center py-20">
-            <h1 className="text-[48px] font-bold text-[#3c4043] mb-4" style={{ fontFamily: 'Open Sans, sans-serif' }}>
-              Alda Gel
-            </h1>
-            <p className="text-[18px] text-[#6f6f6f] mb-8">
-              Samsun 19 Mayıs'ta hızlı teslimat
-            </p>
-            
-            <button
-              onClick={handleAddressClick}
-              className="px-8 py-4 text-[16px] font-bold text-white bg-[#f59e0b] hover:bg-[#d97706] rounded-lg transition-colors"
-              style={{ fontFamily: 'Open Sans, sans-serif' }}
-            >
-              {!isLoggedIn ? 'Giriş Yap ve Başla' : 'Adresini Seç ve Başla'}
-            </button>
-          </div>
+          {!isLoggedIn || !selectedAddress ? (
+            // Giriş yapmamış veya adres seçmemiş kullanıcılar için
+            <div className="text-center py-20">
+              <h1 className="text-[48px] font-bold text-[#3c4043] mb-4" style={{ fontFamily: 'Open Sans, sans-serif' }}>
+                Alda Gel
+              </h1>
+              <p className="text-[18px] text-[#6f6f6f] mb-8">
+                Samsun 19 Mayıs'ta hızlı teslimat
+              </p>
+              
+              <button
+                onClick={handleAddressClick}
+                className="px-8 py-4 text-[16px] font-bold text-white bg-[#f59e0b] hover:bg-[#d97706] rounded-lg transition-colors"
+                style={{ fontFamily: 'Open Sans, sans-serif' }}
+              >
+                {!isLoggedIn ? 'Giriş Yap ve Başla' : 'Adresini Seç ve Başla'}
+              </button>
+            </div>
+          ) : (
+            // Giriş yapmış ve adres seçmiş kullanıcılar için Split Screen
+            <SplitScreenSelector />
+          )}
         </main>
       </div>
 
