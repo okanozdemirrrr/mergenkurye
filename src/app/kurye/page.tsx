@@ -13,6 +13,26 @@ import Link from 'next/link'
 import { App } from '@capacitor/app'
 import { supabase } from '../lib/supabase'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '../lib/platformUtils'
+import { CourierEarningsStats } from '@/components/CourierEarningsStats'
+import { CourierNotificationWrapper } from '@/components/notifications/CourierNotificationWrapper'
+
+// ============================================
+// SAMSUN OPERASYON BÖLGESI TANIMLARI
+// ============================================
+const OPERATION_BOUNDS = {
+  minLat: 41.20,  // Samsun güney sınırı
+  maxLat: 41.60,  // Samsun kuzey sınırı
+  minLng: 35.90,  // Samsun batı sınırı
+  maxLng: 36.40   // Samsun doğu sınırı
+}
+
+const OPERATION_CENTER = {
+  lat: 41.494714153011856,
+  lng: 36.07827997146362
+}
+
+// Geliştirme ortamı kontrolü
+const isDevelopment = process.env.NODE_ENV === 'development'
 
 interface Package {
   id: number
@@ -1295,111 +1315,147 @@ export default function KuryePage() {
   // Arka plan konum takibi başlat
   const startBackgroundLocationTracking = async (courierId: string) => {
     try {
-      const { BackgroundGeolocationPlugin } = await import('@capacitor-community/background-geolocation')
-      
-      console.log('🔄 Arka plan konum takibi başlatılıyor...')
-      
-      // Watcher ekle
-      const watcherId = await BackgroundGeolocationPlugin.addWatcher(
-        {
-          backgroundMessage: 'Konumunuz Takip Ediliyor',
-          backgroundTitle: 'Mergen Kurye Aktif',
-          requestPermissions: true,
-          stale: false,
-          distanceFilter: 10 // 10 metre hareket ettiğinde güncelle
-        },
-        async (location, error) => {
-          if (error) {
-            console.error('❌ Arka plan konum hatası:', error)
-            return
-          }
+      // Platform kontrolü - sadece mobil cihazlarda çalıştır
+      if (typeof window !== 'undefined' && window.navigator.userAgent.includes('Mobile')) {
+        try {
+          const { BackgroundGeolocationPlugin } = await import('@capacitor-community/background-geolocation')
+          
+          console.log('🔄 Arka plan konum takibi başlatılıyor...')
+          
+          // Watcher ekle
+          const watcherId = await BackgroundGeolocationPlugin.addWatcher(
+            {
+              backgroundMessage: 'Konumunuz Takip Ediliyor',
+              backgroundTitle: 'Alda Gel Kurye Aktif',
+              requestPermissions: true,
+              stale: false,
+              distanceFilter: 10 // 10 metre hareket ettiğinde güncelle
+            },
+            async (location, error) => {
+              if (error) {
+                console.error('❌ Arka plan konum hatası:', error)
+                return
+              }
 
-          if (!location) {
-            console.error('❌ Konum null geldi, işlenmiyor')
-            return
-          }
+              if (!location) {
+                console.error('❌ Konum null geldi, işlenmiyor')
+                return
+              }
 
-          const { latitude, longitude, accuracy, speed, bearing, time } = location
-          const timestamp = time || Date.now()
+              const { latitude, longitude, accuracy, speed, bearing, time } = location
+              const timestamp = time || Date.now()
 
-          console.log('📍 Arka plan konum alındı:', { latitude, longitude, accuracy })
+              console.log('📍 Arka plan konum alındı:', { latitude, longitude, accuracy })
 
-          // Aynı filtreleri uygula
-          // FİLTRE 1: NULL/ZERO
-          if (!latitude || !longitude || latitude === 0 || longitude === 0) {
-            console.error('❌ Arka plan FİLTRE 1: Geçersiz koordinatlar')
-            return
-          }
+              // ============================================
+              // ARKA PLAN FİLTRELEME - AYNI KURALLAR
+              // ============================================
+              
+              // FİLTRE 1: NULL/ZERO
+              if (!latitude || !longitude || latitude === 0 || longitude === 0) {
+                console.error('❌ Arka plan FİLTRE 1 REDDEDİLDİ: Geçersiz koordinatlar')
+                return
+              }
 
-          // FİLTRE 2: DOĞRULUK
-          if (accuracy && accuracy > 100) {
-            console.error('❌ Arka plan FİLTRE 2: Doğruluk düşük:', accuracy)
-            return
-          }
+              // FİLTRE 2: DOĞRULUK BARAJI (1000m baz istasyonu + 100m hassasiyet)
+              if (!accuracy || accuracy > 1000) {
+                console.error('❌ Arka plan FİLTRE 2 REDDEDİLDİ: Baz istasyonu verisi')
+                console.error(`❌ Accuracy: ${accuracy ? accuracy.toFixed(0) : 'N/A'}m`)
+                return
+              }
 
-          // FİLTRE 3: MALATYA SINIRI
-          const isInMalatya = 
-            latitude >= 38.0 && latitude <= 38.7 && 
-            longitude >= 37.8 && longitude <= 38.6
+              if (accuracy > 100) {
+                console.error('❌ Arka plan FİLTRE 2 REDDEDİLDİ: Düşük hassasiyet')
+                console.error(`❌ Accuracy: ${accuracy.toFixed(0)}m - Gerekli: <100m`)
+                return
+              }
 
-          if (!isInMalatya) {
-            console.error('❌ Arka plan FİLTRE 3: Malatya dışı:', { latitude, longitude })
-            return
-          }
+              // FİLTRE 3: COĞRAFİ ÇİT (Samsun Geofencing)
+              if (!isDevelopment) {
+                const isInSamsun = 
+                  latitude >= OPERATION_BOUNDS.minLat && 
+                  latitude <= OPERATION_BOUNDS.maxLat && 
+                  longitude >= OPERATION_BOUNDS.minLng && 
+                  longitude <= OPERATION_BOUNDS.maxLng
 
-          // FİLTRE 4: SIÇRAMA
-          if (lastValidLocationRef.current) {
-            const lastLoc = lastValidLocationRef.current
-            const distance = calculateDistance(lastLoc.latitude, lastLoc.longitude, latitude, longitude)
-            const timeDiff = (timestamp - lastLoc.timestamp) / 1000
-            const speedKmh = (distance / timeDiff) * 3.6
-
-            if (speedKmh > 120) {
-              console.error('❌ Arka plan FİLTRE 4: İmkansız hız:', speedKmh.toFixed(0), 'km/h')
-              return
-            }
-          }
-
-          console.log('✅ Arka plan konum geçerli, kaydediliyor')
-
-          // Son geçerli konumu güncelle
-          lastValidLocationRef.current = {
-            latitude,
-            longitude,
-            timestamp
-          }
-
-          // Veritabanına kaydet
-          try {
-            await supabase
-              .from('couriers')
-              .update({
-                last_location: {
-                  latitude,
-                  longitude,
-                  accuracy: accuracy || null,
-                  heading: bearing || null,
-                  speed: speed || null,
-                  updated_at: new Date(timestamp).toISOString(),
-                  last_seen: new Date().toISOString()
+                if (!isInSamsun) {
+                  console.error('🚫 Arka plan FİLTRE 3 REDDEDİLDİ: COĞRAFİ ÇİT DIŞI!')
+                  console.error(`🚫 Konum: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`)
+                  console.error('🚫 VERİ ÇÖPE ATILDI')
+                  return
                 }
-              })
-              .eq('id', courierId)
-            
-            console.log('✅ Arka plan konum kaydedildi')
-          } catch (err) {
-            console.error('❌ Arka plan konum kaydetme hatası:', err)
-          }
-        }
-      )
+              }
 
-      console.log('✅ Arka plan konum takibi başlatıldı, watcher ID:', watcherId)
-      
-      // Watcher ID'yi sakla (temizlik için)
-      return watcherId
+              // FİLTRE 4: HIZ VE MESAFE FİLTRESİ
+              if (lastValidLocationRef.current) {
+                const lastLoc = lastValidLocationRef.current
+                const distance = calculateDistance(lastLoc.latitude, lastLoc.longitude, latitude, longitude)
+                const timeDiff = (timestamp - lastLoc.timestamp) / 1000
+                
+                if (timeDiff <= 0) {
+                  console.error('❌ Arka plan FİLTRE 4 REDDEDİLDİ: Zaman farkı sıfır')
+                  return
+                }
+
+                const speedKmh = (distance / timeDiff) * 3.6
+
+                if (speedKmh > 120) {
+                  console.error('⚡ Arka plan FİLTRE 4 REDDEDİLDİ: IŞINLANMA!')
+                  console.error(`⚡ Hız: ${speedKmh.toFixed(0)} km/h - Maksimum: 120 km/h`)
+                  console.error('⚡ VERİ BLOKLAND')
+                  return
+                }
+              }
+
+              console.log('✅ Arka plan: Tüm filtreler geçti')
+
+              // Son geçerli konumu güncelle
+              lastValidLocationRef.current = {
+                latitude,
+                longitude,
+                timestamp
+              }
+
+              console.log('✅ Arka plan konum geçerli, kaydediliyor')
+
+              // Veritabanına kaydet
+              try {
+                await supabase
+                  .from('couriers')
+                  .update({
+                    last_location: {
+                      latitude,
+                      longitude,
+                      accuracy: accuracy || null,
+                      heading: bearing || null,
+                      speed: speed || null,
+                      updated_at: new Date(timestamp).toISOString(),
+                      last_seen: new Date().toISOString()
+                    }
+                  })
+                  .eq('id', courierId)
+                
+                console.log('✅ Arka plan konum kaydedildi')
+              } catch (err) {
+                console.error('❌ Arka plan konum kaydetme hatası:', err)
+              }
+            }
+          )
+
+          console.log('✅ Arka plan konum takibi başlatıldı, watcher ID:', watcherId)
+          
+          // Watcher ID'yi sakla (temizlik için)
+          return watcherId
+        } catch (importError) {
+          console.log('ℹ️ Background geolocation paketi yüklü değil (web platformu)')
+          return null
+        }
+      } else {
+        console.log('ℹ️ Background geolocation sadece mobil cihazlarda desteklenir')
+        return null
+      }
     } catch (error) {
       console.error('❌ Arka plan konum takibi başlatılamadı:', error)
-      console.log('ℹ️ Web platformunda arka plan takip desteklenmiyor')
       return null
     }
   }
@@ -1407,9 +1463,18 @@ export default function KuryePage() {
   // Arka plan konum takibini durdur
   const stopBackgroundLocationTracking = async (watcherId: string) => {
     try {
-      const { BackgroundGeolocationPlugin } = await import('@capacitor-community/background-geolocation')
-      await BackgroundGeolocationPlugin.removeWatcher({ id: watcherId })
-      console.log('🛑 Arka plan konum takibi durduruldu')
+      // Platform kontrolü - sadece mobil cihazlarda çalıştır
+      if (typeof window !== 'undefined' && window.navigator.userAgent.includes('Mobile')) {
+        try {
+          const { BackgroundGeolocationPlugin } = await import('@capacitor-community/background-geolocation')
+          await BackgroundGeolocationPlugin.removeWatcher({ id: watcherId })
+          console.log('🛑 Arka plan konum takibi durduruldu')
+        } catch (importError) {
+          console.log('ℹ️ Background geolocation paketi yüklü değil (web platformu)')
+        }
+      } else {
+        console.log('ℹ️ Background geolocation sadece mobil cihazlarda desteklenir')
+      }
     } catch (error) {
       console.error('❌ Arka plan konum takibi durdurulamadı:', error)
     }
@@ -1434,7 +1499,7 @@ export default function KuryePage() {
     return R * c // Metre cinsinden mesafe
   }
 
-  // Konum güncellemesi fonksiyonu - Gelişmiş Filtreleme
+  // Konum güncellemesi fonksiyonu - ULTRA GÜÇLENDİRİLMİŞ FİLTRELEME
   const updateCourierLocation = async (courierId: string) => {
     try {
       // Capacitor Geolocation plugin'ini kullan (daha güvenilir)
@@ -1453,91 +1518,143 @@ export default function KuryePage() {
         }
       }
 
-      // Konum al - En yüksek doğruluk (GPS only)
+      // ============================================
+      // DONANIM ZORLAMASI: GPS ONLY - CACHE YOK
+      // ============================================
       const position = await Geolocation.getCurrentPosition({
-        enableHighAccuracy: true,  // GPS kullan (WiFi/IP değil)
+        enableHighAccuracy: true,  // ✅ GPS kullan (WiFi/IP/Baz istasyonu değil)
         timeout: 20000,            // 20 saniye bekle
-        maximumAge: 0              // Cache kullanma, her zaman yeni konum al
+        maximumAge: 0              // ✅ CACHE KULLANMA - Her zaman yeni GPS verisi al
       })
 
       const { latitude, longitude, accuracy, altitude, altitudeAccuracy, heading, speed } = position.coords
       const timestamp = position.timestamp
 
+      console.log('🛰️ GPS Verisi Alındı:', { 
+        lat: latitude.toFixed(6), 
+        lng: longitude.toFixed(6), 
+        accuracy: accuracy ? `${accuracy.toFixed(0)}m` : 'N/A',
+        timestamp: new Date(timestamp).toISOString()
+      })
+
       // ============================================
       // FİLTRE 1: NULL/ZERO KONTROLÜ
       // ============================================
       if (!latitude || !longitude || latitude === 0 || longitude === 0) {
-        console.error('❌ FİLTRE 1: Geçersiz koordinatlar (0,0 veya null)')
+        console.error('❌ FİLTRE 1 REDDEDİLDİ: Geçersiz koordinatlar (0,0 veya null)')
         console.error('❌ Son geçerli konum korunuyor')
         return
       }
 
       // ============================================
-      // FİLTRE 2: DOĞRULUK KONTROLÜ (100m threshold)
+      // FİLTRE 2: DOĞRULUK BARAJI (Accuracy Threshold)
       // ============================================
-      if (accuracy && accuracy > 100) {
-        console.error('❌ FİLTRE 2: Konum doğruluğu çok düşük:', accuracy.toFixed(0), 'metre')
-        console.error('❌ Minimum gereksinim: 100m, bu veri işlenmiyor')
+      // Baz istasyonu verilerini engelle (1000m+ accuracy)
+      if (!accuracy || accuracy > 1000) {
+        console.error('❌ FİLTRE 2 REDDEDİLDİ: Baz istasyonu verisi tespit edildi!')
+        console.error(`❌ Accuracy: ${accuracy ? accuracy.toFixed(0) : 'N/A'}m - Maksimum: 1000m`)
+        console.error('❌ Bu muhtemelen mobil operatör verisi, GPS değil')
         return
       }
 
-      // ============================================
-      // FİLTRE 3: MALATYA SINIR KONTROLÜ
-      // ============================================
-      const isInMalatya = 
-        latitude >= 38.0 && latitude <= 38.7 && 
-        longitude >= 37.8 && longitude <= 38.6
-
-      if (!isInMalatya) {
-        console.error('❌ FİLTRE 3: Konum Malatya dışında!', { latitude, longitude })
-        console.error('❌ Mock location veya GPS hatası - VERİ REDDEDİLDİ')
+      // Yüksek hassasiyet kontrolü (100m threshold)
+      if (accuracy > 100) {
+        console.error('❌ FİLTRE 2 REDDEDİLDİ: Konum doğruluğu çok düşük')
+        console.error(`❌ Accuracy: ${accuracy.toFixed(0)}m - Minimum gereksinim: 100m`)
+        console.error('❌ Sadece yüksek hassasiyetli GPS verisi kabul edilir')
         return
       }
 
+      console.log(`✅ FİLTRE 2 GEÇTİ: Doğruluk kabul edilebilir (${accuracy.toFixed(0)}m)`)
+
       // ============================================
-      // FİLTRE 4: SIÇRAMA FİLTRESİ (Impossible Speed Check)
+      // FİLTRE 3: COĞRAFİ ÇİT (Samsun Geofencing)
+      // ============================================
+      // Production'da Samsun dışı konumları DOĞRUDAN ÇÖPE AT
+      if (!isDevelopment) {
+        const isInSamsun = 
+          latitude >= OPERATION_BOUNDS.minLat && 
+          latitude <= OPERATION_BOUNDS.maxLat && 
+          longitude >= OPERATION_BOUNDS.minLng && 
+          longitude <= OPERATION_BOUNDS.maxLng
+
+        if (!isInSamsun) {
+          console.error('🚫 FİLTRE 3 REDDEDİLDİ: COĞRAFİ ÇİT DIŞI!')
+          console.error(`🚫 Konum: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`)
+          console.error(`🚫 Beklenen: Samsun (${OPERATION_BOUNDS.minLat}-${OPERATION_BOUNDS.maxLat} Lat, ${OPERATION_BOUNDS.minLng}-${OPERATION_BOUNDS.maxLng} Lng)`)
+          console.error('🚫 Bu konum Ankara/İstanbul gibi alakasız bir şehir olabilir')
+          console.error('🚫 VERİ ÇÖPE ATILDI - Veritabanına yazılmayacak')
+          return
+        }
+
+        console.log('✅ FİLTRE 3 GEÇTİ: Konum Samsun sınırları içinde')
+      } else {
+        console.log('ℹ️ Geliştirme ortamı - Coğrafi çit devre dışı')
+      }
+
+      // ============================================
+      // FİLTRE 4: HIZ VE MESAFE FİLTRESİ (Velocity Check)
       // ============================================
       if (lastValidLocationRef.current) {
         const lastLoc = lastValidLocationRef.current
         const distance = calculateDistance(lastLoc.latitude, lastLoc.longitude, latitude, longitude)
         const timeDiff = (timestamp - lastLoc.timestamp) / 1000 // saniye
-        const speed = distance / timeDiff // m/s
-        const speedKmh = speed * 3.6 // km/h
-
-        // Kurye maksimum 120 km/h hızla gidebilir (motor için makul)
-        const MAX_SPEED_KMH = 120
         
-        if (speedKmh > MAX_SPEED_KMH) {
-          console.error('❌ FİLTRE 4: İmkansız hız tespit edildi!')
-          console.error(`❌ Mesafe: ${distance.toFixed(0)}m, Süre: ${timeDiff.toFixed(1)}s, Hız: ${speedKmh.toFixed(0)} km/h`)
-          console.error(`❌ Maksimum izin verilen: ${MAX_SPEED_KMH} km/h - VERİ REDDEDİLDİ`)
+        // Sıfır bölme hatası kontrolü
+        if (timeDiff <= 0) {
+          console.error('❌ FİLTRE 4 REDDEDİLDİ: Zaman farkı sıfır veya negatif')
           return
         }
 
-        console.log(`✅ Hız kontrolü geçti: ${speedKmh.toFixed(1)} km/h (${distance.toFixed(0)}m / ${timeDiff.toFixed(1)}s)`)
+        const calculatedSpeed = distance / timeDiff // m/s
+        const speedKmh = calculatedSpeed * 3.6 // km/h
+
+        // İmkansız hız kontrolü (Işınlanma engelleme)
+        const MAX_SPEED_KMH = 120 // Motor için makul maksimum hız
+        
+        if (speedKmh > MAX_SPEED_KMH) {
+          console.error('⚡ FİLTRE 4 REDDEDİLDİ: IŞINLANMA TESPİT EDİLDİ!')
+          console.error(`⚡ Mesafe: ${distance.toFixed(0)}m (${(distance/1000).toFixed(1)} km)`)
+          console.error(`⚡ Süre: ${timeDiff.toFixed(1)} saniye`)
+          console.error(`⚡ Hesaplanan Hız: ${speedKmh.toFixed(0)} km/h`)
+          console.error(`⚡ Maksimum İzin Verilen: ${MAX_SPEED_KMH} km/h`)
+          console.error('⚡ Bu muhtemelen mobil operatör hatası veya mock location')
+          console.error('⚡ VERİ BLOKLAND - Kurye son bilinen konumda kalacak')
+          return
+        }
+
+        // Şüpheli hız uyarısı (80+ km/h)
+        if (speedKmh > 80) {
+          console.warn(`⚠️ Yüksek hız tespit edildi: ${speedKmh.toFixed(0)} km/h`)
+          console.warn('⚠️ Kurye muhtemelen araçla hareket ediyor')
+        }
+
+        console.log(`✅ FİLTRE 4 GEÇTİ: Hız makul (${speedKmh.toFixed(1)} km/h, ${distance.toFixed(0)}m / ${timeDiff.toFixed(1)}s)`)
+      } else {
+        console.log('ℹ️ FİLTRE 4 ATLANDI: İlk konum güncellemesi (karşılaştırma yok)')
       }
 
       // ============================================
-      // TÜM FİLTRELER GEÇTİ - VERİ GEÇERLİ
+      // ✅ TÜM FİLTRELER GEÇTİ - VERİ GÜVENİLİR
       // ============================================
-      console.log('✅ Tüm filtreler geçti - Konum geçerli')
-      console.log('📍 Alınan konum:', { 
+      console.log('🎉 TÜM FİLTRELER GEÇTİ - Konum güvenilir ve geçerli')
+      console.log('📍 Onaylanan Konum:', { 
         latitude: latitude.toFixed(6), 
         longitude: longitude.toFixed(6), 
-        accuracy: accuracy ? `${accuracy.toFixed(0)}m` : 'bilinmiyor',
-        speed: speed ? `${(speed * 3.6).toFixed(1)} km/h` : 'bilinmiyor',
+        accuracy: `${accuracy.toFixed(0)}m`,
+        speed: speed ? `${(speed * 3.6).toFixed(1)} km/h` : 'durgun',
         heading: heading ? `${heading.toFixed(0)}°` : 'bilinmiyor',
-        inMalatya: true 
+        altitude: altitude ? `${altitude.toFixed(0)}m` : 'bilinmiyor'
       })
 
-      // Son geçerli konumu güncelle
+      // Son geçerli konumu güncelle (sıçrama filtresi için)
       lastValidLocationRef.current = {
         latitude,
         longitude,
         timestamp
       }
 
-      // Veritabanına kaydet (timestamp ile)
+      // Veritabanına kaydet
       const locationData = {
         latitude,
         longitude,
@@ -1546,7 +1663,7 @@ export default function KuryePage() {
         heading: heading || null,
         speed: speed || null,
         updated_at: new Date(timestamp).toISOString(),
-        last_seen: new Date().toISOString() // Müşteri paneli için
+        last_seen: new Date().toISOString()
       }
 
       const { error } = await supabase
@@ -1574,24 +1691,33 @@ export default function KuryePage() {
             const { latitude, longitude, accuracy } = position.coords
             const timestamp = position.timestamp
             
-            // Aynı filtreleri uygula
+            // AYNI FİLTRELERİ UYGULA
             if (!latitude || !longitude || latitude === 0 || longitude === 0) {
-              console.error('❌ Web API: Geçersiz koordinatlar')
+              console.error('❌ Web API FİLTRE 1: Geçersiz koordinatlar')
               return
             }
             
+            // Doğruluk barajı
+            if (!accuracy || accuracy > 1000) {
+              console.error('❌ Web API FİLTRE 2: Baz istasyonu verisi')
+              return
+            }
+
             if (accuracy > 100) {
-              console.error('❌ Web API: Doğruluk çok düşük:', accuracy)
+              console.error('❌ Web API FİLTRE 2: Doğruluk çok düşük:', accuracy)
               return
             }
             
-            const isInMalatya = 
-              latitude >= 38.0 && latitude <= 38.7 && 
-              longitude >= 37.8 && longitude <= 38.6
-            
-            if (!isInMalatya) {
-              console.error('❌ Web API: Malatya dışı konum')
-              return
+            // Samsun sınır kontrolü (Geliştirme ortamında devre dışı)
+            if (!isDevelopment) {
+              const isInSamsun = 
+                latitude >= OPERATION_BOUNDS.minLat && latitude <= OPERATION_BOUNDS.maxLat && 
+                longitude >= OPERATION_BOUNDS.minLng && longitude <= OPERATION_BOUNDS.maxLng
+              
+              if (!isInSamsun) {
+                console.error('🚫 Web API FİLTRE 3: Coğrafi çit dışı konum')
+                return
+              }
             }
             
             console.log('✅ Web API konum geçerli:', { latitude, longitude, accuracy })
@@ -1634,8 +1760,15 @@ export default function KuryePage() {
       fetchLeaderboard()
       fetchUnsettledAmount() // Verilecek hesabı çek
 
-      // İlk konum güncellemesi
+      // İlk konum güncellemesi - HEMEN yap
+      console.log('📍 İlk konum güncellemesi başlatılıyor...')
       updateCourierLocation(courierId)
+
+      // 5 saniye sonra bir daha güncelle (ilk güncelleme başarısız olursa)
+      setTimeout(() => {
+        console.log('📍 İkinci konum güncellemesi...')
+        updateCourierLocation(courierId)
+      }, 5000)
 
       // Arka plan konum takibini başlat
       let backgroundWatcherId: string | null = null
@@ -1643,10 +1776,10 @@ export default function KuryePage() {
         backgroundWatcherId = watcherId
       })
 
-      // Her 30 saniyede bir konum güncelle (foreground için yedek)
+      // Her 20 saniyede bir konum güncelle (daha sık)
       const locationInterval = setInterval(() => {
         updateCourierLocation(courierId)
-      }, 30000) // 30 saniye
+      }, 20000) // 20 saniye
 
       // REALTIME ONLY - Canlı yayın modu
       // ⚠️ ÖNEMLİ: Supabase Dashboard -> Database -> Replication -> 'packages' tablosunu işaretleyin!
@@ -1734,70 +1867,123 @@ export default function KuryePage() {
         }
       }
 
-      // Paket değişikliklerini dinle (TÜM paketleri dinle - filtre kod içinde)
-      const packagesChannel = supabase
-        .channel(`courier-packages-${courierId}`, {
-          config: {
-            broadcast: { self: true }
-          }
-        })
-        .on(
-          'postgres_changes',
-          {
-            event: '*', // Tüm olaylar
-            schema: 'public',
-            table: 'packages'
-            // ⚠️ FİLTRE KALDIRILDI: courier_id DEĞİŞİKLİKLERİNİ YAKALAMAK İÇİN
-            // Eski filter: `courier_id=eq.${courierId}` sadece MEVCUT paketleri yakalar
-            // Yeni atamada courier_id NULL → kuryeID değişir, bu değişiklik filter dışında kalır!
-          },
-          handlePackageChange
-        )
-        .subscribe((status, err) => {
-          if (status === 'SUBSCRIBED') {
-            console.log('✅ Kurye Realtime bağlantısı kuruldu')
-          }
-          if (status === 'CHANNEL_ERROR') {
-            console.error('❌ Realtime bağlantı hatası:', err)
-            setTimeout(() => {
-              console.log('🔄 Realtime yeniden bağlanıyor...')
-              packagesChannel.subscribe()
-            }, 5000)
-          }
-          if (status === 'TIMED_OUT') {
-            console.warn('⏱️ Realtime zaman aşımı, yeniden bağlanıyor...')
-            setTimeout(() => {
-              packagesChannel.subscribe()
-            }, 5000)
-          }
-        })
+      // 🔥 ÇELİK GİBİ REALTIME BAĞLANTI - SESSIZ YENİDEN BAĞLANMA
+      let packagesChannel: any = null
+      let courierChannel: any = null
+      let reconnectTimers: NodeJS.Timeout[] = []
 
-      // Kurye durumu değişikliklerini dinle
-      const courierChannel = supabase
-        .channel(`courier-status-${courierId}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'couriers',
-            filter: `id=eq.${courierId}`
-          },
-          handleCourierStatusChange
-        )
-        .subscribe((status) => {
+      const setupPackagesRealtimeWithRetry = async (retryCount = 0) => {
+        try {
+          packagesChannel = supabase
+            .channel(`courier-packages-${courierId}`, {
+              config: {
+                broadcast: { self: true }
+              }
+            })
+            .on(
+              'postgres_changes',
+              {
+                event: '*',
+                schema: 'public',
+                table: 'packages'
+              },
+              handlePackageChange
+            )
+
+          const status = await new Promise<string>((resolve) => {
+            packagesChannel.subscribe((status: string) => {
+              resolve(status)
+            })
+          })
+
           if (status === 'SUBSCRIBED') {
-            console.log('✅ Kurye durumu Realtime bağlantısı kuruldu')
+            console.log('✅ Kurye Paketler Realtime bağlandı')
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            console.warn(`⚠️ Kurye Paketler Realtime hatası: ${status}`)
+            
+            const timer = setTimeout(() => {
+              console.log('🔄 Kurye Paketler Realtime yeniden bağlanılıyor...')
+              setupPackagesRealtimeWithRetry(retryCount + 1)
+            }, 3000)
+            
+            reconnectTimers.push(timer)
           }
-        })
+        } catch (error) {
+          console.error('❌ Kurye Paketler Realtime subscription hatası:', error)
+          
+          if (retryCount < 10) {
+            const timer = setTimeout(() => {
+              console.log(`🔄 Hata sonrası yeniden bağlanılıyor (Deneme: ${retryCount + 1})`)
+              setupPackagesRealtimeWithRetry(retryCount + 1)
+            }, 3000)
+            
+            reconnectTimers.push(timer)
+          }
+        }
+      }
+
+      const setupCourierRealtimeWithRetry = async (retryCount = 0) => {
+        try {
+          courierChannel = supabase
+            .channel(`courier-status-${courierId}`)
+            .on(
+              'postgres_changes',
+              {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'couriers',
+                filter: `id=eq.${courierId}`
+              },
+              handleCourierStatusChange
+            )
+
+          const status = await new Promise<string>((resolve) => {
+            courierChannel.subscribe((status: string) => {
+              resolve(status)
+            })
+          })
+
+          if (status === 'SUBSCRIBED') {
+            console.log('✅ Kurye Durumu Realtime bağlandı')
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            console.warn(`⚠️ Kurye Durumu Realtime hatası: ${status}`)
+            
+            const timer = setTimeout(() => {
+              console.log('🔄 Kurye Durumu Realtime yeniden bağlanılıyor...')
+              setupCourierRealtimeWithRetry(retryCount + 1)
+            }, 3000)
+            
+            reconnectTimers.push(timer)
+          }
+        } catch (error) {
+          console.error('❌ Kurye Durumu Realtime subscription hatası:', error)
+          
+          if (retryCount < 10) {
+            const timer = setTimeout(() => {
+              console.log(`🔄 Hata sonrası yeniden bağlanılıyor (Deneme: ${retryCount + 1})`)
+              setupCourierRealtimeWithRetry(retryCount + 1)
+            }, 3000)
+            
+            reconnectTimers.push(timer)
+          }
+        }
+      }
+
+      setupPackagesRealtimeWithRetry()
+      setupCourierRealtimeWithRetry()
 
       return () => {
         console.log('🔴 Realtime dinleme durduruldu')
-        supabase.removeChannel(packagesChannel)
-        supabase.removeChannel(courierChannel)
-        clearInterval(locationInterval) // Konum güncellemesini durdur
         
-        // Arka plan konum takibini durdur
+        // Tüm reconnect timer'larını temizle
+        reconnectTimers.forEach(timer => clearTimeout(timer))
+        
+        // Kanalları temizle
+        if (packagesChannel) supabase.removeChannel(packagesChannel)
+        if (courierChannel) supabase.removeChannel(courierChannel)
+        
+        clearInterval(locationInterval)
+        
         if (backgroundWatcherId) {
           stopBackgroundLocationTracking(backgroundWatcherId)
         }
@@ -2679,49 +2865,13 @@ export default function KuryePage() {
               </div>
             </div>
 
-            {/* Özet Bilgiler - Kompakt Grid (Geçmişim sekmesiyle aynı) */}
-            {filteredPackages.length > 0 && (
-              <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
-                <div className="grid grid-cols-3 gap-2">
-                  {/* Toplam Paket */}
-                  <div className="bg-slate-800/50 px-2 py-2 rounded-lg">
-                    <p className="text-[10px] text-slate-400 mb-1">Paket</p>
-                    <p className="text-base font-bold text-blue-400">{filteredPackages.length}</p>
-                  </div>
-
-                  {/* Nakit */}
-                  <div className="bg-slate-800/50 px-2 py-2 rounded-lg">
-                    <p className="text-[10px] text-slate-400 mb-1">💵 Nakit</p>
-                    <p className="text-base font-bold text-green-400">
-                      {filteredPackages.filter(p => p.payment_method === 'cash').reduce((sum, pkg) => sum + (pkg.amount || 0), 0).toFixed(0)}₺
-                    </p>
-                  </div>
-
-                  {/* Kart */}
-                  <div className="bg-slate-800/50 px-2 py-2 rounded-lg">
-                    <p className="text-[10px] text-slate-400 mb-1">💳 Kart</p>
-                    <p className="text-base font-bold text-blue-400">
-                      {filteredPackages.filter(p => p.payment_method === 'card').reduce((sum, pkg) => sum + (pkg.amount || 0), 0).toFixed(0)}₺
-                    </p>
-                  </div>
-
-                  {/* IBAN */}
-                  <div className="bg-slate-800/50 px-2 py-2 rounded-lg">
-                    <p className="text-[10px] text-slate-400 mb-1">🏦 IBAN</p>
-                    <p className="text-base font-bold text-orange-400">
-                      {filteredPackages.filter(p => p.payment_method === 'iban').reduce((sum, pkg) => sum + (pkg.amount || 0), 0).toFixed(0)}₺
-                    </p>
-                  </div>
-
-                  {/* Seçili Aralık - 2 kolon */}
-                  <div className="bg-slate-800/50 px-2 py-2 rounded-lg col-span-2">
-                    <p className="text-[10px] text-slate-400 mb-1">Seçili Aralık Toplam</p>
-                    <p className="text-base font-bold text-purple-400">
-                      {filteredPackages.reduce((sum, pkg) => sum + (pkg.amount || 0), 0).toFixed(2)}₺
-                    </p>
-                  </div>
-                </div>
-              </div>
+            {/* Özet Bilgiler - Realtime Kalan Borç ile */}
+            {selectedCourierId && (
+              <CourierEarningsStats
+                courierId={selectedCourierId}
+                startDate={startDate}
+                endDate={endDate}
+              />
             )}
 
             {/* Paket Listesi */}
@@ -3193,6 +3343,9 @@ export default function KuryePage() {
           </div>
         )
       }
+
+      {/* Bildirim Sistemi */}
+      <CourierNotificationWrapper courierId={selectedCourierId} />
     </div >
   )
 

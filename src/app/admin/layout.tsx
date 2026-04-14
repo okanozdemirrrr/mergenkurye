@@ -25,6 +25,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [errorMessage, setErrorMessage] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
 
+  // Market sayfasındaysa Müşteriler menüsünü otomatik aç
+  useEffect(() => {
+    if (pathname?.startsWith('/admin/market') || pathname?.startsWith('/admin/musteriler')) {
+      setShowCustomerSubmenu(true)
+    }
+  }, [pathname])
+
   useEffect(() => {
     setIsMounted(true)
   }, [])
@@ -198,7 +205,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <button
                   onClick={() => setShowCustomerSubmenu(!showCustomerSubmenu)}
                   className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${
-                    pathname?.startsWith('/admin/musteriler') ? 'bg-orange-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                    pathname?.startsWith('/admin/musteriler') || pathname?.startsWith('/admin/market') ? 'bg-orange-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                   }`}
                 >
                   <span className="mr-3">👥</span>
@@ -216,6 +223,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       }`}
                     >
                       📢 Duyurular
+                    </Link>
+                    <Link
+                      href="/admin/market"
+                      onClick={() => setShowMenu(false)}
+                      className={`block w-full text-left px-4 py-2 rounded-lg text-sm transition-all ${
+                        pathname?.startsWith('/admin/market') ? 'bg-orange-500 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                      }`}
+                    >
+                      🛒 Market Yönetimi
                     </Link>
                   </div>
                 )}

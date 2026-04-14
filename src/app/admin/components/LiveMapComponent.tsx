@@ -287,26 +287,42 @@ export function LiveMapComponent({ packages, couriers, restaurants, onRefresh }:
       }
     }
 
+    // İsmi kısalt (sadece ilk isim)
+    const firstName = courier.full_name?.split(' ')[0] || 'Kurye'
+
     return L.divIcon({
       html: `
-        <div style="
-          background: ${color};
-          width: 32px;
-          height: 32px;
-          border-radius: 50%;
-          border: 3px solid ${color};
-          box-shadow: 0 0 0 2px white, 0 0 10px rgba(0,0,0,0.3);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 18px;
-          filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
-        ">🏍️</div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
+          <div style="
+            background: ${color};
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 3px solid ${color};
+            box-shadow: 0 0 0 2px white, 0 0 10px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+          ">🏍️</div>
+          <div style="
+            background: rgba(0, 0, 0, 0.75);
+            color: white;
+            padding: 1px 4px;
+            border-radius: 3px;
+            font-size: 9px;
+            font-weight: 600;
+            white-space: nowrap;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+            pointer-events: none;
+          ">${firstName}</div>
+        </div>
       `,
       className: '',
-      iconSize: [32, 32],
-      iconAnchor: [16, 16],
-      popupAnchor: [0, -16]
+      iconSize: [32, 45],
+      iconAnchor: [16, 22],
+      popupAnchor: [0, -22]
     })
   }
 

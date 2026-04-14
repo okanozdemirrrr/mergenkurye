@@ -1,8 +1,8 @@
 /**
  * @file src/app/restoran/page.tsx
- * @description Sipariş Yönetimi - Yeni Sipariş + Aktif/Geçmiş Siparişler
- * Eski tasarım korundu, sadece routing URL tabanlı yapıldı
+ * @description Restoran Paneli - Kanban Board ile Sipariş Yönetimi
+ * Yeni sipariş akışı: new_order → getting_ready → ready
  */
 'use client'
 
-export { default } from './page_FULL_OLD'
+export { default } from './page_NEW'

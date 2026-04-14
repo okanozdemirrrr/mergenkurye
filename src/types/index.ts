@@ -24,7 +24,8 @@ export interface Restaurant {
 // 📦 SİPARİŞ (PACKAGE) TİPLERİ
 // ============================================
 
-export type PackageStatus = 'waiting' | 'assigned' | 'picking_up' | 'on_the_way' | 'delivered' | 'cancelled' | 'pending'
+// V2 Sipariş Akışı: new_order → getting_ready → ready → assigned → picking_up → on_the_way → delivered
+export type PackageStatus = 'new_order' | 'getting_ready' | 'ready' | 'assigned' | 'picking_up' | 'on_the_way' | 'delivered' | 'cancelled'
 export type PaymentMethod = 'cash' | 'card'
 export type CancelledBy = 'admin' | 'restaurant'
 export type Platform = 'getir' | 'yemeksepeti' | 'trendyol' | 'migros' | 'other'
@@ -44,6 +45,8 @@ export interface Package {
     restaurant?: Restaurant | null
     platform?: Platform | string
     created_at?: string
+    getting_ready_at?: string
+    ready_at?: string
     assigned_at?: string
     picked_up_at?: string
     delivered_at?: string

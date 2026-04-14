@@ -20,8 +20,28 @@ export const STATUS_CONFIG = {
     badgeClass: 'bg-blue-900/50 text-blue-300',
     description: 'Atama bekliyor'
   },
-  assigned: {
+  getting_ready: {
     code: 1,
+    label: 'HAZIRLANIYOR',
+    labelShort: 'Hazırlanıyor',
+    color: 'cyan',
+    bgClass: 'bg-cyan-600',
+    textClass: 'text-cyan-600',
+    badgeClass: 'bg-cyan-900/50 text-cyan-300',
+    description: 'Restoran hazırlıyor'
+  },
+  ready: {
+    code: 2,
+    label: 'HAZIR',
+    labelShort: 'Hazır',
+    color: 'teal',
+    bgClass: 'bg-teal-600',
+    textClass: 'text-teal-600',
+    badgeClass: 'bg-teal-900/50 text-teal-300',
+    description: 'Kurye ataması bekliyor'
+  },
+  assigned: {
+    code: 3,
     label: 'ATANDI',
     labelShort: 'Atandı',
     color: 'purple',
@@ -31,7 +51,7 @@ export const STATUS_CONFIG = {
     description: 'Kurye atandı'
   },
   picking_up: {
-    code: 2,
+    code: 4,
     label: 'ALINIYOR',
     labelShort: 'Alınıyor',
     color: 'orange',
@@ -41,7 +61,7 @@ export const STATUS_CONFIG = {
     description: 'Restorandan alınıyor'
   },
   on_the_way: {
-    code: 3,
+    code: 5,
     label: 'YOLDA',
     labelShort: 'Yolda',
     color: 'yellow',
@@ -51,7 +71,7 @@ export const STATUS_CONFIG = {
     description: 'Teslimat yolunda'
   },
   delivered: {
-    code: 4,
+    code: 6,
     label: 'TESLİM EDİLDİ',
     labelShort: 'Teslim',
     color: 'green',
@@ -61,7 +81,7 @@ export const STATUS_CONFIG = {
     description: 'Başarıyla teslim edildi'
   },
   cancelled: {
-    code: 5,
+    code: 7,
     label: 'İPTAL EDİLDİ',
     labelShort: 'İptal',
     color: 'red',
@@ -110,7 +130,7 @@ export function normalizeStatus(status: string | null | undefined): PackageStatu
   }
   
   // Geçerli status'leri kontrol et
-  const validStatuses: PackageStatus[] = ['new_order', 'assigned', 'picking_up', 'on_the_way', 'delivered', 'cancelled']
+  const validStatuses: PackageStatus[] = ['new_order', 'getting_ready', 'ready', 'assigned', 'picking_up', 'on_the_way', 'delivered', 'cancelled']
   
   if (status && validStatuses.includes(status as PackageStatus)) {
     return status as PackageStatus
@@ -137,7 +157,7 @@ export function statusToCode(status: PackageStatus): number {
 
 export function isValidStatus(status: string | null | undefined): boolean {
   if (!status) return false
-  const validStatuses: PackageStatus[] = ['new_order', 'assigned', 'picking_up', 'on_the_way', 'delivered', 'cancelled']
+  const validStatuses: PackageStatus[] = ['new_order', 'getting_ready', 'ready', 'assigned', 'picking_up', 'on_the_way', 'delivered', 'cancelled']
   return validStatuses.includes(status as PackageStatus)
 }
 
@@ -155,7 +175,9 @@ export function isCompletedStatus(status: PackageStatus): boolean {
 
 export function canTransitionTo(currentStatus: PackageStatus, nextStatus: PackageStatus): boolean {
   const transitions: Record<PackageStatus, PackageStatus[]> = {
-    new_order: ['assigned', 'cancelled'],
+    new_order: ['getting_ready', 'cancelled'],
+    getting_ready: ['ready', 'cancelled'],
+    ready: ['assigned', 'cancelled'],
     assigned: ['picking_up', 'cancelled'],
     picking_up: ['on_the_way', 'cancelled'],
     on_the_way: ['delivered', 'cancelled'],
@@ -168,7 +190,9 @@ export function canTransitionTo(currentStatus: PackageStatus, nextStatus: Packag
 
 export function getNextValidStatuses(currentStatus: PackageStatus): PackageStatus[] {
   const transitions: Record<PackageStatus, PackageStatus[]> = {
-    new_order: ['assigned', 'cancelled'],
+    new_order: ['getting_ready', 'cancelled'],
+    getting_ready: ['ready', 'cancelled'],
+    ready: ['assigned', 'cancelled'],
     assigned: ['picking_up', 'cancelled'],
     picking_up: ['on_the_way', 'cancelled'],
     on_the_way: ['delivered', 'cancelled'],
@@ -187,11 +211,13 @@ export function getStatusPriority(status: PackageStatus): number {
   // Öncelik sırası (düşük numara = yüksek öncelik)
   const priorities: Record<PackageStatus, number> = {
     new_order: 1,      // En yüksek öncelik
-    assigned: 2,
-    picking_up: 3,
-    on_the_way: 4,
-    delivered: 5,
-    cancelled: 6       // En düşük öncelik
+    getting_ready: 2,
+    ready: 3,
+    assigned: 4,
+    picking_up: 5,
+    on_the_way: 6,
+    delivered: 7,
+    cancelled: 8       // En düşük öncelik
   }
   
   return priorities[status] || 999
@@ -237,6 +263,8 @@ export function getStatusChangeMessage(
   
   const messages: Record<PackageStatus, string> = {
     new_order: `${order} sisteme eklendi`,
+    getting_ready: `${order} hazırlanmaya başlandı`,
+    ready: `${order} hazır, kurye ataması bekleniyor`,
     assigned: `${order} kuryeye atandı`,
     picking_up: `${order} restorandan alınıyor`,
     on_the_way: `${order} teslimat yolunda`,

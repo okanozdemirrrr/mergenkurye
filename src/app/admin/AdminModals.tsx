@@ -8,7 +8,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { useAdminData } from './AdminDataProvider'
 import { CourierDetailModal } from './components/modals/CourierDetailModal'
 import { RestaurantDetailModal } from './components/modals/RestaurantDetailModal'
-import { EndOfDayModal } from './components/modals/EndOfDayModal'
+import { EndOfDayModalNew } from './components/modals/EndOfDayModalNew'
 import { PayDebtModal } from './components/modals/PayDebtModal'
 import { RestaurantPaymentModal } from './components/modals/RestaurantPaymentModal'
 import { RestaurantDebtPayModal } from './components/modals/RestaurantDebtPayModal'
@@ -336,23 +336,25 @@ export function AdminModals() {
         />
       )}
 
-      {/* End of Day Modal */}
-      <EndOfDayModal
-        show={showEndOfDayModal}
-        onClose={() => setShowEndOfDayModal(false)}
-        courier={courier}
-        selectedCourierId={courierId}
-        endOfDayAmount={endOfDayAmount}
-        setEndOfDayAmount={setEndOfDayAmount}
-        onConfirm={handleEndOfDay}
-        processing={endOfDayProcessing}
-        calculateCashSummary={calculateCashSummary}
-        selectedCourierOrders={selectedCourierOrders}
-        courierDebts={courierDebts}
-        courierStartDate={courierStartDate}
-        courierEndDate={courierEndDate}
-        loadingDebts={loadingDebts}
-      />
+      {/* End of Day Modal - YENİ VERSİYON */}
+      {showEndOfDayModal && courier && (
+        <EndOfDayModalNew
+          show={showEndOfDayModal}
+          onClose={() => setShowEndOfDayModal(false)}
+          courier={courier}
+          startDate={courierStartDate}
+          endDate={courierEndDate}
+          onSuccess={() => {
+            setSuccessMessage('✅ Gün sonu mutabakatı başarıyla kaydedildi!')
+            setShowEndOfDayModal(false)
+            // Kurye verilerini yenile
+            fetchCouriers()
+            if (courierId) {
+              fetchCourierOrders(courierId)
+            }
+          }}
+        />
+      )}
 
       {/* Pay Debt Modal */}
       <PayDebtModal

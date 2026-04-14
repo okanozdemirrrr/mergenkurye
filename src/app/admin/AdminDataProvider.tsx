@@ -15,6 +15,7 @@ interface AdminDataContextType {
   deliveredPackages: Package[]
   couriers: Courier[]
   restaurants: Restaurant[]
+  todayDeliveredCount: number
   
   // Loading states
   isLoading: boolean
@@ -36,6 +37,7 @@ interface AdminDataContextType {
   fetchDeliveredPackages: () => Promise<void>
   fetchCouriers: () => Promise<void>
   fetchRestaurants: () => Promise<void>
+  fetchTodayDeliveredCount: () => Promise<void>
 }
 
 const AdminDataContext = createContext<AdminDataContextType | undefined>(undefined)
@@ -45,6 +47,7 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
   const [deliveredPackages, setDeliveredPackages] = useState<Package[]>([])
   const [couriers, setCouriers] = useState<Courier[]>([])
   const [restaurants, setRestaurants] = useState<Restaurant[]>([])
+  const [todayDeliveredCount, setTodayDeliveredCount] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
@@ -56,15 +59,27 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
       const todayStart = new Date()
       todayStart.setHours(0, 0, 0, 0)
 
+      // ✅ TÜM AKTİF STATUSLER: new_order, getting_ready, ready, assigned, picking_up, on_the_way
       const { data, error } = await supabase
         .from('packages')
         .select('*, restaurants(*)')
-        .neq('status', 'cancelled')
-        .neq('status', 'delivered')
+        .in('status', ['new_order', 'getting_ready', 'ready', 'assigned', 'picking_up', 'on_the_way'])
         .gte('created_at', todayStart.toISOString())
         .order('created_at', { ascending: false })
 
       if (error) throw error
+
+      console.log('📦 Admin Panel - Aktif siparişler:', {
+        total: data?.length || 0,
+        byStatus: {
+          new_order: data?.filter(p => p.status === 'new_order').length || 0,
+          getting_ready: data?.filter(p => p.status === 'getting_ready').length || 0,
+          ready: data?.filter(p => p.status === 'ready').length || 0,
+          assigned: data?.filter(p => p.status === 'assigned').length || 0,
+          picking_up: data?.filter(p => p.status === 'picking_up').length || 0,
+          on_the_way: data?.filter(p => p.status === 'on_the_way').length || 0
+        }
+      })
 
       const transformedData = (data || []).map((pkg: any) => ({
         ...pkg,
@@ -223,47 +238,126 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const fetchTodayDeliveredCount = async () => {
+    try {
+      const todayStart = new Date()
+      todayStart.setHours(0, 0, 0, 0)
+
+      const { count, error } = await supabase
+        .from('packages')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'delivered')
+        .gte('delivered_at', todayStart.toISOString())
+
+      if (error) throw error
+      setTodayDeliveredCount(count || 0)
+    } catch (error: any) {
+      console.error('Günlük teslimat sayısı yüklenemedi:', error)
+      setTodayDeliveredCount(0)
+    }
+  }
+
   useEffect(() => {
     fetchPackages()
     fetchDeliveredPackages()
     fetchCouriers()
     fetchRestaurants()
+    fetchTodayDeliveredCount()
 
-    // Realtime subscriptions
-    const packagesChannel = supabase
-      .channel('packages-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'packages' }, () => {
-        fetchPackages()
-        fetchDeliveredPackages()
-      })
-      .subscribe()
+    // 🔥 ÇELİK GİBİ REALTIME BAĞLANTI - SESSIZ YENİDEN BAĞLANMA
+    let packagesChannel: any = null
+    let couriersChannel: any = null
+    let courierDebtsChannel: any = null
+    let reconnectTimers: NodeJS.Timeout[] = []
 
-    const couriersChannel = supabase
-      .channel('couriers-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'couriers' }, () => {
-        fetchCouriers()
-      })
-      .subscribe()
+    const setupRealtimeWithRetry = async (
+      channelName: string,
+      table: string,
+      callback: () => void,
+      retryCount = 0
+    ) => {
+      try {
+        const channel = supabase
+          .channel(channelName)
+          .on('postgres_changes', { event: '*', schema: 'public', table }, callback)
 
-    const courierDebtsChannel = supabase
-      .channel('courier-debts-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'courier_debts' }, () => {
-        fetchCouriers()
-      })
-      .subscribe()
+        const status = await new Promise<string>((resolve) => {
+          channel.subscribe((status) => {
+            resolve(status)
+          })
+        })
 
-    // 5 dakikalık otomatik yenileme
+        if (status === 'SUBSCRIBED') {
+          console.log(`✅ Realtime bağlandı: ${channelName}`)
+          return channel
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          console.warn(`⚠️ Realtime bağlantı hatası: ${channelName} - ${status}`)
+          
+          // Sessiz yeniden bağlanma (3 saniye sonra)
+          const timer = setTimeout(() => {
+            console.log(`🔄 Yeniden bağlanılıyor: ${channelName}`)
+            setupRealtimeWithRetry(channelName, table, callback, retryCount + 1)
+          }, 3000)
+          
+          reconnectTimers.push(timer)
+          return null
+        }
+
+        return channel
+      } catch (error) {
+        console.error(`❌ Realtime subscription hatası: ${channelName}`, error)
+        
+        // Hata durumunda da yeniden bağlanmayı dene (maksimum 10 deneme)
+        if (retryCount < 10) {
+          const timer = setTimeout(() => {
+            console.log(`🔄 Hata sonrası yeniden bağlanılıyor: ${channelName} (Deneme: ${retryCount + 1})`)
+            setupRealtimeWithRetry(channelName, table, callback, retryCount + 1)
+          }, 3000)
+          
+          reconnectTimers.push(timer)
+        } else {
+          console.error(`❌ Maksimum yeniden bağlanma denemesi aşıldı: ${channelName}`)
+        }
+        
+        return null
+      }
+    }
+
+    // Packages channel
+    setupRealtimeWithRetry('packages-changes', 'packages', () => {
+      fetchPackages()
+      fetchDeliveredPackages()
+      fetchTodayDeliveredCount()
+    }).then(channel => { packagesChannel = channel })
+
+    // Couriers channel
+    setupRealtimeWithRetry('couriers-changes', 'couriers', () => {
+      fetchCouriers()
+    }).then(channel => { couriersChannel = channel })
+
+    // Courier debts channel
+    setupRealtimeWithRetry('courier-debts-changes', 'courier_debts', () => {
+      fetchCouriers()
+    }).then(channel => { courierDebtsChannel = channel })
+
+    // 30 saniyelik otomatik yenileme (polling)
     const refreshInterval = setInterval(() => {
       fetchPackages()
       fetchDeliveredPackages()
       fetchCouriers()
       fetchRestaurants()
-    }, 300000)
+      fetchTodayDeliveredCount()
+    }, 30000)
 
     return () => {
-      packagesChannel.unsubscribe()
-      couriersChannel.unsubscribe()
-      courierDebtsChannel.unsubscribe()
+      // Tüm reconnect timer'larını temizle
+      reconnectTimers.forEach(timer => clearTimeout(timer))
+      
+      // Kanalları temizle
+      if (packagesChannel) supabase.removeChannel(packagesChannel)
+      if (couriersChannel) supabase.removeChannel(couriersChannel)
+      if (courierDebtsChannel) supabase.removeChannel(courierDebtsChannel)
+      
       clearInterval(refreshInterval)
     }
   }, [])
@@ -275,6 +369,7 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
         deliveredPackages,
         couriers,
         restaurants,
+        todayDeliveredCount,
         isLoading,
         successMessage,
         errorMessage,
@@ -287,7 +382,8 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
         fetchPackages,
         fetchDeliveredPackages,
         fetchCouriers,
-        fetchRestaurants
+        fetchRestaurants,
+        fetchTodayDeliveredCount
       }}
     >
       {children}

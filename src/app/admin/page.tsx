@@ -8,9 +8,10 @@ import { LiveTrackingTab } from './components/LiveTrackingTab'
 import { useAdminData } from './AdminDataProvider'
 import { useState } from 'react'
 import { assignCourier, cancelOrder } from '@/services/orderService'
+import { AdminNotificationWrapper } from '@/components/notifications/AdminNotificationWrapper'
 
 export default function AdminPage() {
-  const { packages, couriers, restaurants, isLoading, setSuccessMessage, setErrorMessage, fetchPackages } = useAdminData()
+  const { packages, couriers, restaurants, isLoading, setSuccessMessage, setErrorMessage, fetchPackages, todayDeliveredCount } = useAdminData()
   const [selectedCouriers, setSelectedCouriers] = useState<{ [key: number]: string }>({})
   const [assigningIds, setAssigningIds] = useState<Set<number>>(new Set())
   const [openDropdownId, setOpenDropdownId] = useState<number | null>(null)
@@ -62,18 +63,24 @@ export default function AdminPage() {
   }
 
   return (
-    <LiveTrackingTab
-      packages={packages}
-      couriers={couriers}
-      restaurants={restaurants}
-      isLoading={isLoading}
-      selectedCouriers={selectedCouriers}
-      assigningIds={assigningIds}
-      openDropdownId={openDropdownId}
-      setOpenDropdownId={setOpenDropdownId}
-      handleCourierChange={handleCourierChange}
-      handleAssignCourier={handleAssignCourier}
-      handleCancelOrder={handleCancelOrder}
-    />
+    <>
+      <LiveTrackingTab
+        packages={packages}
+        couriers={couriers}
+        restaurants={restaurants}
+        isLoading={isLoading}
+        selectedCouriers={selectedCouriers}
+        assigningIds={assigningIds}
+        openDropdownId={openDropdownId}
+        setOpenDropdownId={setOpenDropdownId}
+        handleCourierChange={handleCourierChange}
+        handleAssignCourier={handleAssignCourier}
+        handleCancelOrder={handleCancelOrder}
+        todayDeliveredCount={todayDeliveredCount}
+      />
+      
+      {/* Bildirim Sistemi */}
+      <AdminNotificationWrapper />
+    </>
   )
 }

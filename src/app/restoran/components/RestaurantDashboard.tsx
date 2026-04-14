@@ -1,0 +1,589 @@
+'use client'
+
+import { useState, useEffect, useCallback } from 'react'
+import { supabase } from '@/app/lib/supabase'
+import KanbanBoard from './KanbanBoard'
+import NewOrderModal from './NewOrderModal'
+import { Package, Courier } from '@/types'
+import { formatTurkishTime } from '@/utils/dateHelpers'
+import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
+
+interface Restaurant {
+  id: string
+  name: string
+  logo_url?: string
+}
+
+interface RestaurantDashboardProps {
+  restaurantId: string
+  darkMode: boolean
+  setDarkMode: (value: boolean) => void
+}
+
+export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMode }: RestaurantDashboardProps) {
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(null)
+  const [packages, setPackages] = useState<Package[]>([])
+  const [deliveredPackages, setDeliveredPackages] = useState<Package[]>([])
+  const [couriers, setCouriers] = useState<Courier[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [showNewOrderModal, setShowNewOrderModal] = useState(false)
+  const [successMessage, setSuccessMessage] = useState('')
+  const [activeTab, setActiveTab] = useState<'active' | 'delivered'>('active')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  
+  // Günlük finansal özet state'leri
+  const [todayStats, setTodayStats] = useState({
+    packageCount: 0,
+    packageFee: 0,
+    totalRevenue: 0,
+    netRevenue: 0,
+    isLoading: true
+  })
+
+  // Paket başına sabit ücret (TL)
+  const PACKAGE_FEE = 100
+
+  useEffect(() => {
+    fetchRestaurant()
+    fetchPackages()
+    fetchTodayStats()
+    fetchCouriers()
+
+    // 🔥 ÇELİK GİBİ REALTIME BAĞLANTI - SESSIZ YENİDEN BAĞLANMA
+    let subscription: any = null
+    let reconnectTimer: NodeJS.Timeout | null = null
+
+    const setupRealtimeWithRetry = async (retryCount = 0) => {
+      try {
+        const channel = supabase
+          .channel('restaurant-packages')
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'packages',
+              filter: `restaurant_id=eq.${restaurantId}`
+            },
+            () => {
+              fetchPackages()
+              fetchTodayStats()
+            }
+          )
+
+        const status = await new Promise<string>((resolve) => {
+          channel.subscribe((status) => {
+            resolve(status)
+          })
+        })
+
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Restoran Realtime bağlandı')
+          subscription = channel
+          
+          // Başarılı bağlantıda timer'ı temizle
+          if (reconnectTimer) {
+            clearTimeout(reconnectTimer)
+            reconnectTimer = null
+          }
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          console.warn(`⚠️ Restoran Realtime bağlantı hatası: ${status}`)
+          
+          // Sessiz yeniden bağlanma (3 saniye sonra)
+          reconnectTimer = setTimeout(() => {
+            console.log('🔄 Restoran Realtime yeniden bağlanılıyor...')
+            setupRealtimeWithRetry(retryCount + 1)
+          }, 3000)
+        }
+      } catch (error) {
+        console.error('❌ Restoran Realtime subscription hatası:', error)
+        
+        // Hata durumunda da yeniden bağlanmayı dene (maksimum 10 deneme)
+        if (retryCount < 10) {
+          reconnectTimer = setTimeout(() => {
+            console.log(`🔄 Hata sonrası yeniden bağlanılıyor (Deneme: ${retryCount + 1})`)
+            setupRealtimeWithRetry(retryCount + 1)
+          }, 3000)
+        } else {
+          console.error('❌ Maksimum yeniden bağlanma denemesi aşıldı')
+        }
+      }
+    }
+
+    setupRealtimeWithRetry()
+
+    // 30 saniyelik otomatik yenileme (polling)
+    const refreshInterval = setInterval(() => {
+      fetchPackages()
+      fetchTodayStats()
+    }, 30000)
+
+    return () => {
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer)
+      }
+      if (subscription) {
+        supabase.removeChannel(subscription)
+      }
+      clearInterval(refreshInterval)
+    }
+  }, [restaurantId])
+
+  const fetchRestaurant = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('restaurants')
+        .select('id, name, logo_url')
+        .eq('id', restaurantId)
+        .single()
+
+      if (error) throw error
+      setRestaurant(data)
+    } catch (error) {
+      console.error('Restoran bilgisi alınamadı:', error)
+    }
+  }, [restaurantId])
+
+  const fetchPackages = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      if (activeTab === 'active') {
+        const { data, error } = await supabase
+          .from('packages')
+          .select('*')
+          .eq('restaurant_id', restaurantId)
+          .in('status', ['new_order', 'getting_ready', 'ready'])
+          .order('created_at', { ascending: false })
+
+        if (error) throw error
+        setPackages(data || [])
+      } else {
+        // Teslim edilen siparişler
+        let query = supabase
+          .from('packages')
+          .select(`
+            *,
+            courier:couriers!packages_courier_id_fkey(full_name)
+          `)
+          .eq('restaurant_id', restaurantId)
+          .eq('status', 'delivered')
+          .order('delivered_at', { ascending: false })
+
+        // Tarih filtreleri
+        if (startDate) {
+          query = query.gte('delivered_at', new Date(startDate).toISOString())
+        }
+        if (endDate) {
+          const endDateTime = new Date(endDate)
+          endDateTime.setHours(23, 59, 59, 999)
+          query = query.lte('delivered_at', endDateTime.toISOString())
+        }
+
+        const { data, error } = await query
+
+        if (error) throw error
+        setDeliveredPackages(data || [])
+      }
+    } catch (error) {
+      console.error('Siparişler alınamadı:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [restaurantId, activeTab, startDate, endDate])
+
+  const fetchCouriers = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('couriers')
+        .select('id, full_name')
+        .order('full_name')
+
+      if (error) throw error
+      setCouriers(data || [])
+    } catch (error) {
+      console.error('Kuryeler alınamadı:', error)
+    }
+  }, [])
+
+  const fetchTodayStats = useCallback(async () => {
+    try {
+      const todayStart = new Date()
+      todayStart.setHours(0, 0, 0, 0)
+
+      const { data, error } = await supabase
+        .from('packages')
+        .select('amount')
+        .eq('restaurant_id', restaurantId)
+        .eq('status', 'delivered')
+        .gte('delivered_at', todayStart.toISOString())
+
+      if (error) throw error
+
+      const packageCount = data?.length || 0
+      const totalRevenue = data?.reduce((sum, pkg) => sum + (pkg.amount || 0), 0) || 0
+      const packageFee = packageCount * PACKAGE_FEE
+      const netRevenue = totalRevenue - packageFee
+
+      setTodayStats({
+        packageCount,
+        packageFee,
+        totalRevenue,
+        netRevenue,
+        isLoading: false
+      })
+    } catch (error) {
+      console.error('Günlük istatistikler alınamadı:', error)
+      setTodayStats(prev => ({ ...prev, isLoading: false }))
+    }
+  }, [restaurantId, PACKAGE_FEE])
+
+  const handleNewOrderSuccess = useCallback(() => {
+    setSuccessMessage('✅ Yeni sipariş başarıyla oluşturuldu!')
+    setTimeout(() => setSuccessMessage(''), 3000)
+    fetchPackages()
+  }, [fetchPackages])
+
+  // Sekme değiştiğinde paketleri yeniden yükle
+  useEffect(() => {
+    fetchPackages()
+  }, [activeTab, startDate, endDate, fetchPackages])
+
+  return (
+    <div className={`min-h-screen py-6 px-4 ${darkMode ? 'bg-slate-950' : 'bg-gray-100'}`}>
+      {/* Dark Mode Toggle */}
+      <button
+        onClick={() => setDarkMode(!darkMode)}
+        className={`fixed bottom-6 right-6 p-3 rounded-full shadow-xl transition-all hover:scale-110 border z-50 ${
+          darkMode 
+            ? 'bg-slate-800 hover:bg-slate-700 text-white border-slate-600' 
+            : 'bg-white hover:bg-gray-50 text-gray-900 border-gray-300'
+        }`}
+        title={darkMode ? 'Gündüz Modu' : 'Gece Modu'}
+      >
+        <span className="text-xl">{darkMode ? '☀️' : '🌙'}</span>
+      </button>
+
+      {/* Floating Action Button - Yeni Sipariş */}
+      <button
+        onClick={() => setShowNewOrderModal(true)}
+        className="fixed bottom-6 left-6 p-4 bg-orange-600 hover:bg-orange-700 text-white rounded-full shadow-2xl transition-all hover:scale-110 z-50 group"
+        title="Yeni Sipariş"
+      >
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full animate-pulse">
+          YENİ
+        </span>
+      </button>
+
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-6 text-center">
+          <h1 className={`text-4xl font-black mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+            {restaurant?.name || 'RESTORAN PANELİ'}
+          </h1>
+          <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-gray-600'}`}>
+            Sipariş Yönetim Sistemi
+          </p>
+
+          {/* Tab Buttons */}
+          <div className="flex justify-center gap-2 mt-4">
+            <button
+              onClick={() => setActiveTab('active')}
+              className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+                activeTab === 'active'
+                  ? darkMode
+                    ? 'bg-orange-600 text-white'
+                    : 'bg-orange-500 text-white'
+                  : darkMode
+                  ? 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                  : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+              }`}
+            >
+              📦 Aktif Siparişler
+            </button>
+            <button
+              onClick={() => setActiveTab('delivered')}
+              className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+                activeTab === 'delivered'
+                  ? darkMode
+                    ? 'bg-orange-600 text-white'
+                    : 'bg-orange-500 text-white'
+                  : darkMode
+                  ? 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                  : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+              }`}
+            >
+              ✅ Teslim Edilen Siparişlerim
+            </button>
+          </div>
+        </div>
+
+        {/* Success Message */}
+        {successMessage && (
+          <div className="mb-4 p-4 bg-green-500/20 border border-green-500/50 rounded-lg">
+            <p className="text-green-400 text-center font-medium">{successMessage}</p>
+          </div>
+        )}
+
+        {/* Günlük Finansal Özet Çubuğu - Sadece Aktif Sekmede */}
+        {activeTab === 'active' && (
+          <div className="mb-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* Bugünkü Paket Sayısı */}
+            <div className={`p-4 rounded-xl border ${
+              darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'
+            }`}>
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className={`text-xs font-medium mb-1 ${darkMode ? 'text-slate-400' : 'text-gray-600'}`}>
+                    📦 Bugünkü Paket Sayısı
+                  </p>
+                  {todayStats.isLoading ? (
+                    <div className="h-7 w-14 bg-slate-700 animate-pulse rounded"></div>
+                  ) : (
+                    <p className={`text-2xl font-black ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+                      {todayStats.packageCount}
+                    </p>
+                  )}
+                  <p className={`text-xs mt-0.5 ${darkMode ? 'text-slate-500' : 'text-gray-500'}`}>
+                    Teslim edildi
+                  </p>
+                </div>
+                <div className="text-3xl opacity-20">📦</div>
+              </div>
+            </div>
+
+            {/* Paket Masrafı */}
+            <div className={`p-4 rounded-xl border ${
+              darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'
+            }`}>
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className={`text-xs font-medium mb-1 ${darkMode ? 'text-slate-400' : 'text-gray-600'}`}>
+                    💸 Paket Masrafı
+                  </p>
+                  {todayStats.isLoading ? (
+                    <div className="h-7 w-20 bg-slate-700 animate-pulse rounded"></div>
+                  ) : (
+                    <p className={`text-2xl font-black ${darkMode ? 'text-orange-400' : 'text-orange-600'}`}>
+                      {todayStats.packageFee.toFixed(0)}₺
+                    </p>
+                  )}
+                  <p className={`text-xs mt-0.5 ${darkMode ? 'text-slate-500' : 'text-gray-500'}`}>
+                    {todayStats.packageCount} × {PACKAGE_FEE}₺
+                  </p>
+                </div>
+                <div className="text-3xl opacity-20">💸</div>
+              </div>
+            </div>
+
+            {/* Bugünkü Hak Ediş */}
+            <div className={`p-4 rounded-xl border-2 ${
+              darkMode ? 'bg-gradient-to-br from-green-900/30 to-slate-900 border-green-700/50' : 'bg-gradient-to-br from-green-50 to-white border-green-300'
+            }`}>
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className={`text-xs font-medium mb-1 ${darkMode ? 'text-green-300' : 'text-green-700'}`}>
+                    💰 Bugünkü Hak Ediş
+                  </p>
+                  {todayStats.isLoading ? (
+                    <div className="h-7 w-28 bg-green-700/30 animate-pulse rounded"></div>
+                  ) : (
+                    <p className={`text-2xl font-black ${darkMode ? 'text-green-400' : 'text-green-600'}`}>
+                      {todayStats.netRevenue.toFixed(0)}₺
+                    </p>
+                  )}
+                  <p className={`text-xs mt-0.5 ${darkMode ? 'text-green-500/70' : 'text-green-600/70'}`}>
+                    Ciro: {todayStats.totalRevenue.toFixed(0)}₺ - Masraf: {todayStats.packageFee.toFixed(0)}₺
+                  </p>
+                </div>
+                <div className="text-3xl opacity-30">💰</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        )}
+
+        {/* Kanban Board - Aktif Siparişler */}
+        {activeTab === 'active' && (
+          <>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+              </div>
+            ) : (
+              <KanbanBoard 
+                packages={packages} 
+                onRefresh={fetchPackages}
+                darkMode={darkMode}
+                couriers={couriers}
+              />
+            )}
+          </>
+        )}
+
+        {/* Teslim Edilen Siparişler Listesi */}
+        {activeTab === 'delivered' && (
+          <div className={`rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'}`}>
+            {/* Tarih Filtreleri */}
+            <div className={`p-4 border-b ${darkMode ? 'border-slate-800' : 'border-gray-200'}`}>
+              <div className="flex flex-wrap gap-4 items-center">
+                <div className="flex-1 min-w-[200px]">
+                  <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                    Başlangıç Tarihi
+                  </label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className={`w-full px-3 py-2 rounded-lg border ${
+                      darkMode 
+                        ? 'bg-slate-800 border-slate-700 text-white' 
+                        : 'bg-white border-gray-300 text-gray-900'
+                    }`}
+                  />
+                </div>
+                <div className="flex-1 min-w-[200px]">
+                  <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                    Bitiş Tarihi
+                  </label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className={`w-full px-3 py-2 rounded-lg border ${
+                      darkMode 
+                        ? 'bg-slate-800 border-slate-700 text-white' 
+                        : 'bg-white border-gray-300 text-gray-900'
+                    }`}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setStartDate('')
+                      setEndDate('')
+                    }}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                      darkMode
+                        ? 'bg-slate-700 hover:bg-slate-600 text-white'
+                        : 'bg-gray-200 hover:bg-gray-300 text-gray-900'
+                    }`}
+                  >
+                    Temizle
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Sipariş Listesi */}
+            <div className="p-4">
+              {isLoading ? (
+                <div className="flex items-center justify-center py-20">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+                </div>
+              ) : deliveredPackages.length === 0 ? (
+                <div className={`text-center py-12 ${darkMode ? 'text-slate-500' : 'text-gray-400'}`}>
+                  <p className="text-4xl mb-2">📭</p>
+                  <p className="text-sm">Teslim edilmiş sipariş bulunmuyor</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {deliveredPackages.map((pkg: any) => (
+                    <div
+                      key={pkg.id}
+                      className={`p-4 rounded-lg border ${
+                        darkMode 
+                          ? 'bg-slate-800 border-slate-700 hover:bg-slate-750' 
+                          : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                      } transition-colors`}
+                    >
+                      <div className="flex flex-wrap gap-4 items-start justify-between">
+                        {/* Sol Taraf - Sipariş Bilgileri */}
+                        <div className="flex-1 min-w-[250px]">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className={`text-sm font-bold px-2 py-1 rounded ${
+                              darkMode ? 'bg-orange-900/50 text-orange-300' : 'bg-orange-100 text-orange-700'
+                            }`}>
+                              {pkg.order_number || '......'}
+                            </span>
+                            {pkg.platform && (
+                              <span className={`text-xs py-0.5 px-2 rounded ${getPlatformBadgeClass(pkg.platform)}`}>
+                                {getPlatformDisplayName(pkg.platform)}
+                              </span>
+                            )}
+                            <span className={`text-xs px-2 py-1 rounded ${
+                              darkMode ? 'bg-green-900/50 text-green-300' : 'bg-green-100 text-green-700'
+                            }`}>
+                              ✅ Teslim Edildi
+                            </span>
+                          </div>
+                          
+                          <div className={`space-y-1 text-sm ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                            <p className="font-semibold">👤 {pkg.customer_name}</p>
+                            {pkg.customer_phone && <p className="text-xs">📞 {pkg.customer_phone}</p>}
+                            <p className="text-xs">📍 {pkg.delivery_address}</p>
+                            {pkg.content && <p className="text-xs">📝 {pkg.content}</p>}
+                          </div>
+                        </div>
+
+                        {/* Orta - Kurye ve Ödeme */}
+                        <div className="flex-1 min-w-[200px]">
+                          <div className={`space-y-2 text-sm ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                            <div>
+                              <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>Kurye</p>
+                              <p className="font-medium">🚴 {pkg.courier?.full_name || 'Bilinmeyen'}</p>
+                            </div>
+                            <div>
+                              <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>Ödeme</p>
+                              <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                                pkg.payment_method === 'cash'
+                                  ? 'bg-green-900/50 text-green-300'
+                                  : pkg.payment_method === 'iban'
+                                  ? 'bg-purple-900/50 text-purple-300'
+                                  : 'bg-orange-900/50 text-orange-300'
+                              }`}>
+                                {pkg.payment_method === 'cash' ? '💵 Nakit' : pkg.payment_method === 'iban' ? '🏦 IBAN' : '💳 Kart'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Sağ Taraf - Tutar ve Tarih */}
+                        <div className="text-right min-w-[150px]">
+                          <p className={`text-2xl font-bold mb-2 ${darkMode ? 'text-green-400' : 'text-green-600'}`}>
+                            {pkg.amount}₺
+                          </p>
+                          <div className={`text-xs space-y-1 ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                            <p>🕐 Oluşturulma: {formatTurkishTime(pkg.created_at)}</p>
+                            {pkg.delivered_at && (
+                              <p>✅ Teslim: {formatTurkishTime(pkg.delivered_at)}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* New Order Modal */}
+      {showNewOrderModal && (
+        <NewOrderModal
+          onClose={() => setShowNewOrderModal(false)}
+          onSuccess={handleNewOrderSuccess}
+          restaurantId={restaurantId}
+          darkMode={darkMode}
+        />
+      )}
+    </div>
+  )
+}

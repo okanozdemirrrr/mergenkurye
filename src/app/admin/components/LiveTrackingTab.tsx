@@ -34,6 +34,7 @@ interface LiveTrackingTabProps {
     handleCourierChange: (packageId: number, courierId: string) => void
     handleAssignCourier: (packageId: number) => void
     handleCancelOrder: (id: number, details: string) => void
+    todayDeliveredCount: number
 }
 
 export function LiveTrackingTab({
@@ -47,25 +48,47 @@ export function LiveTrackingTab({
     setOpenDropdownId,
     handleCourierChange,
     handleAssignCourier,
-    handleCancelOrder
+    handleCancelOrder,
+    todayDeliveredCount
 }: LiveTrackingTabProps) {
     const [selectedPackage, setSelectedPackage] = useState<Package | null>(null)
     
-    // Sol panel: Sadece sahipsiz paketler (kurye atanmamış ve iptal edilmemiş)
-    const unassignedPackages = packages.filter(pkg => !pkg.courier_id && pkg.status !== 'cancelled')
+    // Sol panel: Sahipsiz paketler (kurye atanmamış ve iptal edilmemiş)
+    // Yeni akışta: new_order, getting_ready, ready durumları da gösterilecek
+    const unassignedPackages = packages.filter(pkg => 
+        !pkg.courier_id && 
+        pkg.status !== 'cancelled' &&
+        pkg.status !== 'delivered'
+    )
     
     // Sağ panel: Kurye atanmış paketler (iptal edilmemiş)
     const assignedPackages = packages.filter(pkg => pkg.courier_id && pkg.status !== 'cancelled')
 
     const getStatusText = (status: string) => {
         switch (status) {
-            case 'waiting': return 'Beklemede'
+            case 'new_order': return 'Yeni Sipariş'
+            case 'getting_ready': return 'Hazırlanıyor'
+            case 'ready': return 'Hazır'
             case 'assigned': return 'Atandı'
             case 'picking_up': return 'Alınıyor'
             case 'on_the_way': return 'Yolda'
             case 'delivered': return 'Teslim Edildi'
             case 'cancelled': return 'İptal Edildi'
             default: return status
+        }
+    }
+
+    const getStatusIcon = (status: string) => {
+        switch (status) {
+            case 'new_order': return '🔵'
+            case 'getting_ready': return '👨‍🍳'
+            case 'ready': return '✅'
+            case 'assigned': return '👤'
+            case 'picking_up': return '🏃'
+            case 'on_the_way': return '🚗'
+            case 'delivered': return '🎉'
+            case 'cancelled': return '🚫'
+            default: return '📦'
         }
     }
 
@@ -106,10 +129,13 @@ export function LiveTrackingTab({
                                     <span className="text-slate-400 text-sm">Durum:</span>
                                     <span className={`px-3 py-1.5 rounded-full text-sm font-semibold ${
                                         selectedPackage.status === 'cancelled' ? 'bg-red-900/50 text-red-300' :
+                                        selectedPackage.status === 'new_order' ? 'bg-blue-900/50 text-blue-300' :
+                                        selectedPackage.status === 'getting_ready' ? 'bg-cyan-900/50 text-cyan-300' :
+                                        selectedPackage.status === 'ready' ? 'bg-teal-900/50 text-teal-300' :
                                         selectedPackage.status === 'waiting' ? 'bg-yellow-900/50 text-yellow-300' :
-                                        selectedPackage.status === 'assigned' ? 'bg-orange-900/50 text-orange-300' :
+                                        selectedPackage.status === 'assigned' ? 'bg-purple-900/50 text-purple-300' :
                                         selectedPackage.status === 'picking_up' ? 'bg-orange-900/50 text-orange-300' :
-                                        selectedPackage.status === 'on_the_way' ? 'bg-blue-900/50 text-blue-300' :
+                                        selectedPackage.status === 'on_the_way' ? 'bg-yellow-900/50 text-yellow-300' :
                                         'bg-green-900/50 text-green-300'
                                     }`}>
                                         {getStatusText(selectedPackage.status)}
@@ -221,10 +247,10 @@ export function LiveTrackingTab({
             />
             
             <div className="space-y-2">
-            {/* CANLI HARİTA + KURYE DURUMLARI - YAN YANA */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-2">
-                {/* SOL: Canlı Harita (3/4) */}
-                <div className="lg:col-span-3">
+            {/* CANLI HARİTA + KURYE DURUMLARI - YAN YANA (Desktop) / DİKEY (Mobile) */}
+            <div className="flex flex-col lg:grid lg:grid-cols-4 gap-2">
+                {/* Harita - Mobilde İlk Sırada */}
+                <div className="lg:col-span-3 order-1 lg:order-1">
                     <div className="bg-slate-900 shadow-xl rounded-2xl p-2 border border-slate-800" style={{ position: 'relative', zIndex: 1 }}>
                         {/* Başlık ve İstatistikler - Yatay */}
                         <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
@@ -253,7 +279,7 @@ export function LiveTrackingTab({
                                 </div>
                                 
                                 {/* Renk Lejantı */}
-                                <div className="flex items-center gap-2 ml-2 pl-2 border-l border-slate-700">
+                                <div className="hidden lg:flex items-center gap-2 ml-2 pl-2 border-l border-slate-700">
                                     <div className="flex items-center gap-1">
                                         <div className="w-2 h-2 rounded-full bg-red-500"></div>
                                         <span className="text-[10px] text-slate-400">Sahipsiz/Teslimat</span>
@@ -269,17 +295,22 @@ export function LiveTrackingTab({
                                 </div>
                             </div>
                         </div>
-                        <div className="h-[500px] w-full rounded-xl overflow-hidden">
+                        <div className="h-[40vh] lg:h-[500px] w-full rounded-xl overflow-hidden">
                             <LiveMapComponent packages={packages} couriers={couriers} restaurants={restaurants} />
                         </div>
                     </div>
                 </div>
 
-                {/* SAĞ: Kurye Durumları (1/4) */}
-                <div className="lg:col-span-1">
-                    <div className="bg-slate-900 shadow-xl rounded-2xl p-2 sticky top-4 border border-slate-800">
-                        <h2 className="text-sm font-bold mb-2 text-white">🚴 Kurye Durumları</h2>
-                        <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                {/* Kurye Durumları - Mobilde İkinci Sırada */}
+                <div className="lg:col-span-1 order-2 lg:order-2">
+                    <div className="bg-slate-900 shadow-xl rounded-2xl p-2 lg:sticky lg:top-4 border border-slate-800">
+                        <div className="flex justify-between items-center mb-2">
+                            <h2 className="text-sm font-bold text-white">🚴 Kurye Durumları</h2>
+                            <span className="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-sm font-semibold">
+                                ✅ {todayDeliveredCount} bugün
+                            </span>
+                        </div>
+                        <div className="space-y-2 max-h-[500px] overflow-y-auto overflow-x-auto">
                             {couriers.map(c => {
                                 const courierPackages = assignedPackages.filter(pkg => pkg.courier_id === c.id)
 
@@ -337,8 +368,9 @@ export function LiveTrackingTab({
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-2">
-                <div className="lg:col-span-3 space-y-2">
+            {/* SİPARİŞLER - Mobilde Üçüncü Sırada */}
+            <div className="flex flex-col lg:grid lg:grid-cols-4 gap-2">
+                <div className="lg:col-span-3 space-y-2 order-3 lg:order-1">
                     {/* SİPARİŞ KARTLARI */}
                     <div className="bg-slate-900 shadow-xl rounded-2xl p-3 border border-slate-800">
                         <h2 className="text-xl font-bold mb-3 text-white">📦 Canlı Sipariş Takibi</h2>
@@ -409,19 +441,15 @@ export function LiveTrackingTab({
                                         <div className="mb-2 ml-8 relative z-10">
                                             <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                                                 pkg.status === 'cancelled' ? 'bg-red-900/50 text-red-300' :
-                                                !pkg.courier_id && pkg.status !== 'waiting' && pkg.status !== 'delivered' && pkg.status !== 'cancelled'
-                                                ? 'bg-red-900/50 text-red-300 animate-pulse'
-                                                : pkg.status === 'waiting' ? 'bg-yellow-900/50 text-yellow-300' :
-                                                    pkg.status === 'assigned' ? 'bg-orange-900/50 text-orange-300' :
-                                                        pkg.status === 'picking_up' ? 'bg-orange-900/50 text-orange-300' :
-                                                            'bg-red-900/50 text-red-300'
-                                                }`}>
-                                                {pkg.status === 'cancelled' ? '🚫 İPTAL EDİLDİ' :
-                                                !pkg.courier_id && pkg.status !== 'waiting' && pkg.status !== 'delivered' && pkg.status !== 'cancelled'
-                                                    ? '⚠️ SAHİPSİZ PAKET'
-                                                    : pkg.status === 'waiting' ? '⏳ Beklemede' :
-                                                        pkg.status === 'assigned' ? '👤 Atandı' :
-                                                            pkg.status === 'picking_up' ? '🏃 Alınıyor' : '🚗 Yolda'}
+                                                pkg.status === 'new_order' ? 'bg-blue-900/50 text-blue-300' :
+                                                pkg.status === 'getting_ready' ? 'bg-cyan-900/50 text-cyan-300' :
+                                                pkg.status === 'ready' ? 'bg-teal-900/50 text-teal-300 animate-pulse' :
+                                                pkg.status === 'assigned' ? 'bg-purple-900/50 text-purple-300' :
+                                                pkg.status === 'picking_up' ? 'bg-orange-900/50 text-orange-300' :
+                                                pkg.status === 'on_the_way' ? 'bg-yellow-900/50 text-yellow-300' :
+                                                'bg-green-900/50 text-green-300'
+                                            }`}>
+                                                {getStatusIcon(pkg.status)} {getStatusText(pkg.status).toUpperCase()}
                                             </span>
                                         </div>
 
@@ -465,13 +493,13 @@ export function LiveTrackingTab({
                                             </div>
                                         </div>
 
-                                        {/* Kurye Atama */}
-                                        {!pkg.courier_id && pkg.status !== 'delivered' && pkg.status !== 'cancelled' && (
+                                        {/* Kurye Atama - Sadece 'ready' durumunda göster */}
+                                        {!pkg.courier_id && pkg.status === 'ready' && (
                                             <div className="border-t border-slate-700 pt-2 space-y-2 relative z-20" onClick={(e) => e.stopPropagation()}>
                                                 <select
                                                     value={selectedCouriers[pkg.id] || ''}
                                                     onChange={(e) => handleCourierChange(pkg.id, e.target.value)}
-                                                    className="w-full bg-slate-700 text-white border border-slate-600 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-orange-500 focus:border-transparent"
+                                                    className="w-full bg-slate-700 text-white border border-slate-600 rounded px-2 py-2 min-h-[44px] text-xs focus:ring-1 focus:ring-orange-500 focus:border-transparent"
                                                     disabled={assigningIds.has(pkg.id)}
                                                 >
                                                     <option value="">Kurye Seçin</option>
@@ -494,7 +522,7 @@ export function LiveTrackingTab({
                                                 <button
                                                     onClick={() => handleAssignCourier(pkg.id)}
                                                     disabled={!selectedCouriers[pkg.id] || assigningIds.has(pkg.id)}
-                                                    className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white px-3 py-1.5 rounded text-xs font-semibold transition-all"
+                                                    className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white px-3 py-2 min-h-[44px] rounded text-xs font-semibold transition-all"
                                                 >
                                                     {assigningIds.has(pkg.id) ? '⏳ Atanıyor...' : '✅ Kurye Ata'}
                                                 </button>
