@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: 'export',
+  // Sadece lokalde (Capacitor için) export kullan. Vercel üzerinde API rotalarının silinmemesi için standart build al.
+  ...(process.env.VERCEL ? {} : { output: 'export' }),
 
   images: {
     unoptimized: true,
