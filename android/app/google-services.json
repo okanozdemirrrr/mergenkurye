@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "606499568569",
+    "project_id": "alda-gel-kurye",
+    "storage_bucket": "alda-gel-kurye.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:606499568569:android:e6f8dabf3d708b6e7f9468",
+        "android_client_info": {
+          "package_name": "com.mergen.kurye"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC8X40qD1VLDm72PUyVPwraLzU4SawwsnU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

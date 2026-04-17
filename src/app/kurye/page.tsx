@@ -15,6 +15,7 @@ import { supabase } from '../lib/supabase'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '../lib/platformUtils'
 import { CourierEarningsStats } from '@/components/CourierEarningsStats'
 import { CourierNotificationWrapper } from '@/components/notifications/CourierNotificationWrapper'
+import { usePushNotifications } from '@/hooks/usePushNotifications'
 
 // ============================================
 // SAMSUN OPERASYON BÖLGESI TANIMLARI
@@ -139,6 +140,15 @@ export default function KuryePage() {
 
   // SAYISAL ETİKETLEME (SLOT SYSTEM) - SABİT NUMARALANDIRMA
   const [packageSlots, setPackageSlots] = useState<{ [key: number]: number }>({}) // packageId -> slotNumber
+
+  // ============================================
+  // PUSH NOTIFICATIONS HOOK
+  // ============================================
+  // Native Push Notifications (FCM) - Cihaz token'ını alır ve veritabanına kaydeder
+  const pushNotifications = usePushNotifications({
+    courierId: selectedCourierId,
+    isLoggedIn: isLoggedIn
+  })
 
   // Packages değiştiğinde ref'i güncelle
   useEffect(() => {
@@ -1085,27 +1095,47 @@ export default function KuryePage() {
     }
   }
 
-  // Verilecek hesabı çek (admin'den - settled_at null olanlar)
+  // CARİ HESAP MANTIĞI - Kalan Borç Hesaplama (Admin Paneli ile Aynı)
   const fetchUnsettledAmount = async () => {
     const courierId = localStorage.getItem(LOGIN_COURIER_ID_KEY)
     if (!courierId) return
 
     try {
-      const { data, error } = await supabase
+      // 1. TÜM ZAMANLARIN teslimat toplamı (tarih filtresi YOK!)
+      const { data: allPackages, error: packagesError } = await supabase
         .from('packages')
         .select('amount')
         .eq('courier_id', courierId)
         .eq('status', 'delivered')
-        .is('settled_at', null) // Hesabı alınmamış paketler
+        // ⚠️ TARİH FİLTRESİ YOK - Tüm geçmiş dahil!
 
-      if (error) throw error
+      if (packagesError) throw packagesError
 
-      const total = (data || []).reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
-      setUnsettledAmount(total)
+      const totalOwed = (allPackages || []).reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
 
-      console.log(`💰 Verilecek hesap: ${total}₺`)
+      // 2. TÜM ZAMANLARIN ödeme toplamı (courier_settlements tablosundan)
+      const { data: allSettlements, error: settlementsError } = await supabase
+        .from('courier_settlements')
+        .select('amount_paid')
+        .eq('courier_id', courierId)
+        // ⚠️ TARİH FİLTRESİ YOK - Tüm geçmiş dahil!
+
+      if (settlementsError) throw settlementsError
+
+      const totalPaid = (allSettlements || []).reduce((sum, s) => sum + (s.amount_paid || 0), 0)
+
+      // 3. CARİ HESAP FORMÜLÜ: Kalan Borç = Toplam Teslimat - Toplam Ödeme
+      // Negatif olamaz (fazla ödeme = bahşiş, borç 0 olur)
+      const remainingDebt = Math.max(0, totalOwed - totalPaid)
+      setUnsettledAmount(remainingDebt)
+
+      console.log('💰 CARİ HESAP HESAPLAMASI (Kurye Paneli):', {
+        totalOwed: totalOwed.toFixed(2),
+        totalPaid: totalPaid.toFixed(2),
+        remainingDebt: remainingDebt.toFixed(2)
+      })
     } catch (error: any) {
-      console.error('❌ Verilecek hesap hesaplanamadı:', error)
+      console.error('❌ Kalan borç hesaplanamadı:', error)
     }
   }
 
@@ -1314,16 +1344,20 @@ export default function KuryePage() {
 
   // Arka plan konum takibi başlat
   const startBackgroundLocationTracking = async (courierId: string) => {
+    if (typeof window === 'undefined') {
+      return null
+    }
+    
     try {
-      // Platform kontrolü - sadece mobil cihazlarda çalıştır
-      if (typeof window !== 'undefined' && window.navigator.userAgent.includes('Mobile')) {
-        try {
-          const { BackgroundGeolocationPlugin } = await import('@capacitor-community/background-geolocation')
-          
-          console.log('🔄 Arka plan konum takibi başlatılıyor...')
-          
-          // Watcher ekle
-          const watcherId = await BackgroundGeolocationPlugin.addWatcher(
+      if (window.navigator.userAgent.includes('Mobile')) {
+        if (typeof window === 'undefined') return null
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const bgGeoModule = await import('@capacitor-community/background-geolocation') as any
+        const BackgroundGeolocationPlugin = bgGeoModule.BackgroundGeolocationPlugin ?? bgGeoModule.default?.BackgroundGeolocationPlugin ?? bgGeoModule.default
+        
+        console.log('🔄 Arka plan konum takibi başlatılıyor...')
+        
+        const watcherId = await BackgroundGeolocationPlugin.addWatcher(
             {
               backgroundMessage: 'Konumunuz Takip Ediliyor',
               backgroundTitle: 'Alda Gel Kurye Aktif',
@@ -1331,7 +1365,7 @@ export default function KuryePage() {
               stale: false,
               distanceFilter: 10 // 10 metre hareket ettiğinde güncelle
             },
-            async (location, error) => {
+            async (location: { latitude: number; longitude: number; accuracy: number; speed: number | null; bearing: number | null; time: number | null } | undefined, error: Error | undefined) => {
               if (error) {
                 console.error('❌ Arka plan konum hatası:', error)
                 return
@@ -1442,14 +1476,9 @@ export default function KuryePage() {
             }
           )
 
-          console.log('✅ Arka plan konum takibi başlatıldı, watcher ID:', watcherId)
-          
-          // Watcher ID'yi sakla (temizlik için)
-          return watcherId
-        } catch (importError) {
-          console.log('ℹ️ Background geolocation paketi yüklü değil (web platformu)')
-          return null
-        }
+        console.log('✅ Arka plan konum takibi başlatıldı, watcher ID:', watcherId)
+        
+        return watcherId
       } else {
         console.log('ℹ️ Background geolocation sadece mobil cihazlarda desteklenir')
         return null
@@ -1462,16 +1491,18 @@ export default function KuryePage() {
 
   // Arka plan konum takibini durdur
   const stopBackgroundLocationTracking = async (watcherId: string) => {
+    if (typeof window === 'undefined') {
+      return
+    }
+    
     try {
-      // Platform kontrolü - sadece mobil cihazlarda çalıştır
-      if (typeof window !== 'undefined' && window.navigator.userAgent.includes('Mobile')) {
-        try {
-          const { BackgroundGeolocationPlugin } = await import('@capacitor-community/background-geolocation')
-          await BackgroundGeolocationPlugin.removeWatcher({ id: watcherId })
-          console.log('🛑 Arka plan konum takibi durduruldu')
-        } catch (importError) {
-          console.log('ℹ️ Background geolocation paketi yüklü değil (web platformu)')
-        }
+      if (window.navigator.userAgent.includes('Mobile')) {
+        if (typeof window === 'undefined') return
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const bgGeoModule = await import('@capacitor-community/background-geolocation') as any
+        const BackgroundGeolocationPlugin = bgGeoModule.BackgroundGeolocationPlugin ?? bgGeoModule.default?.BackgroundGeolocationPlugin ?? bgGeoModule.default
+        await BackgroundGeolocationPlugin.removeWatcher({ id: watcherId })
+        console.log('🛑 Arka plan konum takibi durduruldu')
       } else {
         console.log('ℹ️ Background geolocation sadece mobil cihazlarda desteklenir')
       }
@@ -1501,9 +1532,12 @@ export default function KuryePage() {
 
   // Konum güncellemesi fonksiyonu - ULTRA GÜÇLENDİRİLMİŞ FİLTRELEME
   const updateCourierLocation = async (courierId: string) => {
+    if (typeof window === 'undefined') return
     try {
       // Capacitor Geolocation plugin'ini kullan (daha güvenilir)
-      const { Geolocation } = await import('@capacitor/geolocation')
+      const geoModule = await import('@capacitor/geolocation')
+      const Geolocation = geoModule.Geolocation
+      if (!Geolocation) return
       
       // İzin kontrolü
       const permission = await Geolocation.checkPermissions()
@@ -1969,8 +2003,61 @@ export default function KuryePage() {
         }
       }
 
+      // 🔥 CARİ HESAP REALTIME - courier_settlements tablosunu dinle
+      const setupSettlementsRealtimeWithRetry = async (retryCount = 0) => {
+        try {
+          const settlementsChannel = supabase
+            .channel(`courier-settlements-${courierId}`)
+            .on(
+              'postgres_changes',
+              {
+                event: '*', // INSERT, UPDATE, DELETE
+                schema: 'public',
+                table: 'courier_settlements',
+                filter: `courier_id=eq.${courierId}`
+              },
+              async (payload) => {
+                console.log('💰 Realtime: Gün sonu mutabakatı güncellendi:', payload)
+                // Kalan borcu yeniden hesapla
+                await fetchUnsettledAmount()
+              }
+            )
+
+          const status = await new Promise<string>((resolve) => {
+            settlementsChannel.subscribe((status: string) => {
+              resolve(status)
+            })
+          })
+
+          if (status === 'SUBSCRIBED') {
+            console.log('✅ Kurye Settlements Realtime bağlandı')
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            console.warn(`⚠️ Kurye Settlements Realtime hatası: ${status}`)
+            
+            const timer = setTimeout(() => {
+              console.log('🔄 Kurye Settlements Realtime yeniden bağlanılıyor...')
+              setupSettlementsRealtimeWithRetry(retryCount + 1)
+            }, 3000)
+            
+            reconnectTimers.push(timer)
+          }
+        } catch (error) {
+          console.error('❌ Kurye Settlements Realtime subscription hatası:', error)
+          
+          if (retryCount < 10) {
+            const timer = setTimeout(() => {
+              console.log(`🔄 Hata sonrası yeniden bağlanılıyor (Deneme: ${retryCount + 1})`)
+              setupSettlementsRealtimeWithRetry(retryCount + 1)
+            }, 3000)
+            
+            reconnectTimers.push(timer)
+          }
+        }
+      }
+
       setupPackagesRealtimeWithRetry()
       setupCourierRealtimeWithRetry()
+      setupSettlementsRealtimeWithRetry() // Cari Hesap Realtime
 
       return () => {
         console.log('🔴 Realtime dinleme durduruldu')
@@ -2708,11 +2795,14 @@ export default function KuryePage() {
                     </p>
                   </div>
 
-                  {/* Seçili Aralık - 2 kolon */}
-                  <div className="bg-slate-800/50 px-2 py-2 rounded-lg col-span-2">
-                    <p className="text-[10px] text-slate-400 mb-1">Seçili Aralık Toplam</p>
-                    <p className="text-base font-bold text-purple-400">
-                      {filteredPackages.reduce((sum, pkg) => sum + (pkg.amount || 0), 0).toFixed(0)}₺
+                  {/* Kalan Borç - Tüm zamanların net borcu (tarih filtresinden BAĞIMSIZ) */}
+                  <div className="bg-gradient-to-br from-orange-900/50 to-red-900/50 border-2 border-orange-500/50 px-3 py-2 rounded-lg col-span-2 shadow-lg">
+                    <p className="text-[10px] font-bold text-orange-200 mb-1">💰 Kalan Borç / Ödenecek Tutar</p>
+                    <p className="text-lg font-black text-orange-100">
+                      {unsettledAmount.toFixed(2)}₺
+                    </p>
+                    <p className="text-[8px] text-orange-300 mt-0.5">
+                      Yöneticiye ödemeniz gereken güncel net borç
                     </p>
                   </div>
                 </div>

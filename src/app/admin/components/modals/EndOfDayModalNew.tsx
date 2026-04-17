@@ -16,7 +16,7 @@ import { supabase } from '@/app/lib/supabase'
 
 interface Courier {
   id: string
-  full_name: string
+  full_name?: string
 }
 
 interface EndOfDayModalNewProps {
@@ -189,7 +189,7 @@ export function EndOfDayModalNew({
         {/* Header */}
         <div className="p-6 border-b border-slate-200">
           <h3 className="text-2xl font-bold text-slate-900">
-            💰 Gün Sonu Mutabakatı - {courier.full_name}
+            💰 Gün Sonu Mutabakatı - {courier.full_name ?? 'Kurye'}
           </h3>
           <p className="text-sm text-slate-500 mt-1">
             {startDate} - {endDate}

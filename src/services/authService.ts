@@ -31,76 +31,97 @@ export interface AuthResponse {
 }
 
 /**
- * Çok şirketli giriş sistemi
+ * Giriş sistemi (Kurye / Restoran / Admin ayrı)
  */
 export async function login(credentials: LoginCredentials): Promise<AuthResponse> {
   try {
-    const { companyCode, username, password, userType } = credentials
+    const { username, password, userType } = credentials
 
-    // 1. Şirket kodunu kontrol et
-    const { data: company, error: companyError } = await supabase
-      .from('companies')
-      .select('*')
-      .eq('company_code', companyCode.toUpperCase())
-      .eq('is_active', true)
-      .single()
-
-    if (companyError || !company) {
-      return {
-        success: false,
-        error: 'Geçersiz şirket kodu'
+    // Admin Girişi (Sabit)
+    if (userType === 'admin') {
+      if (username === 'admin' && password === 'admin123') {
+        const authUser: AuthUser = {
+          id: 'admin-123',
+          companyId: '',
+          companyCode: '',
+          companyName: 'Alda Gel Admin',
+          username: 'admin',
+          fullName: 'Sistem Yöneticisi',
+          email: null,
+          userType: 'admin',
+          theme: { primaryColor: '#f97316', secondaryColor: '#ea580c', accentColor: '#fb923c' },
+          logoUrl: null
+        }
+        saveSession(authUser)
+        return { success: true, user: authUser }
       }
+      return { success: false, error: 'Admin kullanıcı adı veya şifre hatalı' }
     }
 
-    // 2. Kullanıcıyı kontrol et
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('*')
-      .eq('company_id', company.id)
-      .eq('username', username)
-      .eq('user_type', userType)
-      .eq('is_active', true)
-      .single()
+    // Kurye Girişi
+    if (userType === 'courier') {
+      const { data: user, error } = await supabase
+        .from('couriers')
+        .select('*')
+        .eq('username', username)
+        .eq('password', password)
+        .eq('is_active', true)
+        .single()
 
-    if (userError || !user) {
-      return {
-        success: false,
-        error: 'Kullanıcı adı veya şifre hatalı'
+      if (error || !user) {
+        return { success: false, error: 'Kurye kullanıcı adı veya şifre hatalı' }
       }
-    }
 
-    // 3. Şifre kontrolü (Basit - Gerçek uygulamada bcrypt kullanılmalı)
-    if (user.password !== password) {
-      return {
-        success: false,
-        error: 'Kullanıcı adı veya şifre hatalı'
+      const authUser: AuthUser = {
+        id: user.id,
+        companyId: user.company_id || '',
+        companyCode: '',
+        companyName: 'Alda Gel Kurye',
+        username: user.username,
+        fullName: user.full_name || user.username,
+        email: null,
+        userType: 'courier',
+        theme: { primaryColor: '#f97316', secondaryColor: '#ea580c', accentColor: '#fb923c' },
+        logoUrl: null
       }
+      saveSession(authUser)
+      return { success: true, user: authUser }
     }
 
-    // 4. Auth user objesi oluştur
-    const authUser: AuthUser = {
-      id: user.id,
-      companyId: company.id,
-      companyCode: company.company_code,
-      companyName: company.company_name,
-      username: user.username,
-      fullName: user.full_name || user.username,
-      email: user.email,
-      userType: user.user_type,
-      theme: {
-        primaryColor: company.theme_primary_color || '#f97316',
-        secondaryColor: company.theme_secondary_color || '#ea580c',
-        accentColor: company.theme_accent_color || '#fb923c'
-      },
-      logoUrl: company.logo_url
-    }
+    // Restoran Girişi
+    if (userType === 'restaurant') {
+      // Restoran tablosunda 'username' yerine 'name' alanı kullanılıyor
+      const { data: user, error } = await supabase
+        .from('restaurants')
+        .select('*')
+        .eq('name', username)
+        .eq('password', password)
+        .eq('is_active', true)
+        .single()
 
-    // 5. Session'a kaydet
-    saveSession(authUser)
+      if (error || !user) {
+        return { success: false, error: 'Restoran adı veya şifre hatalı' }
+      }
+
+      const authUser: AuthUser = {
+        id: user.id,
+        companyId: user.company_id || '',
+        companyCode: '',
+        companyName: user.name,
+        username: user.name,
+        fullName: user.name,
+        email: null,
+        userType: 'restaurant',
+        theme: { primaryColor: '#f97316', secondaryColor: '#ea580c', accentColor: '#fb923c' },
+        logoUrl: user.logo_url
+      }
+      saveSession(authUser)
+      return { success: true, user: authUser }
+    }
 
     return {
-      success: true,
-      user: authUser
+      success: false,
+      error: 'Geçersiz giriş tipi'
     }
   } catch (error: any) {
     console.error('Login error:', error)

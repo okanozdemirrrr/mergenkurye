@@ -70,31 +70,37 @@ export function CourierEarningsStats({ courierId, startDate, endDate }: CourierE
     }
   }
 
-  // FİNANSAL HESAPLAMA - Tüm geçmiş (startDate KULLANILMAZ!)
+  // FİNANSAL HESAPLAMA - TÜM ZAMANLARIN TOPLAMI (TARİH FİLTRESİNDEN BAĞIMSIZ!)
   const calculateLifetimeTotals = async () => {
     try {
-      // Tüm teslimatlar (başlangıçtan endDate'e kadar)
+      // TÜM ZAMANLARIN teslimatları (tarih filtresi YOK!)
       const { data: allPackages, error: packagesError } = await supabase
         .from('packages')
         .select('amount')
         .eq('courier_id', courierId)
         .eq('status', 'delivered')
-        .lte('delivered_at', `${endDate}T23:59:59`) // Sadece endDate kullan!
+        // ⚠️ TARİH FİLTRESİ YOK - Tüm geçmiş dahil!
 
       if (packagesError) throw packagesError
 
       const totalOwed = (allPackages || []).reduce((sum, p) => sum + (p.amount || 0), 0)
 
-      // Tüm ödemeler (başlangıçtan endDate'e kadar)
+      // TÜM ZAMANLARIN ödemeleri (tarih filtresi YOK!)
       const { data: allSettlements, error: settlementsError } = await supabase
         .from('courier_settlements')
         .select('amount_paid')
         .eq('courier_id', courierId)
-        .lte('created_at', `${endDate}T23:59:59`) // Sadece endDate kullan!
+        // ⚠️ TARİH FİLTRESİ YOK - Tüm geçmiş dahil!
 
       if (settlementsError) throw settlementsError
 
       const totalPaid = (allSettlements || []).reduce((sum, s) => sum + (s.amount_paid || 0), 0)
+
+      console.log('💰 CARİ HESAP HESAPLAMASI:', {
+        totalOwed: totalOwed.toFixed(2),
+        totalPaid: totalPaid.toFixed(2),
+        remainingDebt: Math.max(0, totalOwed - totalPaid).toFixed(2)
+      })
 
       return { totalOwed, totalPaid }
     } catch (error) {
@@ -204,14 +210,19 @@ export function CourierEarningsStats({ courierId, startDate, endDate }: CourierE
           </p>
         </div>
 
-        {/* Kalan Borç (Seçili Aralık Toplam) - REALTIME GÜNCELLENEN */}
-        <div className="bg-slate-800/50 px-2 py-2 rounded-lg col-span-3">
-          <p className="text-[10px] text-slate-400 mb-1">💰 Kalan Borç</p>
-          <p className="text-base font-bold text-purple-400">
+        {/* Kalan Borç / Ödenecek Tutar - REALTIME GÜNCELLENEN - VURGULU UI */}
+        <div className="bg-gradient-to-br from-orange-900/50 to-red-900/50 border-2 border-orange-500/50 px-3 py-3 rounded-lg col-span-3 shadow-lg">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs font-bold text-orange-200">💰 Kalan Borç / Ödenecek Tutar</p>
+            {remainingDebt === 0 && <span className="text-xs bg-green-500/20 text-green-300 px-2 py-0.5 rounded">✅ Kapatıldı</span>}
+          </div>
+          <p className="text-2xl font-black text-orange-100">
             {remainingDebt.toFixed(2)}₺
           </p>
-          <p className="text-[8px] text-slate-500 mt-1">
-            {remainingDebt === 0 ? '✅ Hesap kapatıldı' : '⏳ Ödeme bekleniyor'}
+          <p className="text-[9px] text-orange-300 mt-1">
+            {remainingDebt === 0 
+              ? 'Tüm hesaplar kapatıldı, yeni teslimatlar için hazırsınız' 
+              : 'Yöneticiye ödemeniz gereken güncel net borç (geçmiş ödemeler düşülmüş)'}
           </p>
         </div>
       </div>

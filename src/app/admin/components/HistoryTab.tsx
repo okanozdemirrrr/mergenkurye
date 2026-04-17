@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @file src/app/admin/components/HistoryTab.tsx
  * @description Geçmiş Siparişler Paneli Bileşeni.
  * Tamamlanan (teslim edilen veya iptal edilen) tüm siparişlerin listelendiği sekmeyi yönetir. 
@@ -137,7 +137,6 @@ export function HistoryTab({
                                     <span className="text-slate-400 text-sm">Durum:</span>
                                     <span className={`px-3 py-1.5 rounded-full text-sm font-semibold ${
                                         selectedPackage.status === 'cancelled' ? 'bg-red-900/50 text-red-300' :
-                                        selectedPackage.status === 'waiting' ? 'bg-yellow-900/50 text-yellow-300' :
                                         selectedPackage.status === 'assigned' ? 'bg-orange-900/50 text-orange-300' :
                                         selectedPackage.status === 'picking_up' ? 'bg-orange-900/50 text-orange-300' :
                                         selectedPackage.status === 'on_the_way' ? 'bg-blue-900/50 text-blue-300' :

@@ -54,8 +54,7 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
               restaurant_settled_at, latitude, longitude,
               restaurants(id, name, phone, address)
             `)
-            .is('courier_id', null)
-            .gte('created_at', todayStart.toISOString())
+            .neq('status', 'delivered')
             .order('created_at', { ascending: false })
           
           if (error) throw error
@@ -121,13 +120,18 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
       if (error) throw error
 
       // 🛡️ Type-safe transformation
-      const transformedData: Package[] = (data || []).map((pkg) => ({
-        ...pkg,
-        restaurant: pkg.restaurants as Restaurant | null,
-        courier_name: pkg.couriers?.full_name,
-        restaurants: undefined,
-        couriers: undefined
-      } as Package))
+      const transformedData: Package[] = (data || []).map((pkg) => {
+        const restaurantData = Array.isArray(pkg.restaurants) ? pkg.restaurants[0] : pkg.restaurants;
+        const courierData = Array.isArray(pkg.couriers) ? pkg.couriers[0] : (pkg.couriers as any);
+        
+        return {
+          ...pkg,
+          restaurant: restaurantData as any,
+          courier_name: courierData?.full_name,
+          restaurants: undefined,
+          couriers: undefined
+        } as Package;
+      })
 
       setDeliveredPackages(transformedData)
     } catch (error) {
