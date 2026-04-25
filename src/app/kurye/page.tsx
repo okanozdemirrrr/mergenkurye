@@ -108,6 +108,16 @@ export default function KuryePage() {
   const [unsettledAmount, setUnsettledAmount] = useState(0) // Verilecek hesap (admin'den)
   const ITEMS_PER_PAGE = 30 // Sayfa başına öğe sayısı
 
+  // Şifre değiştirme modal state'leri
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [passwordForm, setPasswordForm] = useState({
+    oldPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  })
+  const [passwordUpdating, setPasswordUpdating] = useState(false)
+  const [passwordError, setPasswordError] = useState('')
+
   const [startDate, setStartDate] = useState(() => {
     const today = new Date()
     return today.toISOString().split('T')[0]
@@ -149,6 +159,76 @@ export default function KuryePage() {
     courierId: selectedCourierId,
     isLoggedIn: isLoggedIn
   })
+
+  // ============================================
+  // ŞİFRE DEĞİŞTİRME FONKSİYONU
+  // ============================================
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setPasswordError('')
+
+    // Validasyon
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError('Yeni şifreler eşleşmiyor!')
+      return
+    }
+
+    if (passwordForm.newPassword.length < 6) {
+      setPasswordError('Yeni şifre en az 6 karakter olmalıdır!')
+      return
+    }
+
+    if (!passwordForm.oldPassword) {
+      setPasswordError('Eski şifrenizi girin!')
+      return
+    }
+
+    setPasswordUpdating(true)
+
+    try {
+      // Önce mevcut kullanıcının email'ini al
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user?.email) {
+        setPasswordError('Kullanıcı bilgileri alınamadı!')
+        return
+      }
+
+      // Eski şifreyi doğrula
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: passwordForm.oldPassword
+      })
+
+      if (signInError) {
+        setPasswordError('Eski şifre hatalı!')
+        return
+      }
+
+      // Şifreyi güncelle
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: passwordForm.newPassword
+      })
+
+      if (updateError) {
+        setPasswordError('Şifre güncellenemedi: ' + updateError.message)
+        return
+      }
+
+      // Başarılı
+      setSuccessMessage('Şifreniz başarıyla güncellendi!')
+      setShowPasswordModal(false)
+      setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' })
+      
+      // Success mesajını 3 saniye sonra temizle
+      setTimeout(() => setSuccessMessage(''), 3000)
+
+    } catch (error: any) {
+      console.error('Şifre güncelleme hatası:', error)
+      setPasswordError('Şifre güncellenemedi: ' + error.message)
+    } finally {
+      setPasswordUpdating(false)
+    }
+  }
 
   // Packages değiştiğinde ref'i güncelle
   useEffect(() => {
@@ -209,7 +289,7 @@ export default function KuryePage() {
     setIsMounted(true)
   }, [])
 
-  // Android Back Button Handler
+  // Android Back Button Handler - Tab-Aware
   useEffect(() => {
     if (typeof window === 'undefined' || !isMounted) return
 
@@ -218,13 +298,13 @@ export default function KuryePage() {
     const setupBackButton = async () => {
       try {
         // Android back button'a basıldığında
-        backButtonListener = await App.addListener('backButton', ({ canGoBack }) => {
-          if (!canGoBack) {
-            // Eğer geri gidilecek sayfa yoksa uygulamayı minimize et
-            App.minimizeApp()
+        backButtonListener = await App.addListener('backButton', () => {
+          // Eğer ana sekme (packages) dışındaysa, önce ana sekmeye dön
+          if (activeTab !== 'packages') {
+            setActiveTab('packages')
           } else {
-            // Geri gidilecek sayfa varsa tarayıcı history'sini kullan
-            window.history.back()
+            // Ana sekmedeyse uygulamayı minimize et (Login'e dönme!)
+            App.minimizeApp()
           }
         })
       } catch (error) {
@@ -240,7 +320,7 @@ export default function KuryePage() {
         backButtonListener.remove()
       }
     }
-  }, [isMounted])
+  }, [isMounted, activeTab])
 
 
   // ÇELİK GİBİ OTURUM KONTROLÜ - SAYFA YENİLENDİĞİNDE DIŞARI ATMA!
@@ -250,23 +330,51 @@ export default function KuryePage() {
 
     setIsCheckingAuth(true)
 
-    try {
-      const loggedIn = localStorage.getItem(LOGIN_STORAGE_KEY)
-      const loggedCourierId = localStorage.getItem(LOGIN_COURIER_ID_KEY)
+    const checkSession = async () => {
+      try {
+        // Önce Supabase session kontrolü yap
+        const { data: { session }, error } = await supabase.auth.getSession()
+        
+        if (session && session.user) {
+          // Aktif session var, courier_id'yi al
+          const courierId = session.user.id
+          setIsLoggedIn(true)
+          setSelectedCourierId(courierId)
+          
+          // localStorage'a da kaydet (eski sistem ile uyumluluk için)
+          localStorage.setItem(LOGIN_STORAGE_KEY, 'true')
+          localStorage.setItem(LOGIN_COURIER_ID_KEY, courierId)
+        } else {
+          // Session yok, localStorage kontrolü yap (fallback)
+          const loggedIn = localStorage.getItem(LOGIN_STORAGE_KEY)
+          const loggedCourierId = localStorage.getItem(LOGIN_COURIER_ID_KEY)
 
-      // Kurye oturumu varsa BURADA KAL!
-      if (loggedIn === 'true' && loggedCourierId) {
-        setIsLoggedIn(true)
-        setSelectedCourierId(loggedCourierId)
-      } else {
-        setIsLoggedIn(false)
+          if (loggedIn === 'true' && loggedCourierId) {
+            setIsLoggedIn(true)
+            setSelectedCourierId(loggedCourierId)
+          } else {
+            setIsLoggedIn(false)
+          }
+        }
+      } catch (error) {
+        console.error('Session kontrolü hatası:', error)
+        
+        // Hata durumunda localStorage fallback
+        const loggedIn = localStorage.getItem(LOGIN_STORAGE_KEY)
+        const loggedCourierId = localStorage.getItem(LOGIN_COURIER_ID_KEY)
+
+        if (loggedIn === 'true' && loggedCourierId) {
+          setIsLoggedIn(true)
+          setSelectedCourierId(loggedCourierId)
+        } else {
+          setIsLoggedIn(false)
+        }
+      } finally {
+        setIsCheckingAuth(false)
       }
-    } catch (error) {
-      console.error('Oturum kontrolü hatası:', error)
-      setIsLoggedIn(false)
-    } finally {
-      setIsCheckingAuth(false)
     }
+
+    checkSession()
   }, [isMounted])
 
   // Heartbeat fonksiyonu - Kurye aktiflik sinyali
@@ -3193,16 +3301,32 @@ export default function KuryePage() {
               </div>
             </div>
 
+            {/* Şifre Değiştir */}
+            <button
+              onClick={() => setShowPasswordModal(true)}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition-colors flex items-center justify-center gap-2"
+            >
+              <span className="text-xl">🔐</span>
+              <span>Şifreyi Güncelle</span>
+            </button>
+
             {/* Çıkış Yap */}
             <button
-              onClick={() => {
-                // Eski sistem
+              onClick={async () => {
+                try {
+                  // Supabase session'ı temizle
+                  await supabase.auth.signOut()
+                } catch (error) {
+                  console.error('SignOut hatası:', error)
+                }
+                
+                // localStorage temizle
                 localStorage.removeItem(LOGIN_STORAGE_KEY)
                 localStorage.removeItem(LOGIN_COURIER_ID_KEY)
-                // Yeni auth sistemi
                 localStorage.removeItem('auth_logged_in')
                 localStorage.removeItem('auth_user_type')
                 localStorage.removeItem('auth_user')
+                
                 // Ana sayfaya yönlendir
                 window.location.href = '/'
               }}
@@ -3434,6 +3558,107 @@ export default function KuryePage() {
         )
       }
 
+      {/* ŞİFRE DEĞİŞTİRME MODAL */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black/80 z-50 p-4 overflow-y-auto flex items-center justify-center">
+          <div className="max-w-md w-full bg-slate-900 rounded-xl p-6 border border-slate-700 shadow-2xl">
+            <form onSubmit={handlePasswordChange}>
+              {/* Başlık */}
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-white">🔐 Şifre Güncelle</h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPasswordModal(false)
+                    setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' })
+                    setPasswordError('')
+                  }}
+                  className="text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-lg transition-colors text-slate-400 hover:text-white hover:bg-slate-800"
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* Hata Mesajı */}
+              {passwordError && (
+                <div className="mb-4 p-3 bg-red-900/30 border border-red-700/50 rounded-lg">
+                  <p className="text-red-300 text-sm">{passwordError}</p>
+                </div>
+              )}
+
+              {/* Eski Şifre */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-2 text-slate-300">
+                  Eski Şifre
+                </label>
+                <input
+                  type="password"
+                  value={passwordForm.oldPassword}
+                  onChange={(e) => setPasswordForm(prev => ({ ...prev, oldPassword: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-lg border bg-slate-800 border-slate-700 text-white focus:border-blue-500 outline-none transition-colors"
+                  placeholder="Mevcut şifrenizi girin"
+                  required
+                />
+              </div>
+
+              {/* Yeni Şifre */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-2 text-slate-300">
+                  Yeni Şifre
+                </label>
+                <input
+                  type="password"
+                  value={passwordForm.newPassword}
+                  onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-lg border bg-slate-800 border-slate-700 text-white focus:border-blue-500 outline-none transition-colors"
+                  placeholder="Yeni şifrenizi girin (min 6 karakter)"
+                  required
+                  minLength={6}
+                />
+              </div>
+
+              {/* Yeni Şifre Tekrar */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium mb-2 text-slate-300">
+                  Yeni Şifre (Tekrar)
+                </label>
+                <input
+                  type="password"
+                  value={passwordForm.confirmPassword}
+                  onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-lg border bg-slate-800 border-slate-700 text-white focus:border-blue-500 outline-none transition-colors"
+                  placeholder="Yeni şifrenizi tekrar girin"
+                  required
+                  minLength={6}
+                />
+              </div>
+
+              {/* Butonlar */}
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPasswordModal(false)
+                    setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' })
+                    setPasswordError('')
+                  }}
+                  className="flex-1 px-4 py-3 rounded-lg font-semibold transition-colors bg-slate-700 hover:bg-slate-600 text-white"
+                >
+                  İptal
+                </button>
+                <button
+                  type="submit"
+                  disabled={passwordUpdating}
+                  className="flex-1 px-4 py-3 rounded-lg font-semibold transition-colors bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {passwordUpdating ? '⏳ Güncelleniyor...' : '✅ Güncelle'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Bildirim Sistemi */}
       <CourierNotificationWrapper courierId={selectedCourierId} />
     </div >
@@ -3488,6 +3713,7 @@ export default function KuryePage() {
       setErrorMessage("Giriş hatası: " + error.message)
     }
   }
+
 }
 
 function SummaryList({ courierId, calculateDuration }: { courierId: string, calculateDuration: any }) {

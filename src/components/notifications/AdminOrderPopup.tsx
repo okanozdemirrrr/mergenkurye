@@ -33,24 +33,16 @@ export function AdminOrderPopup({
   restaurantName,
   onDismiss
 }: AdminOrderPopupProps) {
-  const { playLoopingAudio, stopLoopingAudio } = useNotification()
+  const { playShortAudio } = useNotification()
 
-  // Component mount olduğunda audio başlat
+  // Component mount olduğunda audio başlat (TEK SEFERLIK)
   useEffect(() => {
-    playLoopingAudio()
-
-    // Cleanup: Component unmount olduğunda audio durdur
-    return () => {
-      stopLoopingAudio()
-    }
+    playShortAudio() // 4 saniye çalar, otomatik durur
   }, [])
 
   // "Görüldü" butonuna tıklandığında
   const handleAcknowledge = () => {
-    // 1. Audio'yu durdur
-    stopLoopingAudio()
-
-    // 2. Popup'ı kapat (VERİTABANI GÜNCELLEMESİ YOK!)
+    // Popup'ı kapat (VERİTABANI GÜNCELLEMESİ YOK!)
     onDismiss()
   }
 

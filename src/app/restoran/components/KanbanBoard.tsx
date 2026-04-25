@@ -6,6 +6,7 @@ import { getStatusBadgeClass, getStatusLabel } from '@/utils/statusHelpers'
 import { supabase } from '@/app/lib/supabase'
 import { formatTurkishTime } from '@/utils/dateHelpers'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
+import UpdateAmountModal from './UpdateAmountModal'
 
 interface KanbanBoardProps {
   packages: Package[]
@@ -17,11 +18,12 @@ interface KanbanBoardProps {
 export default function KanbanBoard({ packages, onRefresh, darkMode, couriers = [] }: KanbanBoardProps) {
   const [loading, setLoading] = useState<number | null>(null)
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null)
+  const [updateAmountPackage, setUpdateAmountPackage] = useState<Package | null>(null)
 
   // Siparişleri duruma göre filtrele
   const newOrders = packages.filter(p => p.status === 'new_order')
   const gettingReady = packages.filter(p => p.status === 'getting_ready')
-  const ready = packages.filter(p => p.status === 'ready')
+  const ready = packages.filter(p => ['ready', 'assigned', 'picking_up', 'on_the_way'].includes(p.status))
 
   const handleStatusChange = useCallback(async (packageId: number, newStatus: 'getting_ready' | 'ready') => {
     setLoading(packageId)
@@ -64,12 +66,27 @@ export default function KanbanBoard({ packages, onRefresh, darkMode, couriers = 
       case 'new_order': return 'Yeni Sipariş'
       case 'getting_ready': return 'Hazırlanıyor'
       case 'ready': return 'Hazır'
-      case 'assigned': return 'Atandı'
-      case 'picking_up': return 'Alınıyor'
+      case 'assigned': return 'Kurye Atandı'
+      case 'picking_up': return 'Kurye Alıyor'
       case 'on_the_way': return 'Yolda'
       case 'delivered': return 'Teslim Edildi'
       case 'cancelled': return 'İptal Edildi'
       default: return status
+    }
+  }
+
+  const getStatusBadgeClassDynamic = (status: string) => {
+    switch (status) {
+      case 'ready':
+        return 'bg-teal-900/50 text-teal-300'
+      case 'assigned':
+        return 'bg-purple-900/50 text-purple-300'
+      case 'picking_up':
+        return 'bg-orange-900/50 text-orange-300'
+      case 'on_the_way':
+        return 'bg-yellow-900/50 text-yellow-300'
+      default:
+        return getStatusBadgeClass(status)
     }
   }
 
@@ -98,8 +115,8 @@ export default function KanbanBoard({ packages, onRefresh, darkMode, couriers = 
             {pkg.customer_phone}
           </p>
         </div>
-        <span className={`text-xs px-2 py-1 rounded ${getStatusBadgeClass(pkg.status)}`}>
-          {getStatusLabel(pkg.status, true)}
+        <span className={`text-xs px-2 py-1 rounded ${getStatusBadgeClassDynamic(pkg.status)}`}>
+          {getStatusText(pkg.status)}
         </span>
       </div>
 
@@ -203,6 +220,22 @@ export default function KanbanBoard({ packages, onRefresh, darkMode, couriers = 
 
   return (
     <>
+      {/* TUTAR GÜNCELLEME MODALI */}
+      {updateAmountPackage && (
+        <UpdateAmountModal
+          packageId={updateAmountPackage.id}
+          currentAmount={updateAmountPackage.amount}
+          packageStatus={updateAmountPackage.status}
+          orderNumber={updateAmountPackage.order_number}
+          onClose={() => setUpdateAmountPackage(null)}
+          onSuccess={() => {
+            onRefresh()
+            // Başarı mesajı göster (opsiyonel)
+          }}
+          darkMode={darkMode}
+        />
+      )}
+
       {/* DETAY MODAL */}
       {selectedPackage && (
         <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4" onClick={() => setSelectedPackage(null)}>
@@ -259,8 +292,31 @@ export default function KanbanBoard({ packages, onRefresh, darkMode, couriers = 
 
               {/* Tutar */}
               <div className={`p-4 rounded-lg ${darkMode ? 'bg-slate-800' : 'bg-gray-50'}`}>
-                <p className={`text-xs mb-1 ${darkMode ? 'text-slate-400' : 'text-gray-600'}`}>Tutar</p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-gray-600'}`}>Tutar</p>
+                  {/* Tutarı Güncelle Butonu - Sadece izin verilen durumlarda */}
+                  {!['on_the_way', 'delivered', 'cancelled'].includes(selectedPackage.status) && (
+                    <button
+                      onClick={() => {
+                        setUpdateAmountPackage(selectedPackage)
+                        setSelectedPackage(null)
+                      }}
+                      className={`text-xs px-3 py-1 rounded-lg font-semibold transition-colors ${
+                        darkMode
+                          ? 'bg-orange-600 hover:bg-orange-700 text-white'
+                          : 'bg-orange-500 hover:bg-orange-600 text-white'
+                      }`}
+                    >
+                      ✏️ Güncelle
+                    </button>
+                  )}
+                </div>
                 <p className={`font-bold text-xl ${darkMode ? 'text-green-400' : 'text-green-600'}`}>{selectedPackage.amount}₺</p>
+                {['on_the_way', 'delivered', 'cancelled'].includes(selectedPackage.status) && (
+                  <p className={`text-xs mt-1 ${darkMode ? 'text-slate-500' : 'text-gray-500'}`}>
+                    ⚠️ Tutar artık değiştirilemez
+                  </p>
+                )}
               </div>
 
               {/* Müşteri Bilgileri */}

@@ -251,7 +251,7 @@ export default function RegisterRestoranPage() {
 
           <button
             type="button"
-            onClick={() => router.push('/restoran')}
+            onClick={() => router.push('/')}
             className="w-full text-center text-orange-400 hover:text-orange-300 text-sm transition-colors"
           >
             ← Giriş sayfasına dön

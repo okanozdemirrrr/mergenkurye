@@ -1,15 +1,16 @@
-﻿/**
+/**
  * @file src/app/admin/components/RestaurantsTab.tsx
  * @description Restoran Yönetim Paneli Bileşeni.
  * Restoran listesi, sipariş analizleri (paket dağılımı ve ciro grafikleri) 
  * ve restoran finansal durumlarının (borç ve ödemeler) takip edildiği sekmeyi yönetir. 
- * Paket başı komisyon hesaplamaları ve restoran hakediş raporlarını içerir.
+ * Paket başı komisyon hesaplamaları ve restoran hakkediş raporlarını içerir.
  */
 'use client'
 
 import { useState } from 'react'
 import { Restaurant, Package } from '@/types'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { supabase } from '@/app/lib/supabase'
 
 interface RestaurantsTabProps {
     restaurants: Restaurant[]
@@ -30,57 +31,53 @@ export function RestaurantsTab({
     restaurantChartFilter,
     setRestaurantChartFilter
 }: RestaurantsTabProps) {
-    // Liste
-    if (restaurantSubTab === 'list') {
-        return (
-            <div className="bg-slate-900 shadow-xl rounded-2xl p-6">
-                <h2 className="text-2xl font-bold mb-6">📋 Restoranlar Listesi</h2>
+    const [editingRestaurant, setEditingRestaurant] = useState<Restaurant | null>(null)
+    const [newPackageFee, setNewPackageFee] = useState('')
+    const [isUpdating, setIsUpdating] = useState(false)
+    const [successMessage, setSuccessMessage] = useState('')
+    const [errorMessage, setErrorMessage] = useState('')
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {restaurants.length === 0 ? (
-                        <div className="col-span-full text-center py-8 text-slate-500">
-                            <div className="text-4xl mb-2">🚫</div>
-                            <div className="font-bold">Restoran bulunamadı!</div>
-                        </div>
-                    ) : (
-                        restaurants.map(r => (
-                            <div key={r.id} className="bg-slate-50 p-4 rounded-xl border hover:shadow-lg transition-all">
-                                <div className="flex justify-between items-start mb-3">
-                                    <button
-                                        onClick={() => onRestaurantClick(r.id)}
-                                        className="font-bold text-lg text-orange-600 hover:text-orange-800:text-orange-300 transition-colors cursor-pointer text-left"
-                                    >
-                                        🍽️ {r.name}
-                                    </button>
-                                </div>
+    const handleUpdatePackageFee = async () => {
+        if (!editingRestaurant) return
 
-                                <div className="space-y-2 text-sm">
-                                    {r.phone && (
-                                        <div className="text-slate-600">
-                                            📞 {r.phone}
-                                        </div>
-                                    )}
-                                    {r.address && (
-                                        <div className="text-slate-600 text-xs">
-                                            📍 {r.address}
-                                        </div>
-                                    )}
+        const fee = parseFloat(newPackageFee)
+        if (isNaN(fee) || fee < 0) {
+            setErrorMessage('Lütfen geçerli bir ücret girin!')
+            return
+        }
 
-                                    <button
-                                        onClick={() => onRestaurantClick(r.id)}
-                                        className="w-full mt-3 text-xs bg-orange-100 text-orange-700 py-2 rounded-lg hover:bg-orange-200:bg-orange-900/50 transition-colors"
-                                    >
-                                        📊 Detaylı Rapor Görüntüle
-                                    </button>
-                                </div>
-                            </div>
-                        ))
-                    )}
-                </div>
-            </div>
-        )
+        setIsUpdating(true)
+        setErrorMessage('')
+
+        try {
+            const { error } = await supabase
+                .from('restaurants')
+                .update({ package_fee: fee })
+                .eq('id', editingRestaurant.id)
+
+            if (error) throw error
+
+            setSuccessMessage(`✅ ${editingRestaurant.name} için paket başı ücret ${fee}₺ olarak güncellendi!`)
+            setTimeout(() => {
+                setSuccessMessage('')
+                setEditingRestaurant(null)
+                window.location.reload() // Listeyi yenile
+            }, 2000)
+        } catch (error: any) {
+            console.error('❌ Paket ücreti güncellenemedi:', error)
+            setErrorMessage('Ücret güncellenemedi: ' + error.message)
+        } finally {
+            setIsUpdating(false)
+        }
     }
 
+    const openEditModal = (restaurant: Restaurant) => {
+        setEditingRestaurant(restaurant)
+        setNewPackageFee((restaurant.package_fee || 100).toString())
+        setErrorMessage('')
+        setSuccessMessage('')
+    }
+    
     // Detay (Sipariş Detayları)
     if (restaurantSubTab === 'details') {
         const getFilteredPackages = () => {
@@ -154,7 +151,7 @@ export function RestaurantsTab({
                         {!hasData ? (
                             <div className="flex items-center justify-center h-[300px] text-slate-500">
                                 <div className="text-center">
-                                    <div className="text-4xl mb-2">📊</div>
+                                    <div className="text-4xl mb-2">📭</div>
                                     <p className="text-sm">Veri bulunamadı</p>
                                 </div>
                             </div>
@@ -194,7 +191,7 @@ export function RestaurantsTab({
                         {!hasData ? (
                             <div className="flex items-center justify-center h-[300px] text-slate-500">
                                 <div className="text-center">
-                                    <div className="text-4xl mb-2">📊</div>
+                                    <div className="text-4xl mb-2">📭</div>
                                     <p className="text-sm">Veri bulunamadı</p>
                                 </div>
                             </div>
@@ -230,12 +227,14 @@ export function RestaurantsTab({
                 pkg.restaurant_id === restaurant.id && pkg.status === 'delivered'
             ).length
 
-            const debt = deliveredCount * 100
+            const packageFee = restaurant.package_fee || 100
+            const debt = deliveredCount * packageFee
 
             return {
                 ...restaurant,
                 deliveredCount,
-                debt
+                debt,
+                packageFee
             }
         }).sort((a, b) => b.debt - a.debt)
 
@@ -244,7 +243,7 @@ export function RestaurantsTab({
 
         return (
             <div className="bg-slate-900 shadow-xl rounded-2xl p-6">
-                <h2 className="text-2xl font-bold mb-6">💳 Restoranların Borcu</h2>
+                <h2 className="text-2xl font-bold mb-6">💰 Restoranların Borcu</h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                     <div className="bg-gradient-to-r from-red-50 to-orange-50 p-4 rounded-xl border-2 border-red-300">
@@ -253,7 +252,7 @@ export function RestaurantsTab({
                                 {totalDebt.toFixed(2)} ₺
                             </div>
                             <div className="text-sm font-semibold text-red-600 mt-1">
-                                💳 TOPLAM BORÇ
+                                💰 TOPLAM BORÇ
                             </div>
                         </div>
                     </div>
@@ -273,7 +272,7 @@ export function RestaurantsTab({
                 <div className="space-y-3">
                     {restaurantDebts.length === 0 ? (
                         <div className="text-center py-8 text-slate-500">
-                            <div className="text-4xl mb-2">🚫</div>
+                            <div className="text-4xl mb-2">🏪</div>
                             <p>Restoran bulunamadı</p>
                         </div>
                     ) : (
@@ -292,10 +291,10 @@ export function RestaurantsTab({
                                         </div>
                                         <div>
                                             <h4 className="font-bold text-lg text-slate-900 flex items-center gap-2">
-                                                🍽️ {restaurant.name}
+                                                🏪 {restaurant.name}
                                             </h4>
                                             <p className="text-sm text-slate-500">
-                                                {restaurant.deliveredCount} paket × 100₺
+                                                {restaurant.deliveredCount} paket × {restaurant.packageFee}₺
                                             </p>
                                             {restaurant.phone && (
                                                 <p className="text-xs text-slate-400 mt-1">
@@ -313,7 +312,7 @@ export function RestaurantsTab({
                                                 e.stopPropagation()
                                                 onRestaurantClick(restaurant.id)
                                             }}
-                                            className="px-4 py-1.5 bg-orange-100 text-orange-700 rounded-lg text-xs font-bold hover:bg-orange-200:bg-orange-800 transition-colors"
+                                            className="px-4 py-1.5 bg-orange-100 text-orange-700 rounded-lg text-xs font-bold hover:bg-orange-200 transition-colors"
                                         >
                                             📊 Rapor
                                         </button>
@@ -326,10 +325,10 @@ export function RestaurantsTab({
 
                 <div className="mt-6 p-4 bg-orange-50 rounded-lg border border-orange-200">
                     <p className="text-sm text-orange-700">
-                        ℹ️ <strong>Not:</strong> Restoran borçları, teslim edilen her paket için 100₺ üzerinden hesaplanmaktadır.
+                        📝 <strong>Not:</strong> Restoran borçları, teslim edilen her paket için dinamik ücret üzerinden hesaplanmaktadır.
                         Sadece <strong>status = 'delivered'</strong> olan paketler hesaplamaya dahildir.
                         <br />
-                        💡 <strong>Kâr Hesabı:</strong> Restoranlardan alınan 100₺ - Kuryelere ödenen 80₺ = 20₺ kâr (paket başına)
+                        💡 <strong>Kâr Hesabı:</strong> Restoranlardan alınan ücret - Kuryelere ödenen 80₺ = Kâr (paket başına)
                     </p>
                 </div>
             </div>
@@ -346,24 +345,26 @@ export function RestaurantsTab({
             
             const totalOrders = restaurantOrders.length
             const totalRevenue = restaurantOrders.reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
-            const totalDebt = totalOrders * 100 // Her paket için 100₺ borç
+            const packageFee = restaurant.package_fee || 100
+            const totalDebt = totalOrders * packageFee
             
             return {
                 ...restaurant,
                 totalOrders,
                 totalRevenue,
-                totalDebt
+                totalDebt,
+                packageFee
             }
         })
 
         return (
             <div className="bg-slate-900 shadow-xl rounded-2xl p-6">
-                <h2 className="text-2xl font-bold mb-6">💰 Restoranların Ödemesi</h2>
+                <h2 className="text-2xl font-bold mb-6">💳 Restoranların Ödemesi</h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {restaurants.length === 0 ? (
                         <div className="col-span-full text-center py-8 text-slate-500">
-                            <div className="text-4xl mb-2">🚫</div>
+                            <div className="text-4xl mb-2">🏪</div>
                             <div className="font-bold">Restoran bulunamadı!</div>
                         </div>
                     ) : (
@@ -374,11 +375,16 @@ export function RestaurantsTab({
                                         onClick={() => onRestaurantClick(r.id)}
                                         className="font-bold text-lg text-orange-600 hover:text-orange-800 transition-colors cursor-pointer text-left"
                                     >
-                                        🍽️ {r.name}
+                                        🏪 {r.name}
                                     </button>
                                 </div>
 
                                 <div className="space-y-2 text-sm">
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-600">Paket Başı Ücret:</span>
+                                        <span className="font-bold text-blue-600">{r.packageFee}₺</span>
+                                    </div>
+
                                     <div className="flex justify-between">
                                         <span className="text-slate-600">Toplam Sipariş:</span>
                                         <span className="font-bold text-orange-600">{r.totalOrders}</span>
@@ -422,5 +428,159 @@ export function RestaurantsTab({
         )
     }
 
-    return null
+    return (
+        <>
+            {/* PAKET ÜCRETİ DÜZENLEME MODALI */}
+            {editingRestaurant && (
+                <div className="fixed inset-0 bg-black/80 z-[110] flex items-center justify-center p-4" onClick={() => setEditingRestaurant(null)}>
+                    <div
+                        className="bg-slate-900 rounded-xl p-6 max-w-md w-full border border-slate-700 shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Başlık */}
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-xl font-bold text-white">
+                                ✏️ Paket Başı Ücret Düzenle
+                            </h3>
+                            <button
+                                onClick={() => setEditingRestaurant(null)}
+                                className="text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-lg transition-colors text-slate-400 hover:text-white hover:bg-slate-800"
+                            >
+                                ×
+                            </button>
+                        </div>
+
+                        {/* Restoran Adı */}
+                        <div className="mb-4 p-3 rounded-lg bg-slate-800">
+                            <p className="text-sm text-slate-400">Restoran:</p>
+                            <p className="font-bold text-orange-400">{editingRestaurant.name}</p>
+                        </div>
+
+                        {/* Mevcut Ücret */}
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium mb-2 text-slate-300">
+                                Mevcut Ücret
+                            </label>
+                            <div className="p-3 rounded-lg bg-slate-800">
+                                <p className="text-2xl font-bold text-green-400">
+                                    {editingRestaurant.package_fee || 100}₺
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Yeni Ücret */}
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium mb-2 text-slate-300">
+                                Yeni Ücret (TL)
+                            </label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={newPackageFee}
+                                onChange={(e) => setNewPackageFee(e.target.value)}
+                                className="w-full px-4 py-3 rounded-lg border text-lg font-bold bg-slate-800 border-slate-700 text-white focus:border-orange-500 outline-none transition-colors"
+                                placeholder="Yeni ücreti girin"
+                                autoFocus
+                            />
+                        </div>
+
+                        {/* Mesajlar */}
+                        {errorMessage && (
+                            <div className="mb-4 p-3 bg-red-900/30 border border-red-700/50 rounded-lg">
+                                <p className="text-red-300 text-sm">{errorMessage}</p>
+                            </div>
+                        )}
+                        {successMessage && (
+                            <div className="mb-4 p-3 bg-green-900/30 border border-green-700/50 rounded-lg">
+                                <p className="text-green-300 text-sm">{successMessage}</p>
+                            </div>
+                        )}
+
+                        {/* Butonlar */}
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setEditingRestaurant(null)}
+                                className="flex-1 px-4 py-3 rounded-lg font-semibold transition-colors bg-slate-700 hover:bg-slate-600 text-white"
+                            >
+                                İptal
+                            </button>
+                            <button
+                                onClick={handleUpdatePackageFee}
+                                disabled={isUpdating}
+                                className="flex-1 px-4 py-3 rounded-lg font-semibold transition-colors bg-orange-600 hover:bg-orange-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isUpdating ? '⏳ Güncelleniyor...' : '✅ Güncelle'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Mevcut içerik */}
+            {restaurantSubTab === 'list' && (
+                <div className="bg-slate-900 shadow-xl rounded-2xl p-6">
+                    <h2 className="text-2xl font-bold mb-6">🏪 Restoranlar Listesi</h2>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {restaurants.length === 0 ? (
+                            <div className="col-span-full text-center py-8 text-slate-500">
+                                <div className="text-4xl mb-2">🏪</div>
+                                <div className="font-bold">Restoran bulunamadı!</div>
+                            </div>
+                        ) : (
+                            restaurants.map(r => (
+                                <div key={r.id} className="bg-slate-50 p-4 rounded-xl border hover:shadow-lg transition-all">
+                                    <div className="flex justify-between items-start mb-3">
+                                        <button
+                                            onClick={() => onRestaurantClick(r.id)}
+                                            className="font-bold text-lg text-orange-600 hover:text-orange-800 transition-colors cursor-pointer text-left"
+                                        >
+                                            🏪 {r.name}
+                                        </button>
+                                    </div>
+
+                                    <div className="space-y-2 text-sm">
+                                        {r.phone && (
+                                            <div className="text-slate-600">
+                                                📞 {r.phone}
+                                            </div>
+                                        )}
+                                        {r.address && (
+                                            <div className="text-slate-600 text-xs">
+                                                📍 {r.address}
+                                            </div>
+                                        )}
+
+                                        {/* Paket Başı Ücret */}
+                                        <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 mt-2">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-xs text-slate-600">💰 Paket Başı Ücret:</span>
+                                                <span className="font-bold text-orange-600">{r.package_fee || 100}₺</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-2 mt-3">
+                                            <button
+                                                onClick={() => onRestaurantClick(r.id)}
+                                                className="text-xs bg-orange-100 text-orange-700 py-2 rounded-lg hover:bg-orange-200 transition-colors"
+                                            >
+                                                📊 Detay
+                                            </button>
+                                            <button
+                                                onClick={() => openEditModal(r)}
+                                                className="text-xs bg-blue-100 text-blue-700 py-2 rounded-lg hover:bg-blue-200 transition-colors"
+                                            >
+                                                ✏️ Ücret Düzenle
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            )}
+        </>
+    )
 }

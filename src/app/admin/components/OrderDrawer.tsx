@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react'
 import { Package, Courier } from '@/types'
 import { OrderActionMenu } from '@/components/ui/OrderActionMenu'
+import { CourierTransferModal } from './CourierTransferModal'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
 import { formatTurkishTime } from '@/utils/dateHelpers'
 
@@ -28,6 +29,7 @@ export function OrderDrawer({
 }: OrderDrawerProps) {
     const [isOpen, setIsOpen] = useState(false)
     const [selectedPackage, setSelectedPackage] = useState<Package | null>(null)
+    const [transferPackage, setTransferPackage] = useState<Package | null>(null)
 
     // Aktif operasyondaki paketleri filtrele (iptal edilenler HARİÇ)
     const activeOperationPackages = packages.filter(pkg =>
@@ -60,6 +62,18 @@ export function OrderDrawer({
 
     return (
         <>
+            {/* KURYE DEVİR MODAL'I */}
+            {transferPackage && (
+                <CourierTransferModal
+                    package={transferPackage}
+                    couriers={couriers}
+                    onClose={() => setTransferPackage(null)}
+                    onSuccess={() => {
+                        console.log('✅ Kurye devri başarılı')
+                    }}
+                />
+            )}
+
             {/* DETAY MODAL */}
             {selectedPackage && (
                 <div className="fixed inset-0 bg-black/80 z-[10000] flex items-center justify-center p-4" onClick={() => setSelectedPackage(null)}>
@@ -164,8 +178,27 @@ export function OrderDrawer({
                             {/* Kurye Bilgisi */}
                             {selectedPackage.courier_id && (
                                 <div className="bg-slate-800 p-4 rounded-lg">
-                                    <p className="text-slate-400 text-xs mb-1">Atanan Kurye</p>
-                                    <p className="text-white">🚴 {couriers.find(c => c.id === selectedPackage.courier_id)?.full_name || 'Bilinmeyen'}</p>
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-slate-400 text-xs mb-1">Atanan Kurye</p>
+                                            <p className="text-white">🚴 {couriers.find(c => c.id === selectedPackage.courier_id)?.full_name || 'Bilinmeyen'}</p>
+                                        </div>
+                                        {/* Kurye Devret Butonu */}
+                                        {(selectedPackage.status === 'assigned' || 
+                                          selectedPackage.status === 'picking_up' || 
+                                          selectedPackage.status === 'on_the_way') && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    setTransferPackage(selectedPackage)
+                                                    setSelectedPackage(null) // Detay modal'ını kapat
+                                                }}
+                                                className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1"
+                                            >
+                                                🚨 Kurye Devret
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             )}
 

@@ -24,6 +24,7 @@ export default function RestoranLayout({ children }: { children: React.ReactNode
   const [restaurants, setRestaurants] = useState<any[]>([])
   const [errorMessage, setErrorMessage] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
+  const [authChecked, setAuthChecked] = useState(false) // Oturum kontrolü yapıldı mı?
 
   useEffect(() => {
     setIsMounted(true)
@@ -62,6 +63,7 @@ export default function RestoranLayout({ children }: { children: React.ReactNode
     const checkAuth = async () => {
       if (typeof window === 'undefined') return
       if (!isMounted) return
+      if (authChecked) return // Zaten kontrol edildiyse tekrar yapma
 
       setIsCheckingAuth(true)
 
@@ -71,22 +73,26 @@ export default function RestoranLayout({ children }: { children: React.ReactNode
 
         if (loggedIn === 'true' && restaurantId) {
           setIsLoggedIn(true)
-          // Giriş yapılmışsa restoranları çek
-          await fetchRestaurants()
         } else {
           setIsLoggedIn(false)
-          await fetchRestaurants()
         }
+        
+        // Restoranları her durumda çek (login kontrolünden bağımsız)
+        await fetchRestaurants()
       } catch (error) {
         console.error('Auth kontrolü hatası:', error)
-        setIsLoggedIn(false)
+        // Hata olsa bile localStorage'daki bilgiyi koru
+        const loggedIn = localStorage.getItem(LOGIN_STORAGE_KEY)
+        const restaurantId = localStorage.getItem(LOGIN_RESTAURANT_ID_KEY)
+        setIsLoggedIn(loggedIn === 'true' && !!restaurantId)
       } finally {
         setIsCheckingAuth(false)
+        setAuthChecked(true) // Kontrol tamamlandı
       }
     }
 
     checkAuth()
-  }, [isMounted])
+  }, [isMounted, authChecked])
 
   const fetchRestaurants = async () => {
     try {
@@ -128,7 +134,7 @@ export default function RestoranLayout({ children }: { children: React.ReactNode
 
   const isActive = (path: string) => pathname === path
 
-  if (!isMounted || isCheckingAuth) {
+  if (!isMounted || (isCheckingAuth && !authChecked)) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <div className="text-white text-xl">Yükleniyor...</div>

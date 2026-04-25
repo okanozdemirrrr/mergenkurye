@@ -18,6 +18,7 @@ export interface Restaurant {
     totalOrders?: number
     totalRevenue?: number
     totalDebt?: number
+    package_fee?: number
 }
 
 // ============================================

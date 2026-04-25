@@ -1,4 +1,4 @@
-package com.mergen.kurye;
+package com.aldagel.mergen;
 
 import com.getcapacitor.BridgeActivity;
 

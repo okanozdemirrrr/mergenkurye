@@ -33,25 +33,17 @@ export function RestaurantOrderPopup({
   restaurantName,
   onDismiss
 }: RestaurantOrderPopupProps) {
-  const { playLoopingAudio, stopLoopingAudio } = useNotification()
+  const { playShortAudio } = useNotification()
 
-  // Component mount olduğunda audio başlat
+  // Component mount olduğunda audio başlat (TEK SEFERLIK)
   useEffect(() => {
-    playLoopingAudio()
-
-    // Cleanup: Component unmount olduğunda audio durdur
-    return () => {
-      stopLoopingAudio()
-    }
+    playShortAudio() // 4 saniye çalar, otomatik durur
   }, [])
 
   // "Hazırlanıyor" butonuna tıklandığında
   const handleStartPreparing = async () => {
     try {
-      // 1. Audio'yu durdur
-      stopLoopingAudio()
-
-      // 2. Veritabanında status'u güncelle
+      // 1. Veritabanında status'u güncelle
       const { error } = await supabase
         .from('packages')
         .update({
@@ -62,7 +54,7 @@ export function RestaurantOrderPopup({
 
       if (error) throw error
 
-      // 3. Popup'ı kapat
+      // 2. Popup'ı kapat
       onDismiss()
     } catch (error) {
       console.error('❌ Sipariş durumu güncellenemedi:', error)

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { login, isAuthenticated, getSession } from '@/services/authService'
+import { login } from '@/services/authService'
 
 type LoginType = 'courier' | 'restaurant' | 'admin' | null
 
@@ -17,24 +17,13 @@ export default function LoginPage() {
 
   useEffect(() => {
     setIsMounted(true)
-  }, [])
-
-  useEffect(() => {
-    if (!isMounted) return
-
-    if (isAuthenticated()) {
-      const user = getSession()
-      if (user) {
-        if (user.userType === 'courier') {
-          router.push('/kurye')
-        } else if (user.userType === 'restaurant') {
-          router.push('/restoran')
-        } else if (user.userType === 'admin') {
-          router.push('/admin')
-        }
-      }
+    if (typeof window !== 'undefined') {
+      // Sadece panel seçimi için kullanılan key'leri temizle
+      localStorage.removeItem('last_panel')
+      localStorage.removeItem('panel_selection')
+      // Supabase auth token'larına dokunma!
     }
-  }, [isMounted, router])
+  }, [])
 
   if (!isMounted) {
     return null
@@ -275,6 +264,21 @@ export default function LoginPage() {
             >
               {isLoading ? 'Giriş Yapılıyor...' : 'Giriş Yap'}
             </button>
+
+            {/* Kayıt Linki - Sadece Kurye ve Restoran için */}
+            {selectedType !== 'admin' && (
+              <div className="text-center pt-2">
+                <p className="text-slate-400 text-sm">
+                  Hesabınız yok mu?{' '}
+                  <a
+                    href={selectedType === 'courier' ? '/register-kurye' : '/register-restoran'}
+                    className={`text-${color}-400 hover:text-${color}-300 font-medium underline transition-colors`}
+                  >
+                    {selectedType === 'courier' ? 'Kurye Kaydı' : 'Restoran Kaydı'}
+                  </a>
+                </p>
+              </div>
+            )}
           </form>
         </div>
       </div>

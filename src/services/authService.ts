@@ -202,8 +202,8 @@ export function logout() {
   // Tema renklerini sıfırla
   resetTheme()
 
-  // Login sayfasına yönlendir
-  window.location.href = '/login'
+  // Ana sayfaya yönlendir (Login seçim ekranı)
+  window.location.href = '/'
 }
 
 /**

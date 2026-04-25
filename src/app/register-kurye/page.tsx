@@ -216,7 +216,7 @@ export default function RegisterKuryePage() {
 
           <button
             type="button"
-            onClick={() => router.push('/kurye')}
+            onClick={() => router.push('/')}
             className="w-full text-center text-blue-400 hover:text-blue-300 text-sm transition-colors"
           >
             ← Giriş sayfasına dön

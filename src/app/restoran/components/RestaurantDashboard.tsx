@@ -12,6 +12,7 @@ interface Restaurant {
   id: string
   name: string
   logo_url?: string
+  package_fee?: number
 }
 
 interface RestaurantDashboardProps {
@@ -41,8 +42,8 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
     isLoading: true
   })
 
-  // Paket başına sabit ücret (TL)
-  const PACKAGE_FEE = 100
+  // Paket başına ücret - Restorandan alınacak, yoksa varsayılan 100
+  const PACKAGE_FEE = restaurant?.package_fee || 100
 
   useEffect(() => {
     fetchRestaurant()
@@ -134,7 +135,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
     try {
       const { data, error } = await supabase
         .from('restaurants')
-        .select('id, name, logo_url')
+        .select('id, name, logo_url, package_fee')
         .eq('id', restaurantId)
         .single()
 
@@ -153,7 +154,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
           .from('packages')
           .select('*')
           .eq('restaurant_id', restaurantId)
-          .in('status', ['new_order', 'getting_ready', 'ready'])
+          .in('status', ['new_order', 'getting_ready', 'ready', 'assigned', 'picking_up', 'on_the_way'])
           .order('created_at', { ascending: false })
 
         if (error) throw error

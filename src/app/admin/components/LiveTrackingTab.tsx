@@ -13,6 +13,7 @@ import dynamic from 'next/dynamic'
 import { Package, Courier } from '@/types'
 import { OrderActionMenu } from '@/components/ui/OrderActionMenu'
 import { OrderDrawer } from './OrderDrawer'
+import { CourierTransferModal } from './CourierTransferModal'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
 import { formatTurkishTime } from '@/utils/dateHelpers'
 
@@ -52,6 +53,7 @@ export function LiveTrackingTab({
     todayDeliveredCount
 }: LiveTrackingTabProps) {
     const [selectedPackage, setSelectedPackage] = useState<Package | null>(null)
+    const [transferPackage, setTransferPackage] = useState<Package | null>(null)
     
     // Sol panel: Sahipsiz paketler (kurye atanmamış ve iptal edilmemiş)
     // Yeni akışta: new_order, getting_ready, ready durumları da gösterilecek
@@ -94,6 +96,19 @@ export function LiveTrackingTab({
 
     return (
         <>
+            {/* KURYE DEVİR MODAL'I */}
+            {transferPackage && (
+                <CourierTransferModal
+                    package={transferPackage}
+                    couriers={couriers}
+                    onClose={() => setTransferPackage(null)}
+                    onSuccess={() => {
+                        // Realtime sayesinde otomatik güncellenecek
+                        console.log('✅ Kurye devri başarılı')
+                    }}
+                />
+            )}
+
             {/* DETAY MODAL */}
             {selectedPackage && (
                 <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4" onClick={() => setSelectedPackage(null)}>
@@ -201,8 +216,26 @@ export function LiveTrackingTab({
                             {/* Kurye Bilgisi */}
                             {selectedPackage.courier_id && (
                                 <div className="bg-slate-800 p-4 rounded-lg">
-                                    <p className="text-slate-400 text-xs mb-1">Atanan Kurye</p>
-                                    <p className="text-white">🚴 {couriers.find(c => c.id === selectedPackage.courier_id)?.full_name || 'Bilinmeyen'}</p>
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-slate-400 text-xs mb-1">Atanan Kurye</p>
+                                            <p className="text-white">🚴 {couriers.find(c => c.id === selectedPackage.courier_id)?.full_name || 'Bilinmeyen'}</p>
+                                        </div>
+                                        {/* Kurye Devret Butonu - Sadece aktif paketlerde */}
+                                        {(selectedPackage.status === 'assigned' || 
+                                          selectedPackage.status === 'picking_up' || 
+                                          selectedPackage.status === 'on_the_way') && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    setTransferPackage(selectedPackage)
+                                                }}
+                                                className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1"
+                                            >
+                                                🚨 Kurye Devret
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             )}
 
