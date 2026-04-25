@@ -33,19 +33,32 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const loopingAudioRef = useRef<HTMLAudioElement | null>(null)
   const shortAudioRef = useRef<HTMLAudioElement | null>(null)
   const [isAudioReady, setIsAudioReady] = useState(false)
+  const [isAudioUnlocked, setIsAudioUnlocked] = useState(false)
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default')
 
   // Audio dosyalarını initialize et
   useEffect(() => {
+    // Cache busting için timestamp ekle
+    const timestamp = Date.now()
+    console.log('🔊 Audio dosyaları yükleniyor...', `/notification.mp3?v=${timestamp}`)
+    
     // Looping audio (Restoran ve Admin için)
-    loopingAudioRef.current = new Audio('/notification.mp3')
+    loopingAudioRef.current = new Audio(`/notification.mp3?v=${timestamp}`)
     loopingAudioRef.current.loop = true
     loopingAudioRef.current.volume = 0.8
+    
+    loopingAudioRef.current.addEventListener('loadstart', () => console.log('🔊 Looping audio yüklenmeye başladı'))
+    loopingAudioRef.current.addEventListener('canplay', () => console.log('✅ Looping audio hazır'))
+    loopingAudioRef.current.addEventListener('error', (e) => console.error('❌ Looping audio hatası:', e))
 
     // Short audio (Kurye için)
-    shortAudioRef.current = new Audio('/notification.mp3')
+    shortAudioRef.current = new Audio(`/notification.mp3?v=${timestamp}`)
     shortAudioRef.current.loop = false
     shortAudioRef.current.volume = 0.8
+    
+    shortAudioRef.current.addEventListener('loadstart', () => console.log('🔊 Short audio yüklenmeye başladı'))
+    shortAudioRef.current.addEventListener('canplay', () => console.log('✅ Short audio hazır'))
+    shortAudioRef.current.addEventListener('error', (e) => console.error('❌ Short audio hatası:', e))
 
     // Audio'nun yüklendiğini işaretle
     const handleCanPlay = () => setIsAudioReady(true)
@@ -55,6 +68,38 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     if (typeof window !== 'undefined' && 'Notification' in window) {
       setNotificationPermission(Notification.permission)
     }
+
+    // Audio unlock için click listener ekle
+    const unlockAudio = () => {
+      if (!isAudioUnlocked && loopingAudioRef.current && shortAudioRef.current) {
+        console.log('🔓 Audio unlock deneniyor...')
+        
+        // Sessiz bir ses çal (unlock için)
+        const unlockPromise1 = loopingAudioRef.current.play().then(() => {
+          loopingAudioRef.current!.pause()
+          loopingAudioRef.current!.currentTime = 0
+          console.log('✅ Looping audio unlocked')
+        }).catch(() => {})
+
+        const unlockPromise2 = shortAudioRef.current.play().then(() => {
+          shortAudioRef.current!.pause()
+          shortAudioRef.current!.currentTime = 0
+          console.log('✅ Short audio unlocked')
+        }).catch(() => {})
+
+        Promise.all([unlockPromise1, unlockPromise2]).then(() => {
+          setIsAudioUnlocked(true)
+          console.log('🎉 Audio tamamen unlocked!')
+          // Event listener'ı kaldır
+          document.removeEventListener('click', unlockAudio)
+          document.removeEventListener('touchstart', unlockAudio)
+        })
+      }
+    }
+
+    // İlk tıklamada audio'yu unlock et
+    document.addEventListener('click', unlockAudio)
+    document.addEventListener('touchstart', unlockAudio)
 
     // Cleanup
     return () => {
@@ -67,16 +112,25 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         shortAudioRef.current.pause()
         shortAudioRef.current = null
       }
+      // Event listener'ları temizle
+      document.removeEventListener('click', unlockAudio)
+      document.removeEventListener('touchstart', unlockAudio)
     }
   }, [])
 
   // Looping audio başlat (Restoran/Admin)
   const playLoopingAudio = () => {
-    if (loopingAudioRef.current) {
+    console.log('🔊 playLoopingAudio çağrıldı, unlocked:', isAudioUnlocked)
+    if (loopingAudioRef.current && isAudioUnlocked) {
+      console.log('✅ loopingAudioRef mevcut ve unlocked')
       loopingAudioRef.current.currentTime = 0
-      loopingAudioRef.current.play().catch(err => {
-        console.warn('⚠️ Audio oynatılamadı (autoplay policy):', err)
-      })
+      loopingAudioRef.current.play()
+        .then(() => console.log('✅ Looping audio başarıyla çalıyor'))
+        .catch(err => {
+          console.error('❌ Looping audio oynatılamadı:', err)
+        })
+    } else {
+      console.warn('⚠️ Audio henüz unlock edilmemiş veya ref null')
     }
   }
 
@@ -90,11 +144,15 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   // Kısa audio çal (Kurye - 3-4 saniye)
   const playShortAudio = () => {
-    if (shortAudioRef.current) {
+    console.log('🔊 playShortAudio çağrıldı, unlocked:', isAudioUnlocked)
+    if (shortAudioRef.current && isAudioUnlocked) {
+      console.log('✅ shortAudioRef mevcut ve unlocked')
       shortAudioRef.current.currentTime = 0
-      shortAudioRef.current.play().catch(err => {
-        console.warn('⚠️ Audio oynatılamadı (autoplay policy):', err)
-      })
+      shortAudioRef.current.play()
+        .then(() => console.log('✅ Audio başarıyla çalıyor'))
+        .catch(err => {
+          console.error('❌ Audio oynatılamadı:', err)
+        })
 
       // 4 saniye sonra durdur
       setTimeout(() => {
@@ -103,6 +161,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
           shortAudioRef.current.currentTime = 0
         }
       }, 4000)
+    } else {
+      console.warn('⚠️ Audio henüz unlock edilmemiş veya ref null')
     }
   }
 
