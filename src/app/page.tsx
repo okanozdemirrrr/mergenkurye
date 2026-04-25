@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { login } from '@/services/authService'
 
 type LoginType = 'courier' | 'restaurant' | 'admin' | null
@@ -270,12 +271,12 @@ export default function LoginPage() {
               <div className="text-center pt-2">
                 <p className="text-slate-400 text-sm">
                   Hesabınız yok mu?{' '}
-                  <a
+                  <Link
                     href={selectedType === 'courier' ? '/register-kurye' : '/register-restoran'}
                     className={`text-${color}-400 hover:text-${color}-300 font-medium underline transition-colors`}
                   >
                     {selectedType === 'courier' ? 'Kurye Kaydı' : 'Restoran Kaydı'}
-                  </a>
+                  </Link>
                 </p>
               </div>
             )}
