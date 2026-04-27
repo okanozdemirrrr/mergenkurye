@@ -455,7 +455,7 @@ export function LiveTrackingTab({
                                                     </span>
                                                 )}
                                             </div>
-                                            <span className="text-xs text-slate-400 flex items-center gap-1">
+                                            <span className="text-xs text-white flex items-center gap-1">
                                                 🕐 {formatTurkishTime(pkg.created_at)}
                                             </span>
                                         </div>
@@ -493,14 +493,14 @@ export function LiveTrackingTab({
                                             </h3>
 
                                             {pkg.customer_phone && (
-                                                <p className="text-xs text-slate-300">
+                                                <p className="text-xs text-white">
                                                     📞 {pkg.customer_phone}
                                                 </p>
                                             )}
 
                                             {pkg.content && (
                                                 <div>
-                                                    <p className="text-xs text-slate-300">Paket İçeriği:</p>
+                                                    <p className="text-xs text-white">Paket İçeriği:</p>
                                                     <p className="text-xs text-orange-200 bg-orange-900/30 p-1.5 rounded border border-orange-700">
                                                         📝 {pkg.content}
                                                     </p>
@@ -508,8 +508,8 @@ export function LiveTrackingTab({
                                             )}
 
                                             <div>
-                                                <p className="text-xs text-slate-300">Adres:</p>
-                                                <p className="text-xs text-slate-200 overflow-hidden" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                                                <p className="text-xs text-white">Adres:</p>
+                                                <p className="text-xs text-slate-100 overflow-hidden" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                                                     📍 {pkg.delivery_address}
                                                 </p>
                                             </div>
