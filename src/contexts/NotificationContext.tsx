@@ -69,37 +69,47 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       setNotificationPermission(Notification.permission)
     }
 
-    // Audio unlock için click listener ekle
+    // Audio unlock için click listener ekle (SADECE BİR KEZ)
     const unlockAudio = () => {
       if (!isAudioUnlocked && loopingAudioRef.current && shortAudioRef.current) {
         console.log('🔓 Audio unlock deneniyor...')
         
-        // Sessiz bir ses çal (unlock için)
+        // ÖNCE EVENT LISTENER'LARI KALDIR (Tekrar çalmasın)
+        document.removeEventListener('click', unlockAudio)
+        document.removeEventListener('touchstart', unlockAudio)
+        
+        // Sessiz bir ses çal (unlock için) - volume 0 yap
+        loopingAudioRef.current.volume = 0
+        shortAudioRef.current.volume = 0
+        
         const unlockPromise1 = loopingAudioRef.current.play().then(() => {
           loopingAudioRef.current!.pause()
           loopingAudioRef.current!.currentTime = 0
+          loopingAudioRef.current!.volume = 0.8 // Volume'u geri yükle
           console.log('✅ Looping audio unlocked')
-        }).catch(() => {})
+        }).catch(() => {
+          loopingAudioRef.current!.volume = 0.8
+        })
 
         const unlockPromise2 = shortAudioRef.current.play().then(() => {
           shortAudioRef.current!.pause()
           shortAudioRef.current!.currentTime = 0
+          shortAudioRef.current!.volume = 0.8 // Volume'u geri yükle
           console.log('✅ Short audio unlocked')
-        }).catch(() => {})
+        }).catch(() => {
+          shortAudioRef.current!.volume = 0.8
+        })
 
         Promise.all([unlockPromise1, unlockPromise2]).then(() => {
           setIsAudioUnlocked(true)
           console.log('🎉 Audio tamamen unlocked!')
-          // Event listener'ı kaldır
-          document.removeEventListener('click', unlockAudio)
-          document.removeEventListener('touchstart', unlockAudio)
         })
       }
     }
 
     // İlk tıklamada audio'yu unlock et
-    document.addEventListener('click', unlockAudio)
-    document.addEventListener('touchstart', unlockAudio)
+    document.addEventListener('click', unlockAudio, { once: true })
+    document.addEventListener('touchstart', unlockAudio, { once: true })
 
     // Cleanup
     return () => {
@@ -112,11 +122,11 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         shortAudioRef.current.pause()
         shortAudioRef.current = null
       }
-      // Event listener'ları temizle
+      // Event listener'ları temizle (once: true olduğu için otomatik temizlenir ama yine de ekleyelim)
       document.removeEventListener('click', unlockAudio)
       document.removeEventListener('touchstart', unlockAudio)
     }
-  }, [])
+  }, [isAudioUnlocked]) // isAudioUnlocked dependency ekle
 
   // Looping audio başlat (Restoran/Admin)
   const playLoopingAudio = () => {
