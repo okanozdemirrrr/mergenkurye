@@ -10,6 +10,7 @@ import Link from 'next/link'
 import { App } from '@capacitor/app'
 import { AdminDataProvider, useAdminData } from './AdminDataProvider'
 import { AdminModals } from './AdminModals'
+import { NotificationProvider } from '@/contexts/NotificationContext'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -373,11 +374,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Main Content */}
       <div className="py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <AdminDataProvider>
-            <AdminMessages />
-            <AdminModals />
-            {children}
-          </AdminDataProvider>
+          <NotificationProvider>
+            <AdminDataProvider>
+              <AdminMessages />
+              <AdminModals />
+              {children}
+            </AdminDataProvider>
+          </NotificationProvider>
         </div>
       </div>
     </div>

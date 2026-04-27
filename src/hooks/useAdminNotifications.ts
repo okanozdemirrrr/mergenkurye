@@ -7,11 +7,13 @@
  * - status === 'new_order' filtresi
  * - Tüm restoranlar için dinleme
  * - Popup state yönetimi
+ * - Bildirim sesi (looping audio)
  */
 'use client'
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/app/lib/supabase'
+import { useNotification } from '@/contexts/NotificationContext'
 
 interface NewOrder {
   id: number
@@ -27,6 +29,7 @@ interface NewOrder {
 
 export function useAdminNotifications() {
   const [newOrder, setNewOrder] = useState<NewOrder | null>(null)
+  const { playLoopingAudio, stopLoopingAudio, showNativeNotification } = useNotification()
 
   useEffect(() => {
     console.log('🔔 Admin bildirimleri dinleniyor')
@@ -49,6 +52,15 @@ export function useAdminNotifications() {
           // Sadece 'new_order' statusundaki siparişleri göster
           if (order && order.status === 'new_order') {
             console.log('🔔 YENİ SİPARİŞ TETİKLENDİ (Admin):', order)
+
+            // Bildirim sesini çal (looping)
+            playLoopingAudio()
+
+            // Native notification göster
+            showNativeNotification(
+              'Yeni Sipariş!',
+              `${order.customer_name} - ${order.restaurant?.name || 'Restoran'}`
+            )
 
             setNewOrder({
               id: order.id,
@@ -75,6 +87,8 @@ export function useAdminNotifications() {
 
   // Popup'ı kapat
   const dismissNotification = () => {
+    // Ses durdur
+    stopLoopingAudio()
     setNewOrder(null)
   }
 
