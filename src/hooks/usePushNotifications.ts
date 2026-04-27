@@ -24,6 +24,10 @@ export function usePushNotifications({ courierId, isLoggedIn }: UsePushNotificat
   const [fcmToken, setFcmToken] = useState<string | null>(null)
 
   useEffect(() => {
+    console.log('🔍 usePushNotifications useEffect çalıştı')
+    console.log('  - isLoggedIn:', isLoggedIn)
+    console.log('  - courierId:', courierId)
+    
     // Sadece giriş yapılmışsa ve courierId varsa çalış
     if (!isLoggedIn || !courierId) {
       console.log('ℹ️ Push Notifications: Kurye giriş yapmamış, atlanıyor')
@@ -31,10 +35,17 @@ export function usePushNotifications({ courierId, isLoggedIn }: UsePushNotificat
     }
 
     // Platform kontrolü - sadece mobil cihazlarda çalışır
-    if (typeof window === 'undefined') return
+    if (typeof window === 'undefined') {
+      console.log('⚠️ Push Notifications: window undefined')
+      return
+    }
 
     const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera
     const isMobile = /android|iphone|ipad|ipod/i.test(userAgent)
+    
+    console.log('📱 Platform kontrolü:')
+    console.log('  - userAgent:', userAgent)
+    console.log('  - isMobile:', isMobile)
 
     if (!isMobile) {
       console.log('ℹ️ Push Notifications: Web platformu, native bildirimler desteklenmiyor')
@@ -42,6 +53,7 @@ export function usePushNotifications({ courierId, isLoggedIn }: UsePushNotificat
       return
     }
 
+    console.log('✅ Push Notifications başlatılacak!')
     setIsSupported(true)
     initializePushNotifications()
 
