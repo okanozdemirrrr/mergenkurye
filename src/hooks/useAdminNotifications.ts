@@ -29,7 +29,7 @@ interface NewOrder {
 
 export function useAdminNotifications() {
   const [newOrder, setNewOrder] = useState<NewOrder | null>(null)
-  const { playLoopingAudio, stopLoopingAudio, showNativeNotification } = useNotification()
+  const { showNativeNotification } = useNotification()
 
   useEffect(() => {
     console.log('🔔 Admin bildirimleri dinleniyor')
@@ -53,8 +53,38 @@ export function useAdminNotifications() {
           if (order && order.status === 'new_order') {
             console.log('🔔 YENİ SİPARİŞ TETİKLENDİ (Admin):', order)
 
-            // Bildirim sesini çal (looping)
-            playLoopingAudio()
+            // BASIT SES ÇALMA - Autoplay policy bypass
+            setTimeout(() => {
+              try {
+                const audio = new Audio('/notification.mp3')
+                audio.volume = 0.8
+                audio.loop = true
+                
+                // User interaction olmadan çalmaya zorla
+                const playPromise = audio.play()
+                if (playPromise !== undefined) {
+                  playPromise
+                    .then(() => {
+                      console.log('✅ Ses başarıyla çalıyor')
+                      // 10 saniye sonra durdur
+                      setTimeout(() => {
+                        audio.pause()
+                        audio.currentTime = 0
+                      }, 10000)
+                    })
+                    .catch(error => {
+                      console.error('❌ Ses çalamadı:', error)
+                      // Fallback: Kullanıcı etkileşimi gerekiyor
+                      document.addEventListener('click', function playOnClick() {
+                        audio.play()
+                        document.removeEventListener('click', playOnClick)
+                      }, { once: true })
+                    })
+                }
+              } catch (error) {
+                console.error('❌ Audio oluşturulamadı:', error)
+              }
+            }, 100)
 
             // Native notification göster
             showNativeNotification(
@@ -76,19 +106,34 @@ export function useAdminNotifications() {
       )
       .subscribe((status) => {
         console.log('📡 Admin Realtime status:', status)
+        
+        // Connection durumunu logla
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Admin realtime bağlantısı başarılı')
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ Admin realtime bağlantı hatası')
+        } else if (status === 'TIMED_OUT') {
+          console.warn('⏰ Admin realtime timeout')
+        } else if (status === 'CLOSED') {
+          console.warn('🔌 Admin realtime bağlantısı kapandı')
+        }
       })
+
+    // Connection durumunu periyodik kontrol et
+    const connectionCheck = setInterval(() => {
+      console.log('🔍 Admin realtime connection check:', channel.state)
+    }, 30000) // 30 saniyede bir
 
     // Cleanup
     return () => {
       console.log('🔌 Admin bildirimleri kapatılıyor')
+      clearInterval(connectionCheck)
       supabase.removeChannel(channel)
     }
   }, [])
 
   // Popup'ı kapat
   const dismissNotification = () => {
-    // Ses durdur
-    stopLoopingAudio()
     setNewOrder(null)
   }
 
