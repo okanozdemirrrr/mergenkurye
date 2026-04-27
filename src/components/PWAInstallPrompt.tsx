@@ -47,6 +47,12 @@ export function PWAInstallPrompt() {
         })
     }
 
+    // Kullanıcı daha önce dismiss ettiyse hiç gösterme
+    const hasDeclined = localStorage.getItem('pwa_prompt_dismissed')
+    if (hasDeclined === 'true') {
+      return
+    }
+
     // iOS kontrolü
     const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream
     setIsIOS(isIOSDevice)
@@ -56,14 +62,17 @@ export function PWAInstallPrompt() {
                                (window.navigator as any).standalone === true
     setIsStandalone(isInStandaloneMode)
 
+    // iOS için otomatik göster (3 saniye sonra)
+    if (isIOSDevice && !isInStandaloneMode) {
+      setTimeout(() => setShowInstallPrompt(true), 3000)
+    }
+
     // Android/Chrome için install prompt
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault()
       setDeferredPrompt(e as BeforeInstallPromptEvent)
       
-      // Kullanıcı daha önce reddetmediyse göster
-      const hasDeclined = localStorage.getItem('pwa-install-declined')
-      if (!hasDeclined && !isInStandaloneMode) {
+      if (!isInStandaloneMode) {
         setTimeout(() => setShowInstallPrompt(true), 3000) // 3 saniye sonra göster
       }
     }
@@ -75,6 +84,7 @@ export function PWAInstallPrompt() {
       console.log('✅ PWA installed successfully')
       setShowInstallPrompt(false)
       setDeferredPrompt(null)
+      localStorage.setItem('pwa_prompt_dismissed', 'true')
     })
 
     return () => {
@@ -91,7 +101,9 @@ export function PWAInstallPrompt() {
     console.log(`User response: ${outcome}`)
     
     if (outcome === 'dismissed') {
-      localStorage.setItem('pwa-install-declined', 'true')
+      localStorage.setItem('pwa_prompt_dismissed', 'true')
+    } else if (outcome === 'accepted') {
+      localStorage.setItem('pwa_prompt_dismissed', 'true')
     }
     
     setDeferredPrompt(null)
@@ -100,7 +112,7 @@ export function PWAInstallPrompt() {
 
   const handleDismiss = () => {
     setShowInstallPrompt(false)
-    localStorage.setItem('pwa-install-declined', 'true')
+    localStorage.setItem('pwa_prompt_dismissed', 'true')
   }
 
   // Zaten kuruluysa hiçbir şey gösterme
@@ -109,7 +121,7 @@ export function PWAInstallPrompt() {
   }
 
   // iOS için özel talimat
-  if (isIOS && !isStandalone) {
+  if (isIOS && !isStandalone && showInstallPrompt) {
     return (
       <div className="fixed bottom-4 left-4 right-4 z-50 bg-gradient-to-r from-orange-600 to-orange-700 text-white p-4 rounded-xl shadow-2xl border border-orange-500 animate-slide-up">
         <div className="flex items-start gap-3">
@@ -134,6 +146,7 @@ export function PWAInstallPrompt() {
           <button
             onClick={handleDismiss}
             className="text-white/80 hover:text-white text-xl font-bold"
+            aria-label="Kapat"
           >
             ×
           </button>
