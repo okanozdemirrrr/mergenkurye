@@ -12,6 +12,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { App } from '@capacitor/app'
 import { Preferences } from '@capacitor/preferences'
+import { CapacitorSQLite, SQLiteConnection, SQLiteDBConnection } from '@capacitor-community/sqlite'
 import { supabase } from '../lib/supabase'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '../lib/platformUtils'
 import { CourierEarningsStats } from '@/components/CourierEarningsStats'
@@ -71,8 +72,167 @@ interface CourierLeaderboard {
   todayDeliveryCount: number
 }
 
-const LOGIN_STORAGE_KEY = 'kurye_logged_in'
-const LOGIN_COURIER_ID_KEY = 'kurye_logged_courier_id'
+import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
+import { App } from '@capacitor/app'
+import { Preferences } from '@capacitor/preferences'
+import { supabase } from '../lib/supabase'
+import { getPlatformBadgeClass, getPlatformDisplayName } from '../lib/platformUtils'
+import { CourierEarningsStats } from '@/components/CourierEarningsStats'
+import { CourierNotificationWrapper } from '@/components/notifications/CourierNotificationWrapper'
+import { usePushNotifications } from '@/hooks/usePushNotifications'
+
+// KALICI OTURUM YÖNETİMİ - MULTIPLE STORAGE
+const STORAGE_KEYS = {
+  LOGIN: 'kurye_logged_in',
+  COURIER_ID: 'kurye_logged_courier_id',
+  BACKUP_LOGIN: 'kurye_backup_logged_in',
+  BACKUP_COURIER_ID: 'kurye_backup_courier_id'
+}
+
+// Kalıcı storage fonksiyonları
+const saveSession = async (courierId: string) => {
+  try {
+    // 1. localStorage (hızlı erişim)
+    localStorage.setItem(STORAGE_KEYS.LOGIN, 'true')
+    localStorage.setItem(STORAGE_KEYS.COURIER_ID, courierId)
+    localStorage.setItem(STORAGE_KEYS.BACKUP_LOGIN, 'true')
+    localStorage.setItem(STORAGE_KEYS.BACKUP_COURIER_ID, courierId)
+    
+    // 2. Capacitor Preferences (native storage)
+    await Preferences.set({ key: STORAGE_KEYS.LOGIN, value: 'true' })
+    await Preferences.set({ key: STORAGE_KEYS.COURIER_ID, value: courierId })
+    await Preferences.set({ key: STORAGE_KEYS.BACKUP_LOGIN, value: 'true' })
+    await Preferences.set({ key: STORAGE_KEYS.BACKUP_COURIER_ID, value: courierId })
+    
+    // 3. IndexedDB (browser persistent storage)
+    if (typeof window !== 'undefined' && 'indexedDB' in window) {
+      const request = indexedDB.open('KuryeDB', 1)
+      request.onupgradeneeded = () => {
+        const db = request.result
+        if (!db.objectStoreNames.contains('sessions')) {
+          db.createObjectStore('sessions')
+        }
+      }
+      request.onsuccess = () => {
+        const db = request.result
+        const transaction = db.transaction(['sessions'], 'readwrite')
+        const store = transaction.objectStore('sessions')
+        store.put('true', 'logged_in')
+        store.put(courierId, 'courier_id')
+      }
+    }
+    
+    console.log('✅ Oturum 3 farklı storage\'a kaydedildi')
+  } catch (error) {
+    console.error('❌ Oturum kaydetme hatası:', error)
+  }
+}
+
+const loadSession = async (): Promise<{ loggedIn: boolean, courierId: string | null }> => {
+  try {
+    // 1. Capacitor Preferences'tan dene
+    const { value: prefLoggedIn } = await Preferences.get({ key: STORAGE_KEYS.LOGIN })
+    const { value: prefCourierId } = await Preferences.get({ key: STORAGE_KEYS.COURIER_ID })
+    
+    if (prefLoggedIn === 'true' && prefCourierId) {
+      console.log('✅ Capacitor Preferences\'tan oturum bulundu')
+      return { loggedIn: true, courierId: prefCourierId }
+    }
+    
+    // 2. localStorage'dan dene
+    const localLoggedIn = localStorage.getItem(STORAGE_KEYS.LOGIN)
+    const localCourierId = localStorage.getItem(STORAGE_KEYS.COURIER_ID)
+    
+    if (localLoggedIn === 'true' && localCourierId) {
+      console.log('✅ localStorage\'dan oturum bulundu')
+      // Diğer storage\'lara da kaydet
+      await saveSession(localCourierId)
+      return { loggedIn: true, courierId: localCourierId }
+    }
+    
+    // 3. Backup localStorage'dan dene
+    const backupLoggedIn = localStorage.getItem(STORAGE_KEYS.BACKUP_LOGIN)
+    const backupCourierId = localStorage.getItem(STORAGE_KEYS.BACKUP_COURIER_ID)
+    
+    if (backupLoggedIn === 'true' && backupCourierId) {
+      console.log('✅ Backup localStorage\'dan oturum bulundu')
+      await saveSession(backupCourierId)
+      return { loggedIn: true, courierId: backupCourierId }
+    }
+    
+    // 4. IndexedDB'den dene
+    if (typeof window !== 'undefined' && 'indexedDB' in window) {
+      return new Promise((resolve) => {
+        const request = indexedDB.open('KuryeDB', 1)
+        request.onsuccess = () => {
+          const db = request.result
+          if (db.objectStoreNames.contains('sessions')) {
+            const transaction = db.transaction(['sessions'], 'readonly')
+            const store = transaction.objectStore('sessions')
+            const loggedInReq = store.get('logged_in')
+            const courierIdReq = store.get('courier_id')
+            
+            loggedInReq.onsuccess = () => {
+              courierIdReq.onsuccess = () => {
+                if (loggedInReq.result === 'true' && courierIdReq.result) {
+                  console.log('✅ IndexedDB\'den oturum bulundu')
+                  saveSession(courierIdReq.result)
+                  resolve({ loggedIn: true, courierId: courierIdReq.result })
+                } else {
+                  resolve({ loggedIn: false, courierId: null })
+                }
+              }
+            }
+          } else {
+            resolve({ loggedIn: false, courierId: null })
+          }
+        }
+        request.onerror = () => resolve({ loggedIn: false, courierId: null })
+      })
+    }
+    
+    return { loggedIn: false, courierId: null }
+  } catch (error) {
+    console.error('❌ Oturum yükleme hatası:', error)
+    return { loggedIn: false, courierId: null }
+  }
+}
+
+const clearSession = async () => {
+  try {
+    // Tüm storage'ları temizle
+    localStorage.removeItem(STORAGE_KEYS.LOGIN)
+    localStorage.removeItem(STORAGE_KEYS.COURIER_ID)
+    localStorage.removeItem(STORAGE_KEYS.BACKUP_LOGIN)
+    localStorage.removeItem(STORAGE_KEYS.BACKUP_COURIER_ID)
+    localStorage.removeItem('auth_logged_in')
+    localStorage.removeItem('auth_user_type')
+    localStorage.removeItem('auth_user')
+    
+    await Preferences.remove({ key: STORAGE_KEYS.LOGIN })
+    await Preferences.remove({ key: STORAGE_KEYS.COURIER_ID })
+    await Preferences.remove({ key: STORAGE_KEYS.BACKUP_LOGIN })
+    await Preferences.remove({ key: STORAGE_KEYS.BACKUP_COURIER_ID })
+    
+    // IndexedDB temizle
+    if (typeof window !== 'undefined' && 'indexedDB' in window) {
+      const request = indexedDB.open('KuryeDB', 1)
+      request.onsuccess = () => {
+        const db = request.result
+        if (db.objectStoreNames.contains('sessions')) {
+          const transaction = db.transaction(['sessions'], 'readwrite')
+          const store = transaction.objectStore('sessions')
+          store.clear()
+        }
+      }
+    }
+    
+    console.log('✅ Tüm oturum verileri temizlendi')
+  } catch (error) {
+    console.error('❌ Oturum temizleme hatası:', error)
+  }
+}
 
 export default function KuryePage() {
   const [isMounted, setIsMounted] = useState(false)
@@ -333,82 +493,30 @@ export default function KuryePage() {
 
     const checkSession = async () => {
       try {
-        // BACKWARD COMPATIBILITY: Eski localStorage'dan Capacitor Preferences'a taşı
-        const oldLoggedIn = localStorage.getItem(LOGIN_STORAGE_KEY)
-        const oldCourierId = localStorage.getItem(LOGIN_COURIER_ID_KEY)
+        const session = await loadSession()
         
-        if (oldLoggedIn === 'true' && oldCourierId) {
-          console.log('🔄 Eski localStorage bulundu, Capacitor Preferences\'a taşınıyor...')
-          await Preferences.set({ key: LOGIN_STORAGE_KEY, value: 'true' })
-          await Preferences.set({ key: LOGIN_COURIER_ID_KEY, value: oldCourierId })
-          console.log('✅ Eski oturum Capacitor Preferences\'a taşındı')
-        }
-
-        // Önce Capacitor Preferences'tan kontrol et (Native storage - silinmez)
-        const { value: savedCourierId } = await Preferences.get({ key: LOGIN_COURIER_ID_KEY })
-        const { value: savedLoggedIn } = await Preferences.get({ key: LOGIN_STORAGE_KEY })
-
-        if (savedLoggedIn === 'true' && savedCourierId) {
-          console.log('✅ Capacitor Preferences\'tan oturum bulundu:', savedCourierId)
+        if (session.loggedIn && session.courierId) {
+          console.log('✅ Kalıcı oturum bulundu:', session.courierId)
           setIsLoggedIn(true)
-          setSelectedCourierId(savedCourierId)
+          setSelectedCourierId(session.courierId)
           setIsCheckingAuth(false)
           return
         }
 
-        // Capacitor'da yoksa Supabase session kontrolü yap
-        const { data: { session }, error } = await supabase.auth.getSession()
+        // Supabase session kontrolü
+        const { data: { session: supabaseSession }, error } = await supabase.auth.getSession()
         
-        if (session && session.user) {
-          // Aktif session var, courier_id'yi al
-          const courierId = session.user.id
+        if (supabaseSession && supabaseSession.user) {
+          const courierId = supabaseSession.user.id
           setIsLoggedIn(true)
           setSelectedCourierId(courierId)
-          
-          // Capacitor Preferences'a kaydet (kalıcı)
-          await Preferences.set({ key: LOGIN_STORAGE_KEY, value: 'true' })
-          await Preferences.set({ key: LOGIN_COURIER_ID_KEY, value: courierId })
-          
-          // localStorage'a da kaydet (web uyumluluğu için)
-          localStorage.setItem(LOGIN_STORAGE_KEY, 'true')
-          localStorage.setItem(LOGIN_COURIER_ID_KEY, courierId)
-        } else {
-          // Session yok, localStorage kontrolü yap (fallback - web için)
-          const loggedIn = localStorage.getItem(LOGIN_STORAGE_KEY)
-          const loggedCourierId = localStorage.getItem(LOGIN_COURIER_ID_KEY)
-
-          if (loggedIn === 'true' && loggedCourierId) {
-            setIsLoggedIn(true)
-            setSelectedCourierId(loggedCourierId)
-            
-            // Capacitor Preferences'a da kaydet
-            await Preferences.set({ key: LOGIN_STORAGE_KEY, value: 'true' })
-            await Preferences.set({ key: LOGIN_COURIER_ID_KEY, value: loggedCourierId })
-          } else {
-            setIsLoggedIn(false)
-          }
-        }
-      } catch (error) {
-        console.error('Session kontrolü hatası:', error)
-        
-        // Hata durumunda localStorage fallback
-        const loggedIn = localStorage.getItem(LOGIN_STORAGE_KEY)
-        const loggedCourierId = localStorage.getItem(LOGIN_COURIER_ID_KEY)
-
-        if (loggedIn === 'true' && loggedCourierId) {
-          setIsLoggedIn(true)
-          setSelectedCourierId(loggedCourierId)
-          
-          // Capacitor Preferences'a da kaydet
-          try {
-            await Preferences.set({ key: LOGIN_STORAGE_KEY, value: 'true' })
-            await Preferences.set({ key: LOGIN_COURIER_ID_KEY, value: loggedCourierId })
-          } catch (prefError) {
-            console.error('Preferences kaydetme hatası:', prefError)
-          }
+          await saveSession(courierId)
         } else {
           setIsLoggedIn(false)
         }
+      } catch (error) {
+        console.error('Session kontrolü hatası:', error)
+        setIsLoggedIn(false)
       } finally {
         setIsCheckingAuth(false)
       }
@@ -3360,16 +3468,8 @@ export default function KuryePage() {
                   console.error('SignOut hatası:', error)
                 }
                 
-                // localStorage temizle
-                localStorage.removeItem(LOGIN_STORAGE_KEY)
-                localStorage.removeItem(LOGIN_COURIER_ID_KEY)
-                localStorage.removeItem('auth_logged_in')
-                localStorage.removeItem('auth_user_type')
-                localStorage.removeItem('auth_user')
-                
-                // Capacitor Preferences temizle (KALICI storage)
-                await Preferences.remove({ key: LOGIN_STORAGE_KEY })
-                await Preferences.remove({ key: LOGIN_COURIER_ID_KEY })
+                // Tüm storage'ları temizle
+                await clearSession()
                 
                 // Ana sayfaya yönlendir
                 window.location.href = '/'
@@ -3733,13 +3833,8 @@ export default function KuryePage() {
           .update({ is_active: true, status: 'idle' })
           .eq('id', data.id)
 
-        // Kurye oturumunu başlat (eski sistem)
-        localStorage.setItem(LOGIN_STORAGE_KEY, 'true')
-        localStorage.setItem(LOGIN_COURIER_ID_KEY, data.id)
-
-        // Capacitor Preferences'a kaydet (KALICI - Android'de silinmez)
-        await Preferences.set({ key: LOGIN_STORAGE_KEY, value: 'true' })
-        await Preferences.set({ key: LOGIN_COURIER_ID_KEY, value: data.id })
+        // Kurye oturumunu başlat - KALICI STORAGE
+        await saveSession(data.id)
 
         // Yeni auth sistemi için de kaydet (otomatik giriş için)
         localStorage.setItem('auth_logged_in', 'true')
