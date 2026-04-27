@@ -333,6 +333,17 @@ export default function KuryePage() {
 
     const checkSession = async () => {
       try {
+        // BACKWARD COMPATIBILITY: Eski localStorage'dan Capacitor Preferences'a taşı
+        const oldLoggedIn = localStorage.getItem(LOGIN_STORAGE_KEY)
+        const oldCourierId = localStorage.getItem(LOGIN_COURIER_ID_KEY)
+        
+        if (oldLoggedIn === 'true' && oldCourierId) {
+          console.log('🔄 Eski localStorage bulundu, Capacitor Preferences\'a taşınıyor...')
+          await Preferences.set({ key: LOGIN_STORAGE_KEY, value: 'true' })
+          await Preferences.set({ key: LOGIN_COURIER_ID_KEY, value: oldCourierId })
+          console.log('✅ Eski oturum Capacitor Preferences\'a taşındı')
+        }
+
         // Önce Capacitor Preferences'tan kontrol et (Native storage - silinmez)
         const { value: savedCourierId } = await Preferences.get({ key: LOGIN_COURIER_ID_KEY })
         const { value: savedLoggedIn } = await Preferences.get({ key: LOGIN_STORAGE_KEY })
@@ -387,6 +398,14 @@ export default function KuryePage() {
         if (loggedIn === 'true' && loggedCourierId) {
           setIsLoggedIn(true)
           setSelectedCourierId(loggedCourierId)
+          
+          // Capacitor Preferences'a da kaydet
+          try {
+            await Preferences.set({ key: LOGIN_STORAGE_KEY, value: 'true' })
+            await Preferences.set({ key: LOGIN_COURIER_ID_KEY, value: loggedCourierId })
+          } catch (prefError) {
+            console.error('Preferences kaydetme hatası:', prefError)
+          }
         } else {
           setIsLoggedIn(false)
         }
