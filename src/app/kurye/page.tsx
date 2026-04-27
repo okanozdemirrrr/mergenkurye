@@ -71,7 +71,7 @@ interface CourierLeaderboard {
   todayDeliveryCount: number
 }
 
-// KALICI OTURUM YÖNETİMİ - MULTIPLE STORAGE
+// KALICI OTURUM YONETIMI - MULTIPLE STORAGE
 const STORAGE_KEYS = {
   LOGIN: 'kurye_logged_in',
   COURIER_ID: 'kurye_logged_courier_id',
@@ -79,10 +79,10 @@ const STORAGE_KEYS = {
   BACKUP_COURIER_ID: 'kurye_backup_courier_id'
 }
 
-// Kalıcı storage fonksiyonları
+// Kalici storage fonksiyonlari
 const saveSession = async (courierId: string) => {
   try {
-    // 1. localStorage (hızlı erişim)
+    // 1. localStorage (hizli erisim)
     localStorage.setItem(STORAGE_KEYS.LOGIN, 'true')
     localStorage.setItem(STORAGE_KEYS.COURIER_ID, courierId)
     localStorage.setItem(STORAGE_KEYS.BACKUP_LOGIN, 'true')
@@ -112,9 +112,9 @@ const saveSession = async (courierId: string) => {
       }
     }
     
-    console.log('✅ Oturum 3 farklı storage\'a kaydedildi')
+    console.log('Oturum 3 farkli storage a kaydedildi')
   } catch (error) {
-    console.error('❌ Oturum kaydetme hatası:', error)
+    console.error('Oturum kaydetme hatasi:', error)
   }
 }
 
@@ -125,7 +125,7 @@ const loadSession = async (): Promise<{ loggedIn: boolean, courierId: string | n
     const { value: prefCourierId } = await Preferences.get({ key: STORAGE_KEYS.COURIER_ID })
     
     if (prefLoggedIn === 'true' && prefCourierId) {
-      console.log('✅ Capacitor Preferences\'tan oturum bulundu')
+      console.log('Capacitor Preferences tan oturum bulundu')
       return { loggedIn: true, courierId: prefCourierId }
     }
     
@@ -134,8 +134,8 @@ const loadSession = async (): Promise<{ loggedIn: boolean, courierId: string | n
     const localCourierId = localStorage.getItem(STORAGE_KEYS.COURIER_ID)
     
     if (localLoggedIn === 'true' && localCourierId) {
-      console.log('✅ localStorage\'dan oturum bulundu')
-      // Diğer storage\'lara da kaydet
+      console.log('localStorage dan oturum bulundu')
+      // Diger storage lara da kaydet
       await saveSession(localCourierId)
       return { loggedIn: true, courierId: localCourierId }
     }
@@ -145,7 +145,7 @@ const loadSession = async (): Promise<{ loggedIn: boolean, courierId: string | n
     const backupCourierId = localStorage.getItem(STORAGE_KEYS.BACKUP_COURIER_ID)
     
     if (backupLoggedIn === 'true' && backupCourierId) {
-      console.log('✅ Backup localStorage\'dan oturum bulundu')
+      console.log('Backup localStorage dan oturum bulundu')
       await saveSession(backupCourierId)
       return { loggedIn: true, courierId: backupCourierId }
     }
@@ -165,7 +165,7 @@ const loadSession = async (): Promise<{ loggedIn: boolean, courierId: string | n
             loggedInReq.onsuccess = () => {
               courierIdReq.onsuccess = () => {
                 if (loggedInReq.result === 'true' && courierIdReq.result) {
-                  console.log('✅ IndexedDB\'den oturum bulundu')
+                  console.log('IndexedDB den oturum bulundu')
                   saveSession(courierIdReq.result)
                   resolve({ loggedIn: true, courierId: courierIdReq.result })
                 } else {
@@ -183,14 +183,14 @@ const loadSession = async (): Promise<{ loggedIn: boolean, courierId: string | n
     
     return { loggedIn: false, courierId: null }
   } catch (error) {
-    console.error('❌ Oturum yükleme hatası:', error)
+    console.error('Oturum yukleme hatasi:', error)
     return { loggedIn: false, courierId: null }
   }
 }
 
 const clearSession = async () => {
   try {
-    // Tüm storage'ları temizle
+    // Tum storage lari temizle
     localStorage.removeItem(STORAGE_KEYS.LOGIN)
     localStorage.removeItem(STORAGE_KEYS.COURIER_ID)
     localStorage.removeItem(STORAGE_KEYS.BACKUP_LOGIN)
@@ -217,9 +217,9 @@ const clearSession = async () => {
       }
     }
     
-    console.log('✅ Tüm oturum verileri temizlendi')
+    console.log('Tum oturum verileri temizlendi')
   } catch (error) {
-    console.error('❌ Oturum temizleme hatası:', error)
+    console.error('Oturum temizleme hatasi:', error)
   }
 }
 
