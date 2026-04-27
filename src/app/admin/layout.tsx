@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { App } from '@capacitor/app'
+import { supabase } from '../lib/supabase'
 import { AdminDataProvider, useAdminData } from './AdminDataProvider'
 import { AdminModals } from './AdminModals'
 import { NotificationProvider } from '@/contexts/NotificationContext'
@@ -67,13 +68,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [isMounted])
 
   useEffect(() => {
-    const checkAuthAndRedirect = () => {
+    const checkAuthAndRedirect = async () => {
       if (typeof window === 'undefined') return
       if (!isMounted) return
 
       setIsCheckingAuth(true)
 
       try {
+        // 1. Önce Supabase session kontrolü yap
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        if (session && session.user) {
+          // Supabase session varsa, admin olarak giriş yap
+          localStorage.setItem('admin_logged_in', 'true')
+          setIsLoggedIn(true)
+          setIsCheckingAuth(false)
+          return
+        }
+
+        // 2. Supabase session yoksa, localStorage kontrolü yap
         const adminLoggedIn = localStorage.getItem('admin_logged_in')
         setIsLoggedIn(adminLoggedIn === 'true')
       } catch (error) {
@@ -359,8 +372,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </nav>
 
             <button
-              onClick={() => {
+              onClick={async () => {
+                try {
+                  // 1. Supabase'den çıkış yap
+                  await supabase.auth.signOut()
+                } catch (error) {
+                  console.error('SignOut hatası:', error)
+                }
+                
+                // 2. localStorage'dan admin key'i temizle
                 localStorage.removeItem('admin_logged_in')
+                
+                // 3. Ana sayfaya yönlendir
                 window.location.href = '/'
               }}
               className="w-full mt-8 bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-lg font-medium transition-colors"

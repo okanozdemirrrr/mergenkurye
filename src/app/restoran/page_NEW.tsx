@@ -31,15 +31,35 @@ export default function RestoranPage() {
   useEffect(() => {
     if (!isMounted) return
 
-    const checkAuth = () => {
-      const loggedIn = localStorage.getItem(LOGIN_STORAGE_KEY) === 'true'
-      const restaurantId = localStorage.getItem(LOGIN_RESTAURANT_ID_KEY)
+    const checkAuth = async () => {
+      try {
+        // 1. Önce Supabase session kontrolü yap
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        if (session && session.user) {
+          // Supabase session varsa, restoran ID'sini al
+          const restaurantId = session.user.id
+          localStorage.setItem(LOGIN_STORAGE_KEY, 'true')
+          localStorage.setItem(LOGIN_RESTAURANT_ID_KEY, restaurantId)
+          setIsLoggedIn(true)
+          setSelectedRestaurantId(restaurantId)
+          setIsCheckingAuth(false)
+          return
+        }
 
-      if (loggedIn && restaurantId) {
-        setIsLoggedIn(true)
-        setSelectedRestaurantId(restaurantId)
+        // 2. Supabase session yoksa, localStorage kontrolü yap
+        const loggedIn = localStorage.getItem(LOGIN_STORAGE_KEY) === 'true'
+        const restaurantId = localStorage.getItem(LOGIN_RESTAURANT_ID_KEY)
+
+        if (loggedIn && restaurantId) {
+          setIsLoggedIn(true)
+          setSelectedRestaurantId(restaurantId)
+        }
+      } catch (error) {
+        console.error('Auth kontrolü hatası:', error)
+      } finally {
+        setIsCheckingAuth(false)
       }
-      setIsCheckingAuth(false)
     }
 
     checkAuth()
@@ -86,12 +106,25 @@ export default function RestoranPage() {
     setSelectedRestaurantId(restaurant.id)
   }
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      // 1. Supabase'den çıkış yap
+      await supabase.auth.signOut()
+    } catch (error) {
+      console.error('SignOut hatası:', error)
+    }
+    
+    // 2. localStorage'dan restoran key'lerini temizle
     localStorage.removeItem(LOGIN_STORAGE_KEY)
     localStorage.removeItem(LOGIN_RESTAURANT_ID_KEY)
+    
+    // 3. State'leri temizle
     setIsLoggedIn(false)
     setSelectedRestaurantId(null)
     setLoginForm({ username: '', password: '' })
+    
+    // 4. Ana sayfaya yönlendir
+    window.location.href = '/'
   }
 
   if (!isMounted || isCheckingAuth) {

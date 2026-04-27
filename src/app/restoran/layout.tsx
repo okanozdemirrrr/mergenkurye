@@ -317,9 +317,19 @@ function MenuSidebar({ showMenu, setShowMenu, isActive }: { showMenu: boolean, s
         </nav>
 
         <button
-          onClick={() => {
+          onClick={async () => {
+            try {
+              // 1. Supabase'den çıkış yap
+              await supabase.auth.signOut()
+            } catch (error) {
+              console.error('SignOut hatası:', error)
+            }
+            
+            // 2. localStorage'dan restoran key'lerini temizle
             localStorage.removeItem(LOGIN_STORAGE_KEY)
             localStorage.removeItem(LOGIN_RESTAURANT_ID_KEY)
+            
+            // 3. Ana sayfaya yönlendir
             window.location.href = '/'
           }}
           className="w-full mt-8 bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-lg font-medium transition-colors"
