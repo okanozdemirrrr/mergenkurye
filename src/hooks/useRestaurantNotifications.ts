@@ -9,6 +9,7 @@
  * - Popup state yönetimi
  * - SADECE GİRİŞ YAPILDIĞINDA AKTİF
  * - İlk render koruması (useRef)
+ * - ID bazlı hayalet bildirim koruması
  */
 'use client'
 
@@ -30,6 +31,7 @@ interface NewOrder {
 export function useRestaurantNotifications(restaurantId: number | null, isLoggedIn: boolean = false) {
   const [newOrder, setNewOrder] = useState<NewOrder | null>(null)
   const isInitialMount = useRef(true)
+  const notifiedOrderIds = useRef<Set<number>>(new Set()) // Bildirim yapılan sipariş ID'leri
 
   useEffect(() => {
     // KRİTİK: Sadece giriş yapılmışsa ve restaurant ID varsa dinle
@@ -64,7 +66,16 @@ export function useRestaurantNotifications(restaurantId: number | null, isLogged
 
           // Sadece 'new_order' statusundaki siparişleri göster
           if (order && order.status === 'new_order' && payload.eventType === 'INSERT') {
+            // HAYALET BİLDİRİM KORUMASI - Bu sipariş ID'si için daha önce bildirim yapıldı mı?
+            if (notifiedOrderIds.current.has(order.id)) {
+              console.log('⚠️ Bu sipariş için zaten bildirim yapıldı, atlanıyor:', order.id)
+              return
+            }
+
             console.log('🔔 YENİ SİPARİŞ TETİKLENDİ:', order)
+
+            // Bu sipariş ID'sini kaydet
+            notifiedOrderIds.current.add(order.id)
 
             setNewOrder({
               id: order.id,
@@ -94,6 +105,7 @@ export function useRestaurantNotifications(restaurantId: number | null, isLogged
     return () => {
       console.log('🔌 Restoran bildirimleri kapatılıyor')
       isInitialMount.current = true // Reset protection
+      notifiedOrderIds.current.clear() // Bildirim ID'lerini temizle
       supabase.removeChannel(channel)
     }
   }, [restaurantId, isLoggedIn]) // isLoggedIn dependency eklendi

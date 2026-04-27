@@ -10,6 +10,7 @@
  * - Bildirim sesi (looping audio)
  * - SADECE GİRİŞ YAPILDIĞINDA AKTİF
  * - İlk render koruması (useRef)
+ * - ID bazlı hayalet bildirim koruması
  */
 'use client'
 
@@ -33,6 +34,7 @@ export function useAdminNotifications(isLoggedIn: boolean = false) {
   const [newOrder, setNewOrder] = useState<NewOrder | null>(null)
   const { showNativeNotification } = useNotification()
   const isInitialMount = useRef(true)
+  const notifiedOrderIds = useRef<Set<number>>(new Set()) // Bildirim yapılan sipariş ID'leri
 
   useEffect(() => {
     // KRİTİK: Sadece giriş yapılmışsa dinle
@@ -66,7 +68,16 @@ export function useAdminNotifications(isLoggedIn: boolean = false) {
 
           // Sadece 'new_order' statusundaki siparişleri göster
           if (order && order.status === 'new_order' && payload.eventType === 'INSERT') {
+            // HAYALET BİLDİRİM KORUMASI - Bu sipariş ID'si için daha önce bildirim yapıldı mı?
+            if (notifiedOrderIds.current.has(order.id)) {
+              console.log('⚠️ Bu sipariş için zaten bildirim yapıldı, atlanıyor:', order.id)
+              return
+            }
+
             console.log('🔔 YENİ SİPARİŞ TETİKLENDİ (Admin):', order)
+
+            // Bu sipariş ID'sini kaydet
+            notifiedOrderIds.current.add(order.id)
 
             // BASIT SES ÇALMA - Autoplay policy bypass
             setTimeout(() => {
@@ -149,6 +160,7 @@ export function useAdminNotifications(isLoggedIn: boolean = false) {
       console.log('🔌 Admin bildirimleri kapatılıyor')
       clearInterval(connectionCheck)
       isInitialMount.current = true // Reset protection
+      notifiedOrderIds.current.clear() // Bildirim ID'lerini temizle
       supabase.removeChannel(channel)
     }
   }, [isLoggedIn]) // isLoggedIn dependency eklendi
