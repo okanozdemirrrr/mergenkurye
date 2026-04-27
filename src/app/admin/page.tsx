@@ -79,8 +79,8 @@ export default function AdminPage() {
         todayDeliveredCount={todayDeliveredCount}
       />
       
-      {/* Bildirim Sistemi */}
-      <AdminNotificationWrapper />
+      {/* Bildirim Sistemi - Sadece giriş yapılmışsa aktif */}
+      <AdminNotificationWrapper isLoggedIn={true} />
     </>
   )
 }

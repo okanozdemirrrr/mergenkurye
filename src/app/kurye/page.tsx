@@ -3792,8 +3792,8 @@ export default function KuryePage() {
         </div>
       )}
 
-      {/* Bildirim Sistemi */}
-      <CourierNotificationWrapper courierId={selectedCourierId} />
+      {/* Bildirim Sistemi - Sadece giriş yapılmışsa aktif */}
+      <CourierNotificationWrapper courierId={selectedCourierId} isLoggedIn={isLoggedIn} />
     </div >
   )
 

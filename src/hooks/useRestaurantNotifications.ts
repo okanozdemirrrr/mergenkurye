@@ -7,6 +7,7 @@
  * - status === 'new_order' filtresi
  * - restaurant_id kontrolü
  * - Popup state yönetimi
+ * - SADECE GİRİŞ YAPILDIĞINDA AKTİF
  */
 'use client'
 
@@ -25,11 +26,15 @@ interface NewOrder {
   }
 }
 
-export function useRestaurantNotifications(restaurantId: number | null) {
+export function useRestaurantNotifications(restaurantId: number | null, isLoggedIn: boolean = false) {
   const [newOrder, setNewOrder] = useState<NewOrder | null>(null)
 
   useEffect(() => {
-    if (!restaurantId) return
+    // KRİTİK: Sadece giriş yapılmışsa ve restaurant ID varsa dinle
+    if (!isLoggedIn || !restaurantId) {
+      console.log('⏸️ Restoran bildirimleri durduruldu - Giriş yapılmamış veya restaurant ID yok')
+      return
+    }
 
     console.log('🔔 Restoran bildirimleri dinleniyor, restaurant_id:', restaurantId)
 
@@ -74,7 +79,7 @@ export function useRestaurantNotifications(restaurantId: number | null) {
       console.log('🔌 Restoran bildirimleri kapatılıyor')
       supabase.removeChannel(channel)
     }
-  }, [restaurantId])
+  }, [restaurantId, isLoggedIn]) // isLoggedIn dependency eklendi
 
   // Popup'ı kapat
   const dismissNotification = () => {

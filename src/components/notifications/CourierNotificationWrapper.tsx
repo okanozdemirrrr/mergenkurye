@@ -13,13 +13,15 @@ import { useCourierNotifications } from '@/hooks/useCourierNotifications'
 
 interface CourierNotificationWrapperProps {
   courierId: string | null
+  isLoggedIn?: boolean
 }
 
 export function CourierNotificationWrapper({
-  courierId
+  courierId,
+  isLoggedIn = false
 }: CourierNotificationWrapperProps) {
   // Hook içinde tüm logic var (audio + native notification)
-  useCourierNotifications(courierId)
+  useCourierNotifications(courierId, isLoggedIn)
 
   // Kurye için popup yok, sadece native notification
   return null

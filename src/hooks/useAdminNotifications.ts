@@ -8,6 +8,7 @@
  * - Tüm restoranlar için dinleme
  * - Popup state yönetimi
  * - Bildirim sesi (looping audio)
+ * - SADECE GİRİŞ YAPILDIĞINDA AKTİF
  */
 'use client'
 
@@ -27,11 +28,17 @@ interface NewOrder {
   }
 }
 
-export function useAdminNotifications() {
+export function useAdminNotifications(isLoggedIn: boolean = false) {
   const [newOrder, setNewOrder] = useState<NewOrder | null>(null)
   const { showNativeNotification } = useNotification()
 
   useEffect(() => {
+    // KRİTİK: Sadece giriş yapılmışsa dinle
+    if (!isLoggedIn) {
+      console.log('⏸️ Admin bildirimleri durduruldu - Giriş yapılmamış')
+      return
+    }
+
     console.log('🔔 Admin bildirimleri dinleniyor')
 
     // Realtime subscription (TÜM restoranlar)
@@ -130,7 +137,7 @@ export function useAdminNotifications() {
       clearInterval(connectionCheck)
       supabase.removeChannel(channel)
     }
-  }, [])
+  }, [isLoggedIn]) // isLoggedIn dependency eklendi
 
   // Popup'ı kapat
   const dismissNotification = () => {

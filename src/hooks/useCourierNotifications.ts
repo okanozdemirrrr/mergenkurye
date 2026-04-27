@@ -7,6 +7,7 @@
  * - status === 'assigned' && courier_id kontrolü
  * - Kısa audio (3-4 saniye)
  * - Native push notification
+ * - SADECE GİRİŞ YAPILDIĞINDA AKTİF
  */
 'use client'
 
@@ -14,21 +15,25 @@ import { useEffect } from 'react'
 import { supabase } from '@/app/lib/supabase'
 import { useNotification } from '@/contexts/NotificationContext'
 
-export function useCourierNotifications(courierId: string | null) {
+export function useCourierNotifications(courierId: string | null, isLoggedIn: boolean = false) {
   const { playShortAudio, showNativeNotification, requestNotificationPermission } = useNotification()
 
   // Login olduğunda notification izni iste
   useEffect(() => {
-    if (courierId) {
+    if (isLoggedIn && courierId) {
       requestNotificationPermission().then(permission => {
         console.log('🔔 Notification permission:', permission)
       })
     }
-  }, [courierId])
+  }, [courierId, isLoggedIn])
 
   // Realtime subscription
   useEffect(() => {
-    if (!courierId) return
+    // KRİTİK: Sadece giriş yapılmışsa ve courier ID varsa dinle
+    if (!isLoggedIn || !courierId) {
+      console.log('⏸️ Kurye bildirimleri durduruldu - Giriş yapılmamış veya courier ID yok')
+      return
+    }
 
     console.log('🔔 Kurye bildirimleri dinleniyor, courier_id:', courierId)
 
@@ -80,7 +85,7 @@ export function useCourierNotifications(courierId: string | null) {
       console.log('🔌 Kurye bildirimleri kapatılıyor')
       supabase.removeChannel(channel)
     }
-  }, [courierId])
+  }, [courierId, isLoggedIn]) // isLoggedIn dependency eklendi
 
   return {
     // Kurye için popup yok, sadece native notification

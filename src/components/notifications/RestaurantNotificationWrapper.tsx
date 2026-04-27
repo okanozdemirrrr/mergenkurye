@@ -13,13 +13,15 @@ import { RestaurantOrderPopup } from './RestaurantOrderPopup'
 interface RestaurantNotificationWrapperProps {
   restaurantId: number | null
   restaurantName: string
+  isLoggedIn?: boolean
 }
 
 export function RestaurantNotificationWrapper({
   restaurantId,
-  restaurantName
+  restaurantName,
+  isLoggedIn = false
 }: RestaurantNotificationWrapperProps) {
-  const { newOrder, dismissNotification } = useRestaurantNotifications(restaurantId)
+  const { newOrder, dismissNotification } = useRestaurantNotifications(restaurantId, isLoggedIn)
 
   if (!newOrder) return null
 

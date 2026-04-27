@@ -231,10 +231,11 @@ export default function RestoranPage() {
         setDarkMode={setDarkMode}
       />
       
-      {/* Bildirim Sistemi */}
+      {/* Bildirim Sistemi - Sadece giriş yapılmışsa aktif */}
       <RestaurantNotificationWrapper 
         restaurantId={selectedRestaurantId ? parseInt(selectedRestaurantId) : null}
         restaurantName={restaurants.find(r => r.id === selectedRestaurantId)?.name || 'Restoran'}
+        isLoggedIn={isLoggedIn}
       />
     </>
   )

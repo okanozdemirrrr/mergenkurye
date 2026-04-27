@@ -4,14 +4,19 @@
  * 
  * KULLANIM:
  * Admin panelinin ana sayfasına bu component'i ekleyin
+ * Sadece giriş yapılmışsa bildirim dinler
  */
 'use client'
 
 import { useAdminNotifications } from '@/hooks/useAdminNotifications'
 import { AdminOrderPopup } from './AdminOrderPopup'
 
-export function AdminNotificationWrapper() {
-  const { newOrder, dismissNotification } = useAdminNotifications()
+interface AdminNotificationWrapperProps {
+  isLoggedIn?: boolean
+}
+
+export function AdminNotificationWrapper({ isLoggedIn = false }: AdminNotificationWrapperProps) {
+  const { newOrder, dismissNotification } = useAdminNotifications(isLoggedIn)
 
   if (!newOrder) return null
 
