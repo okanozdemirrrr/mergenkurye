@@ -8,15 +8,17 @@
  * - Kısa audio (3-4 saniye)
  * - Native push notification
  * - SADECE GİRİŞ YAPILDIĞINDA AKTİF
+ * - İlk render koruması (useRef)
  */
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { supabase } from '@/app/lib/supabase'
 import { useNotification } from '@/contexts/NotificationContext'
 
 export function useCourierNotifications(courierId: string | null, isLoggedIn: boolean = false) {
   const { playShortAudio, showNativeNotification, requestNotificationPermission } = useNotification()
+  const isInitialMount = useRef(true)
 
   // Login olduğunda notification izni iste
   useEffect(() => {
@@ -50,11 +52,18 @@ export function useCourierNotifications(courierId: string | null, isLoggedIn: bo
         (payload) => {
           console.log('📦 Kurye Realtime event:', payload)
 
+          // İLK RENDER KORUMASI - Sayfa yüklenirken ses çalma
+          if (isInitialMount.current) {
+            console.log('⏭️ İlk render - bildirim atlandı')
+            return
+          }
+
           const oldOrder = payload.old as any
           const newOrder = payload.new as any
 
-          // Yeni atama kontrolü: status 'assigned' oldu VE önceden bu kuryeye ait değildi
+          // Yeni atama kontrolü: status 'assigned' oldu VE önceden bu kuryeye ait değildi VE UPDATE event
           const isNewAssignment = 
+            payload.eventType === 'UPDATE' &&
             newOrder.status === 'assigned' &&
             newOrder.courier_id === courierId &&
             oldOrder.courier_id !== courierId
@@ -78,11 +87,20 @@ export function useCourierNotifications(courierId: string | null, isLoggedIn: bo
       )
       .subscribe((status) => {
         console.log('📡 Kurye Realtime status:', status)
+        
+        // İlk render korumasını kaldır (subscription başarılı olduktan sonra)
+        if (status === 'SUBSCRIBED') {
+          setTimeout(() => {
+            isInitialMount.current = false
+            console.log('🔓 İlk render koruması kaldırıldı - bildirimler aktif')
+          }, 2000) // 2 saniye bekle
+        }
       })
 
     // Cleanup
     return () => {
       console.log('🔌 Kurye bildirimleri kapatılıyor')
+      isInitialMount.current = true // Reset protection
       supabase.removeChannel(channel)
     }
   }, [courierId, isLoggedIn]) // isLoggedIn dependency eklendi

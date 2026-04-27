@@ -3,16 +3,17 @@
  * @description Admin Paneli - Yeni Sipariş Bildirimleri Hook
  * 
  * ÖZELLİKLER:
- * - Supabase Realtime dinleme (INSERT/UPDATE)
+ * - Supabase Realtime dinleme (SADECE INSERT)
  * - status === 'new_order' filtresi
  * - Tüm restoranlar için dinleme
  * - Popup state yönetimi
  * - Bildirim sesi (looping audio)
  * - SADECE GİRİŞ YAPILDIĞINDA AKTİF
+ * - İlk render koruması (useRef)
  */
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/app/lib/supabase'
 import { useNotification } from '@/contexts/NotificationContext'
 
@@ -31,6 +32,7 @@ interface NewOrder {
 export function useAdminNotifications(isLoggedIn: boolean = false) {
   const [newOrder, setNewOrder] = useState<NewOrder | null>(null)
   const { showNativeNotification } = useNotification()
+  const isInitialMount = useRef(true)
 
   useEffect(() => {
     // KRİTİK: Sadece giriş yapılmışsa dinle
@@ -47,17 +49,23 @@ export function useAdminNotifications(isLoggedIn: boolean = false) {
       .on(
         'postgres_changes',
         {
-          event: '*', // INSERT ve UPDATE
+          event: 'INSERT', // SADECE YENİ SİPARİŞLER
           schema: 'public',
           table: 'packages'
         },
         (payload) => {
           console.log('📦 Admin Realtime event:', payload)
 
+          // İLK RENDER KORUMASI - Sayfa yüklenirken ses çalma
+          if (isInitialMount.current) {
+            console.log('⏭️ İlk render - bildirim atlandı')
+            return
+          }
+
           const order = payload.new as any
 
           // Sadece 'new_order' statusundaki siparişleri göster
-          if (order && order.status === 'new_order') {
+          if (order && order.status === 'new_order' && payload.eventType === 'INSERT') {
             console.log('🔔 YENİ SİPARİŞ TETİKLENDİ (Admin):', order)
 
             // BASIT SES ÇALMA - Autoplay policy bypass
@@ -117,6 +125,11 @@ export function useAdminNotifications(isLoggedIn: boolean = false) {
         // Connection durumunu logla
         if (status === 'SUBSCRIBED') {
           console.log('✅ Admin realtime bağlantısı başarılı')
+          // İlk render korumasını kaldır (subscription başarılı olduktan sonra)
+          setTimeout(() => {
+            isInitialMount.current = false
+            console.log('🔓 İlk render koruması kaldırıldı - bildirimler aktif')
+          }, 2000) // 2 saniye bekle
         } else if (status === 'CHANNEL_ERROR') {
           console.error('❌ Admin realtime bağlantı hatası')
         } else if (status === 'TIMED_OUT') {
@@ -135,6 +148,7 @@ export function useAdminNotifications(isLoggedIn: boolean = false) {
     return () => {
       console.log('🔌 Admin bildirimleri kapatılıyor')
       clearInterval(connectionCheck)
+      isInitialMount.current = true // Reset protection
       supabase.removeChannel(channel)
     }
   }, [isLoggedIn]) // isLoggedIn dependency eklendi

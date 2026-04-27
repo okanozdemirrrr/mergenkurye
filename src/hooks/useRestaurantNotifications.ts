@@ -3,15 +3,16 @@
  * @description Restoran Paneli - Yeni Sipariş Bildirimleri Hook
  * 
  * ÖZELLİKLER:
- * - Supabase Realtime dinleme (INSERT/UPDATE)
+ * - Supabase Realtime dinleme (SADECE INSERT)
  * - status === 'new_order' filtresi
  * - restaurant_id kontrolü
  * - Popup state yönetimi
  * - SADECE GİRİŞ YAPILDIĞINDA AKTİF
+ * - İlk render koruması (useRef)
  */
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/app/lib/supabase'
 
 interface NewOrder {
@@ -28,6 +29,7 @@ interface NewOrder {
 
 export function useRestaurantNotifications(restaurantId: number | null, isLoggedIn: boolean = false) {
   const [newOrder, setNewOrder] = useState<NewOrder | null>(null)
+  const isInitialMount = useRef(true)
 
   useEffect(() => {
     // KRİTİK: Sadece giriş yapılmışsa ve restaurant ID varsa dinle
@@ -44,7 +46,7 @@ export function useRestaurantNotifications(restaurantId: number | null, isLogged
       .on(
         'postgres_changes',
         {
-          event: '*', // INSERT ve UPDATE
+          event: 'INSERT', // SADECE YENİ SİPARİŞLER
           schema: 'public',
           table: 'packages',
           filter: `restaurant_id=eq.${restaurantId}`
@@ -52,10 +54,16 @@ export function useRestaurantNotifications(restaurantId: number | null, isLogged
         (payload) => {
           console.log('📦 Realtime event:', payload)
 
+          // İLK RENDER KORUMASI - Sayfa yüklenirken ses çalma
+          if (isInitialMount.current) {
+            console.log('⏭️ İlk render - bildirim atlandı')
+            return
+          }
+
           const order = payload.new as any
 
           // Sadece 'new_order' statusundaki siparişleri göster
-          if (order && order.status === 'new_order') {
+          if (order && order.status === 'new_order' && payload.eventType === 'INSERT') {
             console.log('🔔 YENİ SİPARİŞ TETİKLENDİ:', order)
 
             setNewOrder({
@@ -72,11 +80,20 @@ export function useRestaurantNotifications(restaurantId: number | null, isLogged
       )
       .subscribe((status) => {
         console.log('📡 Restoran Realtime status:', status)
+        
+        // İlk render korumasını kaldır (subscription başarılı olduktan sonra)
+        if (status === 'SUBSCRIBED') {
+          setTimeout(() => {
+            isInitialMount.current = false
+            console.log('🔓 İlk render koruması kaldırıldı - bildirimler aktif')
+          }, 2000) // 2 saniye bekle
+        }
       })
 
     // Cleanup
     return () => {
       console.log('🔌 Restoran bildirimleri kapatılıyor')
+      isInitialMount.current = true // Reset protection
       supabase.removeChannel(channel)
     }
   }, [restaurantId, isLoggedIn]) // isLoggedIn dependency eklendi
