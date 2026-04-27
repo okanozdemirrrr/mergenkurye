@@ -92,14 +92,36 @@ export function usePushNotifications({ courierId, isLoggedIn }: UsePushNotificat
         console.error('❌ FCM kayıt hatası:', error)
       })
 
-      // 6. Ön planda bildirim geldiğinde (opsiyonel)
+      // 6. Ön planda bildirim geldiğinde - EKRANA GÖSTER VE SES ÇAL
       await PushNotifications.addListener(
         'pushNotificationReceived',
         (notification: PushNotificationSchema) => {
-          console.log('🔔 Ön planda bildirim alındı:', notification)
+          console.log('🔔 ÖN PLANDA BİLDİRİM ALINDI:', notification)
+          console.log('  - Title:', notification.title)
+          console.log('  - Body:', notification.body)
+          console.log('  - Data:', notification.data)
           
-          // Burada custom UI gösterebilirsiniz (toast, modal vs.)
-          // Örnek: showNotificationToast(notification.title, notification.body)
+          // 1. SES ÇAL
+          try {
+            const audio = new Audio('/notification.mp3')
+            audio.volume = 0.8
+            audio.play().catch(err => console.error('Ses çalma hatası:', err))
+          } catch (error) {
+            console.error('Audio oluşturma hatası:', error)
+          }
+
+          // 2. EKRANA TOAST/ALERT GÖSTER
+          const title = notification.title || 'Yeni Bildirim'
+          const body = notification.body || 'Yeni bir bildiriminiz var'
+          
+          // Native alert (basit ama garantili)
+          if (confirm(`${title}\n\n${body}\n\nDetayları görmek ister misiniz?`)) {
+            // Kullanıcı "OK" derse sayfayı yenile veya yönlendir
+            window.location.reload()
+          }
+          
+          // VEYA custom toast göster (daha şık)
+          showCustomToast(title, body)
         }
       )
 
@@ -143,6 +165,63 @@ export function usePushNotifications({ courierId, isLoggedIn }: UsePushNotificat
     } catch (error: any) {
       console.error('❌ FCM Token kaydetme hatası:', error.message)
     }
+  }
+
+  // Custom toast gösterme fonksiyonu
+  const showCustomToast = (title: string, body: string) => {
+    // Toast container oluştur
+    const toastContainer = document.createElement('div')
+    toastContainer.style.cssText = `
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 16px 24px;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      z-index: 999999;
+      max-width: 90%;
+      animation: slideDown 0.3s ease-out;
+      font-family: system-ui, -apple-system, sans-serif;
+    `
+
+    toastContainer.innerHTML = `
+      <div style="font-weight: bold; font-size: 16px; margin-bottom: 4px;">
+        🔔 ${title}
+      </div>
+      <div style="font-size: 14px; opacity: 0.95;">
+        ${body}
+      </div>
+    `
+
+    // Animasyon ekle
+    const style = document.createElement('style')
+    style.textContent = `
+      @keyframes slideDown {
+        from {
+          transform: translateX(-50%) translateY(-100px);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(-50%) translateY(0);
+          opacity: 1;
+        }
+      }
+    `
+    document.head.appendChild(style)
+
+    document.body.appendChild(toastContainer)
+
+    // 5 saniye sonra kaldır
+    setTimeout(() => {
+      toastContainer.style.animation = 'slideDown 0.3s ease-out reverse'
+      setTimeout(() => {
+        document.body.removeChild(toastContainer)
+        document.head.removeChild(style)
+      }, 300)
+    }, 5000)
   }
 
   return {

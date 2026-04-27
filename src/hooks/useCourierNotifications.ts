@@ -37,18 +37,22 @@ export function useCourierNotifications(courierId: string | null, isLoggedIn: bo
 
     console.log('🔔 Kurye bildirimleri dinleniyor, courier_id:', courierId)
 
+    const channelName = `courier-packages-${Date.now()}`
+    console.log('📡 Channel oluşturuluyor:', channelName)
+    
     const channel = supabase
-      .channel('courier-assigned-packages')
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
-          event: 'UPDATE',
+          event: '*', // TÜM EVENT'LERİ DİNLE
           schema: 'public',
           table: 'packages'
-          // Filter kaldırıldı - tüm UPDATE'leri dinle
         },
         (payload) => {
-          console.log('📦 Kurye Realtime event (TÜM PAKETLER):', payload)
+          console.log('🎉🎉🎉 REALTIME EVENT GELDİ! 🎉🎉🎉')
+          console.log('📦 Event Type:', payload.eventType)
+          console.log('📦 Full Payload:', JSON.stringify(payload, null, 2))
 
           const oldOrder = payload.old as any
           const newOrder = payload.new as any
