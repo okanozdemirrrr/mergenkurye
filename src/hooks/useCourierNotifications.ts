@@ -44,28 +44,29 @@ export function useCourierNotifications(courierId: string | null, isLoggedIn: bo
         {
           event: 'UPDATE',
           schema: 'public',
-          table: 'packages',
-          filter: `courier_id=eq.${courierId}`
+          table: 'packages'
+          // Filter kaldırıldı - tüm UPDATE'leri dinle
         },
         (payload) => {
-          console.log('📦 Kurye Realtime event:', payload)
+          console.log('📦 Kurye Realtime event (TÜM PAKETLER):', payload)
 
           const oldOrder = payload.old as any
           const newOrder = payload.new as any
 
           console.log('🔍 Detaylı kontrol:')
           console.log('  - eventType:', payload.eventType)
+          console.log('  - newOrder.id:', newOrder.id)
           console.log('  - newOrder.status:', newOrder.status)
-          console.log('  - newOrder.courier_id:', newOrder.courier_id)
-          console.log('  - oldOrder.courier_id:', oldOrder.courier_id)
-          console.log('  - courierId:', courierId)
+          console.log('  - newOrder.courier_id:', newOrder.courier_id, 'TYPE:', typeof newOrder.courier_id)
+          console.log('  - oldOrder.courier_id:', oldOrder.courier_id, 'TYPE:', typeof oldOrder.courier_id)
+          console.log('  - courierId:', courierId, 'TYPE:', typeof courierId)
 
           // Yeni atama kontrolü: status 'assigned' oldu VE önceden bu kuryeye ait değildi VE UPDATE event
           const isNewAssignment = 
             payload.eventType === 'UPDATE' &&
             newOrder.status === 'assigned' &&
-            newOrder.courier_id === courierId &&
-            oldOrder.courier_id !== courierId
+            String(newOrder.courier_id) === String(courierId) &&
+            String(oldOrder.courier_id) !== String(courierId)
 
           console.log('  - isNewAssignment:', isNewAssignment)
 
