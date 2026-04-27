@@ -62,11 +62,11 @@ export function CourierTransferModal({ package: pkg, couriers, onClose, onSucces
 
     return (
         <div 
-            className="fixed inset-0 bg-black/80 z-[200] flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/80 z-[9999] flex items-center justify-center p-4"
             onClick={onClose}
         >
             <div 
-                className="bg-slate-900 rounded-xl p-6 max-w-md w-full border border-orange-500 shadow-2xl"
+                className="bg-slate-900 rounded-xl p-6 max-w-md w-full border border-orange-500 shadow-2xl relative z-[10000]"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Başlık */}
@@ -114,7 +114,7 @@ export function CourierTransferModal({ package: pkg, couriers, onClose, onSucces
 
                 {/* Yeni Kurye Seçimi */}
                 <div className="mb-4">
-                    <label className="block text-sm font-semibold text-white mb-2">
+                    <label className="block text-sm font-semibold text-white mb-3">
                         Yeni Kurye Seçin:
                     </label>
                     {availableCouriers.length === 0 ? (
@@ -124,19 +124,33 @@ export function CourierTransferModal({ package: pkg, couriers, onClose, onSucces
                             </p>
                         </div>
                     ) : (
-                        <select
-                            value={selectedCourierId || ''}
-                            onChange={(e) => setSelectedCourierId(Number(e.target.value))}
-                            className="w-full bg-slate-800 text-white border border-slate-600 rounded-lg px-3 py-3 text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                            disabled={isTransferring}
-                        >
-                            <option value="">Kurye Seçin ({availableCouriers.length} müsait)</option>
-                            {availableCouriers.map(c => (
-                                <option key={c.id} value={c.id}>
-                                    {c.full_name} - {c.activePackageCount || 0} aktif paket
-                                </option>
+                        <div className="space-y-2 max-h-48 overflow-y-auto">
+                            {availableCouriers.map(courier => (
+                                <div
+                                    key={courier.id}
+                                    onClick={() => setSelectedCourierId(courier.id)}
+                                    className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                                        selectedCourierId === courier.id
+                                            ? 'bg-orange-600 border-orange-500 text-white'
+                                            : 'bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700 hover:border-slate-500'
+                                    }`}
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="font-semibold">🚴 {courier.full_name}</p>
+                                            <p className="text-xs opacity-75">
+                                                📦 {courier.activePackageCount || 0} aktif paket
+                                            </p>
+                                        </div>
+                                        {selectedCourierId === courier.id && (
+                                            <div className="text-white">
+                                                ✅
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
                             ))}
-                        </select>
+                        </div>
                     )}
                 </div>
 

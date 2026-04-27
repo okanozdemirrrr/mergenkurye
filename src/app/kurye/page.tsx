@@ -11,6 +11,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { App } from '@capacitor/app'
+import { Preferences } from '@capacitor/preferences'
 import { supabase } from '../lib/supabase'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '../lib/platformUtils'
 import { CourierEarningsStats } from '@/components/CourierEarningsStats'
@@ -332,7 +333,19 @@ export default function KuryePage() {
 
     const checkSession = async () => {
       try {
-        // Önce Supabase session kontrolü yap
+        // Önce Capacitor Preferences'tan kontrol et (Native storage - silinmez)
+        const { value: savedCourierId } = await Preferences.get({ key: LOGIN_COURIER_ID_KEY })
+        const { value: savedLoggedIn } = await Preferences.get({ key: LOGIN_STORAGE_KEY })
+
+        if (savedLoggedIn === 'true' && savedCourierId) {
+          console.log('✅ Capacitor Preferences\'tan oturum bulundu:', savedCourierId)
+          setIsLoggedIn(true)
+          setSelectedCourierId(savedCourierId)
+          setIsCheckingAuth(false)
+          return
+        }
+
+        // Capacitor'da yoksa Supabase session kontrolü yap
         const { data: { session }, error } = await supabase.auth.getSession()
         
         if (session && session.user) {
@@ -341,17 +354,25 @@ export default function KuryePage() {
           setIsLoggedIn(true)
           setSelectedCourierId(courierId)
           
-          // localStorage'a da kaydet (eski sistem ile uyumluluk için)
+          // Capacitor Preferences'a kaydet (kalıcı)
+          await Preferences.set({ key: LOGIN_STORAGE_KEY, value: 'true' })
+          await Preferences.set({ key: LOGIN_COURIER_ID_KEY, value: courierId })
+          
+          // localStorage'a da kaydet (web uyumluluğu için)
           localStorage.setItem(LOGIN_STORAGE_KEY, 'true')
           localStorage.setItem(LOGIN_COURIER_ID_KEY, courierId)
         } else {
-          // Session yok, localStorage kontrolü yap (fallback)
+          // Session yok, localStorage kontrolü yap (fallback - web için)
           const loggedIn = localStorage.getItem(LOGIN_STORAGE_KEY)
           const loggedCourierId = localStorage.getItem(LOGIN_COURIER_ID_KEY)
 
           if (loggedIn === 'true' && loggedCourierId) {
             setIsLoggedIn(true)
             setSelectedCourierId(loggedCourierId)
+            
+            // Capacitor Preferences'a da kaydet
+            await Preferences.set({ key: LOGIN_STORAGE_KEY, value: 'true' })
+            await Preferences.set({ key: LOGIN_COURIER_ID_KEY, value: loggedCourierId })
           } else {
             setIsLoggedIn(false)
           }
@@ -3327,6 +3348,10 @@ export default function KuryePage() {
                 localStorage.removeItem('auth_user_type')
                 localStorage.removeItem('auth_user')
                 
+                // Capacitor Preferences temizle (KALICI storage)
+                await Preferences.remove({ key: LOGIN_STORAGE_KEY })
+                await Preferences.remove({ key: LOGIN_COURIER_ID_KEY })
+                
                 // Ana sayfaya yönlendir
                 window.location.href = '/'
               }}
@@ -3692,6 +3717,10 @@ export default function KuryePage() {
         // Kurye oturumunu başlat (eski sistem)
         localStorage.setItem(LOGIN_STORAGE_KEY, 'true')
         localStorage.setItem(LOGIN_COURIER_ID_KEY, data.id)
+
+        // Capacitor Preferences'a kaydet (KALICI - Android'de silinmez)
+        await Preferences.set({ key: LOGIN_STORAGE_KEY, value: 'true' })
+        await Preferences.set({ key: LOGIN_COURIER_ID_KEY, value: data.id })
 
         // Yeni auth sistemi için de kaydet (otomatik giriş için)
         localStorage.setItem('auth_logged_in', 'true')

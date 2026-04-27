@@ -177,7 +177,7 @@ export function OrderDrawer({
 
                             {/* Kurye Bilgisi */}
                             {selectedPackage.courier_id && (
-                                <div className="bg-slate-800 p-4 rounded-lg">
+                                <div className="bg-slate-800 p-4 rounded-lg relative">
                                     <div className="flex items-center justify-between">
                                         <div>
                                             <p className="text-slate-400 text-xs mb-1">Atanan Kurye</p>
@@ -189,11 +189,20 @@ export function OrderDrawer({
                                           selectedPackage.status === 'on_the_way') && (
                                             <button
                                                 onClick={(e) => {
+                                                    e.preventDefault()
                                                     e.stopPropagation()
+                                                    console.log('🚨 Kurye Devret butonuna tıklandı!')
                                                     setTransferPackage(selectedPackage)
                                                     setSelectedPackage(null) // Detay modal'ını kapat
                                                 }}
-                                                className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1"
+                                                className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1 absolute top-2 right-2"
+                                                style={{ 
+                                                    pointerEvents: 'auto', 
+                                                    position: 'absolute', 
+                                                    zIndex: 99999,
+                                                    top: '8px',
+                                                    right: '8px'
+                                                }}
                                             >
                                                 🚨 Kurye Devret
                                             </button>
