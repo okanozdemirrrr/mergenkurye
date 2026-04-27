@@ -8,19 +8,15 @@
  * - Kısa audio (3-4 saniye)
  * - Native push notification
  * - SADECE GİRİŞ YAPILDIĞINDA AKTİF
- * - İlk render koruması (useRef)
- * - ID bazlı hayalet bildirim koruması
  */
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { supabase } from '@/app/lib/supabase'
 import { useNotification } from '@/contexts/NotificationContext'
 
 export function useCourierNotifications(courierId: string | null, isLoggedIn: boolean = false) {
   const { playShortAudio, showNativeNotification, requestNotificationPermission } = useNotification()
-  const isInitialMount = useRef(true)
-  const notifiedPackageIds = useRef<Set<number>>(new Set()) // Bildirim yapılan paket ID'leri
 
   // Login olduğunda notification izni iste
   useEffect(() => {
@@ -54,12 +50,6 @@ export function useCourierNotifications(courierId: string | null, isLoggedIn: bo
         (payload) => {
           console.log('📦 Kurye Realtime event:', payload)
 
-          // İLK RENDER KORUMASI - Sayfa yüklenirken ses çalma
-          if (isInitialMount.current) {
-            console.log('⏭️ İlk render - bildirim atlandı')
-            return
-          }
-
           const oldOrder = payload.old as any
           const newOrder = payload.new as any
 
@@ -80,16 +70,7 @@ export function useCourierNotifications(courierId: string | null, isLoggedIn: bo
           console.log('  - isNewAssignment:', isNewAssignment)
 
           if (isNewAssignment) {
-            // HAYALET BİLDİRİM KORUMASI - Bu paket ID'si için daha önce bildirim yapıldı mı?
-            if (notifiedPackageIds.current.has(newOrder.id)) {
-              console.log('⚠️ Bu paket için zaten bildirim yapıldı, atlanıyor:', newOrder.id)
-              return
-            }
-
             console.log('🔔 YENİ PAKET ATANDI:', newOrder)
-
-            // Bu paket ID'sini kaydet
-            notifiedPackageIds.current.add(newOrder.id)
 
             // 1. Kısa audio çal (3-4 saniye)
             playShortAudio()
@@ -107,21 +88,11 @@ export function useCourierNotifications(courierId: string | null, isLoggedIn: bo
       )
       .subscribe((status) => {
         console.log('📡 Kurye Realtime status:', status)
-        
-        // İlk render korumasını kaldır (subscription başarılı olduktan sonra)
-        if (status === 'SUBSCRIBED') {
-          setTimeout(() => {
-            isInitialMount.current = false
-            console.log('🔓 İlk render koruması kaldırıldı - bildirimler aktif')
-          }, 2000) // 2 saniye bekle
-        }
       })
 
     // Cleanup
     return () => {
       console.log('🔌 Kurye bildirimleri kapatılıyor')
-      isInitialMount.current = true // Reset protection
-      notifiedPackageIds.current.clear() // Bildirim ID'lerini temizle
       supabase.removeChannel(channel)
     }
   }, [courierId, isLoggedIn]) // isLoggedIn dependency eklendi
