@@ -63,12 +63,21 @@ export function useCourierNotifications(courierId: string | null, isLoggedIn: bo
           const oldOrder = payload.old as any
           const newOrder = payload.new as any
 
+          console.log('🔍 Detaylı kontrol:')
+          console.log('  - eventType:', payload.eventType)
+          console.log('  - newOrder.status:', newOrder.status)
+          console.log('  - newOrder.courier_id:', newOrder.courier_id)
+          console.log('  - oldOrder.courier_id:', oldOrder.courier_id)
+          console.log('  - courierId:', courierId)
+
           // Yeni atama kontrolü: status 'assigned' oldu VE önceden bu kuryeye ait değildi VE UPDATE event
           const isNewAssignment = 
             payload.eventType === 'UPDATE' &&
             newOrder.status === 'assigned' &&
             newOrder.courier_id === courierId &&
             oldOrder.courier_id !== courierId
+
+          console.log('  - isNewAssignment:', isNewAssignment)
 
           if (isNewAssignment) {
             // HAYALET BİLDİRİM KORUMASI - Bu paket ID'si için daha önce bildirim yapıldı mı?
