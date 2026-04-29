@@ -38,7 +38,7 @@ function MapUpdater({ center }: { center: [number, number] }) {
 export function LiveMapComponent({ packages, couriers, restaurants, onRefresh }: LiveMapComponentProps) {
   const [isClient, setIsClient] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const [mapCenter] = useState<[number, number]>([41.494714153011856, 36.07827997146362]) // Samsun 19 Mayıs operasyon merkezi
+  const [mapCenter] = useState<[number, number]>([41.494714153011856, 36.07827997146362]) // Samsun merkez - restoranların ortası
   const [todayHeatmapPoints, setTodayHeatmapPoints] = useState<Array<{ lat: number, lng: number }>>([])
 
   // Bugünün tüm siparişlerinin koordinatlarını çek
@@ -326,43 +326,27 @@ export function LiveMapComponent({ packages, couriers, restaurants, onRefresh }:
     })
   }
 
-  // Restoran ikonu oluştur (isimle birlikte)
+  // Restoran ikonu oluştur (basit versiyon)
   const getRestaurantIcon = (name: string) => {
     return L.divIcon({
       html: `
-        <div style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
-          <div style="
-            background: #f97316;
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            border: 3px solid #f97316;
-            box-shadow: 0 0 0 2px white, 0 0 8px rgba(249, 115, 22, 0.4);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
-          ">🍽️</div>
-          <div style="
-            background: rgba(249, 115, 22, 0.95);
-            color: white;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 9px;
-            font-weight: bold;
-            white-space: nowrap;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            max-width: 100px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-          ">${name}</div>
-        </div>
+        <div style="
+          background: #f97316;
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          border: 2px solid white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 12px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        ">🍽️</div>
       `,
       className: '',
-      iconSize: [100, 50],
-      iconAnchor: [50, 25],
-      popupAnchor: [0, -25]
+      iconSize: [24, 24],
+      iconAnchor: [12, 12],
+      popupAnchor: [0, -12]
     })
   }
 
@@ -387,10 +371,23 @@ export function LiveMapComponent({ packages, couriers, restaurants, onRefresh }:
     restaurant => restaurant.latitude && restaurant.longitude
   )
 
+  // Debug - İlk restoranın koordinatlarını kontrol et
+  if (restaurantsWithCoords.length > 0) {
+    const firstRestaurant = restaurantsWithCoords[0]
+    console.log('🍽️ İlk restoran koordinatları:', {
+      name: firstRestaurant.name,
+      lat: firstRestaurant.latitude,
+      lng: firstRestaurant.longitude,
+      latType: typeof firstRestaurant.latitude,
+      lngType: typeof firstRestaurant.longitude
+    })
+  }
+
   // Debug
   console.log('📦 Toplam paket:', packages.length)
   console.log('🍽️ Toplam restoran:', restaurants.length)
   console.log('🍽️ Koordinatlı restoran:', restaurantsWithCoords.length, restaurantsWithCoords)
+  console.log('🍽️ Restaurants data:', restaurants)
 
   return (
     <>
@@ -444,7 +441,7 @@ export function LiveMapComponent({ packages, couriers, restaurants, onRefresh }:
           {/* Harita */}
           <MapContainer
             center={mapCenter}
-            zoom={14}
+            zoom={12}
             style={{ height: '100%', width: '100%' }}
             zoomControl={true}
           >
@@ -459,6 +456,8 @@ export function LiveMapComponent({ packages, couriers, restaurants, onRefresh }:
             {/* Restoran Markerları */}
             {restaurantsWithCoords.map(restaurant => {
               if (!restaurant) return null
+              
+              console.log('🍽️ Restoran marker oluşturuluyor:', restaurant.name, restaurant.latitude, restaurant.longitude)
               
               // Bu restorana ait aktif paketler
               const restaurantPackages = packages.filter(

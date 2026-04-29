@@ -2,12 +2,14 @@
  * @file src/app/api/send-push/route.ts
  * @description Push Notification Gönderme API Route
  * 
- * Bu endpoint FCM (Firebase Cloud Messaging) üzerinden
- * kurye cihazlarına native push notification gönderir.
+ * SENARYO:
+ * - Admin kuryeye paket atadığında bu endpoint çağrılır
+ * - FCM token ile kurye cihazına bildirim gönderilir
+ * - Format: Trendyol tarzı (Restoran Adı - Teslimat Adresi)
  * 
  * KULLANIM:
  * POST /api/send-push
- * Body: { courierId, title, body, data? }
+ * Body: { courierId, restaurantName, deliveryAddress, customerName }
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -17,20 +19,20 @@ import { messaging } from '@/lib/firebaseAdmin'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { courierId, title, body: messageBody, data } = body
+    const { courierId, restaurantName, deliveryAddress, customerName } = body
 
     // Validasyon
-    if (!courierId || !title || !messageBody) {
+    if (!courierId) {
       return NextResponse.json(
-        { error: 'courierId, title ve body gerekli' },
+        { error: 'courierId gerekli' },
         { status: 400 }
       )
     }
 
     console.log('📤 Push notification gönderiliyor:', {
       courierId,
-      title,
-      body: messageBody
+      restaurantName,
+      deliveryAddress
     })
 
     // 1. Courier'in FCM token'ını al
@@ -56,13 +58,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 2. FCM ile bildirim gönder
+    // 2. Trendyol tarzı bildirim formatı
+    const title = 'YENİ SİPARİŞ 🚀'
+    const messageBody = `${restaurantName || 'Restoran'} - ${deliveryAddress || customerName || 'Müşteri'}`
+
+    // 3. FCM ile bildirim gönder
     const message = {
       notification: {
         title: title,
         body: messageBody
       },
-      data: data || {},
+      data: {
+        type: 'new_assignment',
+        restaurantName: restaurantName || '',
+        deliveryAddress: deliveryAddress || '',
+        customerName: customerName || ''
+      },
       token: courier.fcm_token,
       android: {
         priority: 'high' as const,
@@ -79,13 +90,17 @@ export async function POST(request: NextRequest) {
     console.log('✅ Push notification gönderildi:', {
       courierId,
       courierName: courier.full_name,
-      messageId: response
+      messageId: response,
+      title,
+      body: messageBody
     })
 
     return NextResponse.json({
       success: true,
       messageId: response,
-      courierName: courier.full_name
+      courierName: courier.full_name,
+      title,
+      body: messageBody
     })
 
   } catch (error: any) {

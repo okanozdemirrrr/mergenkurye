@@ -225,6 +225,7 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
   }
 
   const fetchRestaurants = async () => {
+    console.log('🍽️ fetchRestaurants başladı')
     try {
       const { data, error } = await supabase
         .from('restaurants')
@@ -232,6 +233,7 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
         .order('name', { ascending: true })
 
       if (error) throw error
+      console.log('🍽️ Restaurants çekildi:', data?.length, data)
       setRestaurants(data || [])
     } catch (error: any) {
       console.error('Restoranlar yüklenemedi:', error)

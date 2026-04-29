@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import RestaurantDashboard from './components/RestaurantDashboard'
-import { RestaurantNotificationWrapper } from '@/components/notifications/RestaurantNotificationWrapper'
+import { useRestaurantRealtimeNotifications } from '@/hooks/useRestaurantRealtimeNotifications'
 
 const LOGIN_STORAGE_KEY = 'restoran_logged_in'
 const LOGIN_RESTAURANT_ID_KEY = 'restoran_logged_restaurant_id'
@@ -23,6 +23,12 @@ export default function RestoranPage() {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([])
   const [darkMode, setDarkMode] = useState(true)
   const [loginError, setLoginError] = useState('')
+
+  // Realtime bildirimler (INSERT event'leri için)
+  useRestaurantRealtimeNotifications(
+    selectedRestaurantId ? parseInt(selectedRestaurantId) : null,
+    isLoggedIn
+  )
 
   useEffect(() => {
     setIsMounted(true)
@@ -229,13 +235,6 @@ export default function RestoranPage() {
         restaurantId={selectedRestaurantId!}
         darkMode={darkMode}
         setDarkMode={setDarkMode}
-      />
-      
-      {/* Bildirim Sistemi - Sadece giriş yapılmışsa aktif */}
-      <RestaurantNotificationWrapper 
-        restaurantId={selectedRestaurantId ? parseInt(selectedRestaurantId) : null}
-        restaurantName={restaurants.find(r => r.id === selectedRestaurantId)?.name || 'Restoran'}
-        isLoggedIn={isLoggedIn}
       />
     </>
   )

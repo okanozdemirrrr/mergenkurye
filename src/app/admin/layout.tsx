@@ -88,7 +88,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         // 2. Supabase session yoksa, localStorage kontrolü yap
         const adminLoggedIn = localStorage.getItem('admin_logged_in')
-        setIsLoggedIn(adminLoggedIn === 'true')
+        const isAdminLoggedIn = adminLoggedIn === 'true'
+        setIsLoggedIn(isAdminLoggedIn)
       } catch (error) {
         console.error('Auth kontrolü hatası:', error)
         setIsLoggedIn(false)

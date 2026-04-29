@@ -8,13 +8,16 @@ import { LiveTrackingTab } from './components/LiveTrackingTab'
 import { useAdminData } from './AdminDataProvider'
 import { useState } from 'react'
 import { assignCourier, cancelOrder } from '@/services/orderService'
-import { AdminNotificationWrapper } from '@/components/notifications/AdminNotificationWrapper'
+import { useAdminRealtimeNotifications } from '@/hooks/useAdminRealtimeNotifications'
 
 export default function AdminPage() {
   const { packages, couriers, restaurants, isLoading, setSuccessMessage, setErrorMessage, fetchPackages, todayDeliveredCount } = useAdminData()
   const [selectedCouriers, setSelectedCouriers] = useState<{ [key: number]: string }>({})
   const [assigningIds, setAssigningIds] = useState<Set<number>>(new Set())
   const [openDropdownId, setOpenDropdownId] = useState<number | null>(null)
+
+  // Realtime bildirimler (INSERT event'leri için)
+  useAdminRealtimeNotifications(true)
 
   const handleCourierChange = (packageId: number, courierId: string) => {
     setSelectedCouriers(prev => ({ ...prev, [packageId]: courierId }))
@@ -78,9 +81,6 @@ export default function AdminPage() {
         handleCancelOrder={handleCancelOrder}
         todayDeliveredCount={todayDeliveredCount}
       />
-      
-      {/* Bildirim Sistemi - Sadece giriş yapılmışsa aktif */}
-      <AdminNotificationWrapper isLoggedIn={true} />
     </>
   )
 }

@@ -15,8 +15,7 @@ import { Preferences } from '@capacitor/preferences'
 import { supabase } from '../lib/supabase'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '../lib/platformUtils'
 import { CourierEarningsStats } from '@/components/CourierEarningsStats'
-import { CourierNotificationWrapper } from '@/components/notifications/CourierNotificationWrapper'
-import { usePushNotifications } from '@/hooks/usePushNotifications'
+import { useCourierRealtimeNotifications } from '@/hooks/useCourierRealtimeNotifications'
 
 // ============================================
 // SAMSUN OPERASYON BÖLGESI TANIMLARI
@@ -258,6 +257,9 @@ export default function KuryePage() {
   const [unsettledAmount, setUnsettledAmount] = useState(0) // Verilecek hesap (admin'den)
   const ITEMS_PER_PAGE = 30 // Sayfa başına öğe sayısı
 
+  // Realtime bildirimler + FCM Token kaydı (UPDATE event'leri + Push)
+  useCourierRealtimeNotifications(selectedCourierId, isLoggedIn)
+
   // Şifre değiştirme modal state'leri
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [passwordForm, setPasswordForm] = useState({
@@ -303,13 +305,6 @@ export default function KuryePage() {
 
   // ============================================
   // PUSH NOTIFICATIONS HOOK
-  // ============================================
-  // Native Push Notifications (FCM) - Cihaz token'ını alır ve veritabanına kaydeder
-  const pushNotifications = usePushNotifications({
-    courierId: selectedCourierId,
-    isLoggedIn: isLoggedIn
-  })
-
   // ============================================
   // ŞİFRE DEĞİŞTİRME FONKSİYONU
   // ============================================
@@ -3791,9 +3786,6 @@ export default function KuryePage() {
           </div>
         </div>
       )}
-
-      {/* Bildirim Sistemi - Sadece giriş yapılmışsa aktif */}
-      <CourierNotificationWrapper courierId={selectedCourierId} isLoggedIn={isLoggedIn} />
     </div >
   )
 

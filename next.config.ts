@@ -11,6 +11,9 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+
+  // Turbopack için boş config (hataları susturmak için)
+  turbopack: {},
 };
 
 export default nextConfig;

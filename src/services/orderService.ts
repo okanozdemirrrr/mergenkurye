@@ -37,7 +37,13 @@ export async function cancelOrder(packageId: number, details: string = 'Sipariş
 }
 
 /**
- * Kurye atama işlemi + Push Notification
+ * Kurye atama işlemi + Push Notification (Trendyol Tarzı)
+ * 
+ * SENARYO:
+ * 1. Admin kuryeye paket atar
+ * 2. Supabase'de paket güncellenir
+ * 3. Kurye'nin FCM token'ı alınır
+ * 4. Push notification gönderilir: "YENİ SİPARİŞ 🚀" - "[Restoran Adı] - [Teslimat Adresi]"
  */
 export async function assignCourier(packageId: number, courierId: string) {
     try {
@@ -62,21 +68,16 @@ export async function assignCourier(packageId: number, courierId: string) {
 
         if (error) throw error
 
-        // 3. Push Notification Gönder (Ateşleme Mekanizması)
+        // 3. Push Notification Gönder (Trendyol Formatı)
         try {
-            // Mahalle/adres bilgisini çıkar (ilk 50 karakter)
-            const addressPreview = packageData.delivery_address?.substring(0, 50) || 'Adres bilgisi yok'
             const restaurantName = (packageData as any).restaurants?.name || 'Restoran'
+            const deliveryAddress = packageData.delivery_address || packageData.customer_name || 'Müşteri'
 
-            // Bildirim içeriği
-            const notificationTitle = '🚀 Yeni Paket Atandı!'
-            const notificationBody = `${restaurantName} - ${addressPreview}${addressPreview.length >= 50 ? '...' : ''}`
-
-            console.log('📤 Push notification tetikleniyor:', {
+            console.log('📤 Push notification tetikleniyor (Trendyol formatı):', {
                 courierId,
                 packageId,
-                title: notificationTitle,
-                body: notificationBody
+                restaurantName,
+                deliveryAddress
             })
 
             // API route'a istek gönder
@@ -87,12 +88,9 @@ export async function assignCourier(packageId: number, courierId: string) {
                 },
                 body: JSON.stringify({
                     courierId,
-                    title: notificationTitle,
-                    body: notificationBody,
-                    data: {
-                        packageId: packageId.toString(),
-                        type: 'new_package'
-                    }
+                    restaurantName,
+                    deliveryAddress,
+                    customerName: packageData.customer_name
                 })
             })
 
