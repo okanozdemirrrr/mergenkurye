@@ -189,14 +189,12 @@ const loadSession = async (): Promise<{ loggedIn: boolean, courierId: string | n
 
 const clearSession = async () => {
   try {
-    // Tum storage lari temizle
+    // Sadece kurye-spesifik storage'ları temizle
+    // auth_user, auth_logged_in gibi genel key'lere DOKUNMA!
     localStorage.removeItem(STORAGE_KEYS.LOGIN)
     localStorage.removeItem(STORAGE_KEYS.COURIER_ID)
     localStorage.removeItem(STORAGE_KEYS.BACKUP_LOGIN)
     localStorage.removeItem(STORAGE_KEYS.BACKUP_COURIER_ID)
-    localStorage.removeItem('auth_logged_in')
-    localStorage.removeItem('auth_user_type')
-    localStorage.removeItem('auth_user')
     
     await Preferences.remove({ key: STORAGE_KEYS.LOGIN })
     await Preferences.remove({ key: STORAGE_KEYS.COURIER_ID })
@@ -216,7 +214,7 @@ const clearSession = async () => {
       }
     }
     
-    console.log('Tum oturum verileri temizlendi')
+    console.log('✅ Kurye oturum verileri temizlendi')
   } catch (error) {
     console.error('Oturum temizleme hatasi:', error)
   }
@@ -3444,19 +3442,18 @@ export default function KuryePage() {
 
             {/* Çıkış Yap */}
             <button
+              id="btn-kurye-logout"
               onClick={async () => {
-                try {
-                  // Supabase session'ı temizle
-                  await supabase.auth.signOut()
-                } catch (error) {
-                  console.error('SignOut hatası:', error)
-                }
-                
-                // Tüm storage'ları temizle
+                // 1. Sadece kurye-spesifik storage'ı temizle
                 await clearSession()
                 
-                // Ana sayfaya yönlendir
-                window.location.href = '/'
+                // 2. State temizliği
+                setIsLoggedIn(false)
+                setSelectedCourierId(null)
+                setPackages([])
+                
+                // 3. Ana seçim ekranına yönlendir (router.replace — history'de / kalmasın)
+                window.location.replace('/')
               }}
               className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl transition-colors flex items-center justify-center gap-2"
             >

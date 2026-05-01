@@ -62,25 +62,30 @@ export async function POST(request: NextRequest) {
     const title = 'YENİ SİPARİŞ 🚀'
     const messageBody = `${restaurantName || 'Restoran'} - ${deliveryAddress || customerName || 'Müşteri'}`
 
-    // 3. FCM ile bildirim gönder
+    // 3. FCM ile bildirim gönder — High Priority / Notification Message standardı
     const message = {
+      token: courier.fcm_token,
       notification: {
         title: title,
         body: messageBody
       },
       data: {
         type: 'new_assignment',
+        courierId: courierId || '',
         restaurantName: restaurantName || '',
         deliveryAddress: deliveryAddress || '',
         customerName: customerName || ''
       },
-      token: courier.fcm_token,
       android: {
-        priority: 'high' as const,
+        priority: 'high' as const,        // FCM transport-level priority (arka plan için ŞART)
         notification: {
+          channelId: 'mergen_high_priority', // Android 8+ kanal ID'si
           sound: 'default',
-          channelId: 'default',
-          priority: 'high' as const
+          defaultSound: true,
+          defaultVibrateTimings: true,
+          priority: 'max' as const,        // Heads-up (yukarıdan düşen) bildirim için ŞART
+          visibility: 'public' as const,   // Kilit ekranında da göster
+          tag: `order_${courierId}`        // Aynı kuryeye birden fazla bildirim gelirse üst üste yazmasın
         }
       }
     }

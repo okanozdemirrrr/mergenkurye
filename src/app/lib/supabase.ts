@@ -12,6 +12,9 @@ if (typeof window !== 'undefined' && (!process.env.NEXT_PUBLIC_SUPABASE_URL || !
 // Supabase client'ı oluştur - her durumda çalışsın
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    persistSession: true
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: false,
+    storageKey: 'supabase.auth.token'
   }
 })

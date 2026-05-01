@@ -48,28 +48,49 @@ class CourierPushNotificationService {
         }
       }
 
-      // 3. Cihazı FCM'e kaydet
+      // 3. Android 8.0+ için Bildirim Kanalı oluştur (ŞART — kanal yoksa bildirim düşmez!)
+      // Bu işlem idempotent'tir: kanal zaten varsa üzerine yazar, hata vermez.
+      if (Capacitor.getPlatform() === 'android') {
+        try {
+          await PushNotifications.createChannel({
+            id: 'mergen_high_priority',
+            name: 'Acil Siparişler',
+            description: 'Yeni sipariş bildirimleri — ses ve titreşim ile',
+            importance: 5,     // IMPORTANCE_HIGH (heads-up + ses + titreşim)
+            visibility: 1,     // VISIBILITY_PUBLIC (kilit ekranında tam içerik)
+            sound: 'default',
+            vibration: true,
+            lights: true,
+            lightColor: '#FF6B00' // Turuncu ışık (Alda Gel brand rengi)
+          })
+          console.log('✅ mergen_high_priority kanalı oluşturuldu/güncellendi')
+        } catch (channelError) {
+          console.warn('⚠️ Kanal oluşturma hatası (önemsiz):', channelError)
+        }
+      }
+
+      // 4. Cihazı FCM'e kaydet
       console.log('📱 Cihaz FCM\'e kaydediliyor...')
       await PushNotifications.register()
 
-      // 4. Registration event listener - FCM Token alındığında
+      // 5. Registration event listener - FCM Token alındığında
       await PushNotifications.addListener('registration', async (token: Token) => {
         console.log('🎉 FCM Token alındı:', token.value)
         await this.saveFcmTokenToDatabase(token.value)
       })
 
-      // 5. Registration hatası listener
+      // 6. Registration hatası listener
       await PushNotifications.addListener('registrationError', (error: any) => {
         console.error('❌ FCM kayıt hatası:', error)
       })
 
-      // 6. Foreground notification listener (Realtime hook'ta zaten var, ama yine de ekleyelim)
+      // 7. Foreground bildirim listener — uygulama açıkken gelen push'lar
       await PushNotifications.addListener('pushNotificationReceived', (notification: any) => {
         console.log('🔔 Foreground push notification alındı:', notification)
         // Realtime hook zaten ses çalıyor, burada sadece log
       })
 
-      // 7. Background notification tıklama listener
+      // 8. Background bildirim tıklama listener
       await PushNotifications.addListener('pushNotificationActionPerformed', (notification: any) => {
         console.log('👆 Bildirime tıklandı:', notification)
         // Burada yönlendirme yapılabilir

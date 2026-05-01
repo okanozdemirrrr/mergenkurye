@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Alda Gel marka renkleri -->
+    <color name="colorPrimary">#FF6B00</color>
+    <color name="colorPrimaryDark">#E65C00</color>
+    <color name="colorAccent">#FB923C</color>
+</resources>
