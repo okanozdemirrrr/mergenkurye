@@ -409,9 +409,9 @@ export function HistoryTab({
                                             />
                                         </div>
                                     </td>
-                                    <td className="py-3 px-4">
+                                    <td className="py-3 px-4 text-white">
                                         <div className="flex items-center gap-2">
-                                            <span className="font-bold text-orange-600">
+                                            <span className="font-bold text-orange-400">
                                                 {pkg.order_number || '......'}
                                             </span>
                                             {pkg.platform && (
@@ -426,14 +426,14 @@ export function HistoryTab({
                                             )}
                                         </div>
                                     </td>
-                                    <td className="py-3 px-4">
+                                    <td className="py-3 px-4 text-white">
                                         <div className="text-sm">
                                             <div className="font-medium">
                                                 {pkg.status === 'cancelled'
                                                     ? formatTurkishTime(pkg.cancelled_at || undefined)
                                                     : formatTurkishTime(pkg.delivered_at)}
                                             </div>
-                                            <div className="text-slate-500 text-xs">
+                                            <div className="text-slate-400 text-xs">
                                                 {pkg.status === 'cancelled' && pkg.cancelled_at
                                                     ? new Date(pkg.cancelled_at).toLocaleDateString('tr-TR')
                                                     : pkg.delivered_at
@@ -442,14 +442,14 @@ export function HistoryTab({
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="py-3 px-4 font-medium">
+                                    <td className="py-3 px-4 font-medium text-white">
                                         <div>{pkg.customer_name}</div>
                                         {pkg.customer_phone && (
-                                            <div className="text-xs text-slate-500 mt-1">📞 {pkg.customer_phone}</div>
+                                            <div className="text-xs text-slate-400 mt-1">📞 {pkg.customer_phone}</div>
                                         )}
                                     </td>
-                                    <td className="py-3 px-4">{pkg.restaurant?.name}</td>
-                                    <td className="py-3 px-4">
+                                    <td className="py-3 px-4 text-white">{pkg.restaurant?.name}</td>
+                                    <td className="py-3 px-4 text-white">
                                         {pkg.status === 'cancelled' ? (
                                             <span className="text-slate-400 italic">-</span>
                                         ) : (
