@@ -56,15 +56,11 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
 
   const fetchPackages = async () => {
     try {
-      const todayStart = new Date()
-      todayStart.setHours(0, 0, 0, 0)
-
-      // ✅ TÜM AKTİF STATUSLER: new_order, getting_ready, ready, assigned, picking_up, on_the_way
+      // ✅ TÜM AKTİF STATUSLER - TARİH FİLTRESİ YOK
       const { data, error } = await supabase
         .from('packages')
         .select('*, restaurants(*)')
         .in('status', ['new_order', 'getting_ready', 'ready', 'assigned', 'picking_up', 'on_the_way'])
-        .gte('created_at', todayStart.toISOString())
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -115,7 +111,8 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
           amount: p.amount,
           payment_method: p.payment_method,
           delivered_at: p.delivered_at,
-          courier_id: p.courier_id
+          courier_id: p.courier_id,
+          applied_price: p.applied_price
         }))
       })
 

@@ -9,6 +9,7 @@ import { useAdminData } from './AdminDataProvider'
 import { useState } from 'react'
 import { assignCourier, cancelOrder } from '@/services/orderService'
 import { useAdminRealtimeNotifications } from '@/hooks/useAdminRealtimeNotifications'
+import { useReadyPackageNotification } from '@/hooks/useReadyPackageNotification'
 
 export default function AdminPage() {
   const { packages, couriers, restaurants, isLoading, setSuccessMessage, setErrorMessage, fetchPackages, todayDeliveredCount } = useAdminData()
@@ -18,6 +19,9 @@ export default function AdminPage() {
 
   // Realtime bildirimler (INSERT event'leri için)
   useAdminRealtimeNotifications(true)
+  
+  // Hazır paket bildirimleri (UPDATE event'leri için)
+  useReadyPackageNotification()
 
   const handleCourierChange = (packageId: number, courierId: string) => {
     setSelectedCouriers(prev => ({ ...prev, [packageId]: courierId }))

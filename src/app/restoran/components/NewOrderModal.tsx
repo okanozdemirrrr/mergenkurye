@@ -264,6 +264,18 @@ export default function NewOrderModal({ onClose, onSuccess, restaurantId, darkMo
     setIsSubmitting(true)
     setError('')
     try {
+      // 1. SNAPSHOT: Restoranın güncel package_fee'sini al
+      const { data: restaurantData, error: restaurantError } = await supabase
+        .from('restaurants')
+        .select('package_fee')
+        .eq('id', restaurantId)
+        .single()
+
+      if (restaurantError) throw restaurantError
+
+      const appliedPrice = restaurantData?.package_fee || 100
+
+      // 2. INSERT: applied_price ile birlikte kaydet
       const { error: insertError } = await supabase
         .from('packages')
         .insert([{
@@ -275,6 +287,7 @@ export default function NewOrderModal({ onClose, onSuccess, restaurantId, darkMo
           status: 'new_order',
           payment_method: paymentMethod,
           restaurant_id: restaurantId,
+          applied_price: appliedPrice,
           created_at: new Date().toISOString()
         }])
       if (insertError) throw insertError

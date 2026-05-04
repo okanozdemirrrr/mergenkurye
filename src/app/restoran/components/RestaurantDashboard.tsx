@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/app/lib/supabase'
 import KanbanBoard from './KanbanBoard'
 import NewOrderModal from './NewOrderModal'
+import PullToRefresh from '@/components/PullToRefresh'
 import { Package, Courier } from '@/types'
 import { formatTurkishTime } from '@/utils/dateHelpers'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
@@ -46,12 +47,16 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
   const PACKAGE_FEE = restaurant?.package_fee || 100
 
   useEffect(() => {
-    fetchRestaurant()
+    const loadData = async () => {
+      await fetchRestaurant()
+      await fetchTodayStats()
+    }
+    
+    loadData()
     fetchPackages()
-    fetchTodayStats()
     fetchCouriers()
 
-    // 🔥 ÇELİK GİBİ REALTIME BAĞLANTI - SESSIZ YENİDEN BAĞLANMA
+    // 🔥 REALTIME - SESSIZ ARKA PLAN GÜNCELLEMESİ
     let subscription: any = null
     let reconnectTimer: NodeJS.Timeout | null = null
 
@@ -68,6 +73,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
               filter: `restaurant_id=eq.${restaurantId}`
             },
             () => {
+              // Sessiz güncelleme - ekran titremiyor
               fetchPackages()
               fetchTodayStats()
             }
@@ -83,7 +89,6 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
           console.log('✅ Restoran Realtime bağlandı')
           subscription = channel
           
-          // Başarılı bağlantıda timer'ı temizle
           if (reconnectTimer) {
             clearTimeout(reconnectTimer)
             reconnectTimer = null
@@ -91,7 +96,6 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
           console.warn(`⚠️ Restoran Realtime bağlantı hatası: ${status}`)
           
-          // Sessiz yeniden bağlanma (3 saniye sonra)
           reconnectTimer = setTimeout(() => {
             console.log('🔄 Restoran Realtime yeniden bağlanılıyor...')
             setupRealtimeWithRetry(retryCount + 1)
@@ -100,7 +104,6 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
       } catch (error) {
         console.error('❌ Restoran Realtime subscription hatası:', error)
         
-        // Hata durumunda da yeniden bağlanmayı dene (maksimum 10 deneme)
         if (retryCount < 10) {
           reconnectTimer = setTimeout(() => {
             console.log(`🔄 Hata sonrası yeniden bağlanılıyor (Deneme: ${retryCount + 1})`)
@@ -114,12 +117,6 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
 
     setupRealtimeWithRetry()
 
-    // 30 saniyelik otomatik yenileme (polling)
-    const refreshInterval = setInterval(() => {
-      fetchPackages()
-      fetchTodayStats()
-    }, 30000)
-
     return () => {
       if (reconnectTimer) {
         clearTimeout(reconnectTimer)
@@ -127,7 +124,6 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
       if (subscription) {
         supabase.removeChannel(subscription)
       }
-      clearInterval(refreshInterval)
     }
   }, [restaurantId])
 
@@ -147,7 +143,11 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
   }, [restaurantId])
 
   const fetchPackages = useCallback(async () => {
-    setIsLoading(true)
+    // İlk yüklemede loading göster, sonrasında sessiz güncelle
+    if (packages.length === 0) {
+      setIsLoading(true)
+    }
+    
     try {
       if (activeTab === 'active') {
         const { data, error } = await supabase
@@ -189,9 +189,11 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
     } catch (error) {
       console.error('Siparişler alınamadı:', error)
     } finally {
-      setIsLoading(false)
+      if (packages.length === 0) {
+        setIsLoading(false)
+      }
     }
-  }, [restaurantId, activeTab, startDate, endDate])
+  }, [restaurantId, activeTab, startDate, endDate, packages.length])
 
   const fetchCouriers = useCallback(async () => {
     try {
@@ -212,9 +214,18 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
       const todayStart = new Date()
       todayStart.setHours(0, 0, 0, 0)
 
+      // Restoran bilgisini al (fallback için)
+      const { data: restaurantData, error: restaurantError } = await supabase
+        .from('restaurants')
+        .select('package_fee')
+        .eq('id', restaurantId)
+        .single()
+
+      if (restaurantError) throw restaurantError
+
       const { data, error } = await supabase
         .from('packages')
-        .select('amount')
+        .select('amount, applied_price')
         .eq('restaurant_id', restaurantId)
         .eq('status', 'delivered')
         .gte('delivered_at', todayStart.toISOString())
@@ -223,12 +234,30 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
 
       const packageCount = data?.length || 0
       const totalRevenue = data?.reduce((sum, pkg) => sum + (pkg.amount || 0), 0) || 0
-      const packageFee = packageCount * PACKAGE_FEE
-      const netRevenue = totalRevenue - packageFee
+      
+      // 2. DASHBOARD MATH: applied_price toplamı (fallback: restaurant.package_fee)
+      const fallbackPrice = restaurantData?.package_fee || PACKAGE_FEE
+      const calculatedTotalCost = data?.reduce((sum, pkg) => {
+        const price = pkg.applied_price ?? fallbackPrice
+        return sum + price
+      }, 0) || 0
+
+      console.log('📊 fetchTodayStats DEBUG:', {
+        restaurantId,
+        todayStart: todayStart.toISOString(),
+        packageCount,
+        totalRevenue,
+        fallbackPrice,
+        calculatedTotalCost,
+        packages: data,
+        restaurantPackageFee: restaurantData?.package_fee
+      })
+      
+      const netRevenue = totalRevenue - calculatedTotalCost
 
       setTodayStats({
         packageCount,
-        packageFee,
+        packageFee: calculatedTotalCost,
         totalRevenue,
         netRevenue,
         isLoading: false
@@ -245,13 +274,22 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
     fetchPackages()
   }, [fetchPackages])
 
+  const handleRefresh = useCallback(async () => {
+    await Promise.all([
+      fetchRestaurant(),
+      fetchPackages(),
+      fetchTodayStats()
+    ])
+  }, [fetchRestaurant, fetchPackages, fetchTodayStats])
+
   // Sekme değiştiğinde paketleri yeniden yükle
   useEffect(() => {
     fetchPackages()
   }, [activeTab, startDate, endDate, fetchPackages])
 
   return (
-    <div className={`min-h-screen py-6 px-4 ${darkMode ? 'bg-slate-950' : 'bg-gray-100'}`}>
+    <PullToRefresh onRefresh={handleRefresh} darkMode={darkMode}>
+      <div className={`min-h-screen py-6 px-4 ${darkMode ? 'bg-slate-950' : 'bg-gray-100'}`}>
       {/* Dark Mode Toggle */}
       <button
         onClick={() => setDarkMode(!darkMode)}
@@ -375,7 +413,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                     </p>
                   )}
                   <p className={`text-xs mt-0.5 ${darkMode ? 'text-slate-500' : 'text-gray-500'}`}>
-                    {todayStats.packageCount} × {PACKAGE_FEE}₺
+                    {todayStats.packageCount} × {restaurant?.package_fee || PACKAGE_FEE}₺
                   </p>
                 </div>
                 <div className="text-3xl opacity-20">💸</div>
@@ -586,5 +624,6 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
         />
       )}
     </div>
+    </PullToRefresh>
   )
 }

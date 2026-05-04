@@ -16,6 +16,7 @@ import { supabase } from '../lib/supabase'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '../lib/platformUtils'
 import { CourierEarningsStats } from '@/components/CourierEarningsStats'
 import { useCourierRealtimeNotifications } from '@/hooks/useCourierRealtimeNotifications'
+import PullToRefresh from '@/components/PullToRefresh'
 
 // ============================================
 // SAMSUN OPERASYON BÖLGESI TANIMLARI
@@ -302,6 +303,17 @@ export default function KuryePage() {
   const [packageSlots, setPackageSlots] = useState<{ [key: number]: number }>({}) // packageId -> slotNumber
 
   // ============================================
+  // PULL-TO-REFRESH HANDLER
+  // ============================================
+  const handleRefresh = async () => {
+    await Promise.all([
+      fetchPackages(false),
+      fetchDeliveredCount(),
+      fetchTodayDeliveredPackages()
+    ])
+  }
+
+  // ============================================
   // PUSH NOTIFICATIONS HOOK
   // ============================================
   // ŞİFRE DEĞİŞTİRME FONKSİYONU
@@ -485,20 +497,14 @@ export default function KuryePage() {
           return
         }
 
-        // Supabase session kontrolü
-        const { data: { session: supabaseSession }, error } = await supabase.auth.getSession()
+        // KATI ROTA GÜVENLİĞİ: Kurye değilse anında ana sayfaya at
+        setIsLoggedIn(false)
+        window.location.href = '/'
         
-        if (supabaseSession && supabaseSession.user) {
-          const courierId = supabaseSession.user.id
-          setIsLoggedIn(true)
-          setSelectedCourierId(courierId)
-          await saveSession(courierId)
-        } else {
-          setIsLoggedIn(false)
-        }
       } catch (error) {
         console.error('Session kontrolü hatası:', error)
         setIsLoggedIn(false)
+        window.location.href = '/'
       } finally {
         setIsCheckingAuth(false)
       }
@@ -2443,7 +2449,8 @@ export default function KuryePage() {
   }
 
   return (
-    <div className={`min-h-screen p-2 sm:p-4 pb-20 ${darkMode ? 'bg-slate-950 text-white' : 'bg-gray-100 text-gray-900'}`}>
+    <PullToRefresh onRefresh={handleRefresh} darkMode={darkMode}>
+      <div className={`min-h-screen p-2 sm:p-4 pb-20 ${darkMode ? 'bg-slate-950 text-white' : 'bg-gray-100 text-gray-900'}`}>
       {/* KOMPAKT HEADER - TEK SATIRDA TÜM BİLGİLER */}
       {isLoggedIn && activeTab === 'packages' && (
         <div className="fixed top-2 left-2 right-2 z-[9998] transition-all duration-300">
@@ -2558,7 +2565,7 @@ export default function KuryePage() {
         </div>
       )}
 
-      <div className="max-w-2xl mx-auto px-2 sm:px-0 relative pt-20 pb-20">{/* pb-20 bottom nav için boşluk */}
+      <div className="max-w-2xl mx-auto px-2 sm:px-0 relative pt-20 pb-24">{/* pb-24 bottom nav için boşluk */}
         {/* DURUM TOGGLE VE MİKROFON - SAĞ ALT KÖŞE */}
         {activeTab === 'packages' && (
           <div className="fixed bottom-24 right-4 z-50">
@@ -3444,16 +3451,25 @@ export default function KuryePage() {
             <button
               id="btn-kurye-logout"
               onClick={async () => {
-                // 1. Sadece kurye-spesifik storage'ı temizle
-                await clearSession()
+                // 1. Supabase'den çıkış yap (Hard kill)
+                try {
+                  await supabase.auth.signOut()
+                } catch (e) {
+                  console.error('SignOut hatası', e)
+                }
                 
-                // 2. State temizliği
+                // 2. Kurye spesifik ve genel tüm verileri temizle
+                await clearSession()
+                localStorage.clear()
+                sessionStorage.clear()
+                
+                // 3. State temizliği
                 setIsLoggedIn(false)
                 setSelectedCourierId(null)
                 setPackages([])
                 
-                // 3. Ana seçim ekranına yönlendir (router.replace — history'de / kalmasın)
-                window.location.replace('/')
+                // 4. Sayfayı tamamen yenileterek state'lerin sıfırlanmasını sağla
+                window.location.href = '/'
               }}
               className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl transition-colors flex items-center justify-center gap-2"
             >
@@ -3783,7 +3799,8 @@ export default function KuryePage() {
           </div>
         </div>
       )}
-    </div >
+    </div>
+    </PullToRefresh>
   )
 
   async function handleLogin(e: any) {

@@ -28,6 +28,7 @@ interface Package {
   cancelled_at?: string | null
   cancelled_by?: 'admin' | 'restaurant' | null
   cancellation_reason?: string | null
+  applied_price?: number | null
 }
 
 interface Restaurant {

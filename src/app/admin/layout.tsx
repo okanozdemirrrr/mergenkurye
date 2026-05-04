@@ -75,24 +75,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       setIsCheckingAuth(true)
 
       try {
-        // 1. Önce Supabase session kontrolü yap
-        const { data: { session } } = await supabase.auth.getSession()
-        
-        if (session && session.user) {
-          // Supabase session varsa, admin olarak giriş yap
-          localStorage.setItem('admin_logged_in', 'true')
-          setIsLoggedIn(true)
-          setIsCheckingAuth(false)
-          return
-        }
-
-        // 2. Supabase session yoksa, localStorage kontrolü yap
+        // KATİ ROTA GÜVENLİĞİ: Sadece admin olarak giriş yapıldıysa içeri al
         const adminLoggedIn = localStorage.getItem('admin_logged_in')
-        const isAdminLoggedIn = adminLoggedIn === 'true'
-        setIsLoggedIn(isAdminLoggedIn)
+        
+        if (adminLoggedIn === 'true') {
+          setIsLoggedIn(true)
+        } else {
+          // Admin değilse veya session yoksa içeri alma, bekleme
+          setIsLoggedIn(false)
+          // Güvenlik amacıyla izinsiz girişte direkt kök dizine fırlat (isteğe bağlı ama kullanıcı "anında / at" dedi)
+          if (pathname !== '/admin' && !pathname.startsWith('/admin')) {
+             window.location.href = '/'
+          }
+        }
       } catch (error) {
         console.error('Auth kontrolü hatası:', error)
         setIsLoggedIn(false)
+        window.location.href = '/'
       } finally {
         setIsCheckingAuth(false)
       }
@@ -375,16 +374,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <button
               onClick={async () => {
                 try {
-                  // 1. Supabase'den çıkış yap
+                  // 1. Supabase'den çıkış yap (Hard kill)
                   await supabase.auth.signOut()
                 } catch (error) {
                   console.error('SignOut hatası:', error)
                 }
                 
-                // 2. localStorage'dan admin key'i temizle
-                localStorage.removeItem('admin_logged_in')
+                // 2. Tarayıcıda kalan tüm verileri yokederek cache'i temizle
+                localStorage.clear()
+                sessionStorage.clear()
                 
-                // 3. Ana sayfaya yönlendir
+                // 3. Sayfayı tamamen yenileterek state'lerin sıfırlanmasını sağla
                 window.location.href = '/'
               }}
               className="w-full mt-8 bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-lg font-medium transition-colors"

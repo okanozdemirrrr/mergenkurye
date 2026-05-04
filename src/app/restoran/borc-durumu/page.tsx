@@ -14,6 +14,20 @@ export default function BorcDurumuPage() {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
 
+  const [restaurant, setRestaurant] = useState<any>(null)
+
+  useEffect(() => {
+    const fetchRestaurant = async () => {
+      const { data } = await supabase
+        .from('restaurants')
+        .select('package_fee')
+        .eq('id', restaurantId)
+        .single()
+      setRestaurant(data)
+    }
+    if (restaurantId) fetchRestaurant()
+  }, [restaurantId])
+
   const getFilteredDeliveredPackages = () => {
     const delivered = packages.filter(p => p.status === 'delivered')
 
@@ -53,7 +67,13 @@ export default function BorcDurumuPage() {
   }
 
   const filteredPackages = startDate && endDate ? getCustomDateFilteredPackages() : getFilteredDeliveredPackages()
-  const totalDebt = filteredPackages.length * 100 // Her paket 100₺
+  
+  // 2. DASHBOARD MATH: applied_price toplamı (fallback: restaurant.package_fee)
+  const fallbackFee = restaurant?.package_fee || 100
+  const totalDebt = filteredPackages.reduce((sum, pkg) => {
+    const price = (pkg as any).applied_price ?? fallbackFee
+    return sum + price
+  }, 0)
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
@@ -148,7 +168,7 @@ export default function BorcDurumuPage() {
             <div className="text-5xl font-black text-white mb-2">{totalDebt.toFixed(2)}₺</div>
             <div className="text-red-300 text-lg font-semibold">Toplam Borcunuz</div>
             <div className="text-slate-400 text-sm mt-2">
-              {filteredPackages.length} paket × 100₺
+              {filteredPackages.length} paket (Snapshot fiyatlandırma)
             </div>
           </div>
         </div>
@@ -176,7 +196,9 @@ export default function BorcDurumuPage() {
                   </div>
                   <div className="text-right">
                     <div className="text-xl font-bold text-orange-400">{pkg.amount}₺</div>
-                    <div className="text-sm text-red-400">Borç: 100₺</div>
+                    <div className="text-sm text-red-400">
+                      Borç: {(pkg as any).applied_price ?? fallbackFee}₺
+                    </div>
                   </div>
                 </div>
               </div>
@@ -188,9 +210,9 @@ export default function BorcDurumuPage() {
         <div className="mt-6 bg-orange-500/10 border border-orange-500/30 rounded-lg p-4">
           <h3 className="text-lg font-bold text-orange-300 mb-2">ℹ️ Bilgilendirme</h3>
           <div className="text-sm text-slate-300 space-y-2">
-            <p>• Her teslim edilen paket için <span className="font-bold text-white">100₺</span> ücret hesaplanır.</p>
+            <p>• Her paket için <span className="font-bold text-white">sipariş anındaki fiyat</span> uygulanır (Snapshot).</p>
             <p>• Borç tutarınız sadece <span className="font-bold text-green-400">teslim edilen</span> paketleri kapsar.</p>
-            <p>• İptal edilen veya aktif siparişler borç hesabına dahil değildir.</p>
+            <p>• Fiyat değişiklikleri geçmiş siparişleri etkilemez.</p>
             <p>• Ödeme yapmak için admin ile iletişime geçiniz.</p>
           </div>
         </div>

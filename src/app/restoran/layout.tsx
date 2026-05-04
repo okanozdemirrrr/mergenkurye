@@ -75,8 +75,12 @@ export default function RestoranLayout({ children }: { children: React.ReactNode
           setIsLoggedIn(true)
         } else {
           setIsLoggedIn(false)
+          // KATI ROTA GÜVENLİĞİ: Restoran değilse anında ana sayfaya at
+          if (pathname !== '/restoran' && !pathname.startsWith('/restoran')) {
+            window.location.href = '/'
+          }
         }
-        
+
         // Restoranları her durumda çek (login kontrolünden bağımsız)
         await fetchRestaurants()
       } catch (error) {
@@ -85,6 +89,9 @@ export default function RestoranLayout({ children }: { children: React.ReactNode
         const loggedIn = localStorage.getItem(LOGIN_STORAGE_KEY)
         const restaurantId = localStorage.getItem(LOGIN_RESTAURANT_ID_KEY)
         setIsLoggedIn(loggedIn === 'true' && !!restaurantId)
+        if (!(loggedIn === 'true' && !!restaurantId)) {
+           window.location.href = '/'
+        }
       } finally {
         setIsCheckingAuth(false)
         setAuthChecked(true) // Kontrol tamamlandı
@@ -330,17 +337,17 @@ function MenuSidebar({ showMenu, setShowMenu, isActive }: { showMenu: boolean, s
         <button
           onClick={async () => {
             try {
-              // 1. Supabase'den çıkış yap
+              // 1. Supabase'den çıkış yap (Hard kill)
               await supabase.auth.signOut()
             } catch (error) {
               console.error('SignOut hatası:', error)
             }
             
-            // 2. localStorage'dan restoran key'lerini temizle
-            localStorage.removeItem(LOGIN_STORAGE_KEY)
-            localStorage.removeItem(LOGIN_RESTAURANT_ID_KEY)
+            // 2. Tarayıcıda kalan tüm verileri yokederek cache'i temizle
+            localStorage.clear()
+            sessionStorage.clear()
             
-            // 3. Ana sayfaya yönlendir
+            // 3. Sayfayı tamamen yenileterek state'lerin sıfırlanmasını sağla
             window.location.href = '/'
           }}
           className="w-full mt-8 bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-lg font-medium transition-colors"

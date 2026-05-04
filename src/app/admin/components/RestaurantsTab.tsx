@@ -223,18 +223,24 @@ export function RestaurantsTab({
     // Borç
     if (restaurantSubTab === 'debt') {
         const restaurantDebts = restaurants.map(restaurant => {
-            const deliveredCount = deliveredPackages.filter(pkg =>
+            const restaurantPackages = deliveredPackages.filter(pkg =>
                 pkg.restaurant_id === restaurant.id && pkg.status === 'delivered'
-            ).length
+            )
 
-            const packageFee = restaurant.package_fee || 100
-            const debt = deliveredCount * packageFee
+            const deliveredCount = restaurantPackages.length
+            const fallbackFee = restaurant.package_fee || 100
+            
+            // 2. DASHBOARD MATH: applied_price toplamı (fallback: restaurant.package_fee)
+            const debt = restaurantPackages.reduce((sum, pkg) => {
+                const price = (pkg as any).applied_price ?? fallbackFee
+                return sum + price
+            }, 0)
 
             return {
                 ...restaurant,
                 deliveredCount,
                 debt,
-                packageFee
+                packageFee: fallbackFee
             }
         }).sort((a, b) => b.debt - a.debt)
 
@@ -345,15 +351,20 @@ export function RestaurantsTab({
             
             const totalOrders = restaurantOrders.length
             const totalRevenue = restaurantOrders.reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
-            const packageFee = restaurant.package_fee || 100
-            const totalDebt = totalOrders * packageFee
+            const fallbackFee = restaurant.package_fee || 100
+            
+            // 2. DASHBOARD MATH: applied_price toplamı (fallback: restaurant.package_fee)
+            const totalDebt = restaurantOrders.reduce((sum, pkg) => {
+                const price = (pkg as any).applied_price ?? fallbackFee
+                return sum + price
+            }, 0)
             
             return {
                 ...restaurant,
                 totalOrders,
                 totalRevenue,
                 totalDebt,
-                packageFee
+                packageFee: fallbackFee
             }
         })
 
