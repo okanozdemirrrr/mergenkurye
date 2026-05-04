@@ -80,8 +80,12 @@ export async function assignCourier(packageId: number, courierId: string) {
                 deliveryAddress
             })
 
-            // API route'a istek gönder
-            const response = await fetch('/api/send-push', {
+            // API route'a istek gönder (absolute URL ile)
+            const baseUrl = typeof window !== 'undefined' 
+                ? window.location.origin 
+                : process.env.NEXT_PUBLIC_SITE_URL || 'https://mergenkuryesistem.vercel.app'
+            
+            const response = await fetch(`${baseUrl}/api/send-push`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
