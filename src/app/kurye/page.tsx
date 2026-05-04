@@ -2513,7 +2513,7 @@ export default function KuryePage() {
       {/* BOTTOM NAVIGATION BAR - Sadece Kurye Paneli */}
       {isLoggedIn && (
         <div className="fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-800 z-50 safe-area-bottom">
-          <div className="flex items-center justify-around max-w-2xl mx-auto">
+          <div className="flex items-center justify-around">
             {/* Aktif Paketler */}
             <button
               onClick={() => setActiveTab('packages')}
