@@ -545,7 +545,7 @@ export default function KuryePage() {
         .from('packages')
         .select('*, restaurants(name, phone, address)')
         .eq('courier_id', courierId)
-        .neq('status', 'delivered')
+        .in('status', ['assigned', 'picking_up', 'on_the_way'])
         .order('created_at', { ascending: false })
 
       if (error) throw error
