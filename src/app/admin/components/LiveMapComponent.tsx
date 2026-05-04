@@ -26,12 +26,18 @@ interface LiveMapComponentProps {
 
 // Harita merkezini güncelleme komponenti
 function MapUpdater({ center }: { center: [number, number] }) {
-  // @ts-ignore - Leaflet dinamik import
-  const { useMap } = require('react-leaflet')
-  const map = useMap()
-  useEffect(() => {
-    map.setView(center, map.getZoom())
-  }, [center, map])
+  try {
+    // @ts-ignore - Leaflet dinamik import
+    const { useMap } = require('react-leaflet')
+    const map = useMap()
+    useEffect(() => {
+      if (map) {
+        map.setView(center, map.getZoom())
+      }
+    }, [center, map])
+  } catch (e) {
+    // Leaflet yüklenmemişse hata yok
+  }
   return null
 }
 

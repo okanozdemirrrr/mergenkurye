@@ -1580,7 +1580,7 @@ export default function KuryePage() {
 
   // IBAN kopyalama fonksiyonu
   const copyIbanToClipboard = () => {
-    const iban = 'TR79 0001 0090 1065 9157 6050 01'
+    const iban = 'TR66 0015 7000 0000 0076 2180 38'
     navigator.clipboard.writeText(iban.replace(/\s/g, ''))
     setSuccessMessage('✅ IBAN kopyalandı!')
     setTimeout(() => setSuccessMessage(''), 2000)
@@ -2449,6 +2449,7 @@ export default function KuryePage() {
   }
 
   return (
+    <>
     <PullToRefresh onRefresh={handleRefresh} darkMode={darkMode}>
       <div className={`min-h-screen p-2 sm:p-4 pb-20 ${darkMode ? 'bg-slate-950 text-white' : 'bg-gray-100 text-gray-900'}`}>
       {/* KOMPAKT HEADER - TEK SATIRDA TÜM BİLGİLER */}
@@ -2507,61 +2508,6 @@ export default function KuryePage() {
             </svg>
             <span className="hidden xs:inline font-medium whitespace-nowrap">Sıralama</span>
           </button>
-        </div>
-      )}
-
-      {/* BOTTOM NAVIGATION BAR - Sadece Kurye Paneli */}
-      {isLoggedIn && (
-        <div className="fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-800 z-50 safe-area-bottom">
-          <div className="flex items-center justify-around">
-            {/* Aktif Paketler */}
-            <button
-              onClick={() => setActiveTab('packages')}
-              className={`flex-1 flex flex-col items-center py-3 transition-all ${activeTab === 'packages'
-                ? 'text-blue-400'
-                : 'text-slate-400 active:text-slate-300'
-                }`}
-            >
-              <span className="text-2xl mb-1">📦</span>
-              <span className="text-xs font-medium">Aktif</span>
-            </button>
-
-            {/* Geçmişim */}
-            <button
-              onClick={() => setActiveTab('history')}
-              className={`flex-1 flex flex-col items-center py-3 transition-all ${activeTab === 'history'
-                ? 'text-blue-400'
-                : 'text-slate-400 active:text-slate-300'
-                }`}
-            >
-              <span className="text-2xl mb-1">📋</span>
-              <span className="text-xs font-medium">Geçmişim</span>
-            </button>
-
-            {/* Verilecek Hesap */}
-            <button
-              onClick={() => setActiveTab('earnings')}
-              className={`flex-1 flex flex-col items-center py-3 transition-all ${activeTab === 'earnings'
-                ? 'text-blue-400'
-                : 'text-slate-400 active:text-slate-300'
-                }`}
-            >
-              <span className="text-2xl mb-1">💰</span>
-              <span className="text-xs font-medium">Hesap</span>
-            </button>
-
-            {/* Profil */}
-            <button
-              onClick={() => setActiveTab('account')}
-              className={`flex-1 flex flex-col items-center py-3 transition-all ${activeTab === 'account'
-                ? 'text-blue-400'
-                : 'text-slate-400 active:text-slate-300'
-                }`}
-            >
-              <span className="text-2xl mb-1">👤</span>
-              <span className="text-xs font-medium">Profil</span>
-            </button>
-          </div>
         </div>
       )}
 
@@ -3650,7 +3596,7 @@ export default function KuryePage() {
                 {/* İsim */}
                 <div className="bg-slate-800 p-4 rounded-xl">
                   <p className="text-slate-400 text-xs mb-1">Alıcı Adı</p>
-                  <p className="text-white font-semibold text-lg">İbrahim Okan Özdemir</p>
+                  <p className="text-white font-semibold text-lg">Yusuf Yarım</p>
                 </div>
 
                 {/* IBAN */}
@@ -3658,7 +3604,7 @@ export default function KuryePage() {
                   <p className="text-slate-400 text-xs mb-2">IBAN Numarası</p>
                   <div className="flex items-center gap-2">
                     <p className="text-white font-mono text-sm flex-1 break-all">
-                      TR79 0001 0090 1065 9157 6050 01
+                      TR66 0015 7000 0000 0076 2180 38
                     </p>
                     <button
                       onClick={copyIbanToClipboard}
@@ -3801,6 +3747,62 @@ export default function KuryePage() {
       )}
     </div>
     </PullToRefresh>
+
+    {/* BOTTOM NAVIGATION BAR - Sadece Kurye Paneli - PullToRefresh DIŞINDA */}
+    {isLoggedIn && (
+      <div className="fixed bottom-0 left-0 right-0 w-full bg-slate-900 border-t border-slate-800 z-50 safe-area-bottom">
+        <div className="flex items-center justify-around w-full">
+          {/* Aktif Paketler */}
+          <button
+            onClick={() => setActiveTab('packages')}
+            className={`flex-1 flex flex-col items-center py-3 transition-all ${activeTab === 'packages'
+              ? 'text-blue-400'
+              : 'text-slate-400 active:text-slate-300'
+              }`}
+          >
+            <span className="text-2xl mb-1">📦</span>
+            <span className="text-xs font-medium">Aktif</span>
+          </button>
+
+          {/* Geçmişim */}
+          <button
+            onClick={() => setActiveTab('history')}
+            className={`flex-1 flex flex-col items-center py-3 transition-all ${activeTab === 'history'
+              ? 'text-blue-400'
+              : 'text-slate-400 active:text-slate-300'
+              }`}
+          >
+            <span className="text-2xl mb-1">📋</span>
+            <span className="text-xs font-medium">Geçmişim</span>
+          </button>
+
+          {/* Verilecek Hesap */}
+          <button
+            onClick={() => setActiveTab('earnings')}
+            className={`flex-1 flex flex-col items-center py-3 transition-all ${activeTab === 'earnings'
+              ? 'text-blue-400'
+              : 'text-slate-400 active:text-slate-300'
+              }`}
+          >
+            <span className="text-2xl mb-1">💰</span>
+            <span className="text-xs font-medium">Hesap</span>
+          </button>
+
+          {/* Profil */}
+          <button
+            onClick={() => setActiveTab('account')}
+            className={`flex-1 flex flex-col items-center py-3 transition-all ${activeTab === 'account'
+              ? 'text-blue-400'
+              : 'text-slate-400 active:text-slate-300'
+              }`}
+          >
+            <span className="text-2xl mb-1">👤</span>
+            <span className="text-xs font-medium">Profil</span>
+          </button>
+        </div>
+      </div>
+    )}
+    </>
   )
 
   async function handleLogin(e: any) {

@@ -344,7 +344,7 @@ export function LiveTrackingTab({
                             </span>
                         </div>
                         <div className="space-y-2 max-h-[500px] overflow-y-auto overflow-x-auto">
-                            {couriers.map(c => {
+                            {couriers.filter(c => c.is_active).map(c => {
                                 const courierPackages = assignedPackages.filter(pkg => pkg.courier_id === c.id)
 
                                 return (
@@ -370,12 +370,12 @@ export function LiveTrackingTab({
                                         </div>
 
                                         {courierPackages.length > 0 && (
-                                            <div className="mt-2 space-y-1">
+                                            <div className="mt-2 space-y-1.5">
                                                 {courierPackages.map(pkg => (
                                                     <div 
                                                         key={pkg.id} 
                                                         onClick={() => setSelectedPackage(pkg)}
-                                                        className="text-[10px] flex items-center gap-1 cursor-pointer hover:bg-slate-700 p-1 rounded transition-colors"
+                                                        className="text-xs flex items-center gap-1.5 cursor-pointer hover:bg-slate-700 p-1.5 rounded transition-colors"
                                                     >
                                                         <span className={`px-2 py-0.5 rounded-full font-semibold ${pkg.status === 'waiting' ? 'bg-yellow-900/50 text-yellow-300' :
                                                             pkg.status === 'assigned' ? 'bg-orange-900/50 text-orange-300' :
@@ -387,7 +387,7 @@ export function LiveTrackingTab({
                                                                     pkg.status === 'picking_up' ? '🏃 Alıyor' : '🚗 Yolda'}
                                                         </span>
                                                         <span className="text-slate-300 truncate">
-                                                            {pkg.customer_name}
+                                                            {pkg.delivery_address}
                                                         </span>
                                                     </div>
                                                 ))}

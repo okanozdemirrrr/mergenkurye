@@ -32,7 +32,7 @@ export default function UpdateAmountModal({
   const handleUpdate = async () => {
     // Validasyon
     const amount = parseFloat(newAmount)
-    if (isNaN(amount) || amount <= 0) {
+    if (isNaN(amount) || amount < 0) {
       setErrorMessage('Lütfen geçerli bir tutar girin!')
       return
     }
