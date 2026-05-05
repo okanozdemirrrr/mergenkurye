@@ -32,6 +32,13 @@ export function CourierTransferModal({ package: pkg, couriers, onClose, onSucces
             return
         }
 
+        // 🚫 GÜVENLİK KONTROLÜ: Kurye paketi aldıysa devir yapılamaz!
+        const blockedStatuses = ['picking_up', 'on_the_way', 'delivered']
+        if (blockedStatuses.includes(pkg.status)) {
+            setError(`❌ Bu paket "${pkg.status}" durumunda! Kurye paketi aldıktan sonra devir yapılamaz.`)
+            return
+        }
+
         setIsTransferring(true)
         setError(null)
 

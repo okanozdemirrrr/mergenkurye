@@ -48,14 +48,21 @@ export async function cancelOrder(packageId: number, details: string = 'Sipariş
  */
 export async function assignCourier(packageId: number, courierId: string) {
     try {
-        // 1. Paket bilgilerini al (bildirim için gerekli)
+        // 1. Paket bilgilerini al (bildirim için gerekli + durum kontrolü)
         const { data: packageData, error: packageError } = await supabase
             .from('packages')
-            .select('customer_name, delivery_address, restaurant_id, restaurants(name)')
+            .select('customer_name, delivery_address, restaurant_id, status, restaurants(name)')
             .eq('id', packageId)
             .single()
 
         if (packageError) throw packageError
+
+        // 🚫 GÜVENLİK KONTROLÜ: Kurye paketi aldıysa başka kuryeye atanamaz!
+        const blockedStatuses = ['picking_up', 'on_the_way', 'delivered']
+        if (blockedStatuses.includes((packageData as any).status)) {
+            alert(`❌ Bu paket "${(packageData as any).status}" durumunda!\n\nKurye paketi aldıktan sonra başka kuryeye atanamaz.`)
+            return { success: false, error: 'Paket kurye tarafından alındı, atanamaz' }
+        }
 
         // 2. Kurye ata
         const { error } = await supabase
