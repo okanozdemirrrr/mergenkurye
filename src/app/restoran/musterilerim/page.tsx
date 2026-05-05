@@ -174,8 +174,6 @@ export default function MusterilerimPage() {
   const [search, setSearch] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
-  const [deleteConfirm, setDeleteConfirm] = useState<Customer | null>(null)
-  const [deleting, setDeleting] = useState(false)
   const [toast, setToast] = useState('')
 
   // restaurantId'yi localStorage'dan al — hazır olduğunda idReady=true
@@ -227,27 +225,7 @@ export default function MusterilerimPage() {
     fetchCustomers(restaurantId)     // sadece bu restoran için
   }, [idReady, restaurantId, fetchCustomers])
 
-  // ── DELETE ──
-  const handleDelete = async () => {
-    if (!deleteConfirm || !restaurantId) return
-    setDeleting(true)
-    try {
-      const { error } = await supabase
-        .from('customers')
-        .delete()
-        .eq('id', deleteConfirm.id)
-        .eq('restaurant_id', restaurantId)   // başkasının verisini silemez
 
-      if (error) throw error
-      setCustomers(prev => prev.filter(c => c.id !== deleteConfirm.id))
-      setDeleteConfirm(null)
-      showToast('✅ Müşteri silindi')
-    } catch (e: any) {
-      showToast('❌ Silme hatası: ' + e.message)
-    } finally {
-      setDeleting(false)
-    }
-  }
 
   // ── Arama Filtresi ──
   const filtered = customers.filter(c => {
@@ -379,7 +357,7 @@ export default function MusterilerimPage() {
                   <p className="text-slate-400 text-sm truncate" title={c.address}>{c.address || '—'}</p>
 
                   {/* Aksiyonlar */}
-                  <div className="flex items-center justify-end gap-2">
+                  <div className="flex items-center justify-end">
                     {/* Düzenle */}
                     <button
                       onClick={() => { setEditingCustomer(c); setShowModal(true) }}
@@ -388,16 +366,6 @@ export default function MusterilerimPage() {
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                      </svg>
-                    </button>
-                    {/* Sil */}
-                    <button
-                      onClick={() => setDeleteConfirm(c)}
-                      title="Sil"
-                      className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-400/10 transition-colors"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                       </svg>
                     </button>
                   </div>
@@ -428,37 +396,6 @@ export default function MusterilerimPage() {
         />
       )}
 
-      {/* Silme Onay Dialog */}
-      {deleteConfirm && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60] p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl p-6">
-            <div className="text-center mb-5">
-              <p className="text-3xl mb-3">🗑️</p>
-              <h3 className="text-lg font-bold text-white mb-2">Müşteri Silinecek</h3>
-              <p className="text-slate-400 text-sm">
-                <span className="text-white font-semibold">{deleteConfirm.full_name}</span> adlı müşteriyi
-                silmek istediğinize emin misiniz?
-              </p>
-              <p className="text-red-400 text-xs mt-2">Bu işlem geri alınamaz.</p>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setDeleteConfirm(null)}
-                className="flex-1 py-2.5 rounded-xl font-semibold bg-slate-700 text-white hover:bg-slate-600 transition-colors"
-              >
-                İptal
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="flex-1 py-2.5 rounded-xl font-semibold bg-red-600 hover:bg-red-700 text-white transition-colors disabled:opacity-50"
-              >
-                {deleting ? '⏳ Siliniyor...' : '🗑️ Sil'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
