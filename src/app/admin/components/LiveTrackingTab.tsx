@@ -221,8 +221,8 @@ export function LiveTrackingTab({
                                             <p className="text-slate-400 text-xs mb-1">Atanan Kurye</p>
                                             <p className="text-white">🚴 {couriers.find(c => c.id === selectedPackage.courier_id)?.full_name || 'Bilinmeyen'}</p>
                                         </div>
-                                        {/* Kurye Devret Butonu - Sadece 'assigned' durumunda (kurye paketi almadan önce) */}
-                                        {selectedPackage.status === 'assigned' && (
+                                        {/* Kurye Devret Butonu - assigned ve picking_up durumlarında */}
+                                        {(selectedPackage.status === 'assigned' || selectedPackage.status === 'picking_up') && (
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation()
