@@ -97,7 +97,11 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     try {
       const { data, error } = await supabase
         .from('packages')
-        .select('*, restaurants(*), couriers(*)')
+        .select(`
+          *, 
+          restaurants(*), 
+          couriers!packages_courier_id_fkey(*)
+        `)
         .in('status', ['delivered', 'cancelled'])
         .order('created_at', { ascending: false })
 
