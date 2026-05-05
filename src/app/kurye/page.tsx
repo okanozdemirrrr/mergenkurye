@@ -269,22 +269,37 @@ export default function KuryePage() {
   const [passwordUpdating, setPasswordUpdating] = useState(false)
   const [passwordError, setPasswordError] = useState('')
 
-  const [startDate, setStartDate] = useState(() => {
-    const today = new Date()
-    return today.toISOString().split('T')[0]
-  })
-  const [endDate, setEndDate] = useState(() => {
-    const today = new Date()
-    return today.toISOString().split('T')[0]
-  })
-  const [historyStartDate, setHistoryStartDate] = useState(() => {
-    const today = new Date()
-    return today.toISOString().split('T')[0]
-  })
-  const [historyEndDate, setHistoryEndDate] = useState(() => {
-    const today = new Date()
-    return today.toISOString().split('T')[0]
-  })
+  // BUSINESS DAY LOGIC: İş günü 05:00 - 04:59 (ertesi gün)
+  const getBusinessDayDefaults = () => {
+    const now = new Date()
+    const currentHour = now.getHours()
+    
+    // Eğer saat 00:00 - 04:59 arasındaysa, dün sabah 05:00'dan başla
+    // Eğer saat 05:00 - 23:59 arasındaysa, bugün sabah 05:00'dan başla
+    const startDate = new Date(now)
+    if (currentHour < 5) {
+      // Gece yarısından sonra, dün sabah 05:00
+      startDate.setDate(startDate.getDate() - 1)
+    }
+    startDate.setHours(5, 0, 0, 0)
+    
+    // Bitiş: Başlangıcın ertesi günü 04:59:59
+    const endDate = new Date(startDate)
+    endDate.setDate(endDate.getDate() + 1)
+    endDate.setHours(4, 59, 59, 999)
+    
+    return {
+      start: startDate.toISOString().slice(0, 16), // YYYY-MM-DDTHH:mm formatı
+      end: endDate.toISOString().slice(0, 16)
+    }
+  }
+
+  const businessDayDefaults = getBusinessDayDefaults()
+  
+  const [startDate, setStartDate] = useState(businessDayDefaults.start)
+  const [endDate, setEndDate] = useState(businessDayDefaults.end)
+  const [historyStartDate, setHistoryStartDate] = useState(businessDayDefaults.start)
+  const [historyEndDate, setHistoryEndDate] = useState(businessDayDefaults.end)
 
   // SESLİ KOMUT STATE'LERİ
   const [isListening, setIsListening] = useState(false)
@@ -1303,23 +1318,29 @@ export default function KuryePage() {
     // Sessizce geç, kullanıcıyı rahatsız etme
   }
 
-  // Tarih aralığına göre paketleri filtrele - DÜZELTİLDİ
+  // Tarih aralığına göre paketleri filtrele - BUSINESS DAY LOGIC (Saniyesine Kadar Filtreleme)
   const filterPackagesByDateRange = async (start: string, end: string) => {
     const courierId = localStorage.getItem(STORAGE_KEYS.COURIER_ID)
     if (!courierId) return
 
     try {
-      const startDateTime = new Date(start + 'T00:00:00')
-      const endDateTime = new Date(end + 'T23:59:59')
+      // datetime-local formatından ISO timestamp'e çevir (saniyesine kadar hassas)
+      const startDateTime = new Date(start).toISOString()
+      const endDateTime = new Date(end).toISOString()
+
+      console.log('📅 Tarih Aralığı Filtresi:', {
+        start: startDateTime,
+        end: endDateTime
+      })
 
       // Tarih aralığındaki TÜM teslim edilmiş paketleri çek
       const { data, error, count } = await supabase
         .from('packages')
         .select('*, restaurants(name, phone, address)', { count: 'exact' })
-        .eq('courier_id', courierId)
+        .eq('delivered_by_courier_id', courierId)  // courier_id yerine delivered_by_courier_id
         .eq('status', 'delivered')
-        .gte('delivered_at', startDateTime.toISOString())
-        .lte('delivered_at', endDateTime.toISOString())
+        .gte('delivered_at', startDateTime)
+        .lte('delivered_at', endDateTime)
         .order('delivered_at', { ascending: false })
 
       if (error) throw error
@@ -1349,7 +1370,7 @@ export default function KuryePage() {
       const { data: allPackages, error: packagesError } = await supabase
         .from('packages')
         .select('amount')
-        .eq('courier_id', courierId)
+        .eq('delivered_by_courier_id', courierId)  // courier_id yerine delivered_by_courier_id
         .eq('status', 'delivered')
         // ⚠️ TARİH FİLTRESİ YOK - Tüm geçmiş dahil!
 
@@ -2945,12 +2966,12 @@ export default function KuryePage() {
           <div className="space-y-2 sm:space-y-3">
             {/* Tarih Seçici - Merkeze Hizalı */}
             <div className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-800">
-              <h3 className="text-sm font-bold text-white mb-3 text-center">Tarih Aralığı Seçin</h3>
+              <h3 className="text-sm font-bold text-white mb-3 text-center">Tarih Aralığı Seçin (İş Günü: 05:00 - 04:59)</h3>
               <div className="flex gap-2 items-end">
                 <div className="flex-1">
                   <label className="text-xs text-slate-400 mb-1 block">Başlangıç</label>
                   <input
-                    type="date"
+                    type="datetime-local"
                     value={historyStartDate}
                     onChange={(e) => setHistoryStartDate(e.target.value)}
                     className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-xs text-white focus:border-blue-500 outline-none"
@@ -2959,7 +2980,7 @@ export default function KuryePage() {
                 <div className="flex-1">
                   <label className="text-xs text-slate-400 mb-1 block">Bitiş</label>
                   <input
-                    type="date"
+                    type="datetime-local"
                     value={historyEndDate}
                     onChange={(e) => setHistoryEndDate(e.target.value)}
                     className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-xs text-white focus:border-blue-500 outline-none"
@@ -3139,12 +3160,12 @@ export default function KuryePage() {
           <div className="space-y-2 sm:space-y-3">
             {/* Tarih Seçici - Merkeze Hizalı */}
             <div className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-800">
-              <h3 className="text-sm font-bold text-white mb-3 text-center">Tarih Aralığı Seçin</h3>
+              <h3 className="text-sm font-bold text-white mb-3 text-center">Tarih Aralığı Seçin (İş Günü: 05:00 - 04:59)</h3>
               <div className="flex gap-2 items-end">
                 <div className="flex-1">
                   <label className="text-xs text-slate-400 mb-1 block">Başlangıç</label>
                   <input
-                    type="date"
+                    type="datetime-local"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
                     className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-xs text-white focus:border-blue-500 outline-none"
@@ -3153,7 +3174,7 @@ export default function KuryePage() {
                 <div className="flex-1">
                   <label className="text-xs text-slate-400 mb-1 block">Bitiş</label>
                   <input
-                    type="date"
+                    type="datetime-local"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
                     className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-xs text-white focus:border-blue-500 outline-none"

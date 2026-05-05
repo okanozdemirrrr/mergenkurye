@@ -34,13 +34,17 @@ export function CourierEarningsStats({ courierId, startDate, endDate }: CourierE
   // Teslim edilen paketlerin toplamını hesapla (GÖRSEL - Tarih aralığına göre)
   const calculateDeliveryTotals = async () => {
     try {
+      // datetime-local formatından ISO timestamp'e çevir
+      const startDateTime = new Date(startDate).toISOString()
+      const endDateTime = new Date(endDate).toISOString()
+
       const { data, error } = await supabase
         .from('packages')
         .select('amount, payment_method')
-        .eq('courier_id', courierId)
+        .eq('delivered_by_courier_id', courierId)  // courier_id yerine delivered_by_courier_id
         .eq('status', 'delivered')
-        .gte('delivered_at', `${startDate}T00:00:00`)
-        .lte('delivered_at', `${endDate}T23:59:59`)
+        .gte('delivered_at', startDateTime)
+        .lte('delivered_at', endDateTime)
 
       if (error) throw error
 
@@ -77,7 +81,7 @@ export function CourierEarningsStats({ courierId, startDate, endDate }: CourierE
       const { data: allPackages, error: packagesError } = await supabase
         .from('packages')
         .select('amount')
-        .eq('courier_id', courierId)
+        .eq('delivered_by_courier_id', courierId)  // courier_id yerine delivered_by_courier_id
         .eq('status', 'delivered')
         // ⚠️ TARİH FİLTRESİ YOK - Tüm geçmiş dahil!
 
