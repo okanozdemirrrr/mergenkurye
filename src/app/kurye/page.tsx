@@ -2072,7 +2072,18 @@ export default function KuryePage() {
         console.log('📦 Old courier_id:', payload.old?.courier_id, 'New courier_id:', payload.new?.courier_id)
         console.log('📦 Old status:', payload.old?.status, 'New status:', payload.new?.status)
 
-        // ⚠️ ERKEN ÇIKIŞ: Bu paket bu kuryeyle alakalı değilse, işlem yapma
+        // ⚠️ ERKEN ÇIKIŞ 1: Teslim edilmiş veya iptal edilmiş paketleri atla
+        if (payload.new?.status === 'delivered' || payload.new?.status === 'cancelled') {
+          console.log('⏭️ Paket teslim edilmiş/iptal edilmiş, atlanıyor')
+          // Sadece istatistikleri güncelle, paket listesini değil
+          await fetchDailyStats()
+          await fetchTodayDeliveredPackages()
+          await fetchLeaderboard()
+          await fetchUnsettledAmount()
+          return
+        }
+
+        // ⚠️ ERKEN ÇIKIŞ 2: Bu paket bu kuryeyle alakalı değilse, işlem yapma
         const isRelevantToThisCourier = (
           payload.new?.courier_id === courierId || // Şu an bu kuryeye ait
           payload.old?.courier_id === courierId    // Önceden bu kuryeye aitti
