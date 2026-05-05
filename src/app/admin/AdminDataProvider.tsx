@@ -174,11 +174,11 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
 
           const totalDebt = (debts || []).reduce((sum, debt) => sum + (debt.remaining_amount || 0), 0)
 
-          // Bugün teslim edilen paketleri çek
+          // Bugün teslim edilen paketleri çek (delivered_by_courier_id kullan)
           const { data: todayDeliveries } = await supabase
             .from('packages')
             .select('id')
-            .eq('courier_id', courier.id)
+            .eq('delivered_by_courier_id', courier.id)  // courier_id yerine delivered_by_courier_id
             .eq('status', 'delivered')
             .gte('delivered_at', todayStart.toISOString())
 
@@ -193,11 +193,11 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
 
           const activePackageCount = (activePackages || []).length
 
-          // Toplam teslimat sayısı
+          // Toplam teslimat sayısı (delivered_by_courier_id kullan)
           const { data: allDeliveries } = await supabase
             .from('packages')
             .select('id')
-            .eq('courier_id', courier.id)
+            .eq('delivered_by_courier_id', courier.id)  // courier_id yerine delivered_by_courier_id
             .eq('status', 'delivered')
 
           const deliveryCount = (allDeliveries || []).length
