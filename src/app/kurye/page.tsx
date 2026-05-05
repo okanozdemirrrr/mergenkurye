@@ -581,7 +581,7 @@ export default function KuryePage() {
       const { data, error } = await supabase
         .from('packages')
         .select('amount, payment_method, status')
-        .eq('courier_id', courierId)
+        .eq('delivered_by_courier_id', courierId)  // courier_id yerine delivered_by_courier_id
         .eq('status', 'delivered')
         .gte('delivered_at', todayStart.toISOString())
 
@@ -617,7 +617,7 @@ export default function KuryePage() {
       const { data, error } = await supabase
         .from('packages')
         .select('*, restaurants(name, phone, address)')
-        .eq('courier_id', courierId)
+        .eq('delivered_by_courier_id', courierId)  // courier_id yerine delivered_by_courier_id
         .eq('status', 'delivered')
         .gte('delivered_at', todayStart.toISOString())
         .order('delivered_at', { ascending: false })
@@ -750,18 +750,18 @@ export default function KuryePage() {
       const courierIds = couriersData.map(c => c.id)
       const { data: packagesData, error: packagesError } = await supabase
         .from('packages')
-        .select('courier_id')
+        .select('delivered_by_courier_id')  // courier_id yerine delivered_by_courier_id
         .eq('status', 'delivered')
-        .in('courier_id', courierIds)
+        .in('delivered_by_courier_id', courierIds)  // courier_id yerine delivered_by_courier_id
         .gte('delivered_at', todayStart.toISOString())
 
       if (packagesError) throw packagesError
 
       // Kurye bazlı paket sayılarını hesapla
       const counts: { [key: string]: number } = {}
-      packagesData?.forEach((pkg) => {
-        if (pkg.courier_id) {
-          counts[pkg.courier_id] = (counts[pkg.courier_id] || 0) + 1
+      packagesData?.forEach((pkg: any) => {
+        if (pkg.delivered_by_courier_id) {
+          counts[pkg.delivered_by_courier_id] = (counts[pkg.delivered_by_courier_id] || 0) + 1
         }
       })
 
@@ -1485,13 +1485,14 @@ export default function KuryePage() {
     setIsUpdating(prev => new Set(prev).add(packageId))
 
     try {
-      // Basit UPDATE
+      // Basit UPDATE - delivered_by_courier_id ekle (kurye değişikliğinde bile doğru kurye kaydedilsin)
       const { error } = await supabase
         .from('packages')
         .update({
           status: 'delivered',
           delivered_at: new Date().toISOString(),
-          payment_method: paymentMethod
+          payment_method: paymentMethod,
+          delivered_by_courier_id: courierId  // Teslimatı yapan kurye
         })
         .eq('id', packageId)
 
@@ -1548,7 +1549,8 @@ export default function KuryePage() {
         .update({
           status: 'delivered',
           delivered_at: new Date().toISOString(),
-          payment_method: 'iban'
+          payment_method: 'iban',
+          delivered_by_courier_id: courierId  // Teslimatı yapan kurye
         })
         .eq('id', ibanPackageId)
 
@@ -2337,10 +2339,15 @@ export default function KuryePage() {
 
       setIsUpdating(prev => new Set(prev).add(packageId))
 
-      // Basit UPDATE
+      // Basit UPDATE - delivered durumunda delivered_by_courier_id ekle
+      const updateData: any = { status: nextStatus, ...additionalData }
+      if (nextStatus === 'delivered' && courierId) {
+        updateData.delivered_by_courier_id = courierId  // Teslimatı yapan kurye
+      }
+      
       const { error } = await supabase
         .from('packages')
-        .update({ status: nextStatus, ...additionalData })
+        .update(updateData)
         .eq('id', packageId)
 
       if (error) throw error

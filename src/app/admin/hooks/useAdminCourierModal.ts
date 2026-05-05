@@ -55,13 +55,13 @@ export function useAdminCourierModal({
     }
   }, [modalType, courierId, courierStartDate, courierEndDate])
 
-  // Fetch Courier Orders - ORİJİNAL MANTIK
+  // Fetch Courier Orders - delivered_by_courier_id kullan (kurye değişikliğinde bile doğru kurye görünsün)
   const fetchCourierOrders = async (id: string) => {
     try {
       let query = supabase
         .from('packages')
         .select('*, restaurants(*)')
-        .eq('courier_id', id)
+        .eq('delivered_by_courier_id', id)  // courier_id yerine delivered_by_courier_id
         .eq('status', 'delivered')
         .order('delivered_at', { ascending: false })
 
