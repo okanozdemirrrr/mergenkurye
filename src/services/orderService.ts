@@ -3,6 +3,7 @@
  * @description Sipariş İşlemleri Servisi.
  * Siparişlerin yaşam döngüsünü yönetir. Sipariş iptali, kurye atama ve 
  * sipariş durumu güncellemeleri gibi temel veritabanı işlemlerini gerçekleştirir.
+ * @version 2.0 - Push notification support added
  */
 import { supabase } from '@/app/lib/supabase'
 
@@ -84,35 +85,43 @@ export async function assignCourier(packageId: number, courierId: string) {
             // API route'a istek gönder (absolute URL ile)
             const baseUrl = typeof window !== 'undefined' 
                 ? window.location.origin 
-                : process.env.NEXT_PUBLIC_SITE_URL || 'https://mergenkuryesistem.vercel.app'
+                : process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
             
-            console.log('🔥 DEBUG: API URL:', `${baseUrl}/api/send-push`)
+            const apiUrl = `${baseUrl}/api/send-push`
+            console.log('🔥 DEBUG: API URL:', apiUrl)
             
-            const response = await fetch(`${baseUrl}/api/send-push`, {
+            const requestBody = {
+                courierId,
+                restaurantName,
+                deliveryAddress,
+                customerName: packageData.customer_name
+            }
+            console.log('🔥 DEBUG: Request Body:', JSON.stringify(requestBody, null, 2))
+            
+            const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    courierId,
-                    restaurantName,
-                    deliveryAddress,
-                    customerName: packageData.customer_name
-                })
+                body: JSON.stringify(requestBody)
             })
 
             console.log('🔥 DEBUG: API Response Status:', response.status)
+            console.log('🔥 DEBUG: API Response OK:', response.ok)
+            
+            const result = await response.json()
+            console.log('🔥 DEBUG: API Response Body:', result)
             
             if (response.ok) {
-                const result = await response.json()
                 console.log('✅ Push notification başarıyla gönderildi:', result)
+                alert(`✅ Kurye atandı ve bildirim gönderildi!\n\nKurye: ${result.courierName}\nBildirim: ${result.title}`)
             } else {
-                const error = await response.json()
-                console.warn('⚠️ Push notification gönderilemedi:', error)
-                // Hata olsa bile kurye atama işlemi başarılı sayılır
+                console.warn('⚠️ Push notification gönderilemedi:', result)
+                alert(`⚠️ Kurye atandı ama bildirim gönderilemedi!\n\nHata: ${result.error}\nDetay: ${result.details || 'Yok'}`)
             }
         } catch (pushError) {
             console.error('❌ Push notification hatası (kurye atama başarılı):', pushError)
+            alert(`❌ Push notification hatası!\n\n${pushError}\n\nKurye atandı ama bildirim gönderilemedi.`)
             // Push notification hatası kurye atama işlemini etkilemez
         }
 
