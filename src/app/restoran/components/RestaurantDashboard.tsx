@@ -460,6 +460,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                 onRefresh={fetchPackages}
                 darkMode={darkMode}
                 couriers={couriers}
+                restaurantId={restaurantId}
               />
             )}
           </>

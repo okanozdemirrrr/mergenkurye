@@ -37,15 +37,15 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      if (!companyCode || !username || !password || !selectedType) {
-        setErrorMessage('Lütfen tüm alanları doldurun')
+      if (!username || !password || !selectedType) {
+        setErrorMessage('Lütfen kullanıcı adı ve şifre girin')
         setIsLoading(false)
         return
       }
 
       // Auth servisi ile giriş yap
       const response = await login({
-        companyCode,
+        companyCode: 'DEFAULT', // Şimdilik sabit
         username,
         password,
         userType: selectedType
@@ -224,20 +224,22 @@ export default function LoginPage() {
 
           {/* Form */}
           <form onSubmit={handleLogin} className="space-y-4">
-            {/* Şirket Kodu */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Şirket Kodu
-              </label>
-              <input
-                type="text"
-                placeholder="Örn: MERGEN001"
-                value={companyCode}
-                onChange={(e) => setCompanyCode(e.target.value.toUpperCase())}
-                className={`w-full px-4 py-3 bg-slate-800 border-2 border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-${color}-500 transition-colors`}
-                required
-              />
-            </div>
+            {/* Şirket Kodu - Sadece admin ve restoran için */}
+            {(selectedType === 'admin' || selectedType === 'restaurant') && (
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Şirket Kodu
+                </label>
+                <input
+                  type="text"
+                  placeholder="Örn: MERGEN001"
+                  value={companyCode}
+                  onChange={(e) => setCompanyCode(e.target.value.toUpperCase())}
+                  className={`w-full px-4 py-3 bg-slate-800 border-2 border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-${color}-500 transition-colors`}
+                  required
+                />
+              </div>
+            )}
 
             {/* Kullanıcı Adı */}
             <div>

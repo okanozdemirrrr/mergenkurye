@@ -526,7 +526,7 @@ export default function NewOrderModal({ onClose, onSuccess, restaurantId, darkMo
                 <div>
                   <label className={label}>Ödeme Yöntemi <span className="text-red-400">*</span></label>
                   <div className="grid grid-cols-3 gap-1.5 h-[42px]">
-                    {([['cash', '💵', 'Nakit'], ['card', '💳', 'Kart'], ['online', '📱', 'Online']] as const).map(([val, icon, lbl]) => (
+                    {([['cash', '💵', 'Nakit'], ['card', '💳', 'Kart'], ['iban', '🏦', 'IBAN']] as const).map(([val, icon, lbl]) => (
                       <button
                         key={val}
                         type="button"

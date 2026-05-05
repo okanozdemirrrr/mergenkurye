@@ -26,11 +26,19 @@ export function useAdminCourierModal({
   setErrorMessage,
   fetchCouriers
 }: UseAdminCourierModalProps) {
-  // State Management
+  // State Management - Varsayılan olarak bugünün tarihi (Türkiye saat dilimi)
+  const getTodayInTurkey = () => {
+    const now = new Date()
+    // Türkiye saat dilimine göre tarih
+    const turkeyDate = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Istanbul' }))
+    return turkeyDate.toISOString().split('T')[0]
+  }
+  
+  const today = getTodayInTurkey()
   const [selectedCourierOrders, setSelectedCourierOrders] = useState<Package[]>([])
   const [courierDebts, setCourierDebts] = useState<CourierDebt[]>([])
-  const [courierStartDate, setCourierStartDate] = useState('')
-  const [courierEndDate, setCourierEndDate] = useState('')
+  const [courierStartDate, setCourierStartDate] = useState(today)
+  const [courierEndDate, setCourierEndDate] = useState(today)
   const [loadingDebts, setLoadingDebts] = useState(false)
   const [showEndOfDayModal, setShowEndOfDayModal] = useState(false)
   const [endOfDayAmount, setEndOfDayAmount] = useState('')
@@ -39,18 +47,13 @@ export function useAdminCourierModal({
   const [payDebtAmount, setPayDebtAmount] = useState('')
   const [payDebtProcessing, setPayDebtProcessing] = useState(false)
 
-  // Initialize dates - ORİJİNAL MANTIK
+  // Initialize dates - Varsayılan olarak bugün
   useEffect(() => {
     if (modalType === 'courier' && courierId) {
-      if (!courierStartDate || !courierEndDate) {
-        const today = new Date().toISOString().split('T')[0]
-        setCourierStartDate(today)
-        setCourierEndDate(today)
-      }
       fetchCourierOrders(courierId)
       fetchCourierDebts(courierId)
     }
-  }, [modalType, courierId])
+  }, [modalType, courierId, courierStartDate, courierEndDate])
 
   // Fetch Courier Orders - ORİJİNAL MANTIK
   const fetchCourierOrders = async (id: string) => {

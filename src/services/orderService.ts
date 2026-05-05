@@ -73,17 +73,20 @@ export async function assignCourier(packageId: number, courierId: string) {
             const restaurantName = (packageData as any).restaurants?.name || 'Restoran'
             const deliveryAddress = packageData.delivery_address || packageData.customer_name || 'Müşteri'
 
-            console.log('📤 Push notification tetikleniyor (Trendyol formatı):', {
+            console.log('🔥 DEBUG: Push notification tetikleniyor:', {
                 courierId,
                 packageId,
                 restaurantName,
-                deliveryAddress
+                deliveryAddress,
+                packageData: packageData
             })
 
             // API route'a istek gönder (absolute URL ile)
             const baseUrl = typeof window !== 'undefined' 
                 ? window.location.origin 
                 : process.env.NEXT_PUBLIC_SITE_URL || 'https://mergenkuryesistem.vercel.app'
+            
+            console.log('🔥 DEBUG: API URL:', `${baseUrl}/api/send-push`)
             
             const response = await fetch(`${baseUrl}/api/send-push`, {
                 method: 'POST',
@@ -98,6 +101,8 @@ export async function assignCourier(packageId: number, courierId: string) {
                 })
             })
 
+            console.log('🔥 DEBUG: API Response Status:', response.status)
+            
             if (response.ok) {
                 const result = await response.json()
                 console.log('✅ Push notification başarıyla gönderildi:', result)

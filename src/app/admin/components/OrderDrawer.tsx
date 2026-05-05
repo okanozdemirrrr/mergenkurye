@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react'
 import { Package, Courier } from '@/types'
 import { OrderActionMenu } from '@/components/ui/OrderActionMenu'
 import { CourierTransferModal } from './CourierTransferModal'
+import { CompactOrderCard } from './CompactOrderCard'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
 import { formatTurkishTime } from '@/utils/dateHelpers'
 
@@ -297,7 +298,7 @@ export function OrderDrawer({
                 </div>
 
                 {/* DRAWER CONTENT */}
-                <div className="p-6 h-[calc(100vh-80px)] overflow-y-auto">
+                <div className="p-4 h-[calc(100vh-80px)] overflow-y-auto bg-slate-50">
                     {activeOperationPackages.length === 0 ? (
                         <div className="text-center py-16 text-slate-500">
                             <div className="text-6xl mb-4">📭</div>
@@ -305,111 +306,17 @@ export function OrderDrawer({
                             <p className="text-sm mt-2">Yeni siparişler geldiğinde burada görünecek</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2">
                             {activeOperationPackages.map(pkg => (
-                                <div
+                                <CompactOrderCard
                                     key={pkg.id}
-                                    className="relative bg-white rounded-xl border-2 border-slate-200 p-4 hover:shadow-xl transition-all hover:scale-105 cursor-pointer"
-                                >
-                                    {/* Tıklanabilir Alan */}
-                                    <div onClick={() => setSelectedPackage(pkg)} className="absolute inset-0 z-0 rounded-xl"></div>
-
-                                    {/* 3 Nokta Menüsü */}
-                                    <div className="absolute top-2 left-2 z-20" onClick={(e) => e.stopPropagation()}>
-                                        <OrderActionMenu
-                                            package={pkg}
-                                            isOpen={openDropdownId === pkg.id}
-                                            onToggle={() => setOpenDropdownId(openDropdownId === pkg.id ? null : pkg.id)}
-                                            onCancel={handleCancelOrder}
-                                        />
-                                    </div>
-
-                                    {/* Platform Badge */}
-                                    {pkg.platform && (
-                                        <div className="absolute top-2 right-2 z-10">
-                                            <span className={`text-[8px] py-1 px-2 rounded font-bold ${getPlatformBadgeClass(pkg.platform)}`}>
-                                                {getPlatformDisplayName(pkg.platform)}
-                                            </span>
-                                        </div>
-                                    )}
-
-                                    <div className="space-y-3 mt-6 relative z-10">
-                                        {/* Sipariş No */}
-                                        <div className="text-center">
-                                            <div className="text-xs font-bold text-orange-600">
-                                                #{pkg.order_number || '...'}
-                                            </div>
-                                        </div>
-
-                                        {/* Restoran */}
-                                        <div className="text-center">
-                                            <div className="text-[10px] text-slate-700 font-medium truncate px-1">
-                                                {pkg.restaurant?.name || 'Bilinmeyen'}
-                                            </div>
-                                        </div>
-
-                                        <div className="border-t border-slate-200"></div>
-
-                                        {/* Durum Badge */}
-                                        <div className="flex justify-center">
-                                            <span className={`text-[9px] px-2 py-1 rounded font-semibold ${
-                                                pkg.status === 'assigned' ? 'bg-orange-100 text-orange-700' :
-                                                pkg.status === 'picking_up' ? 'bg-orange-100 text-orange-700' :
-                                                'bg-red-100 text-red-700'
-                                            }`}>
-                                                {pkg.status === 'assigned' ? '👤 Atandı' :
-                                                 pkg.status === 'picking_up' ? '🏃 Alınıyor' : '🚗 Yolda'}
-                                            </span>
-                                        </div>
-
-                                        {/* Kurye */}
-                                        {pkg.courier_id && (
-                                            <div className="flex justify-center">
-                                                <span className="text-[9px] bg-indigo-50 text-indigo-700 px-2 py-1 rounded font-semibold truncate max-w-full">
-                                                    🚴 {couriers.find(c => c.id === pkg.courier_id)?.full_name || 'Bilinmeyen'}
-                                                </span>
-                                            </div>
-                                        )}
-
-                                        <div className="border-t border-slate-200"></div>
-
-                                        {/* Tutar */}
-                                        <div className="text-center">
-                                            <div className="text-xl font-black text-green-600">
-                                                {pkg.amount}₺
-                                            </div>
-                                        </div>
-
-                                        {/* Paket İçeriği */}
-                                        {pkg.content && (
-                                            <div className="text-center">
-                                                <div className="text-[9px] text-slate-600 truncate px-1">
-                                                    {pkg.content}
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* Müşteri */}
-                                        <div className="text-center">
-                                            <div className="text-[9px] text-slate-600 truncate px-1">
-                                                {pkg.customer_name}
-                                            </div>
-                                        </div>
-
-                                        {/* Ödeme */}
-                                        <div className="flex justify-center">
-                                            <span className={`text-[9px] px-2 py-1 rounded font-medium ${
-                                                pkg.payment_method === 'cash'
-                                                    ? 'bg-green-50 text-green-700'
-                                                    : pkg.payment_method === 'iban'
-                                                    ? 'bg-purple-50 text-purple-700'
-                                                    : 'bg-orange-50 text-orange-700'
-                                            }`}>
-                                                {pkg.payment_method === 'cash' ? '💵 Nakit' : pkg.payment_method === 'iban' ? '🏦 IBAN' : '💳 Kart'}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
+                                    package={pkg}
+                                    couriers={couriers}
+                                    isMenuOpen={openDropdownId === pkg.id}
+                                    onMenuToggle={() => setOpenDropdownId(openDropdownId === pkg.id ? null : pkg.id)}
+                                    onCardClick={() => setSelectedPackage(pkg)}
+                                    onCancelOrder={handleCancelOrder}
+                                />
                             ))}
                         </div>
                     )}

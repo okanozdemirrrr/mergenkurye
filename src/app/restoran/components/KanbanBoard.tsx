@@ -7,18 +7,21 @@ import { supabase } from '@/app/lib/supabase'
 import { formatTurkishTime } from '@/utils/dateHelpers'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
 import UpdateAmountModal from './UpdateAmountModal'
+import CancelOrderModal from './CancelOrderModal'
 
 interface KanbanBoardProps {
   packages: Package[]
   onRefresh: () => void
   darkMode: boolean
   couriers?: Courier[]
+  restaurantId?: string
 }
 
-export default function KanbanBoard({ packages, onRefresh, darkMode, couriers = [] }: KanbanBoardProps) {
+export default function KanbanBoard({ packages, onRefresh, darkMode, couriers = [], restaurantId }: KanbanBoardProps) {
   const [loading, setLoading] = useState<number | null>(null)
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null)
   const [updateAmountPackage, setUpdateAmountPackage] = useState<Package | null>(null)
+  const [cancelPackage, setCancelPackage] = useState<Package | null>(null)
 
   // Siparişleri duruma göre filtrele
   const newOrders = packages.filter(p => p.status === 'new_order')
@@ -57,8 +60,17 @@ export default function KanbanBoard({ packages, onRefresh, darkMode, couriers = 
 
   const formatTime = (dateString?: string) => {
     if (!dateString) return '-'
-    const date = new Date(dateString)
-    return date.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
+    try {
+      const date = new Date(dateString)
+      if (isNaN(date.getTime())) return '-'
+      return date.toLocaleTimeString('tr-TR', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        timeZone: 'Europe/Istanbul'
+      })
+    } catch {
+      return '-'
+    }
   }
 
   const getStatusText = (status: string) => {
@@ -96,7 +108,11 @@ export default function KanbanBoard({ packages, onRefresh, darkMode, couriers = 
     buttonText?: string
     buttonAction?: () => void
     isClickable?: boolean
-  }) => (
+  }) => {
+    // İptal edilebilir mi kontrolü
+    const canCancel = ['new_order', 'getting_ready', 'ready', 'assigned', 'picking_up'].includes(pkg.status)
+    
+    return (
     <div 
       onClick={isClickable ? () => setSelectedPackage(pkg) : undefined}
       className={`p-4 rounded-lg border ${
@@ -137,22 +153,49 @@ export default function KanbanBoard({ packages, onRefresh, darkMode, couriers = 
           </p>
         </div>
         
-        {showButton && buttonAction && (
-          <button
-            onClick={buttonAction}
-            disabled={loading === pkg.id}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-              darkMode
-                ? 'bg-orange-600 hover:bg-orange-700 text-white'
-                : 'bg-orange-500 hover:bg-orange-600 text-white'
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
-          >
-            {loading === pkg.id ? '⏳' : buttonText}
-          </button>
-        )}
+        <div className="flex gap-2">
+          {showButton && buttonAction && (
+            <button
+              onClick={buttonAction}
+              disabled={loading === pkg.id}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                darkMode
+                  ? 'bg-orange-600 hover:bg-orange-700 text-white'
+                  : 'bg-orange-500 hover:bg-orange-600 text-white'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              {loading === pkg.id ? '⏳' : buttonText}
+            </button>
+          )}
+          
+          {/* İPTAL BUTONU - Sadece izin verilen durumlarda */}
+          {canCancel && restaurantId && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                setCancelPackage(pkg)
+              }}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-600 hover:bg-red-700 text-white transition-colors"
+              title="Siparişi İptal Et"
+            >
+              ❌
+            </button>
+          )}
+          
+          {/* İptal edilemez uyarısı */}
+          {!canCancel && (
+            <button
+              disabled
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-600 text-gray-400 cursor-not-allowed"
+              title="Kurye yola çıktığı için iptal edemezsiniz"
+            >
+              🔒
+            </button>
+          )}
+        </div>
       </div>
     </div>
-  )
+  )}
 
   const Column = ({ 
     title, 
@@ -220,6 +263,20 @@ export default function KanbanBoard({ packages, onRefresh, darkMode, couriers = 
 
   return (
     <>
+      {/* İPTAL MODALI */}
+      {cancelPackage && restaurantId && (
+        <CancelOrderModal
+          package={cancelPackage}
+          restaurantId={restaurantId}
+          onClose={() => setCancelPackage(null)}
+          onSuccess={() => {
+            onRefresh()
+            setCancelPackage(null)
+          }}
+          darkMode={darkMode}
+        />
+      )}
+
       {/* TUTAR GÜNCELLEME MODALI */}
       {updateAmountPackage && (
         <UpdateAmountModal
@@ -380,7 +437,9 @@ export default function KanbanBoard({ packages, onRefresh, darkMode, couriers = 
                 {selectedPackage.getting_ready_at && (
                   <div className="flex justify-between text-sm">
                     <span className={darkMode ? 'text-slate-400' : 'text-gray-600'}>Hazırlanmaya Başlandı:</span>
-                    <span className={darkMode ? 'text-white' : 'text-gray-900'}>🕐 {formatTurkishTime(selectedPackage.getting_ready_at)}</span>
+                    <span className={darkMode ? 'text-white' : 'text-gray-900'}>
+                      🕐 {formatTurkishTime(selectedPackage.getting_ready_at)}
+                    </span>
                   </div>
                 )}
                 {selectedPackage.ready_at && (

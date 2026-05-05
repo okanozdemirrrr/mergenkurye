@@ -2450,11 +2450,12 @@ export default function KuryePage() {
 
   return (
     <>
-    <PullToRefresh onRefresh={handleRefresh} darkMode={darkMode}>
-      <div className={`min-h-screen p-2 sm:p-4 pb-20 ${darkMode ? 'bg-slate-950 text-white' : 'bg-gray-100 text-gray-900'}`}>
-      {/* KOMPAKT HEADER - TEK SATIRDA TÜM BİLGİLER */}
+    {/* ANA CONTAINER - Fixed height, no scroll */}
+    <div className={`h-screen flex flex-col overflow-hidden ${darkMode ? 'bg-slate-950 text-white' : 'bg-gray-100 text-gray-900'}`}>
+      
+      {/* HEADER - Fixed top */}
       {isLoggedIn && activeTab === 'packages' && (
-        <div className="fixed top-2 left-2 right-2 z-[9998] transition-all duration-300">
+        <div className="fixed top-0 left-0 right-0 z-[9998] p-2">
           <div className="max-w-2xl mx-auto">
             <div className="bg-slate-900/95 backdrop-blur-sm rounded-lg p-2 border border-slate-800 shadow-lg">
               <div className="flex items-center justify-between gap-2">
@@ -2511,12 +2512,15 @@ export default function KuryePage() {
         </div>
       )}
 
-      <div className="max-w-2xl mx-auto px-2 sm:px-0 relative pt-20 pb-24">{/* pb-24 bottom nav için boşluk */}
-        {/* DURUM TOGGLE VE MİKROFON - SAĞ ALT KÖŞE */}
-        {activeTab === 'packages' && (
-          <div className="fixed bottom-24 right-4 z-50">
-            {/* Mikrofon Butonu - Yukarıda */}
-            <button
+      {/* SCROLLABLE CONTENT AREA - PullToRefresh ile */}
+      <PullToRefresh onRefresh={handleRefresh} darkMode={darkMode}>
+        <div className="flex-1 overflow-y-auto pt-20 pb-20">
+          <div className="max-w-2xl mx-auto px-2 sm:px-0">
+            {/* DURUM TOGGLE VE MİKROFON - SAĞ ALT KÖŞE */}
+            {activeTab === 'packages' && (
+              <div className="fixed bottom-24 right-4 z-50">
+                {/* Mikrofon Butonu - Yukarıda */}
+                <button
               onClick={toggleVoiceRecognition}
               onMouseUp={() => {
                 // PC'de mouse bırakıldığında zorla durdur
@@ -3745,15 +3749,15 @@ export default function KuryePage() {
           </div>
         </div>
       )}
-    </div>
-    </PullToRefresh>
+        </div>
+      </PullToRefresh>
 
-    {/* BOTTOM NAVIGATION BAR - Sadece Kurye Paneli - PullToRefresh DIŞINDA */}
-    {isLoggedIn && (
-      <div className="fixed bottom-0 left-0 right-0 w-full bg-slate-900 border-t border-slate-800 z-50 safe-area-bottom">
-        <div className="flex items-center justify-around w-full">
-          {/* Aktif Paketler */}
-          <button
+      {/* BOTTOM NAVIGATION BAR - Fixed bottom, always visible */}
+      {isLoggedIn && (
+        <div className="fixed bottom-0 left-0 right-0 w-full bg-slate-900 border-t border-slate-800 z-50 safe-area-bottom">
+          <div className="flex items-center justify-around w-full">
+            {/* Aktif Paketler */}
+            <button
             onClick={() => setActiveTab('packages')}
             className={`flex-1 flex flex-col items-center py-3 transition-all ${activeTab === 'packages'
               ? 'text-blue-400'
@@ -3802,6 +3806,7 @@ export default function KuryePage() {
         </div>
       </div>
     )}
+    </div>
     </>
   )
 

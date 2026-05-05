@@ -64,7 +64,49 @@ export function CourierDetailModal({
                         </h3>
 
                         {/* Tarih Aralığı Seçici */}
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            {/* Hızlı Tarih Butonları */}
+                            <div className="flex gap-1">
+                                <button
+                                    onClick={() => {
+                                        const now = new Date()
+                                        const turkeyDate = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Istanbul' }))
+                                        const today = turkeyDate.toISOString().split('T')[0]
+                                        setCourierStartDate(today)
+                                        setCourierEndDate(today)
+                                    }}
+                                    className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium hover:bg-blue-200 transition-colors"
+                                >
+                                    Bugün
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        const now = new Date()
+                                        const turkeyDate = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Istanbul' }))
+                                        turkeyDate.setDate(turkeyDate.getDate() - 1)
+                                        const yesterday = turkeyDate.toISOString().split('T')[0]
+                                        setCourierStartDate(yesterday)
+                                        setCourierEndDate(yesterday)
+                                    }}
+                                    className="px-2 py-1 bg-slate-100 text-slate-700 rounded text-xs font-medium hover:bg-slate-200 transition-colors"
+                                >
+                                    Dün
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        const now = new Date()
+                                        const turkeyToday = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Istanbul' }))
+                                        const turkeyWeekAgo = new Date(turkeyToday)
+                                        turkeyWeekAgo.setDate(turkeyToday.getDate() - 7)
+                                        setCourierStartDate(turkeyWeekAgo.toISOString().split('T')[0])
+                                        setCourierEndDate(turkeyToday.toISOString().split('T')[0])
+                                    }}
+                                    className="px-2 py-1 bg-slate-100 text-slate-700 rounded text-xs font-medium hover:bg-slate-200 transition-colors"
+                                >
+                                    7 Gün
+                                </button>
+                            </div>
+                            
                             <input
                                 type="date"
                                 value={courierStartDate}

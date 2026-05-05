@@ -14,7 +14,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/app/lib/supabase'
-import { messaging } from '@/lib/firebaseAdmin'
+import { firebaseAdmin } from '@/lib/firebaseAdmin'
 
 export async function POST(request: NextRequest) {
   try {
@@ -90,7 +90,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const response = await messaging().send(message)
+    console.log('🔥 DEBUG: Firebase admin instance:', !!firebaseAdmin.apps.length)
+    console.log('🔥 DEBUG: Firebase messaging available:', !!firebaseAdmin.messaging)
+    console.log('🔥 DEBUG: Message payload:', JSON.stringify(message, null, 2))
+
+    if (!firebaseAdmin.apps.length) {
+      throw new Error('Firebase Admin SDK başlatılmamış')
+    }
+
+    const response = await firebaseAdmin.messaging().send(message)
 
     console.log('✅ Push notification gönderildi:', {
       courierId,

@@ -39,9 +39,18 @@ export function HistoryTab({
     // Kategorik filtre state'i
     const [statusFilter, setStatusFilter] = useState<'all' | 'delivered' | 'cancelled'>('all')
     
-    // Tarih aralığı state'leri
-    const [startDate, setStartDate] = useState('')
-    const [endDate, setEndDate] = useState('')
+    // Tarih aralığı state'leri - Varsayılan olarak bugün (Türkiye saat dilimi)
+    const getTodayInTurkey = () => {
+        const now = new Date()
+        const turkeyDate = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Istanbul' }))
+        return turkeyDate.toISOString().split('T')[0]
+    }
+    const today = getTodayInTurkey()
+    const [startDate, setStartDate] = useState(today)
+    const [endDate, setEndDate] = useState(today)
+    
+    // Sayfalama state'leri
+    const [currentPage, setCurrentPage] = useState(1)
 
     // Filtreleme
     const getFilteredHistory = () => {
@@ -54,7 +63,7 @@ export function HistoryTab({
             filtered = filtered.filter(pkg => pkg.status === 'cancelled')
         }
 
-        // Tarih aralığı filtreleme (sadece her iki tarih de seçiliyse)
+        // Tarih aralığı filtreleme (varsayılan olarak bugün)
         if (startDate && endDate) {
             const start = new Date(startDate)
             start.setHours(0, 0, 0, 0)
@@ -66,7 +75,9 @@ export function HistoryTab({
                     ? new Date(pkg.cancelled_at)
                     : pkg.delivered_at
                         ? new Date(pkg.delivered_at)
-                        : null
+                        : pkg.created_at
+                            ? new Date(pkg.created_at)
+                            : null
 
                 return pkgDate && pkgDate >= start && pkgDate <= end
             })
@@ -76,6 +87,30 @@ export function HistoryTab({
     }
 
     const filteredHistory = getFilteredHistory()
+    
+    // Sayfalama hesaplamaları
+    const totalPages = Math.ceil(filteredHistory.length / HISTORY_ITEMS_PER_PAGE)
+    const startIndex = (currentPage - 1) * HISTORY_ITEMS_PER_PAGE
+    const endIndex = startIndex + HISTORY_ITEMS_PER_PAGE
+    const currentPageData = filteredHistory.slice(startIndex, endIndex)
+    
+    // Sayfa değiştiğinde en üste scroll
+    const handlePageChange = (page: number) => {
+        setCurrentPage(page)
+        document.getElementById('history-container')?.scrollIntoView({ behavior: 'smooth' })
+    }
+    
+    // Filtre değiştiğinde sayfa 1'e dön
+    const handleFilterChange = (newFilter: 'all' | 'delivered' | 'cancelled') => {
+        setStatusFilter(newFilter)
+        setCurrentPage(1)
+    }
+    
+    const handleDateFilterChange = (start: string, end: string) => {
+        setStartDate(start)
+        setEndDate(end)
+        setCurrentPage(1)
+    }
 
     const getStatusText = (status: string) => {
         switch (status) {
@@ -276,7 +311,7 @@ export function HistoryTab({
                         {/* Kategorik Filtre Butonları */}
                         <div className="flex gap-2">
                             <button
-                                onClick={() => setStatusFilter('all')}
+                                onClick={() => handleFilterChange('all')}
                                 className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${statusFilter === 'all'
                                     ? 'bg-orange-600 text-white shadow-lg'
                                     : 'bg-slate-200 text-slate-700 hover:bg-slate-300:bg-slate-600'
@@ -285,7 +320,7 @@ export function HistoryTab({
                                 📦 Tümü
                             </button>
                             <button
-                                onClick={() => setStatusFilter('delivered')}
+                                onClick={() => handleFilterChange('delivered')}
                                 className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${statusFilter === 'delivered'
                                     ? 'bg-green-600 text-white shadow-lg'
                                     : 'bg-slate-200 text-slate-700 hover:bg-slate-300:bg-slate-600'
@@ -294,7 +329,7 @@ export function HistoryTab({
                                 ✅ Teslim Edilen
                             </button>
                             <button
-                                onClick={() => setStatusFilter('cancelled')}
+                                onClick={() => handleFilterChange('cancelled')}
                                 className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${statusFilter === 'cancelled'
                                     ? 'bg-red-600 text-white shadow-lg'
                                     : 'bg-slate-200 text-slate-700 hover:bg-slate-300:bg-slate-600'
@@ -307,14 +342,54 @@ export function HistoryTab({
                 </div>
 
                 {/* Tarih Aralığı Filtresi */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                     <label className="text-sm font-medium text-slate-700">
                         Tarih Aralığı:
                     </label>
+                    
+                    {/* Hızlı Tarih Seçim Butonları */}
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => {
+                                const now = new Date()
+                                const turkeyDate = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Istanbul' }))
+                                const today = turkeyDate.toISOString().split('T')[0]
+                                handleDateFilterChange(today, today)
+                            }}
+                            className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors"
+                        >
+                            Bugün
+                        </button>
+                        <button
+                            onClick={() => {
+                                const now = new Date()
+                                const turkeyDate = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Istanbul' }))
+                                turkeyDate.setDate(turkeyDate.getDate() - 1)
+                                const yesterday = turkeyDate.toISOString().split('T')[0]
+                                handleDateFilterChange(yesterday, yesterday)
+                            }}
+                            className="px-3 py-1 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors"
+                        >
+                            Dün
+                        </button>
+                        <button
+                            onClick={() => {
+                                const now = new Date()
+                                const turkeyToday = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Istanbul' }))
+                                const turkeyWeekAgo = new Date(turkeyToday)
+                                turkeyWeekAgo.setDate(turkeyToday.getDate() - 7)
+                                handleDateFilterChange(turkeyWeekAgo.toISOString().split('T')[0], turkeyToday.toISOString().split('T')[0])
+                            }}
+                            className="px-3 py-1 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors"
+                        >
+                            Son 7 Gün
+                        </button>
+                    </div>
+                    
                     <input
                         type="date"
                         value={startDate}
-                        onChange={(e) => setStartDate(e.target.value)}
+                        onChange={(e) => handleDateFilterChange(e.target.value, endDate)}
                         className="px-3 py-2 bg-slate-800 border-slate-700 border-slate-300 rounded-lg text-sm text-slate-700 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                         placeholder="Başlangıç"
                     />
@@ -322,29 +397,28 @@ export function HistoryTab({
                     <input
                         type="date"
                         value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)}
+                        onChange={(e) => handleDateFilterChange(startDate, e.target.value)}
                         className="px-3 py-2 bg-slate-800 border-slate-700 border-slate-300 rounded-lg text-sm text-slate-700 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                         placeholder="Bitiş"
                     />
-                    {(startDate || endDate) && (
-                        <button
-                            onClick={() => {
-                                setStartDate('')
-                                setEndDate('')
-                            }}
-                            className="px-3 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-300:bg-slate-600 transition-colors"
-                        >
-                            ✕ Temizle
-                        </button>
-                    )}
+                    <button
+                        onClick={() => handleDateFilterChange('', '')}
+                        className="px-3 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-300:bg-slate-600 transition-colors"
+                    >
+                        🗓️ Tüm Tarihler
+                    </button>
                 </div>
             </div>
 
             {/* İstatistikler */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
                 <div className="bg-orange-50 p-4 rounded-xl">
                     <div className="text-sm text-orange-600 font-medium">Toplam Sipariş</div>
                     <div className="text-2xl font-bold text-orange-700">{filteredHistory.length}</div>
+                </div>
+                <div className="bg-blue-50 p-4 rounded-xl">
+                    <div className="text-sm text-blue-600 font-medium">Sayfa</div>
+                    <div className="text-2xl font-bold text-blue-700">{currentPage} / {totalPages}</div>
                 </div>
                 <div className="bg-green-50 p-4 rounded-xl">
                     <div className="text-sm text-green-600 font-medium">Toplam Tutar</div>
@@ -390,7 +464,7 @@ export function HistoryTab({
                                 </td>
                             </tr>
                         ) : (
-                            filteredHistory.slice(0, HISTORY_ITEMS_PER_PAGE).map(pkg => (
+                            currentPageData.map(pkg => (
                                 <tr 
                                     key={pkg.id} 
                                     onClick={() => setSelectedPackage(pkg)}
@@ -494,6 +568,73 @@ export function HistoryTab({
                     </tbody>
                 </table>
             </div>
+            
+            {/* Sayfalama */}
+            {totalPages > 1 && (
+                <div className="flex justify-center items-center gap-2 mt-6">
+                    {/* Önceki Sayfa */}
+                    <button
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            currentPage === 1
+                                ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                                : 'bg-slate-600 text-white hover:bg-slate-700'
+                        }`}
+                    >
+                        ← Önceki
+                    </button>
+
+                    {/* Sayfa Numaraları */}
+                    <div className="flex gap-1">
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNum => {
+                            // İlk 3, son 3 ve mevcut sayfa etrafındaki 2 sayfayı göster
+                            const showPage = 
+                                pageNum <= 3 || 
+                                pageNum > totalPages - 3 || 
+                                Math.abs(pageNum - currentPage) <= 2
+
+                            if (!showPage) {
+                                // Nokta göster (sadece bir kez)
+                                if (pageNum === 4 && currentPage > 6) {
+                                    return <span key={pageNum} className="px-2 py-2 text-slate-500">...</span>
+                                }
+                                if (pageNum === totalPages - 3 && currentPage < totalPages - 5) {
+                                    return <span key={pageNum} className="px-2 py-2 text-slate-500">...</span>
+                                }
+                                return null
+                            }
+
+                            return (
+                                <button
+                                    key={pageNum}
+                                    onClick={() => handlePageChange(pageNum)}
+                                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                        currentPage === pageNum
+                                            ? 'bg-orange-600 text-white shadow-lg'
+                                            : 'bg-slate-600 text-white hover:bg-slate-700'
+                                    }`}
+                                >
+                                    {pageNum}
+                                </button>
+                            )
+                        })}
+                    </div>
+
+                    {/* Sonraki Sayfa */}
+                    <button
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            currentPage === totalPages
+                                ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                                : 'bg-slate-600 text-white hover:bg-slate-700'
+                        }`}
+                    >
+                        Sonraki →
+                    </button>
+                </div>
+            )}
         </div>
         </>
     )
