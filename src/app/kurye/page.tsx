@@ -709,7 +709,6 @@ export default function KuryePage() {
       }
       
       // İnternet hatalarını sessizce geç
-      const errorMsg = error.message?.toLowerCase() || ''
       if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
         console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
         return
