@@ -314,7 +314,8 @@ export function useCourierOrders({
         .update({
           status: 'delivered',
           delivered_at: new Date().toISOString(),
-          payment_method: paymentMethod
+          payment_method: paymentMethod,
+          delivered_by_courier_id: courierId  // Teslimatı yapan kurye
         })
         .eq('id', packageId)
 
@@ -358,7 +359,8 @@ export function useCourierOrders({
         .update({
           status: 'delivered',
           delivered_at: new Date().toISOString(),
-          payment_method: 'iban'
+          payment_method: 'iban',
+          delivered_by_courier_id: courierId  // Teslimatı yapan kurye
         })
         .eq('id', ibanPackageId)
 

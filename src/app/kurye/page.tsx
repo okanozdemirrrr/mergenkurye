@@ -556,12 +556,14 @@ export default function KuryePage() {
 
       await sendHeartbeat()
 
+      // ⚡ OPTİMİZE: Sadece gerekli kolonları çek + LIMIT
       const { data, error } = await supabase
         .from('packages')
-        .select('*, restaurants(name, phone, address)')
+        .select('id, order_number, customer_name, customer_phone, delivery_address, amount, status, payment_method, content, created_at, assigned_at, picked_up_at, restaurant_id, restaurants(name, phone, address)')
         .eq('courier_id', courierId)
         .in('status', ['assigned', 'picking_up', 'on_the_way'])
         .order('created_at', { ascending: false })
+        .limit(50)
 
       if (error) throw error
 
@@ -572,8 +574,15 @@ export default function KuryePage() {
 
       setPackages(transformed)
     } catch (error: any) {
-      // İnternet hatalarını sessizce geç
+      // ⚡ Timeout hatası için özel mesaj
       const errorMsg = error.message?.toLowerCase() || ''
+      if (errorMsg.includes('timeout') || errorMsg.includes('statement timeout')) {
+        setErrorMessage('⏱️ Bağlantı yavaş, tekrar deneniyor...')
+        setTimeout(() => fetchPackages(isInitialLoad), 2000)
+        return
+      }
+      
+      // İnternet hatalarını sessizce geç
       if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
         console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
         return // Eski veriler ekranda kalsın
@@ -608,8 +617,14 @@ export default function KuryePage() {
         setCardTotal(data.filter(p => p.payment_method === 'card').reduce((sum, p) => sum + (p.amount || 0), 0))
       }
     } catch (error: any) {
-      // İnternet hatalarını sessizce geç
+      // ⚡ Timeout hatası için özel mesaj
       const errorMsg = error.message?.toLowerCase() || ''
+      if (errorMsg.includes('timeout') || errorMsg.includes('statement timeout')) {
+        console.warn('⏱️ İstatistikler timeout, atlanıyor')
+        return
+      }
+      
+      // İnternet hatalarını sessizce geç
       if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
         console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
         return
@@ -629,13 +644,15 @@ export default function KuryePage() {
       const todayStart = new Date()
       todayStart.setHours(0, 0, 0, 0)
 
+      // ⚡ OPTİMİZE: Sadece gerekli kolonları çek + LIMIT
       const { data, error } = await supabase
         .from('packages')
-        .select('*, restaurants(name, phone, address)')
+        .select('id, order_number, customer_name, delivery_address, amount, payment_method, delivered_at, restaurant_id, restaurants(name)')
         .eq('delivered_by_courier_id', courierId)  // courier_id yerine delivered_by_courier_id
         .eq('status', 'delivered')
         .gte('delivered_at', todayStart.toISOString())
         .order('delivered_at', { ascending: false })
+        .limit(100) // ⚡ LIMIT ekle
 
       if (error) throw error
 
@@ -648,7 +665,13 @@ export default function KuryePage() {
 
       setTodayDeliveredPackages(transformed)
     } catch (error: any) {
+      // ⚡ Timeout hatası için özel mesaj
       const errorMsg = error.message?.toLowerCase() || ''
+      if (errorMsg.includes('timeout') || errorMsg.includes('statement timeout')) {
+        console.warn('⏱️ Geçmiş paketler timeout, atlanıyor')
+        return
+      }
+      
       if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
         console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
         return
@@ -677,6 +700,14 @@ export default function KuryePage() {
         setCourierName(data.full_name || 'Kurye')
       }
     } catch (error: any) {
+      // ⚡ Timeout hatası için özel mesaj
+      const errorMsg = error.message?.toLowerCase() || ''
+      if (errorMsg.includes('timeout') || errorMsg.includes('statement timeout')) {
+        console.warn('⏱️ Kurye durumu timeout, tekrar deneniyor...')
+        setTimeout(() => fetchCourierStatus(), 3000)
+        return
+      }
+      
       // İnternet hatalarını sessizce geç
       const errorMsg = error.message?.toLowerCase() || ''
       if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
@@ -747,11 +778,12 @@ export default function KuryePage() {
       const todayStart = new Date()
       todayStart.setHours(0, 0, 0, 0)
 
-      // Tüm aktif kuryeleri çek
+      // ⚡ OPTİMİZE: Sadece aktif kuryeleri çek + LIMIT
       const { data: couriersData, error: couriersError } = await supabase
         .from('couriers')
-        .select('id, full_name, is_active')
+        .select('id, full_name')
         .eq('is_active', true)
+        .limit(20) // ⚡ LIMIT ekle
 
       if (couriersError) throw couriersError
 
@@ -761,14 +793,15 @@ export default function KuryePage() {
         return
       }
 
-      // Her kurye için bugünkü teslimat sayısını çek
+      // ⚡ OPTİMİZE: Sadece ID'leri çek
       const courierIds = couriersData.map(c => c.id)
       const { data: packagesData, error: packagesError } = await supabase
         .from('packages')
-        .select('delivered_by_courier_id')  // courier_id yerine delivered_by_courier_id
+        .select('delivered_by_courier_id')
         .eq('status', 'delivered')
-        .in('delivered_by_courier_id', courierIds)  // courier_id yerine delivered_by_courier_id
+        .in('delivered_by_courier_id', courierIds)
         .gte('delivered_at', todayStart.toISOString())
+        .limit(500) // ⚡ LIMIT ekle
 
       if (packagesError) throw packagesError
 
@@ -787,8 +820,9 @@ export default function KuryePage() {
           full_name: courier.full_name || 'İsimsiz Kurye',
           todayDeliveryCount: counts[courier.id] || 0
         }))
-        .filter(courier => courier.todayDeliveryCount > 0) // Sadece bugün teslimat yapanlar
-        .sort((a, b) => b.todayDeliveryCount - a.todayDeliveryCount) // Çoktan aza sırala
+        .filter(courier => courier.todayDeliveryCount > 0)
+        .sort((a, b) => b.todayDeliveryCount - a.todayDeliveryCount)
+        .slice(0, 10) // ⚡ Sadece ilk 10'u göster
 
       setLeaderboard(leaderboardData)
 
@@ -797,8 +831,14 @@ export default function KuryePage() {
       setMyRank(myIndex >= 0 ? myIndex + 1 : null)
 
     } catch (error: any) {
-      // İnternet hatalarını sessizce geç
+      // ⚡ Timeout hatası için özel mesaj
       const errorMsg = error.message?.toLowerCase() || ''
+      if (errorMsg.includes('timeout') || errorMsg.includes('statement timeout')) {
+        console.warn('⏱️ Leaderboard timeout, atlanıyor')
+        return
+      }
+      
+      // İnternet hatalarını sessizce geç
       if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
         console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
         return
@@ -2053,13 +2093,17 @@ export default function KuryePage() {
       const courierId = localStorage.getItem(STORAGE_KEYS.COURIER_ID)
       if (!courierId) return
 
-      // İlk yükleme
-      fetchPackages(true)
-      fetchDailyStats()
-      fetchTodayDeliveredPackages()
-      fetchCourierStatus()
-      fetchLeaderboard()
-      fetchUnsettledAmount() // Verilecek hesabı çek
+      // İlk yükleme - ⚡ PARALEL ÇALIŞTIR
+      Promise.all([
+        fetchPackages(true),
+        fetchDailyStats(),
+        fetchCourierStatus()
+      ]).then(() => {
+        // İkincil yüklemeler - daha az kritik
+        fetchTodayDeliveredPackages()
+        fetchLeaderboard()
+        fetchUnsettledAmount()
+      })
 
       // İlk konum güncellemesi - HEMEN yap
       console.log('📍 İlk konum güncellemesi başlatılıyor...')
@@ -2096,11 +2140,11 @@ export default function KuryePage() {
         // ⚠️ ERKEN ÇIKIŞ 1: Teslim edilmiş veya iptal edilmiş paketleri atla
         if (payload.new?.status === 'delivered' || payload.new?.status === 'cancelled') {
           console.log('⏭️ Paket teslim edilmiş/iptal edilmiş, atlanıyor')
-          // Sadece istatistikleri güncelle, paket listesini değil
-          await fetchDailyStats()
-          await fetchTodayDeliveredPackages()
-          await fetchLeaderboard()
-          await fetchUnsettledAmount()
+          // ⚡ OPTİMİZE: Sadece gerekli fonksiyonları çağır
+          Promise.all([
+            fetchDailyStats(),
+            fetchLeaderboard()
+          ])
           return
         }
 
@@ -2146,12 +2190,16 @@ export default function KuryePage() {
           console.log('ℹ️ Paket güncellendi ama yeni atama değil')
         }
 
-        // State'i güncelle - sayfa yenileme YOK!
-        await fetchPackages(false)
-        await fetchDailyStats()
-        await fetchTodayDeliveredPackages()
-        await fetchLeaderboard()
-        await fetchUnsettledAmount()
+        // State'i güncelle - ⚡ OPTİMİZE: Sadece gerekli fonksiyonları çağır
+        Promise.all([
+          fetchPackages(false),
+          fetchDailyStats()
+        ]).then(() => {
+          // İkincil güncellemeler
+          if (isNewAssignment) {
+            fetchLeaderboard()
+          }
+        })
         console.log('✅ Kurye state güncellendi (packages)')
       }
 
@@ -3860,7 +3908,7 @@ export default function KuryePage() {
     try {
       const { data, error } = await supabase
         .from('couriers')
-        .select('id, full_name, username, password')
+        .select('id, full_name, username, password, account_status')
         .eq('username', loginForm.username)
         .eq('password', loginForm.password)
         .maybeSingle()
@@ -3872,7 +3920,17 @@ export default function KuryePage() {
       }
 
       if (data) {
-        // Sadece kurye oturumunu başlat, diğerlerine dokunma
+        // ⚠️ HESAP DURUMU KONTROLÜ (sadece admin değiştirebilir)
+        if (data.account_status === 'terminated') {
+          setErrorMessage("❌ Hesabınız kapatılmış! Yöneticinizle iletişime geçin.")
+          return
+        }
+        if (data.account_status === 'suspended') {
+          setErrorMessage("❌ Hesabınız askıya alınmış! Yöneticinizle iletişime geçin.")
+          return
+        }
+
+        // Giriş yapınca otomatik aktif yap
         await supabase
           .from('couriers')
           .update({ is_active: true, status: 'idle' })

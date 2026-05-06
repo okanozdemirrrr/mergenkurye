@@ -11,6 +11,7 @@ import { useState, useEffect } from 'react'
 import { Courier, Package } from '@/types'
 import { supabase } from '@/app/lib/supabase'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { CourierAccountStatusModal } from './modals/CourierAccountStatusModal'
 
 interface CouriersTabProps {
     couriers: Courier[]
@@ -29,6 +30,9 @@ export function CouriersTab({
     courierEarningsFilter,
     setCourierEarningsFilter
 }: CouriersTabProps) {
+    const [selectedCourierForStatus, setSelectedCourierForStatus] = useState<Courier | null>(null)
+    const [refreshTrigger, setRefreshTrigger] = useState(0)
+
     // Kurye Hesapları
     if (courierSubTab === 'accounts') {
         return (
@@ -101,10 +105,31 @@ export function CouriersTab({
                                 >
                                     📊 Detaylı Rapor Görüntüle
                                 </button>
+                                
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        setSelectedCourierForStatus(courier)
+                                    }}
+                                    className="w-full mt-2 bg-slate-700 hover:bg-slate-800 text-white py-2 rounded-lg font-medium transition-colors text-sm"
+                                >
+                                    ⚙️ Hesap Durumu Yönet
+                                </button>
                             </div>
                         ))
                     )}
                 </div>
+                
+                {selectedCourierForStatus && (
+                    <CourierAccountStatusModal
+                        courier={selectedCourierForStatus}
+                        onClose={() => setSelectedCourierForStatus(null)}
+                        onSuccess={() => {
+                            setRefreshTrigger(prev => prev + 1)
+                            window.location.reload() // Sayfayı yenile
+                        }}
+                    />
+                )}
             </div>
         )
     }

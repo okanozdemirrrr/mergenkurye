@@ -98,6 +98,10 @@ export function CompactOrderCard({
             }
             if (newStatus === 'delivered' && !pkg.delivered_at) {
                 updates.delivered_at = new Date().toISOString()
+                // Admin panelinden teslim ediliyorsa, mevcut courier_id'yi delivered_by_courier_id olarak kaydet
+                if (pkg.courier_id) {
+                    updates.delivered_by_courier_id = pkg.courier_id
+                }
             }
             if (newStatus === 'cancelled' && !pkg.cancelled_at) {
                 updates.cancelled_at = new Date().toISOString()

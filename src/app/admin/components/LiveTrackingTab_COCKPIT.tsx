@@ -151,24 +151,24 @@ export function LiveTrackingTab({
 
             {/* KOKPİT LAYOUT - 100vh, Sıfır Boşluk */}
             <div className="h-[calc(100vh-4rem)] flex flex-col gap-2 overflow-hidden">
-                {/* HEADER - Minimal Logo + Başlık */}
-                <div className="flex items-center gap-3 px-2 py-1 bg-slate-900 border-b border-slate-800">
+                {/* HEADER - Minimal Logo + Başlık (Tek Satır, h-8) */}
+                <div className="flex items-center gap-2 px-3 h-8 bg-slate-900 border-b border-slate-800">
                     <Image 
                         src="/logo.png" 
                         alt="Mergen Kurye" 
-                        width={32} 
-                        height={32} 
-                        className="h-8 w-auto"
+                        width={28} 
+                        height={28} 
+                        className="h-7 w-auto"
                     />
-                    <h1 className="text-lg font-bold text-white">🎯 Lojistik Kokpit</h1>
-                    <div className="ml-auto flex items-center gap-3 text-xs">
-                        <span className="text-slate-400">📦 Aktif: <span className="text-white font-bold">{unassignedPackages.length}</span></span>
-                        <span className="text-slate-400">🚚 Yolda: <span className="text-orange-400 font-bold">{assignedPackages.length}</span></span>
-                        <span className="text-slate-400">✅ Bugün: <span className="text-green-400 font-bold">{todayDeliveredCount}</span></span>
+                    <h1 className="text-base font-bold text-white">Lojistik Kokpit</h1>
+                    <div className="ml-auto flex items-center gap-4 text-xs">
+                        <span className="text-slate-400">📦 <span className="text-white font-bold">{unassignedPackages.length}</span></span>
+                        <span className="text-slate-400">🚚 <span className="text-orange-400 font-bold">{assignedPackages.length}</span></span>
+                        <span className="text-slate-400">✅ <span className="text-green-400 font-bold">{todayDeliveredCount}</span></span>
                     </div>
                 </div>
 
-                {/* MAIN GRID - 12 Kolon */}
+                {/* MAIN GRID - 12 Kolon, gap-2 */}
                 <div className="flex-1 grid grid-cols-12 gap-2 px-2 pb-2 overflow-hidden">
                     {/* SOL + ORTA: SİPARİŞLER (8 kolon = %67) */}
                     <div className="col-span-8 flex flex-col gap-2 overflow-hidden">
@@ -179,7 +179,7 @@ export function LiveTrackingTab({
                                 <span className="text-xs text-slate-400">{unassignedPackages.length} sipariş</span>
                             </div>
                             <div className="flex-1 overflow-y-auto p-2">
-                                <div className="grid grid-cols-3 gap-2">
+                                <div className="grid grid-cols-4 gap-1.5">
                                     {isLoading ? (
                                         <div className="col-span-3 text-center py-8 text-slate-500 text-xs">Yükleniyor...</div>
                                     ) : unassignedPackages.length === 0 ? (
