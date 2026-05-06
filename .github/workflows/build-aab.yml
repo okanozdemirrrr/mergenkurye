@@ -1,10 +1,10 @@
 name: Build AAB
 
 on:
-  workflow_dispatch:
-  push:
-    branches:
-      - main
+  workflow_dispatch:  # Sadece manuel tetikleme
+  # push:
+  #   branches:
+  #     - main
 
 jobs:
   build:
