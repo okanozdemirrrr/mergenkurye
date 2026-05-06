@@ -2358,6 +2358,9 @@ export default function KuryePage() {
 
   const handleUpdateStatus = async (packageId: number, nextStatus: Package['status'], additionalData: any = {}) => {
     try {
+      // Kurye ID'yi al
+      const courierId = localStorage.getItem(STORAGE_KEYS.COURIER_ID)
+      
       // IBAN seçildiyse ve delivered durumuna geçiliyorsa modal aç
       if (nextStatus === 'delivered' && additionalData.payment_method === 'iban') {
         const pkg = packages.find(p => p.id === packageId)
@@ -2375,6 +2378,7 @@ export default function KuryePage() {
       const updateData: any = { status: nextStatus, ...additionalData }
       if (nextStatus === 'delivered' && courierId) {
         updateData.delivered_by_courier_id = courierId  // Teslimatı yapan kurye
+        console.log('✅ delivered_by_courier_id set ediliyor:', courierId)
       }
       
       const { error } = await supabase
