@@ -162,9 +162,18 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
 
       if (error) throw error
 
-      // Bugünün başlangıcı
-      const todayStart = new Date()
-      todayStart.setHours(0, 0, 0, 0)
+      // BUSINESS DAY LOGIC: İş günü sabah 05:00'da başlar
+      const now = new Date()
+      const currentHour = now.getHours()
+      
+      const todayStart = new Date(now)
+      if (currentHour < 5) {
+        // Gece yarısından sonra, dün sabah 05:00
+        todayStart.setDate(todayStart.getDate() - 1)
+      }
+      todayStart.setHours(5, 0, 0, 0)
+
+      console.log('📅 Admin Panel - Business Day Start:', todayStart.toISOString())
 
       // Her kurye için borç ve teslimat bilgilerini çek
       const couriersWithData = await Promise.all(
@@ -243,8 +252,18 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
 
   const fetchTodayDeliveredCount = async () => {
     try {
-      const todayStart = new Date()
-      todayStart.setHours(0, 0, 0, 0)
+      // BUSINESS DAY LOGIC: İş günü sabah 05:00'da başlar
+      const now = new Date()
+      const currentHour = now.getHours()
+      
+      const todayStart = new Date(now)
+      if (currentHour < 5) {
+        // Gece yarısından sonra, dün sabah 05:00
+        todayStart.setDate(todayStart.getDate() - 1)
+      }
+      todayStart.setHours(5, 0, 0, 0)
+
+      console.log('📅 Admin Panel - Today Delivered Count Start:', todayStart.toISOString())
 
       const { count, error } = await supabase
         .from('packages')
@@ -253,6 +272,7 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
         .gte('delivered_at', todayStart.toISOString())
 
       if (error) throw error
+      console.log('📊 Bugün teslim edilen toplam:', count)
       setTodayDeliveredCount(count || 0)
     } catch (error: any) {
       console.error('Günlük teslimat sayısı yüklenemedi:', error)
