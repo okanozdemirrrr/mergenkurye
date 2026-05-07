@@ -47,6 +47,11 @@ export function useRestaurantReminder(
       const now = Date.now()
       const delayed = new Set<number>()
 
+      console.log('🔍 Hatırlatıcı kontrolü başladı:', {
+        packageCount: packages.length,
+        threshold: finalConfig.warningThresholdMinutes
+      })
+
       packages.forEach(pkg => {
         // Sadece 'new_order' ve 'getting_ready' statüsündeki paketleri kontrol et
         if (pkg.status !== 'new_order' && pkg.status !== 'getting_ready') {
@@ -56,10 +61,29 @@ export function useRestaurantReminder(
         const createdAt = new Date(pkg.created_at).getTime()
         const elapsedMinutes = (now - createdAt) / (1000 * 60)
 
+        console.log('📦 Paket kontrol ediliyor:', {
+          id: pkg.id,
+          orderNumber: pkg.order_number,
+          status: pkg.status,
+          createdAt: pkg.created_at,
+          elapsedMinutes: elapsedMinutes.toFixed(2),
+          isDelayed: elapsedMinutes >= finalConfig.warningThresholdMinutes
+        })
+
         // Eşik değerini aştıysa delayed listesine ekle
         if (elapsedMinutes >= finalConfig.warningThresholdMinutes) {
           delayed.add(pkg.id)
+          console.log('⚠️ GECİKMİŞ PAKET BULUNDU:', {
+            id: pkg.id,
+            orderNumber: pkg.order_number,
+            elapsedMinutes: elapsedMinutes.toFixed(2)
+          })
         }
+      })
+
+      console.log('✅ Kontrol tamamlandı:', {
+        delayedCount: delayed.size,
+        delayedPackages: Array.from(delayed)
       })
 
       setDelayedPackages(delayed)
@@ -68,7 +92,14 @@ export function useRestaurantReminder(
       if (delayed.size > 0) {
         const timeSinceLastSound = (now - lastSoundPlayedRef.current) / (1000 * 60)
         
+        console.log('🔊 Ses kontrolü:', {
+          timeSinceLastSound: timeSinceLastSound.toFixed(2),
+          soundInterval: finalConfig.soundIntervalMinutes,
+          shouldPlaySound: timeSinceLastSound >= finalConfig.soundIntervalMinutes
+        })
+        
         if (timeSinceLastSound >= finalConfig.soundIntervalMinutes) {
+          console.log('🔊 SES ÇALINIYOR!')
           playReminderSound()
           lastSoundPlayedRef.current = now
         }

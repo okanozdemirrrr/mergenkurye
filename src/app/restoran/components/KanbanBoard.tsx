@@ -150,7 +150,7 @@ export default function KanbanBoard({
             ⏰ {delayedMinutes} dakikadır bekliyor!
           </p>
           <p className={`text-xs ${darkMode ? 'text-red-400' : 'text-red-600'} mt-1`}>
-            Paket hazırsa gönderelim mi? Kuryeler sabırsız! 🚴💨
+            Lütfen hazırlık durumunu güncelleyin!
           </p>
         </div>
       )}
