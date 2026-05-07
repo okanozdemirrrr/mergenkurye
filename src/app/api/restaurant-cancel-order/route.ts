@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     // 2. ADIM 1: Paketi bul (RLS bypass ile service role kullanıyoruz)
     const { data: pkg, error: fetchError } = await supabase
       .from('packages')
-      .select('id, order_number, customer_name, amount, status, restaurant_id, courier_id, couriers(full_name, fcm_token), restaurants(name)')
+      .select('*')
       .eq('id', packageId)
       .single()
 
@@ -63,6 +63,32 @@ export async function POST(request: NextRequest) {
         hint: fetchError.hint
       } : null
     })
+
+    // Eğer paket bulunduysa, courier ve restaurant bilgilerini ayrı sorgularla al
+    let courierData: any = null
+    let restaurantData: any = null
+
+    if (pkg) {
+      // Courier bilgisi
+      if (pkg.courier_id) {
+        const { data: courier } = await supabase
+          .from('couriers')
+          .select('full_name, fcm_token')
+          .eq('id', pkg.courier_id)
+          .single()
+        courierData = courier
+      }
+
+      // Restaurant bilgisi
+      if (pkg.restaurant_id) {
+        const { data: restaurant } = await supabase
+          .from('restaurants')
+          .select('name')
+          .eq('id', pkg.restaurant_id)
+          .single()
+        restaurantData = restaurant
+      }
+    }
 
     // ADIM 2: Paket bulunamadı hatası (gerçek 404)
     if (fetchError || !pkg) {
@@ -162,15 +188,15 @@ export async function POST(request: NextRequest) {
     console.log('✅ Paket başarıyla iptal edildi:', { packageId: pkg.id, orderNumber: pkg.order_number })
 
     // ADIM 6: Kuryeye bildirim gönder (eğer atanmışsa)
-    if (pkg.courier_id && pkg.couriers?.fcm_token) {
+    if (pkg.courier_id && courierData?.fcm_token) {
       try {
         await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/send-push`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            token: pkg.couriers.fcm_token,
+            token: courierData.fcm_token,
             title: '⚠️ Sipariş İptal Edildi',
-            body: `${pkg.restaurants?.name || 'Restoran'} #${pkg.order_number} numaralı siparişi iptal etti. O adrese gitmeyin!`,
+            body: `${restaurantData?.name || 'Restoran'} #${pkg.order_number} numaralı siparişi iptal etti. O adrese gitmeyin!`,
             data: {
               type: 'order_cancelled',
               packageId: pkg.id.toString(),
@@ -192,11 +218,11 @@ export async function POST(request: NextRequest) {
         action: 'cancelled_by_restaurant',
         details: {
           restaurant_id: restaurantIdInt,
-          restaurant_name: pkg.restaurants?.name,
+          restaurant_name: restaurantData?.name,
           reason: cancellationReason,
           previous_status: pkg.status,
           courier_id: pkg.courier_id,
-          courier_name: pkg.couriers?.full_name
+          courier_name: courierData?.full_name
         },
         created_at: new Date().toISOString()
       })
