@@ -85,21 +85,67 @@ export default function CancelOrderModal({
       })
 
       if (!response.ok) {
-        // Hata mesajlarını kullanıcı dostu göster
+        // Sistem yapılandırma hatası (500 - API Key eksik)
+        if (response.status === 500 && data.technicalDetails) {
+          alert(
+            `🔧 ${data.error}\n\n` +
+            `${data.message}\n\n` +
+            `📋 Teknik Detay: ${data.technicalDetails}\n\n` +
+            `${data.debug?.hint ? '💡 Çözüm: ' + data.debug.hint : ''}`
+          )
+          return
+        }
+
+        // Paket bulunamadı (404)
         if (response.status === 404) {
-          // Paket bulunamadı
-          alert(`❌ ${data.error}\n\n${data.message || 'Sipariş veritabanında bulunamadı.'}\n\n🔍 Debug: ${JSON.stringify(data.debug || {})}`)
-        } else if (response.status === 403) {
-          // Yetki hatası veya durum uygun değil
-          if (data.currentStatus) {
-            alert(`⚠️ ${data.error}\n\n${data.message}\n\n📊 Mevcut Durum: ${data.currentStatus}\n💡 ${data.hint || ''}`)
+          const debugInfo = data.debug ? 
+            `\n\n🔍 Debug:\n` +
+            `- Package ID: ${data.debug.packageId} (${data.debug.packageIdType})\n` +
+            `- Hata: ${data.debug.errorMessage || 'Bilinmiyor'}\n` +
+            `- Kod: ${data.debug.errorCode || 'Yok'}\n` +
+            `${data.debug.errorHint ? '- İpucu: ' + data.debug.errorHint : ''}` 
+            : ''
+          
+          alert(`❌ ${data.error}\n\n${data.message}${debugInfo}`)
+          return
+        }
+
+        // Yetki hatası veya durum uygun değil (403)
+        if (response.status === 403) {
+          if (data.technicalDetails) {
+            // Yetkilendirme hatası (RLS, API Key vb.)
+            alert(
+              `🔒 ${data.error}\n\n` +
+              `${data.message}\n\n` +
+              `📋 Teknik Detay: ${data.technicalDetails}\n\n` +
+              `${data.debug?.hint ? '💡 Çözüm: ' + data.debug.hint : ''}`
+            )
+          } else if (data.currentStatus) {
+            // Sipariş durumu uygun değil
+            alert(
+              `⚠️ ${data.error}\n\n` +
+              `${data.message}\n\n` +
+              `📊 Mevcut Durum: ${data.currentStatus}\n` +
+              `💡 ${data.hint || ''}`
+            )
           } else {
+            // Genel yetki hatası
             alert(`❌ ${data.error}\n\n${data.message}`)
           }
-        } else {
-          // Diğer hatalar
-          alert(`❌ Hata (${response.status}): ${data.error}\n\n${data.message || 'Bilinmeyen hata'}\n\n${data.debug ? '🔍 Detay: ' + JSON.stringify(data.debug) : ''}`)
+          return
         }
+
+        // Diğer hatalar
+        const debugInfo = data.debug ? 
+          `\n\n🔍 Debug:\n${JSON.stringify(data.debug, null, 2)}` 
+          : ''
+        
+        alert(
+          `❌ Hata (${response.status}): ${data.error}\n\n` +
+          `${data.message || 'Bilinmeyen hata'}` +
+          `${data.technicalDetails ? '\n\n📋 Teknik: ' + data.technicalDetails : ''}` +
+          `${debugInfo}`
+        )
         return
       }
 
@@ -109,7 +155,23 @@ export default function CancelOrderModal({
       onClose()
     } catch (error) {
       console.error('❌ İptal hatası:', error)
-      alert(`❌ Sipariş iptal edilirken bir hata oluştu!\n\n${error instanceof Error ? error.message : 'Bilinmeyen hata'}`)
+      
+      // Network hatası
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        alert(
+          `🌐 Bağlantı Hatası\n\n` +
+          `Sunucuya bağlanılamadı. İnternet bağlantınızı kontrol edin.\n\n` +
+          `Teknik: ${error.message}`
+        )
+        return
+      }
+
+      // Genel hata
+      alert(
+        `❌ Sipariş iptal edilirken bir hata oluştu!\n\n` +
+        `${error instanceof Error ? error.message : 'Bilinmeyen hata'}\n\n` +
+        `Lütfen tekrar deneyin veya sistem yöneticisine bildirin.`
+      )
     } finally {
       setIsSubmitting(false)
     }

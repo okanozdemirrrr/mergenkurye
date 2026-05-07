@@ -7,18 +7,35 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 // API route'lar için service role key kullan (RLS bypass)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseServiceKey = process.env.SERVICE_ROLE_KEY
 
-if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('❌ Supabase credentials eksik!')
+// Environment variables kontrolü
+if (!supabaseUrl) {
+  console.error('❌ NEXT_PUBLIC_SUPABASE_URL eksik!')
+  throw new Error('Supabase URL yapılandırması eksik')
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+if (!supabaseServiceKey) {
+  console.error('❌ SERVICE_ROLE_KEY eksik! Anon key kullanılacak (RLS aktif olacak)')
+  console.warn('⚠️ Production ortamında SERVICE_ROLE_KEY mutlaka tanımlanmalı!')
+}
+
+// Service Role Key yoksa Anon Key kullan (fallback)
+const apiKey = supabaseServiceKey || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+const supabase = createClient(supabaseUrl, apiKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false
   }
+})
+
+console.log('🔑 Supabase Client Yapılandırması:', {
+  url: supabaseUrl,
+  keyType: supabaseServiceKey ? 'SERVICE_ROLE_KEY' : 'ANON_KEY',
+  keyLength: apiKey?.length || 0,
+  keyPrefix: apiKey?.substring(0, 10) + '...'
 })
 
 export async function POST(request: NextRequest) {
@@ -97,6 +114,42 @@ export async function POST(request: NextRequest) {
     // ADIM 2: Paket bulunamadı hatası (gerçek 404)
     if (fetchError || !pkg) {
       console.error('❌ Paket veritabanında bulunamadı:', { packageId, fetchError })
+      
+      // API Key hatası özel olarak yakala
+      if (fetchError?.message?.includes('Invalid API key') || fetchError?.message?.includes('API key')) {
+        return NextResponse.json(
+          { 
+            error: 'Sistem Yapılandırma Hatası',
+            message: 'Sunucu API anahtarı geçersiz veya eksik. Lütfen sistem yöneticisine bildirin.',
+            technicalDetails: 'Supabase SERVICE_ROLE_KEY environment variable eksik veya hatalı',
+            debug: {
+              errorMessage: fetchError?.message,
+              errorCode: fetchError?.code,
+              hint: 'Vercel Dashboard → Settings → Environment Variables → SERVICE_ROLE_KEY kontrol edin'
+            }
+          },
+          { status: 500 }
+        )
+      }
+
+      // Yetkilendirme hatası
+      if (fetchError?.code === 'PGRST301' || fetchError?.message?.includes('permission')) {
+        return NextResponse.json(
+          { 
+            error: 'Yetkilendirme Hatası',
+            message: 'Bu işlem için yeterli yetkiniz yok. RLS policy kontrolü gerekli.',
+            technicalDetails: 'Supabase Row Level Security (RLS) bu işlemi engelliyor',
+            debug: {
+              errorMessage: fetchError?.message,
+              errorCode: fetchError?.code,
+              hint: 'SERVICE_ROLE_KEY kullanılıyor mu kontrol edin'
+            }
+          },
+          { status: 403 }
+        )
+      }
+
+      // Genel paket bulunamadı hatası
       return NextResponse.json(
         { 
           error: 'Paket bulunamadı',
@@ -106,7 +159,8 @@ export async function POST(request: NextRequest) {
             packageIdType: typeof packageId,
             errorMessage: fetchError?.message,
             errorCode: fetchError?.code,
-            errorDetails: fetchError?.details
+            errorDetails: fetchError?.details,
+            errorHint: fetchError?.hint
           }
         },
         { status: 404 }
@@ -248,11 +302,35 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('❌ Restoran iptal API hatası:', error)
+    
+    // Environment variable hatası
+    if (error instanceof Error && error.message.includes('yapılandırması eksik')) {
+      return NextResponse.json(
+        { 
+          error: 'Sistem Yapılandırma Hatası',
+          message: 'Sunucu yapılandırması eksik. Lütfen sistem yöneticisine bildirin.',
+          technicalDetails: error.message,
+          debug: {
+            errorType: 'EnvironmentVariableError',
+            errorMessage: error.message,
+            hint: 'Vercel Dashboard → Settings → Environment Variables kontrol edin'
+          }
+        },
+        { status: 500 }
+      )
+    }
+
+    // Genel hata
     return NextResponse.json(
       { 
         error: 'Sunucu hatası',
         message: 'Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.',
-        debug: error instanceof Error ? error.message : 'Unknown error'
+        technicalDetails: error instanceof Error ? error.message : 'Bilinmeyen hata',
+        debug: {
+          errorType: error instanceof Error ? error.constructor.name : typeof error,
+          errorMessage: error instanceof Error ? error.message : String(error),
+          errorStack: error instanceof Error ? error.stack?.split('\n').slice(0, 3) : undefined
+        }
       },
       { status: 500 }
     )
