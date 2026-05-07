@@ -21,8 +21,15 @@ export async function POST(request: NextRequest) {
   try {
     const { packageId, restaurantId, cancellationReason } = await request.json()
 
-    console.log('🔍 İptal isteği alındı:', { packageId, restaurantId, cancellationReason, packageIdType: typeof packageId })
+    console.log('🔍 İptal isteği alındı:', { 
+      packageId, 
+      packageIdType: typeof packageId,
+      restaurantId, 
+      restaurantIdType: typeof restaurantId,
+      cancellationReason 
+    })
 
+    // 1. Parametre validasyonu
     if (!packageId || !restaurantId || !cancellationReason) {
       return NextResponse.json(
         { error: 'Eksik parametreler' },
@@ -33,72 +40,100 @@ export async function POST(request: NextRequest) {
     // restaurantId'yi integer'a çevir (string olarak gelebilir)
     const restaurantIdInt = typeof restaurantId === 'string' ? parseInt(restaurantId) : restaurantId
 
-    // 1. Paketi getir - packageId hem id hem order_number olabilir
-    let query = supabase
+    // 2. ADIM 1: Paketi bul (RLS bypass ile service role kullanıyoruz)
+    const { data: pkg, error: fetchError } = await supabase
       .from('packages')
-      .select('*, courier:couriers(full_name, fcm_token), restaurant:restaurants(name)')
-
-    // Eğer packageId sayısal değilse veya string ise order_number ile ara
-    if (typeof packageId === 'string' && packageId.includes('0')) {
-      // order_number formatında (örn: "006944")
-      query = query.eq('order_number', packageId)
-    } else {
-      // Normal ID
-      query = query.eq('id', packageId)
-    }
-
-    const { data: pkg, error: fetchError } = await query.single()
+      .select('id, order_number, customer_name, amount, status, restaurant_id, courier_id, couriers(full_name, fcm_token), restaurants(name)')
+      .eq('id', packageId)
+      .single()
 
     console.log('📦 Paket sorgu sonucu:', { 
-      pkg: pkg ? { id: pkg.id, order_number: pkg.order_number, restaurant_id: pkg.restaurant_id } : null, 
-      fetchError 
+      found: !!pkg,
+      packageId,
+      pkg: pkg ? { 
+        id: pkg.id, 
+        order_number: pkg.order_number, 
+        restaurant_id: pkg.restaurant_id,
+        status: pkg.status 
+      } : null,
+      fetchError: fetchError ? {
+        message: fetchError.message,
+        code: fetchError.code,
+        details: fetchError.details,
+        hint: fetchError.hint
+      } : null
     })
 
+    // ADIM 2: Paket bulunamadı hatası (gerçek 404)
     if (fetchError || !pkg) {
-      console.error('❌ Paket bulunamadı:', { packageId, fetchError })
+      console.error('❌ Paket veritabanında bulunamadı:', { packageId, fetchError })
       return NextResponse.json(
         { 
           error: 'Paket bulunamadı',
+          message: 'Bu sipariş veritabanında mevcut değil veya silinmiş olabilir.',
           debug: {
             packageId,
             packageIdType: typeof packageId,
             errorMessage: fetchError?.message,
             errorCode: fetchError?.code,
-            hint: 'packageId olarak id veya order_number gönderilebilir'
+            errorDetails: fetchError?.details
           }
         },
         { status: 404 }
       )
     }
 
-    // 2. Restoran yetkisi kontrolü
+    // ADIM 3: Restoran yetkisi kontrolü
     if (pkg.restaurant_id !== restaurantIdInt) {
       console.error('❌ Yetki hatası:', { 
         pkgRestaurantId: pkg.restaurant_id, 
         requestRestaurantId: restaurantIdInt,
-        type: typeof pkg.restaurant_id
+        pkgRestaurantIdType: typeof pkg.restaurant_id,
+        requestRestaurantIdType: typeof restaurantIdInt
       })
       return NextResponse.json(
-        { error: 'Bu siparişi iptal etme yetkiniz yok' },
-        { status: 403 }
-      )
-    }
-
-    // 3. KRİTİK KURAL: Sadece belirli durumlarda iptal edilebilir
-    const allowedStatuses = ['new_order', 'getting_ready', 'ready', 'assigned', 'picking_up']
-    
-    if (!allowedStatuses.includes(pkg.status)) {
-      return NextResponse.json(
         { 
-          error: 'Kurye yola çıktığı için sipariş iptal edilemez',
-          message: 'Lütfen merkezle (admin) iletişime geçin.',
-          currentStatus: pkg.status
+          error: 'Yetki hatası',
+          message: 'Bu siparişi iptal etme yetkiniz yok. Bu sipariş başka bir restorana ait.'
         },
         { status: 403 }
       )
     }
 
-    // 4. Paketi iptal et
+    // ADIM 4: Durum kontrolü - İptal edilebilir mi?
+    const allowedStatuses = ['new_order', 'getting_ready', 'ready', 'assigned', 'picking_up']
+    
+    if (!allowedStatuses.includes(pkg.status)) {
+      console.warn('⚠️ İptal edilemez durum:', { 
+        currentStatus: pkg.status, 
+        allowedStatuses 
+      })
+      
+      // Duruma göre özel mesajlar
+      let statusMessage = ''
+      if (pkg.status === 'on_the_way') {
+        statusMessage = 'Kurye yola çıktığı için sipariş iptal edilemez.'
+      } else if (pkg.status === 'delivered') {
+        statusMessage = 'Teslim edilmiş sipariş iptal edilemez.'
+      } else if (pkg.status === 'cancelled') {
+        statusMessage = 'Bu sipariş zaten iptal edilmiş.'
+      } else {
+        statusMessage = `Sipariş "${pkg.status}" durumunda olduğu için iptal edilemez.`
+      }
+      
+      return NextResponse.json(
+        { 
+          error: 'İptal edilemez',
+          message: statusMessage,
+          hint: 'Lütfen merkezle (admin) iletişime geçin.',
+          currentStatus: pkg.status,
+          allowedStatuses
+        },
+        { status: 403 }
+      )
+    }
+
+    // ADIM 5: Paketi iptal et
     const { error: updateError } = await supabase
       .from('packages')
       .update({
@@ -107,29 +142,38 @@ export async function POST(request: NextRequest) {
         cancelled_by: 'restaurant',
         cancellation_reason: cancellationReason
       })
-      .eq('id', packageId)
+      .eq('id', pkg.id) // pkg.id kullan, packageId değil (güvenlik)
 
     if (updateError) {
-      console.error('❌ Paket iptal hatası:', updateError)
+      console.error('❌ Paket güncelleme hatası:', updateError)
       return NextResponse.json(
-        { error: 'Paket iptal edilemedi' },
+        { 
+          error: 'Güncelleme hatası',
+          message: 'Sipariş iptal edilemedi. Veritabanı hatası.',
+          debug: {
+            errorMessage: updateError.message,
+            errorCode: updateError.code
+          }
+        },
         { status: 500 }
       )
     }
 
-    // 5. Kuryeye bildirim gönder (eğer atanmışsa)
-    if (pkg.courier_id && pkg.courier?.fcm_token) {
+    console.log('✅ Paket başarıyla iptal edildi:', { packageId: pkg.id, orderNumber: pkg.order_number })
+
+    // ADIM 6: Kuryeye bildirim gönder (eğer atanmışsa)
+    if (pkg.courier_id && pkg.couriers?.fcm_token) {
       try {
         await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/send-push`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            token: pkg.courier.fcm_token,
+            token: pkg.couriers.fcm_token,
             title: '⚠️ Sipariş İptal Edildi',
-            body: `${pkg.restaurant?.name || 'Restoran'} #${pkg.order_number} numaralı siparişi iptal etti. O adrese gitmeyin!`,
+            body: `${pkg.restaurants?.name || 'Restoran'} #${pkg.order_number} numaralı siparişi iptal etti. O adrese gitmeyin!`,
             data: {
               type: 'order_cancelled',
-              packageId: packageId.toString(),
+              packageId: pkg.id.toString(),
               orderNumber: pkg.order_number
             }
           })
@@ -141,18 +185,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 6. Admin log'u oluştur (order_logs tablosu varsa)
+    // ADIM 7: Admin log'u oluştur
     try {
       await supabase.from('order_logs').insert({
-        package_id: packageId,
+        package_id: pkg.id,
         action: 'cancelled_by_restaurant',
         details: {
-          restaurant_id: restaurantId,
-          restaurant_name: pkg.restaurant?.name,
+          restaurant_id: restaurantIdInt,
+          restaurant_name: pkg.restaurants?.name,
           reason: cancellationReason,
           previous_status: pkg.status,
           courier_id: pkg.courier_id,
-          courier_name: pkg.courier?.full_name
+          courier_name: pkg.couriers?.full_name
         },
         created_at: new Date().toISOString()
       })
@@ -165,13 +209,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: 'Sipariş başarıyla iptal edildi',
-      notifiedCourier: !!pkg.courier_id
+      notifiedCourier: !!pkg.courier_id,
+      packageId: pkg.id,
+      orderNumber: pkg.order_number
     })
 
   } catch (error) {
     console.error('❌ Restoran iptal API hatası:', error)
     return NextResponse.json(
-      { error: 'Sunucu hatası' },
+      { 
+        error: 'Sunucu hatası',
+        message: 'Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.',
+        debug: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     )
   }

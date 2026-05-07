@@ -55,44 +55,64 @@ export default function CancelOrderModal({
 
     console.log('🔍 İptal işlemi başlatılıyor:', {
       packageId: pkg.id,
+      packageIdType: typeof pkg.id,
       orderNumber: pkg.order_number,
       restaurantId: restaurantIdInt,
-      restaurantIdOriginal: restaurantId,
-      cancellationReason: reason
+      restaurantIdType: typeof restaurantIdInt,
+      cancellationReason: reason,
+      fullPackage: pkg
     })
 
     setIsSubmitting(true)
 
     try {
+      const payload = {
+        packageId: pkg.id, // number olarak gönder
+        restaurantId: restaurantIdInt, // integer olarak gönder
+        cancellationReason: reason
+      }
+
+      console.log('📤 API\'ye gönderilen payload:', payload)
+
       const response = await fetch('/api/restaurant-cancel-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          packageId: pkg.id,
-          restaurantId: restaurantIdInt,
-          cancellationReason: reason
-        })
+        body: JSON.stringify(payload)
       })
 
       const data = await response.json()
-      console.log('📡 API yanıtı:', { status: response.status, data })
+      console.log('📡 API yanıtı:', { 
+        status: response.status, 
+        statusText: response.statusText,
+        data 
+      })
 
       if (!response.ok) {
-        // Kurye yola çıkmış hatası
-        if (response.status === 403 && data.currentStatus) {
-          alert(`❌ ${data.error}\n\n${data.message}\n\nMevcut Durum: ${data.currentStatus}`)
+        // Hata mesajlarını kullanıcı dostu göster
+        if (response.status === 404) {
+          // Paket bulunamadı
+          alert(`❌ ${data.error}\n\n${data.message || 'Sipariş veritabanında bulunamadı.'}\n\n🔍 Debug: ${JSON.stringify(data.debug || {})}`)
+        } else if (response.status === 403) {
+          // Yetki hatası veya durum uygun değil
+          if (data.currentStatus) {
+            alert(`⚠️ ${data.error}\n\n${data.message}\n\n📊 Mevcut Durum: ${data.currentStatus}\n💡 ${data.hint || ''}`)
+          } else {
+            alert(`❌ ${data.error}\n\n${data.message}`)
+          }
         } else {
-          alert(`❌ Hata: ${data.error || 'Bilinmeyen hata'}\n\nDetay: ${JSON.stringify(data.debug || {})}`)
+          // Diğer hatalar
+          alert(`❌ Hata (${response.status}): ${data.error}\n\n${data.message || 'Bilinmeyen hata'}\n\n${data.debug ? '🔍 Detay: ' + JSON.stringify(data.debug) : ''}`)
         }
         return
       }
 
-      alert(`✅ Sipariş başarıyla iptal edildi!\n\n${data.notifiedCourier ? '📱 Kurye bilgilendirildi.' : ''}`)
+      // Başarılı
+      alert(`✅ ${data.message}\n\n📦 Sipariş #${data.orderNumber || pkg.order_number}\n${data.notifiedCourier ? '📱 Kurye bilgilendirildi.' : ''}`)
       onSuccess()
       onClose()
     } catch (error) {
       console.error('❌ İptal hatası:', error)
-      alert('❌ Sipariş iptal edilirken bir hata oluştu!')
+      alert(`❌ Sipariş iptal edilirken bir hata oluştu!\n\n${error instanceof Error ? error.message : 'Bilinmeyen hata'}`)
     } finally {
       setIsSubmitting(false)
     }
