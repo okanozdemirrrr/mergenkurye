@@ -56,12 +56,13 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
 
   const fetchPackages = async () => {
     try {
-      // ✅ TÜM AKTİF STATUSLER - TARİH FİLTRESİ YOK
+      // ⚡ EGRESS OPTİMİZASYONU: Sadece gerekli kolonlar + limit
       const { data, error } = await supabase
         .from('packages')
-        .select('*, restaurants(*)')
+        .select('id, order_number, status, amount, payment_method, customer_name, customer_phone, delivery_address, content, created_at, courier_id, restaurant_id, restaurants(id, name, phone)')
         .in('status', ['new_order', 'getting_ready', 'ready', 'assigned', 'picking_up', 'on_the_way'])
         .order('created_at', { ascending: false })
+        .limit(500) // ⚡ Maksimum 500 aktif sipariş
 
       if (error) throw error
 
@@ -95,15 +96,17 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
 
   const fetchDeliveredPackages = async () => {
     try {
+      // ⚡ EGRESS OPTİMİZASYONU: Sadece son 7 günün delivered/cancelled paketleri
+      const sevenDaysAgo = new Date()
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+      
       const { data, error } = await supabase
         .from('packages')
-        .select(`
-          *, 
-          restaurants(*), 
-          couriers!packages_courier_id_fkey(*)
-        `)
+        .select('id, order_number, status, amount, payment_method, delivered_at, cancelled_at, courier_id, restaurant_id, applied_price, delivered_by_courier_id, restaurants(id, name), couriers!packages_courier_id_fkey(id, full_name)')
         .in('status', ['delivered', 'cancelled'])
+        .gte('created_at', sevenDaysAgo.toISOString()) // ⚡ Son 7 gün
         .order('created_at', { ascending: false })
+        .limit(1000) // ⚡ Maksimum 1000 kayıt
 
       if (error) throw error
 
@@ -155,9 +158,10 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
 
   const fetchCouriers = async () => {
     try {
+      // ⚡ EGRESS OPTİMİZASYONU: Sadece gerekli courier kolonları
       const { data, error } = await supabase
         .from('couriers')
-        .select('*')
+        .select('id, username, full_name, is_active, package_rate, payment_type, account_status')
         .order('full_name', { ascending: true })
 
       if (error) throw error
@@ -237,9 +241,10 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
   const fetchRestaurants = async () => {
     console.log('🍽️ fetchRestaurants başladı')
     try {
+      // ⚡ EGRESS OPTİMİZASYONU: Sadece gerekli restaurant kolonları
       const { data, error } = await supabase
         .from('restaurants')
-        .select('*')
+        .select('id, name, phone, address, package_fee, is_active, logo_url')
         .order('name', { ascending: true })
 
       if (error) throw error
@@ -258,16 +263,16 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
       
       const todayStart = new Date(now)
       if (currentHour < 5) {
-        // Gece yarısından sonra, dün sabah 05:00
         todayStart.setDate(todayStart.getDate() - 1)
       }
       todayStart.setHours(5, 0, 0, 0)
 
       console.log('📅 Admin Panel - Today Delivered Count Start:', todayStart.toISOString())
 
+      // ⚡ EGRESS OPTİMİZASYONU: head: true ile sadece count çek, veri çekme!
       const { count, error } = await supabase
         .from('packages')
-        .select('*', { count: 'exact', head: true })
+        .select('id', { count: 'exact', head: true })
         .eq('status', 'delivered')
         .gte('delivered_at', todayStart.toISOString())
 
@@ -346,31 +351,80 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    // Packages channel
-    setupRealtimeWithRetry('packages-changes', 'packages', () => {
-      fetchPackages()
-      fetchDeliveredPackages()
+    // ⚡ REALTIME OPTİMİZASYONU: Full refetch yerine incremental update
+    setupRealtimeWithRetry('packages-changes', 'packages', (payload: any) => {
+      console.log('📦 Realtime package event:', payload.eventType, payload.new?.id)
+      
+      if (payload.eventType === 'INSERT') {
+        // Yeni paket eklendi - sadece bu paketi state'e ekle
+        const newPackage = payload.new
+        if (['new_order', 'getting_ready', 'ready', 'assigned', 'picking_up', 'on_the_way'].includes(newPackage.status)) {
+          setPackages(prev => [newPackage, ...prev].slice(0, 500))
+        }
+      } else if (payload.eventType === 'UPDATE') {
+        // Paket güncellendi - sadece bu paketi güncelle
+        const updatedPackage = payload.new
+        setPackages(prev => {
+          const index = prev.findIndex(p => p.id === updatedPackage.id)
+          if (index !== -1) {
+            const newList = [...prev]
+            newList[index] = { ...newList[index], ...updatedPackage }
+            return newList
+          }
+          return prev
+        })
+        
+        // Delivered/cancelled ise deliveredPackages'e ekle
+        if (['delivered', 'cancelled'].includes(updatedPackage.status)) {
+          setDeliveredPackages(prev => [updatedPackage, ...prev].slice(0, 1000))
+          setPackages(prev => prev.filter(p => p.id !== updatedPackage.id))
+        }
+      } else if (payload.eventType === 'DELETE') {
+        // Paket silindi - state'den çıkar
+        setPackages(prev => prev.filter(p => p.id !== payload.old.id))
+        setDeliveredPackages(prev => prev.filter(p => p.id !== payload.old.id))
+      }
+      
+      // Count'u güncelle (hafif sorgu)
       fetchTodayDeliveredCount()
     }).then(channel => { packagesChannel = channel })
 
-    // Couriers channel
-    setupRealtimeWithRetry('couriers-changes', 'couriers', () => {
-      fetchCouriers()
+    // ⚡ REALTIME OPTİMİZASYONU: Courier değişikliklerinde incremental update
+    setupRealtimeWithRetry('couriers-changes', 'couriers', (payload: any) => {
+      console.log('👤 Realtime courier event:', payload.eventType, payload.new?.id)
+      
+      if (payload.eventType === 'UPDATE') {
+        setCouriers(prev => {
+          const index = prev.findIndex(c => c.id === payload.new.id)
+          if (index !== -1) {
+            const newList = [...prev]
+            newList[index] = { ...newList[index], ...payload.new }
+            return newList
+          }
+          return prev
+        })
+      } else {
+        // INSERT/DELETE durumunda full refetch (nadir)
+        fetchCouriers()
+      }
     }).then(channel => { couriersChannel = channel })
 
-    // Courier debts channel
-    setupRealtimeWithRetry('courier-debts-changes', 'courier_debts', () => {
+    // ⚡ REALTIME OPTİMİZASYONU: Borç değişikliklerinde sadece ilgili kurye güncelle
+    setupRealtimeWithRetry('courier-debts-changes', 'courier_debts', (payload: any) => {
+      console.log('💰 Realtime debt event:', payload.eventType)
+      // Borç değişikliğinde sadece ilgili kuryenin debt bilgisini güncelle
+      // Full refetch yerine targeted update yapılabilir ama şimdilik hafif
       fetchCouriers()
     }).then(channel => { courierDebtsChannel = channel })
 
-    // 30 saniyelik otomatik yenileme (polling)
+    // ⚡ POLLING OPTİMİZASYONU: 30 saniye yerine 60 saniye
     const refreshInterval = setInterval(() => {
       fetchPackages()
       fetchDeliveredPackages()
       fetchCouriers()
       fetchRestaurants()
       fetchTodayDeliveredCount()
-    }, 30000)
+    }, 60000) // 60 saniye
 
     return () => {
       // Tüm reconnect timer'larını temizle
