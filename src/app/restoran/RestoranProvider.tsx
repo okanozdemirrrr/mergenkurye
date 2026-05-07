@@ -95,7 +95,10 @@ export function RestoranProvider({ children }: { children: ReactNode }) {
         .eq('restaurant_id', restaurantId)
         .order('created_at', { ascending: false })
 
-      if (error) throw error
+      if (error) {
+        console.error('❌ Supabase sorgu hatası:', error)
+        throw error
+      }
 
       const transformedData = (data || []).map((pkg: any) => ({
         ...pkg,
@@ -103,9 +106,15 @@ export function RestoranProvider({ children }: { children: ReactNode }) {
         couriers: undefined
       }))
 
+      console.log('✅ Siparişler yüklendi:', transformedData.length, 'adet')
       setPackages(transformedData)
     } catch (error: any) {
-      console.error('Siparişler yüklenirken hata:', error)
+      console.error('Siparişler yüklenirken hata:', {
+        message: error?.message,
+        details: error?.details,
+        hint: error?.hint,
+        code: error?.code
+      })
     }
   }
 

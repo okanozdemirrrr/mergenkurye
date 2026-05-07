@@ -173,6 +173,12 @@ export default function KanbanBoard({ packages, onRefresh, darkMode, couriers = 
             <button
               onClick={(e) => {
                 e.stopPropagation()
+                console.log('🔴 İptal butonuna tıklandı:', {
+                  pkgId: pkg.id,
+                  pkgOrderNumber: pkg.order_number,
+                  restaurantId,
+                  fullPackage: pkg
+                })
                 setCancelPackage(pkg)
               }}
               className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-600 hover:bg-red-700 text-white transition-colors"

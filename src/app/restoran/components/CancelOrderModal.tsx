@@ -26,6 +26,13 @@ export default function CancelOrderModal({
   const [customReason, setCustomReason] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  console.log('🎯 CancelOrderModal açıldı:', {
+    packageId: pkg.id,
+    orderNumber: pkg.order_number,
+    restaurantId,
+    packageData: pkg
+  })
+
   const cancellationReasons = [
     'Ürün kalmadı',
     'Müşteri iptal etti',
@@ -43,6 +50,17 @@ export default function CancelOrderModal({
       return
     }
 
+    // restaurantId'yi integer'a çevir
+    const restaurantIdInt = typeof restaurantId === 'string' ? parseInt(restaurantId) : restaurantId
+
+    console.log('🔍 İptal işlemi başlatılıyor:', {
+      packageId: pkg.id,
+      orderNumber: pkg.order_number,
+      restaurantId: restaurantIdInt,
+      restaurantIdOriginal: restaurantId,
+      cancellationReason: reason
+    })
+
     setIsSubmitting(true)
 
     try {
@@ -51,19 +69,20 @@ export default function CancelOrderModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           packageId: pkg.id,
-          restaurantId,
+          restaurantId: restaurantIdInt,
           cancellationReason: reason
         })
       })
 
       const data = await response.json()
+      console.log('📡 API yanıtı:', { status: response.status, data })
 
       if (!response.ok) {
         // Kurye yola çıkmış hatası
         if (response.status === 403 && data.currentStatus) {
           alert(`❌ ${data.error}\n\n${data.message}\n\nMevcut Durum: ${data.currentStatus}`)
         } else {
-          alert(`❌ Hata: ${data.error || 'Bilinmeyen hata'}`)
+          alert(`❌ Hata: ${data.error || 'Bilinmeyen hata'}\n\nDetay: ${JSON.stringify(data.debug || {})}`)
         }
         return
       }

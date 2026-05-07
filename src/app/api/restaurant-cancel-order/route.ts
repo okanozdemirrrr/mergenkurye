@@ -4,11 +4,24 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/app/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
+
+// API route'lar için service role key kullan (RLS bypass)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseServiceKey = process.env.SERVICE_ROLE_KEY!
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
+  }
+})
 
 export async function POST(request: NextRequest) {
   try {
     const { packageId, restaurantId, cancellationReason } = await request.json()
+
+    console.log('🔍 İptal isteği alındı:', { packageId, restaurantId, cancellationReason, packageIdType: typeof packageId })
 
     if (!packageId || !restaurantId || !cancellationReason) {
       return NextResponse.json(
@@ -17,22 +30,54 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 1. Paketi getir ve kontrol et
-    const { data: pkg, error: fetchError } = await supabase
+    // restaurantId'yi integer'a çevir (string olarak gelebilir)
+    const restaurantIdInt = typeof restaurantId === 'string' ? parseInt(restaurantId) : restaurantId
+
+    // 1. Paketi getir - packageId hem id hem order_number olabilir
+    let query = supabase
       .from('packages')
       .select('*, courier:couriers(full_name, fcm_token), restaurant:restaurants(name)')
-      .eq('id', packageId)
-      .single()
+
+    // Eğer packageId sayısal değilse veya string ise order_number ile ara
+    if (typeof packageId === 'string' && packageId.includes('0')) {
+      // order_number formatında (örn: "006944")
+      query = query.eq('order_number', packageId)
+    } else {
+      // Normal ID
+      query = query.eq('id', packageId)
+    }
+
+    const { data: pkg, error: fetchError } = await query.single()
+
+    console.log('📦 Paket sorgu sonucu:', { 
+      pkg: pkg ? { id: pkg.id, order_number: pkg.order_number, restaurant_id: pkg.restaurant_id } : null, 
+      fetchError 
+    })
 
     if (fetchError || !pkg) {
+      console.error('❌ Paket bulunamadı:', { packageId, fetchError })
       return NextResponse.json(
-        { error: 'Paket bulunamadı' },
+        { 
+          error: 'Paket bulunamadı',
+          debug: {
+            packageId,
+            packageIdType: typeof packageId,
+            errorMessage: fetchError?.message,
+            errorCode: fetchError?.code,
+            hint: 'packageId olarak id veya order_number gönderilebilir'
+          }
+        },
         { status: 404 }
       )
     }
 
     // 2. Restoran yetkisi kontrolü
-    if (pkg.restaurant_id !== restaurantId) {
+    if (pkg.restaurant_id !== restaurantIdInt) {
+      console.error('❌ Yetki hatası:', { 
+        pkgRestaurantId: pkg.restaurant_id, 
+        requestRestaurantId: restaurantIdInt,
+        type: typeof pkg.restaurant_id
+      })
       return NextResponse.json(
         { error: 'Bu siparişi iptal etme yetkiniz yok' },
         { status: 403 }
