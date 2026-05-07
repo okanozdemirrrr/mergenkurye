@@ -275,6 +275,36 @@ export function RestaurantsTab({
                     </div>
                 </div>
 
+                {/* Filtreleme Kutucukları */}
+                <div className="mb-6 p-4 bg-slate-800 rounded-xl border border-slate-700">
+                    <h3 className="text-lg font-semibold text-white mb-4">🔍 Filtreleme</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Minimum Borç Filtresi */}
+                        <div>
+                            <label className="block text-sm font-medium text-slate-300 mb-2">
+                                💰 Minimum Borç Tutarı (₺)
+                            </label>
+                            <input
+                                type="number"
+                                placeholder="Örn: 1000"
+                                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                            />
+                        </div>
+
+                        {/* Restoran Adı Filtresi */}
+                        <div>
+                            <label className="block text-sm font-medium text-slate-300 mb-2">
+                                🏪 Restoran Adı
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="Restoran adı ara..."
+                                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                            />
+                        </div>
+                    </div>
+                </div>
+
                 <div className="space-y-3">
                     {restaurantDebts.length === 0 ? (
                         <div className="text-center py-8 text-slate-500">
@@ -349,7 +379,17 @@ export function RestaurantsTab({
                 pkg => pkg.restaurant_id === restaurant.id && pkg.status === 'delivered'
             )
             
-            const totalOrders = restaurantOrders.length
+            // Bugünkü siparişleri filtrele
+            const today = new Date()
+            today.setHours(0, 0, 0, 0)
+            const todayOrders = restaurantOrders.filter(pkg => {
+                if (!pkg.delivered_at) return false
+                const deliveredDate = new Date(pkg.delivered_at)
+                deliveredDate.setHours(0, 0, 0, 0)
+                return deliveredDate.getTime() === today.getTime()
+            })
+            
+            const totalOrders = todayOrders.length
             const totalRevenue = restaurantOrders.reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
             const fallbackFee = restaurant.package_fee || 100
             
@@ -397,7 +437,7 @@ export function RestaurantsTab({
                                     </div>
 
                                     <div className="flex justify-between">
-                                        <span className="text-slate-600">Toplam Sipariş:</span>
+                                        <span className="text-slate-600">Bugünkü Sipariş:</span>
                                         <span className="font-bold text-orange-600">{r.totalOrders}</span>
                                     </div>
 
@@ -407,9 +447,16 @@ export function RestaurantsTab({
                                     </div>
 
                                     <div className="flex justify-between">
-                                        <span className="text-slate-600">Restorana Borcum:</span>
+                                        <span className="text-slate-600">Restoranın Paket Masrafı:</span>
                                         <span className={`font-bold ${r.totalDebt > 0 ? 'text-red-600' : 'text-green-600'}`}>
                                             {r.totalDebt.toFixed(2)} ₺
+                                        </span>
+                                    </div>
+
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-600">Restoranın Net Cirosu:</span>
+                                        <span className={`font-bold ${(r.totalRevenue - r.totalDebt) >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                                            {(r.totalRevenue - r.totalDebt).toFixed(2)} ₺
                                         </span>
                                     </div>
 

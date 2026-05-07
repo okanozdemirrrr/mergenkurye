@@ -7,8 +7,10 @@
  */
 'use client'
 
+import { useState } from 'react'
 import { Package, Courier, CourierDebt } from '@/types'
 import { formatTurkishTime, formatTurkishDate, calculateDeliveryDuration } from '@/utils/dateHelpers'
+import { CourierPaymentSettingsModal } from './CourierPaymentSettingsModal'
 
 interface CourierDetailModalProps {
     show: boolean
@@ -49,9 +51,17 @@ export function CourierDetailModal({
     getPlatformBadgeClass,
     getPlatformDisplayName
 }: CourierDetailModalProps) {
+    const [showPaymentSettings, setShowPaymentSettings] = useState(false)
+    const [showPaymentBreakdown, setShowPaymentBreakdown] = useState(false)
+    
     if (!show || !selectedCourierId || !courier) return null
 
     const summary = calculateCashSummary(selectedCourierOrders)
+
+    // Kurye kazancı hesaplama (dinamik)
+    const courierEarnings = courier.package_rate 
+        ? (courier.package_rate * selectedCourierOrders.length)
+        : 0
 
     return (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -122,6 +132,14 @@ export function CourierDetailModal({
                             />
                         </div>
 
+                        {/* Kazanç Şekli Butonu */}
+                        <button
+                            onClick={() => setShowPaymentSettings(true)}
+                            className="px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-lg font-medium text-sm shadow-lg transition-all active:scale-95"
+                        >
+                            ⚙️ Kazanç Şekli
+                        </button>
+
                         {/* Gün Sonu Al Butonu */}
                         {courierStartDate && courierEndDate && (
                             <button
@@ -152,40 +170,16 @@ export function CourierDetailModal({
 
                 {/* Modal Content */}
                 <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)] admin-scrollbar">
-                    {/* Kasa Özeti */}
+                    {/* Kasa Özeti - 4'lü Kart */}
                     {selectedCourierOrders.length > 0 && (
                         <div className="mb-6">
                             <h4 className="text-lg font-bold mb-4 text-slate-900">💰 Kasa Özeti</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div className="bg-green-100 p-4 rounded-xl border-2 border-green-300">
-                                    <div className="text-center">
-                                        <div className="text-3xl font-black text-green-700">
-                                            {summary.cashTotal.toFixed(2)} ₺
-                                        </div>
-                                        <div className="text-sm font-semibold text-green-600 mt-1">
-                                            💵 NAKİT TOPLAM
-                                        </div>
-                                        <div className="text-xs text-green-600 mt-1">
-                                            {selectedCourierOrders.filter(o => o.payment_method === 'cash').length} sipariş
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="bg-orange-100 p-4 rounded-xl border-2 border-orange-300">
-                                    <div className="text-center">
-                                        <div className="text-3xl font-black text-orange-700">
-                                            {summary.cardTotal.toFixed(2)} ₺
-                                        </div>
-                                        <div className="text-sm font-semibold text-orange-600 mt-1">
-                                            💳 KART TOPLAM
-                                        </div>
-                                        <div className="text-xs text-orange-600 mt-1">
-                                            {selectedCourierOrders.filter(o => o.payment_method === 'card').length} sipariş
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="bg-purple-100 p-4 rounded-xl border-2 border-purple-300">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Genel Toplam - Tıklanabilir */}
+                                <div 
+                                    onClick={() => setShowPaymentBreakdown(true)}
+                                    className="bg-purple-100 p-4 rounded-xl border-2 border-purple-300 cursor-pointer hover:bg-purple-200 transition-all transform hover:scale-105"
+                                >
                                     <div className="text-center">
                                         <div className="text-3xl font-black text-purple-700">
                                             {summary.grandTotal.toFixed(2)} ₺
@@ -195,6 +189,27 @@ export function CourierDetailModal({
                                         </div>
                                         <div className="text-xs text-purple-600 mt-1">
                                             {selectedCourierOrders.length} toplam sipariş
+                                        </div>
+                                        <div className="text-xs text-purple-500 mt-2 opacity-75">
+                                            👆 Detaylar için tıklayın
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Kurye Kazancı */}
+                                <div className="bg-blue-100 p-4 rounded-xl border-2 border-blue-300">
+                                    <div className="text-center">
+                                        <div className="text-3xl font-black text-blue-700">
+                                            {courier.package_rate ? courierEarnings.toFixed(2) : '0.00'} ₺
+                                        </div>
+                                        <div className="text-sm font-semibold text-blue-600 mt-1">
+                                            🚴 KURYE KAZANCI
+                                        </div>
+                                        <div className="text-xs text-blue-600 mt-1">
+                                            {courier.package_rate 
+                                                ? `${selectedCourierOrders.length} × ${courier.package_rate}₺`
+                                                : 'Kazanç Şekli Belirlenmedi'
+                                            }
                                         </div>
                                     </div>
                                 </div>
@@ -328,6 +343,111 @@ export function CourierDetailModal({
                     )}
                 </div>
             </div>
+
+            {/* Ödeme Detayları Popup */}
+            {showPaymentBreakdown && (
+                <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl transform transition-all duration-300 scale-100 animate-in">
+                        {/* Popup Header */}
+                        <div className="p-6 border-b border-slate-200">
+                            <div className="flex justify-between items-center">
+                                <h3 className="text-xl font-bold text-slate-900">💰 Ödeme Detayları</h3>
+                                <button
+                                    onClick={() => setShowPaymentBreakdown(false)}
+                                    className="text-slate-500 hover:text-slate-700 text-2xl"
+                                >
+                                    ×
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Popup Content */}
+                        <div className="p-6 space-y-4">
+                            {/* Nakit Toplam */}
+                            <div className="bg-green-50 p-4 rounded-xl border-2 border-green-200 transform transition-all duration-200 hover:scale-105">
+                                <div className="text-center">
+                                    <div className="text-2xl font-black text-green-700">
+                                        {summary.cashTotal.toFixed(2)} ₺
+                                    </div>
+                                    <div className="text-sm font-semibold text-green-600 mt-1">
+                                        💵 NAKİT TOPLAM
+                                    </div>
+                                    <div className="text-xs text-green-600 mt-1">
+                                        {selectedCourierOrders.filter(o => o.payment_method === 'cash').length} sipariş
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Kart Toplam */}
+                            <div className="bg-orange-50 p-4 rounded-xl border-2 border-orange-200 transform transition-all duration-200 hover:scale-105">
+                                <div className="text-center">
+                                    <div className="text-2xl font-black text-orange-700">
+                                        {summary.cardTotal.toFixed(2)} ₺
+                                    </div>
+                                    <div className="text-sm font-semibold text-orange-600 mt-1">
+                                        💳 KART TOPLAM
+                                    </div>
+                                    <div className="text-xs text-orange-600 mt-1">
+                                        {selectedCourierOrders.filter(o => o.payment_method === 'card').length} sipariş
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* IBAN Toplam */}
+                            <div className="bg-blue-50 p-4 rounded-xl border-2 border-blue-200 transform transition-all duration-200 hover:scale-105">
+                                <div className="text-center">
+                                    <div className="text-2xl font-black text-blue-700">
+                                        {summary.ibanTotal.toFixed(2)} ₺
+                                    </div>
+                                    <div className="text-sm font-semibold text-blue-600 mt-1">
+                                        🏦 IBAN TOPLAM
+                                    </div>
+                                    <div className="text-xs text-blue-600 mt-1">
+                                        {selectedCourierOrders.filter(o => o.payment_method === 'iban').length} sipariş
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Genel Toplam */}
+                            <div className="bg-purple-50 p-4 rounded-xl border-2 border-purple-300">
+                                <div className="text-center">
+                                    <div className="text-3xl font-black text-purple-700">
+                                        {summary.grandTotal.toFixed(2)} ₺
+                                    </div>
+                                    <div className="text-sm font-semibold text-purple-600 mt-1">
+                                        🎯 GENEL TOPLAM
+                                    </div>
+                                    <div className="text-xs text-purple-600 mt-1">
+                                        {selectedCourierOrders.length} toplam sipariş
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Popup Footer */}
+                        <div className="p-6 border-t border-slate-200">
+                            <button
+                                onClick={() => setShowPaymentBreakdown(false)}
+                                className="w-full px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg font-medium transition-colors"
+                            >
+                                Kapat
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Kazanç Şekli Ayarları Modalı */}
+            {showPaymentSettings && (
+                <CourierPaymentSettingsModal
+                    courier={courier}
+                    onClose={() => setShowPaymentSettings(false)}
+                    onSuccess={() => {
+                        // Sayfayı yenile veya veriyi güncelle
+                        window.location.reload()
+                    }}
+                />
+            )}
         </div>
     )
 }

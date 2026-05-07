@@ -21,11 +21,15 @@ export function calculateCashSummary(orders: Package[]) {
     .filter(order => order.payment_method === 'card')
     .reduce((sum, order) => sum + (order.amount || 0), 0)
 
+  const ibanTotal = orders
+    .filter(order => order.payment_method === 'iban')
+    .reduce((sum, order) => sum + (order.amount || 0), 0)
+
   const grandTotal = orders
     .filter(order => !order.settled_at)
     .reduce((sum, order) => sum + (order.amount || 0), 0)
 
-  return { cashTotal, cardTotal, grandTotal }
+  return { cashTotal, cardTotal, ibanTotal, grandTotal }
 }
 
 /**

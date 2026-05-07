@@ -249,6 +249,9 @@ export default function KuryePage() {
   const [showLeaderboard, setShowLeaderboard] = useState(false) // Leaderboard modal
   const [activeTab, setActiveTab] = useState<'packages' | 'history' | 'earnings' | 'account'>('packages') // Aktif sekme
   const [courierName, setCourierName] = useState<string>('Kurye') // Giriş yapan kuryenin ismi
+  // YENİ: Ödeme sistemi state'leri
+  const [courierPaymentType, setCourierPaymentType] = useState<'paket_basi' | 'saatlik'>('paket_basi')
+  const [courierPackageRate, setCourierPackageRate] = useState<number>(0)
   const [todayDeliveredPackages, setTodayDeliveredPackages] = useState<Package[]>([]) // Bugünkü teslim edilenler
   const [filteredPackages, setFilteredPackages] = useState<Package[]>([]) // Filtrelenmiş paketler
   const [currentPage, setCurrentPage] = useState(1) // Mevcut sayfa
@@ -688,7 +691,7 @@ export default function KuryePage() {
     try {
       const { data, error } = await supabase
         .from('couriers')
-        .select('status, is_active, full_name')
+        .select('status, is_active, full_name, payment_type, package_rate')
         .eq('id', courierId)
         .maybeSingle()
 
@@ -698,6 +701,9 @@ export default function KuryePage() {
         setCourierStatus(data.status)
         setIs_active(data.is_active || false)
         setCourierName(data.full_name || 'Kurye')
+        // YENİ: Ödeme bilgilerini state'e kaydet
+        setCourierPaymentType(data.payment_type || 'paket_basi')
+        setCourierPackageRate(data.package_rate || 0)
       }
     } catch (error: any) {
       // ⚡ Timeout hatası için özel mesaj
@@ -2576,7 +2582,7 @@ export default function KuryePage() {
                 {/* Toplam Kazanç */}
                 <div className="bg-gradient-to-r from-green-900 to-emerald-900 px-2 py-1 rounded border border-green-700 flex-shrink-0">
                   <p className="text-[10px] text-green-300">💰 Kazanç</p>
-                  <p className="text-sm font-bold text-green-100">{deliveredCount * 80}₺</p>
+                  <p className="text-sm font-bold text-green-100">{(courierPackageRate || 0) * deliveredCount}₺</p>
                 </div>
               </div>
             </div>
@@ -3434,7 +3440,7 @@ export default function KuryePage() {
                 </div>
                 <div className="bg-slate-800/50 px-2 py-2 rounded-lg col-span-3">
                   <p className="text-[10px] text-slate-400 mb-1">Toplam Kazanç</p>
-                  <p className="text-base font-bold text-blue-400">{deliveredCount * 80}₺</p>
+                  <p className="text-base font-bold text-blue-400">{(courierPackageRate || 0) * deliveredCount}₺</p>
                 </div>
               </div>
             </div>

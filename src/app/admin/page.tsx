@@ -1,6 +1,6 @@
 /**
  * @file src/app/admin/page.tsx
- * @description Admin Ana Sayfa - Canlı Takip (Default)
+ * @description Admin Ana Sayfa
  */
 'use client'
 
@@ -17,10 +17,8 @@ export default function AdminPage() {
   const [assigningIds, setAssigningIds] = useState<Set<number>>(new Set())
   const [openDropdownId, setOpenDropdownId] = useState<number | null>(null)
 
-  // Realtime bildirimler (INSERT event'leri için)
+  // Realtime bildirimler
   useAdminRealtimeNotifications(true)
-  
-  // Hazır paket bildirimleri (UPDATE event'leri için)
   useReadyPackageNotification()
 
   const handleCourierChange = (packageId: number, courierId: string) => {
@@ -70,21 +68,19 @@ export default function AdminPage() {
   }
 
   return (
-    <>
-      <LiveTrackingTab
-        packages={packages}
-        couriers={couriers}
-        restaurants={restaurants}
-        isLoading={isLoading}
-        selectedCouriers={selectedCouriers}
-        assigningIds={assigningIds}
-        openDropdownId={openDropdownId}
-        setOpenDropdownId={setOpenDropdownId}
-        handleCourierChange={handleCourierChange}
-        handleAssignCourier={handleAssignCourier}
-        handleCancelOrder={handleCancelOrder}
-        todayDeliveredCount={todayDeliveredCount}
-      />
-    </>
+    <LiveTrackingTab
+      packages={packages}
+      couriers={couriers}
+      restaurants={restaurants}
+      isLoading={isLoading}
+      selectedCouriers={selectedCouriers}
+      assigningIds={assigningIds}
+      openDropdownId={openDropdownId}
+      setOpenDropdownId={setOpenDropdownId}
+      handleCourierChange={handleCourierChange}
+      handleAssignCourier={handleAssignCourier}
+      handleCancelOrder={handleCancelOrder}
+      todayDeliveredCount={todayDeliveredCount}
+    />
   )
 }

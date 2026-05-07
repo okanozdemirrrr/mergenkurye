@@ -57,7 +57,7 @@ export function useAdminRestaurantModal({
     try {
       let query = supabase
         .from('packages')
-        .select('*, couriers(full_name)')
+        .select('*, couriers!delivered_by_courier_id(full_name)')
         .eq('restaurant_id', id)
         .eq('status', 'delivered')
         .order('delivered_at', { ascending: false })

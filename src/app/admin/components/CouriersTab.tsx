@@ -46,7 +46,9 @@ export function CouriersTab({
                             <div className="font-bold">Kurye bulunamadı!</div>
                         </div>
                     ) : (
-                        couriers.map(courier => (
+                        couriers
+                            .sort((a, b) => (b.todayDeliveryCount || 0) - (a.todayDeliveryCount || 0))
+                            .map(courier => (
                             <div
                                 key={courier.id}
                                 onClick={() => onCourierClick(courier.id)}
@@ -74,9 +76,9 @@ export function CouriersTab({
                                         </div>
                                     </div>
                                     <div className="bg-slate-900 p-3 rounded-lg">
-                                        <div className="text-xs text-slate-600 mb-1">Aktif</div>
+                                        <div className="text-xs text-slate-600 mb-1">Bugünkü Kazanç</div>
                                         <div className="text-xl font-bold text-orange-600">
-                                            {courier.activePackageCount || 0}
+                                            {((courier.todayDeliveryCount || 0) * (courier.package_rate || 0)).toFixed(0)}₺
                                         </div>
                                     </div>
                                     <div className="bg-slate-900 p-3 rounded-lg">
@@ -391,7 +393,9 @@ export function CouriersTab({
                 new Date(pkg.delivered_at) >= startDate
             ).length
 
-            const earnings = deliveredCount * 80
+            const earnings = courier.package_rate 
+                ? deliveredCount * courier.package_rate
+                : 0
 
             return {
                 ...courier,
@@ -484,7 +488,7 @@ export function CouriersTab({
                                                 )}
                                             </h4>
                                             <p className="text-sm text-slate-500">
-                                                {courier.deliveredCount} paket × 80₺
+                                                {courier.deliveredCount} paket × {courier.package_rate || 0}₺
                                             </p>
                                         </div>
                                     </div>

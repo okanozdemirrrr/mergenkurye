@@ -84,6 +84,9 @@ export interface Courier {
     status?: CourierStatus
     totalDebt?: number
     last_location?: CourierLocation | null
+    // YENİ: Ödeme sistemi alanları
+    payment_type?: 'paket_basi' | 'saatlik'
+    package_rate?: number
 }
 
 // ============================================
