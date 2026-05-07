@@ -41,8 +41,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // restaurantId'yi integer'a çevir (string olarak gelebilir)
-    const restaurantIdInt = typeof restaurantId === 'string' ? parseInt(restaurantId) : restaurantId
+    // restaurantId'yi string olarak kullan (UUID olabilir)
+    const restaurantIdStr = String(restaurantId)
 
     // 2. ADIM 1: Paketi bul (RLS bypass ile service role kullanıyoruz)
     const { data: pkg, error: fetchError } = await supabase
@@ -114,12 +114,14 @@ export async function POST(request: NextRequest) {
     }
 
     // ADIM 3: Restoran yetkisi kontrolü
-    if (pkg.restaurant_id !== restaurantIdInt) {
+    // restaurant_id hem UUID hem integer olabilir, string karşılaştırması yap
+    const pkgRestaurantIdStr = String(pkg.restaurant_id)
+    if (pkgRestaurantIdStr !== restaurantIdStr) {
       console.error('❌ Yetki hatası:', { 
         pkgRestaurantId: pkg.restaurant_id, 
-        requestRestaurantId: restaurantIdInt,
+        requestRestaurantId: restaurantIdStr,
         pkgRestaurantIdType: typeof pkg.restaurant_id,
-        requestRestaurantIdType: typeof restaurantIdInt
+        requestRestaurantIdType: typeof restaurantIdStr
       })
       return NextResponse.json(
         { 
@@ -221,7 +223,7 @@ export async function POST(request: NextRequest) {
         package_id: pkg.id,
         action: 'cancelled_by_restaurant',
         details: {
-          restaurant_id: restaurantIdInt,
+          restaurant_id: restaurantIdStr,
           restaurant_name: restaurantData?.name,
           reason: cancellationReason,
           previous_status: pkg.status,

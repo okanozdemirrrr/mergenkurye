@@ -50,15 +50,12 @@ export default function CancelOrderModal({
       return
     }
 
-    // restaurantId'yi integer'a çevir
-    const restaurantIdInt = typeof restaurantId === 'string' ? parseInt(restaurantId) : restaurantId
-
     console.log('🔍 İptal işlemi başlatılıyor:', {
       packageId: pkg.id,
       packageIdType: typeof pkg.id,
       orderNumber: pkg.order_number,
-      restaurantId: restaurantIdInt,
-      restaurantIdType: typeof restaurantIdInt,
+      restaurantId: restaurantId,
+      restaurantIdType: typeof restaurantId,
       cancellationReason: reason,
       fullPackage: pkg
     })
@@ -67,8 +64,8 @@ export default function CancelOrderModal({
 
     try {
       const payload = {
-        packageId: pkg.id, // number olarak gönder
-        restaurantId: restaurantIdInt, // integer olarak gönder
+        packageId: pkg.id,
+        restaurantId: restaurantId, // String olarak gönder (UUID)
         cancellationReason: reason
       }
 
