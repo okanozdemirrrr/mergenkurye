@@ -15,9 +15,19 @@ interface KanbanBoardProps {
   darkMode: boolean
   couriers?: Courier[]
   restaurantId?: string
+  isPackageDelayed?: (packageId: number) => boolean
+  getDelayedMinutes?: (pkg: Package) => number
 }
 
-export default function KanbanBoard({ packages, onRefresh, darkMode, couriers = [], restaurantId }: KanbanBoardProps) {
+export default function KanbanBoard({ 
+  packages, 
+  onRefresh, 
+  darkMode, 
+  couriers = [], 
+  restaurantId,
+  isPackageDelayed = () => false,
+  getDelayedMinutes = () => 0
+}: KanbanBoardProps) {
   const [loading, setLoading] = useState<number | null>(null)
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null)
   const [updateAmountPackage, setUpdateAmountPackage] = useState<Package | null>(null)
@@ -112,15 +122,38 @@ export default function KanbanBoard({ packages, onRefresh, darkMode, couriers = 
     // İptal edilebilir mi kontrolü
     const canCancel = ['new_order', 'getting_ready', 'ready', 'assigned', 'picking_up'].includes(pkg.status)
     
+    // 🔔 Gecikmiş sipariş kontrolü
+    const isDelayed = isPackageDelayed(pkg.id)
+    const delayedMinutes = isDelayed ? getDelayedMinutes(pkg) : 0
+    
     return (
     <div 
       onClick={isClickable ? () => setSelectedPackage(pkg) : undefined}
       className={`p-4 rounded-lg border ${
-        darkMode 
+        isDelayed
+          ? darkMode
+            ? 'bg-red-900/30 border-red-700 animate-pulse'
+            : 'bg-red-50 border-red-300 animate-pulse'
+          : darkMode 
           ? 'bg-slate-800 border-slate-700' 
           : 'bg-white border-gray-200'
-      } shadow-sm hover:shadow-md transition-shadow ${isClickable ? 'cursor-pointer' : ''}`}
+      } shadow-sm hover:shadow-md transition-shadow ${isClickable ? 'cursor-pointer' : ''} ${
+        isDelayed ? 'ring-2 ring-red-500/50' : ''
+      }`}
     >
+      {/* 🔔 Gecikme Uyarısı Banner */}
+      {isDelayed && (
+        <div className={`mb-3 p-2 rounded-lg ${
+          darkMode ? 'bg-red-800/50 border border-red-700' : 'bg-red-100 border border-red-300'
+        }`}>
+          <p className={`text-xs font-bold ${darkMode ? 'text-red-300' : 'text-red-700'} flex items-center gap-1`}>
+            ⏰ {delayedMinutes} dakikadır bekliyor!
+          </p>
+          <p className={`text-xs ${darkMode ? 'text-red-400' : 'text-red-600'} mt-1`}>
+            Paket hazırsa gönderelim mi? Kuryeler sabırsız! 🚴💨
+          </p>
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
         <div>

@@ -1,0 +1,23 @@
+# Reminder Sound Placeholder
+
+Bu dosya reminder.mp3 için placeholder'dır.
+
+Gerçek reminder.mp3 dosyasını buraya ekleyin:
+- public/reminder.mp3
+
+Önerilen ses:
+- Kısa (2-3 saniye)
+- Dikkat çekici ama rahatsız edici değil
+- Format: MP3
+- Boyut: < 100KB
+
+Ücretsiz ses kaynakları:
+- https://freesound.org/
+- https://mixkit.co/free-sound-effects/
+- https://www.zapsplat.com/
+
+Arama terimleri:
+- "notification bell"
+- "reminder chime"
+- "alert sound"
+- "ding"

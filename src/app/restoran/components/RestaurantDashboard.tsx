@@ -8,6 +8,7 @@ import PullToRefresh from '@/components/PullToRefresh'
 import { Package, Courier } from '@/types'
 import { formatTurkishTime } from '@/utils/dateHelpers'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
+import { useRestaurantReminder } from '@/hooks/useRestaurantReminder'
 
 interface Restaurant {
   id: string
@@ -45,6 +46,12 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
 
   // Paket başına ücret - Restorandan alınacak, yoksa varsayılan 100
   const PACKAGE_FEE = restaurant?.package_fee || 100
+
+  // 🔔 Akıllı Hatırlatıcı Sistemi
+  const { isPackageDelayed, getDelayedMinutes, hasDelayedPackages } = useRestaurantReminder(packages, {
+    warningThresholdMinutes: 10, // 10 dakika sonra uyarı
+    soundIntervalMinutes: 2 // Her 2 dakikada bir ses
+  })
 
   useEffect(() => {
     const loadData = async () => {
@@ -461,6 +468,8 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                 darkMode={darkMode}
                 couriers={couriers}
                 restaurantId={restaurantId}
+                isPackageDelayed={isPackageDelayed}
+                getDelayedMinutes={getDelayedMinutes}
               />
             )}
           </>
