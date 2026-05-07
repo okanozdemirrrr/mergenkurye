@@ -8,7 +8,11 @@ import { createClient } from '@supabase/supabase-js'
 
 // API route'lar için service role key kullan (RLS bypass)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SERVICE_ROLE_KEY!
+const supabaseServiceKey = process.env.SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error('❌ Supabase credentials eksik!')
+}
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
