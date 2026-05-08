@@ -190,19 +190,19 @@ const loadSession = async (): Promise<{ loggedIn: boolean, courierId: string | n
 
 const clearSession = async () => {
   try {
-    // Sadece kurye-spesifik storage'ları temizle
-    // auth_user, auth_logged_in gibi genel key'lere DOKUNMA!
+    // 1. Kurye-spesifik localStorage temizliği
     localStorage.removeItem(STORAGE_KEYS.LOGIN)
     localStorage.removeItem(STORAGE_KEYS.COURIER_ID)
     localStorage.removeItem(STORAGE_KEYS.BACKUP_LOGIN)
     localStorage.removeItem(STORAGE_KEYS.BACKUP_COURIER_ID)
     
+    // 2. Capacitor Preferences temizliği
     await Preferences.remove({ key: STORAGE_KEYS.LOGIN })
     await Preferences.remove({ key: STORAGE_KEYS.COURIER_ID })
     await Preferences.remove({ key: STORAGE_KEYS.BACKUP_LOGIN })
     await Preferences.remove({ key: STORAGE_KEYS.BACKUP_COURIER_ID })
     
-    // IndexedDB temizle
+    // 3. IndexedDB temizliği
     if (typeof window !== 'undefined' && 'indexedDB' in window) {
       const request = indexedDB.open('KuryeDB', 1)
       request.onsuccess = () => {
@@ -215,9 +215,12 @@ const clearSession = async () => {
       }
     }
     
-    console.log('✅ Kurye oturum verileri temizlendi')
+    // 4. Supabase auth token temizliği
+    await supabase.auth.signOut()
+    
+    console.log('✅ Tüm oturum verileri temizlendi (localStorage, Preferences, IndexedDB, Supabase Auth)')
   } catch (error) {
-    console.error('Oturum temizleme hatasi:', error)
+    console.error('❌ Oturum temizleme hatası:', error)
   }
 }
 
@@ -248,7 +251,8 @@ export default function KuryePage() {
   const [myRank, setMyRank] = useState<number | null>(null)
   const [showLeaderboard, setShowLeaderboard] = useState(false) // Leaderboard modal
   const [activeTab, setActiveTab] = useState<'packages' | 'history' | 'earnings' | 'account'>('packages') // Aktif sekme
-  const [courierName, setCourierName] = useState<string>('Kurye') // Giriş yapan kuryenin ismi
+  const [courierName, setCourierName] = useState<string>('') // Giriş yapan kuryenin ismi
+  const [courierNameLoading, setCourierNameLoading] = useState(true) // Kurye adı yükleniyor mu?
   // YENİ: Ödeme sistemi state'leri
   const [courierPaymentType, setCourierPaymentType] = useState<'paket_basi' | 'saatlik'>('paket_basi')
   const [courierPackageRate, setCourierPackageRate] = useState<number>(0)
@@ -689,6 +693,8 @@ export default function KuryePage() {
     if (!courierId) return
 
     try {
+      setCourierNameLoading(true) // Loading başlat
+      
       const { data, error } = await supabase
         .from('couriers')
         .select('status, is_active, full_name, payment_type, package_rate')
@@ -700,7 +706,7 @@ export default function KuryePage() {
       if (data) {
         setCourierStatus(data.status)
         setIs_active(data.is_active || false)
-        setCourierName(data.full_name || 'Kurye')
+        setCourierName(data.full_name || '') // Hardcode fallback kaldırıldı
         // YENİ: Ödeme bilgilerini state'e kaydet
         setCourierPaymentType(data.payment_type || 'paket_basi')
         setCourierPackageRate(data.package_rate || 0)
@@ -722,6 +728,8 @@ export default function KuryePage() {
 
       console.error('❌ Kurye durumu alınamadı:', error)
       setErrorMessage('Kurye durumu alınamadı: ' + error.message)
+    } finally {
+      setCourierNameLoading(false) // Loading bitir
     }
   }
 
@@ -2570,7 +2578,15 @@ export default function KuryePage() {
                 {/* Kurye Paneli + İsim */}
                 <div className="flex-shrink-0 min-w-0">
                   <h1 className="text-xs font-bold truncate">📦 Kurye Paneli</h1>
-                  <p className="text-[10px] text-slate-400 truncate">{courierName}</p>
+                  {courierNameLoading ? (
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 bg-slate-400 rounded-full animate-pulse"></div>
+                      <div className="w-2 h-2 bg-slate-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                      <div className="w-2 h-2 bg-slate-400 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                    </div>
+                  ) : (
+                    <p className="text-[10px] text-slate-400 truncate">{courierName || 'Kullanıcı'}</p>
+                  )}
                 </div>
 
                 {/* Bugün Teslim */}
@@ -2582,7 +2598,12 @@ export default function KuryePage() {
                 {/* Toplam Kazanç */}
                 <div className="bg-gradient-to-r from-green-900 to-emerald-900 px-2 py-1 rounded border border-green-700 flex-shrink-0">
                   <p className="text-[10px] text-green-300">💰 Kazanç</p>
-                  <p className="text-sm font-bold text-green-100">{(courierPackageRate || 0) * deliveredCount}₺</p>
+                  <p className="text-sm font-bold text-green-100">
+                    {courierPaymentType === 'saatlik' 
+                      ? `${(courierPackageRate || 0) * deliveredCount}₺`
+                      : `${(courierPackageRate || 0) * deliveredCount}₺`
+                    }
+                  </p>
                 </div>
               </div>
             </div>
@@ -3389,8 +3410,17 @@ export default function KuryePage() {
                   🏍️
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-white">{courierName}</h2>
-                  <p className="text-sm text-slate-400">Kurye</p>
+                  {courierNameLoading ? (
+                    <div className="space-y-2">
+                      <div className="h-6 w-32 bg-slate-700 rounded animate-pulse"></div>
+                      <div className="h-4 w-20 bg-slate-700 rounded animate-pulse"></div>
+                    </div>
+                  ) : (
+                    <>
+                      <h2 className="text-xl font-bold text-white">{courierName || 'Kullanıcı'}</h2>
+                      <p className="text-sm text-slate-400">Kurye</p>
+                    </>
+                  )}
                 </div>
               </div>
 
