@@ -117,15 +117,16 @@ export function CourierDetailModal({
                                 </button>
                             </div>
                             
+                            {/* Tarih Seçiciler - datetime-local ile saat desteği */}
                             <input
-                                type="date"
+                                type="datetime-local"
                                 value={courierStartDate}
                                 onChange={(e) => setCourierStartDate(e.target.value)}
                                 className="px-3 py-2 bg-slate-100 text-slate-900 rounded-lg border border-slate-300 text-sm"
                             />
                             <span className="text-slate-500">-</span>
                             <input
-                                type="date"
+                                type="datetime-local"
                                 value={courierEndDate}
                                 onChange={(e) => setCourierEndDate(e.target.value)}
                                 className="px-3 py-2 bg-slate-100 text-slate-900 rounded-lg border border-slate-300 text-sm"
