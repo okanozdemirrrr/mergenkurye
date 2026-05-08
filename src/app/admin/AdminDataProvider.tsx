@@ -352,14 +352,26 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     }
 
     // ⚡ REALTIME OPTİMİZASYONU: Full refetch yerine incremental update
-    setupRealtimeWithRetry('packages-changes', 'packages', (payload: any) => {
+    setupRealtimeWithRetry('packages-changes', 'packages', async (payload: any) => {
       console.log('📦 Realtime package event:', payload.eventType, payload.new?.id)
       
       if (payload.eventType === 'INSERT') {
-        // Yeni paket eklendi - sadece bu paketi state'e ekle
+        // Yeni paket eklendi - restaurant bilgisini çek ve state'e ekle
         const newPackage = payload.new
         if (['new_order', 'getting_ready', 'ready', 'assigned', 'picking_up', 'on_the_way'].includes(newPackage.status)) {
-          setPackages(prev => [newPackage, ...prev].slice(0, 500))
+          // Restaurant bilgisini çek
+          const { data: restaurant } = await supabase
+            .from('restaurants')
+            .select('id, name, phone')
+            .eq('id', newPackage.restaurant_id)
+            .single()
+          
+          const packageWithRestaurant = {
+            ...newPackage,
+            restaurant: restaurant || null
+          }
+          
+          setPackages(prev => [packageWithRestaurant, ...prev].slice(0, 500))
         }
       } else if (payload.eventType === 'UPDATE') {
         // Paket güncellendi - sadece bu paketi güncelle
@@ -368,6 +380,7 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
           const index = prev.findIndex(p => p.id === updatedPackage.id)
           if (index !== -1) {
             const newList = [...prev]
+            // Mevcut restaurant bilgisini koru
             newList[index] = { ...newList[index], ...updatedPackage }
             return newList
           }
@@ -376,7 +389,19 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
         
         // Delivered/cancelled ise deliveredPackages'e ekle
         if (['delivered', 'cancelled'].includes(updatedPackage.status)) {
-          setDeliveredPackages(prev => [updatedPackage, ...prev].slice(0, 1000))
+          // Restaurant bilgisini çek
+          const { data: restaurant } = await supabase
+            .from('restaurants')
+            .select('id, name')
+            .eq('id', updatedPackage.restaurant_id)
+            .single()
+          
+          const packageWithRestaurant = {
+            ...updatedPackage,
+            restaurant: restaurant || null
+          }
+          
+          setDeliveredPackages(prev => [packageWithRestaurant, ...prev].slice(0, 1000))
           setPackages(prev => prev.filter(p => p.id !== updatedPackage.id))
         }
       } else if (payload.eventType === 'DELETE') {
