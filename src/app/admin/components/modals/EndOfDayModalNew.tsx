@@ -249,32 +249,6 @@ export function EndOfDayModalNew({
                   </p>
                 </div>
 
-                {/* Toplam Teslimat */}
-                <div className="bg-purple-50 p-4 rounded-xl border-2 border-purple-300">
-                  <div className="flex justify-between items-center">
-                    <span className="text-base font-bold text-purple-700">
-                      📦 TOPLAM TESLİMAT
-                    </span>
-                    <span className="text-3xl font-black text-purple-700">
-                      {totalDeliveries.toFixed(2)} ₺
-                    </span>
-                  </div>
-                </div>
-
-                {/* Önceki Ödemeler */}
-                {previousSettlements > 0 && (
-                  <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-200">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium text-yellow-700">
-                        ✅ Önceki Ödemeler
-                      </span>
-                      <span className="text-2xl font-bold text-yellow-700">
-                        {previousSettlements.toFixed(2)} ₺
-                      </span>
-                    </div>
-                  </div>
-                )}
-
                 {/* Kalan Borç */}
                 <div className="bg-red-50 p-4 rounded-xl border-2 border-red-300">
                   <div className="flex justify-between items-center">
