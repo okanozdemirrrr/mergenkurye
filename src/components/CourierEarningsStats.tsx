@@ -30,6 +30,8 @@ export function CourierEarningsStats({ courierId, startDate, endDate }: CourierE
   const [ibanTotal, setIbanTotal] = useState(0)
   const [remainingDebt, setRemainingDebt] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [courierPaymentType, setCourierPaymentType] = useState<'paket_basi' | 'saatlik'>('paket_basi')
+  const [courierPackageRate, setCourierPackageRate] = useState(0)
 
   // Teslim edilen paketlerin toplamını hesapla (GÖRSEL - Tarih aralığına göre)
   const calculateDeliveryTotals = async () => {
@@ -77,6 +79,21 @@ export function CourierEarningsStats({ courierId, startDate, endDate }: CourierE
   // FİNANSAL HESAPLAMA - TÜM ZAMANLARIN TOPLAMI (TARİH FİLTRESİNDEN BAĞIMSIZ!)
   const calculateLifetimeTotals = async () => {
     try {
+      // Kurye ödeme bilgilerini çek
+      const { data: courierData, error: courierError } = await supabase
+        .from('couriers')
+        .select('payment_type, package_rate')
+        .eq('id', courierId)
+        .single()
+
+      if (courierError) throw courierError
+
+      const paymentType = courierData?.payment_type || 'paket_basi'
+      const packageRate = courierData?.package_rate || 0
+
+      setCourierPaymentType(paymentType as 'paket_basi' | 'saatlik')
+      setCourierPackageRate(packageRate)
+
       // TÜM ZAMANLARIN teslimatları (tarih filtresi YOK!)
       const { data: allPackages, error: packagesError } = await supabase
         .from('packages')
@@ -87,7 +104,11 @@ export function CourierEarningsStats({ courierId, startDate, endDate }: CourierE
 
       if (packagesError) throw packagesError
 
-      const totalOwed = (allPackages || []).reduce((sum, p) => sum + (p.amount || 0), 0)
+      // Saatlik ödeme sisteminde kazanç = teslimat sayısı × package_rate
+      // Paket başı ödeme sisteminde kazanç = paket tutarlarının toplamı
+      const totalOwed = paymentType === 'saatlik'
+        ? (allPackages || []).length * packageRate
+        : (allPackages || []).reduce((sum, p) => sum + (p.amount || 0), 0)
 
       // TÜM ZAMANLARIN ödemeleri (tarih filtresi YOK!)
       const { data: allSettlements, error: settlementsError } = await supabase
@@ -101,6 +122,9 @@ export function CourierEarningsStats({ courierId, startDate, endDate }: CourierE
       const totalPaid = (allSettlements || []).reduce((sum, s) => sum + (s.amount_paid || 0), 0)
 
       console.log('💰 CARİ HESAP HESAPLAMASI:', {
+        paymentType,
+        packageRate,
+        deliveryCount: (allPackages || []).length,
         totalOwed: totalOwed.toFixed(2),
         totalPaid: totalPaid.toFixed(2),
         remainingDebt: Math.max(0, totalOwed - totalPaid).toFixed(2)
