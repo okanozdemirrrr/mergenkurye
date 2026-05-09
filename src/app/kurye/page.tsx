@@ -36,6 +36,47 @@ const OPERATION_CENTER = {
 // Geliştirme ortamı kontrolü
 const isDevelopment = process.env.NODE_ENV === 'development'
 
+// ============================================
+// TELEFON NUMARASI FORMATTER (WhatsApp için)
+// ============================================
+/**
+ * Telefon numarasını WhatsApp wa.me formatına çevirir
+ * @param phone - Ham telefon numarası (boşluklu, tireli, parantezli olabilir)
+ * @returns 905xxxxxxxxx formatında 12 haneli numara
+ * 
+ * Örnekler:
+ * - "0505 123 45 67" -> "905051234567"
+ * - "(505) 123-4567" -> "905051234567"
+ * - "+90 505 123 45 67" -> "905051234567"
+ * - "5051234567" -> "905051234567"
+ * - "905051234567" -> "905051234567"
+ */
+const formatPhoneForWhatsApp = (phone: string | undefined): string => {
+  if (!phone) return ''
+  
+  // 1. Tüm özel karakterleri temizle (sadece rakamlar kalsın)
+  let cleaned = phone.replace(/[\s\-\(\)\+]/g, '')
+  
+  // 2. Ülke kodu mantığı
+  if (cleaned.startsWith('0')) {
+    // 0505... -> 905...
+    cleaned = '90' + cleaned.substring(1)
+  } else if (cleaned.startsWith('5')) {
+    // 505... -> 905...
+    cleaned = '90' + cleaned
+  } else if (!cleaned.startsWith('90')) {
+    // Diğer durumlar için başına 90 ekle
+    cleaned = '90' + cleaned
+  }
+  
+  // 3. 12 haneli olmalı (905xxxxxxxxx)
+  if (cleaned.length !== 12) {
+    console.warn('⚠️ Geçersiz telefon numarası formatı:', phone, '-> Temizlenmiş:', cleaned)
+  }
+  
+  return cleaned
+}
+
 interface Package {
   id: number
   order_number?: string
@@ -2853,8 +2894,7 @@ export default function KuryePage() {
                           {pkg.customer_phone && (
                             <button
                               onClick={() => {
-                                const phoneNumber = pkg.customer_phone?.replace(/\D/g, '') || ''
-                                const formattedPhone = phoneNumber.startsWith('90') ? phoneNumber : `90${phoneNumber}`
+                                const formattedPhone = formatPhoneForWhatsApp(pkg.customer_phone)
                                 const message = `Merhaba, ben yemeğini getiren kuryeyim. POS cihazım geçici bir sebepten dolayı arızalandı. Sipariş tutarı olan *${pkg.amount} TL*'yi ödemek için TR66 0015 7000 0000 0076 2180 38 IBAN numarasına gönderebilirsiniz. (Alıcı Ad Soyad: Ayşe Yarım)`
                                 const url = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`
                                 window.open(url, '_blank')
@@ -2888,7 +2928,7 @@ export default function KuryePage() {
                                     <span>Ara</span>
                                   </a>
                                   <a
-                                    href={`https://wa.me/${pkg.customer_phone.replace(/\D/g, '')}?text=${encodeURIComponent(`Merhaba ${pkg.customer_name}, siparişiniz yolda! 🏍️\n\nSiparişinizi buradan takip edebilirsiniz:\n${typeof window !== 'undefined' ? window.location.origin : ''}/takip?kod=${pkg.order_number}\n\nMergen Kurye`)}`}
+                                    href={`https://wa.me/${formatPhoneForWhatsApp(pkg.customer_phone)}?text=${encodeURIComponent(`Merhaba ${pkg.customer_name}, siparişiniz yolda! 🏍️\n\nSiparişinizi buradan takip edebilirsiniz:\n${typeof window !== 'undefined' ? window.location.origin : ''}/takip?kod=${pkg.order_number}\n\nMergen Kurye`)}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="flex-1 inline-flex items-center justify-center gap-2 py-3 px-4 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white text-sm font-bold rounded-xl transition-all shadow-lg hover:shadow-xl active:scale-95"
@@ -2906,7 +2946,7 @@ export default function KuryePage() {
                                 </p>
                                 {(pkg.status === 'assigned' || pkg.status === 'picking_up') && (
                                   <a
-                                    href={`https://wa.me/${pkg.customer_phone.replace(/\D/g, '')}?text=${encodeURIComponent(`Merhaba ${pkg.customer_name}, siparişinizi aldım! 🏍️\n\nSiparişinizi buradan takip edebilirsiniz:\n${typeof window !== 'undefined' ? window.location.origin : ''}/takip?kod=${pkg.order_number}\n\nMergen Kurye`)}`}
+                                    href={`https://wa.me/${formatPhoneForWhatsApp(pkg.customer_phone)}?text=${encodeURIComponent(`Merhaba ${pkg.customer_name}, siparişinizi aldım! 🏍️\n\nSiparişinizi buradan takip edebilirsiniz:\n${typeof window !== 'undefined' ? window.location.origin : ''}/takip?kod=${pkg.order_number}\n\nMergen Kurye`)}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="inline-flex items-center gap-2 mt-2 py-2 px-4 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white text-xs font-medium rounded-lg transition-all shadow-md hover:shadow-lg active:scale-95"
