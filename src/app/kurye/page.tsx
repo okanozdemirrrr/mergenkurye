@@ -2832,7 +2832,7 @@ export default function KuryePage() {
                     {/* Üst Kısım */}
                     <div className="flex justify-between items-start mb-2 sm:mb-3">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
                           {/* SLOT NUMARASI */}
                           <span className="text-lg font-black text-white bg-gradient-to-r from-purple-600 to-pink-600 px-3 py-1 rounded-lg shadow-lg">
                             {packageSlots[pkg.id] || '?'}
@@ -2848,6 +2848,22 @@ export default function KuryePage() {
                           <span className="text-xs px-2 py-0.5 bg-orange-500/20 text-orange-400 rounded">
                             {pkg.restaurant?.name || 'Restoran'}
                           </span>
+                          
+                          {/* HIZLI IBAN BUTONU */}
+                          {pkg.customer_phone && (
+                            <button
+                              onClick={() => {
+                                const phoneNumber = pkg.customer_phone?.replace(/\D/g, '') || ''
+                                const formattedPhone = phoneNumber.startsWith('90') ? phoneNumber : `90${phoneNumber}`
+                                const message = `Merhaba, ben yemeğini getiren kuryeyim. POS cihazım geçici bir sebepten dolayı arızalandı. Sipariş tutarı olan *${pkg.amount} TL*'yi ödemek için TR66 0015 7000 0000 0076 2180 38 IBAN numarasına gönderebilirsiniz. (Alıcı Ad Soyad: Ayşe Yarım)`
+                                const url = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`
+                                window.open(url, '_blank')
+                              }}
+                              className="text-xs px-2 py-0.5 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 rounded transition-colors flex items-center gap-1"
+                            >
+                              💳 IBAN At
+                            </button>
+                          )}
                         </div>
                         <p className="font-medium text-sm sm:text-base text-white">{pkg.customer_name}</p>
 
