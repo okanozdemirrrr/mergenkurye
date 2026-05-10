@@ -407,21 +407,6 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
               ❌ İptal Edilenler
             </button>
           </div>
-            <button
-              onClick={() => setActiveTab('delivered')}
-              className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-                activeTab === 'delivered'
-                  ? darkMode
-                    ? 'bg-orange-600 text-white'
-                    : 'bg-orange-500 text-white'
-                  : darkMode
-                  ? 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-                  : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-              }`}
-            >
-              ✅ Teslim Edilen Siparişlerim
-            </button>
-          </div>
         </div>
 
         {/* Success Message */}
