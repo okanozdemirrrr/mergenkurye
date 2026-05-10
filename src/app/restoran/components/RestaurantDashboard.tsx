@@ -829,17 +829,17 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
             </div>
           </div>
         )}
+        
+        {/* New Order Modal */}
+        {showNewOrderModal && (
+          <NewOrderModal
+            onClose={() => setShowNewOrderModal(false)}
+            onSuccess={handleNewOrderSuccess}
+            restaurantId={restaurantId}
+            darkMode={darkMode}
+          />
+        )}
       </div>
-
-      {/* New Order Modal */}
-      {showNewOrderModal && (
-        <NewOrderModal
-          onClose={() => setShowNewOrderModal(false)}
-          onSuccess={handleNewOrderSuccess}
-          restaurantId={restaurantId}
-          darkMode={darkMode}
-        />
-      )}
       </div>
     </PullToRefresh>
   )
