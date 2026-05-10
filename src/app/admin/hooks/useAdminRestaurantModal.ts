@@ -30,12 +30,15 @@ export function useAdminRestaurantModal({
   parentStartDate,
   parentEndDate
 }: UseAdminRestaurantModalProps) {
-  // State Management
+  // State Management - 🎯 INITIAL STATE PARENT'TAN GELSİN
   const [selectedRestaurantOrders, setSelectedRestaurantOrders] = useState<Package[]>([])
   const [restaurantDebts, setRestaurantDebts] = useState<RestaurantDebt[]>([])
   const [loadingRestaurantDebts, setLoadingRestaurantDebts] = useState(false)
-  const [restaurantStartDate, setRestaurantStartDate] = useState('')
-  const [restaurantEndDate, setRestaurantEndDate] = useState('')
+  
+  // 🔥 TARİH STATE'LERİ: Parent'tan gelen değerlerle başlasın, yoksa boş
+  const [restaurantStartDate, setRestaurantStartDate] = useState(parentStartDate || '')
+  const [restaurantEndDate, setRestaurantEndDate] = useState(parentEndDate || '')
+  
   const [showRestaurantPaymentModal, setShowRestaurantPaymentModal] = useState(false)
   const [restaurantPaymentAmount, setRestaurantPaymentAmount] = useState('')
   const [restaurantPaymentProcessing, setRestaurantPaymentProcessing] = useState(false)
@@ -43,36 +46,34 @@ export function useAdminRestaurantModal({
   const [restaurantDebtPayAmount, setRestaurantDebtPayAmount] = useState('')
   const [restaurantDebtPayProcessing, setRestaurantDebtPayProcessing] = useState(false)
 
-  // Initialize dates - 🎯 ANA SAYFADAN GELEN TARİHLERİ KULLAN
+  // 🎯 PARENT TARİHLER DEĞİŞTİĞİNDE STATE'İ GÜNCELLE
   useEffect(() => {
-    if (modalType === 'restaurant' && restaurantId) {
-      // 🎯 Ana sayfadan tarih geliyorsa onları kullan, yoksa bugünü kullan
-      if (parentStartDate && parentEndDate) {
-        setRestaurantStartDate(parentStartDate)
-        setRestaurantEndDate(parentEndDate)
-      } else if (!restaurantStartDate || !restaurantEndDate) {
-        // Business Day mantığı: Sabah 05:00'ten itibaren
-        const now = new Date()
-        const currentHour = now.getHours()
-        
-        const todayStart = new Date(now)
-        if (currentHour < 5) {
-          todayStart.setDate(todayStart.getDate() - 1)
-        }
-        todayStart.setHours(5, 0, 0, 0)
-        
-        const todayStartStr = todayStart.toISOString().split('T')[0]
-        const todayEndStr = new Date().toISOString().split('T')[0]
-        
-        setRestaurantStartDate(todayStartStr)
-        setRestaurantEndDate(todayEndStr)
+    if (parentStartDate && parentEndDate) {
+      setRestaurantStartDate(parentStartDate)
+      setRestaurantEndDate(parentEndDate)
+    } else if (modalType === 'restaurant' && restaurantId && !restaurantStartDate && !restaurantEndDate) {
+      // Parent tarih yoksa ve state boşsa Business Day mantığı
+      const now = new Date()
+      const currentHour = now.getHours()
+      
+      const todayStart = new Date(now)
+      if (currentHour < 5) {
+        todayStart.setDate(todayStart.getDate() - 1)
       }
+      todayStart.setHours(5, 0, 0, 0)
+      
+      const todayStartStr = todayStart.toISOString().split('T')[0]
+      const todayEndStr = new Date().toISOString().split('T')[0]
+      
+      setRestaurantStartDate(todayStartStr)
+      setRestaurantEndDate(todayEndStr)
     }
-  }, [modalType, restaurantId, parentStartDate, parentEndDate])
+  }, [parentStartDate, parentEndDate, modalType, restaurantId])
 
   // 🔥 TARİHLER DEĞİŞTİĞİNDE OTOMATİK VERİ ÇEK
   useEffect(() => {
     if (modalType === 'restaurant' && restaurantId && restaurantStartDate && restaurantEndDate) {
+      console.log('🔥 Fetching data with dates:', { restaurantStartDate, restaurantEndDate })
       fetchRestaurantOrders(restaurantId)
       fetchRestaurantDebts(restaurantId)
     }
