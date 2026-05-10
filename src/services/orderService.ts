@@ -8,7 +8,16 @@
 import { supabase } from '@/app/lib/supabase'
 
 /**
- * Sipariş iptal işlemi
+ * Sipariş iptal işlemi (Finansal Mantık ile)
+ * 
+ * İPTAL KATEGORİZASYONU:
+ * - Ücretli İptal: Kurye paketi aldıktan sonra iptal (on_the_way -> cancelled)
+ *   → is_chargeable_cancellation = true
+ *   → Hesaplamalara dahil edilir (restoran borcu, kurye kazancı)
+ * 
+ * - Ücretsiz İptal: Kurye paketi almadan önce iptal (diğer durumlar -> cancelled)
+ *   → is_chargeable_cancellation = false
+ *   → Hesaplamalara dahil edilmez
  */
 export async function cancelOrder(packageId: number, details: string = 'Sipariş iptal edilecek') {
     try {
@@ -18,19 +27,51 @@ export async function cancelOrder(packageId: number, details: string = 'Sipariş
 
         if (!confirmed) return { success: false, cancelled: true }
 
+        // 1. Mevcut sipariş durumunu kontrol et
+        const { data: packageData, error: fetchError } = await supabase
+            .from('packages')
+            .select('status, picked_up_at')
+            .eq('id', packageId)
+            .single()
+
+        if (fetchError) throw fetchError
+
+        // 2. Ücretli iptal mi kontrol et
+        // Kurye paketi aldıysa (on_the_way durumundaysa veya picked_up_at doluysa) = Ücretli İptal
+        const isChargeableCancellation = 
+            packageData.status === 'on_the_way' || 
+            (packageData.picked_up_at !== null && packageData.picked_up_at !== undefined)
+
+        console.log('🔍 İptal Analizi:', {
+            packageId,
+            currentStatus: packageData.status,
+            pickedUpAt: packageData.picked_up_at,
+            isChargeableCancellation,
+            reason: isChargeableCancellation 
+                ? '💰 Ücretli İptal (Kurye paketi aldı)' 
+                : '🆓 Ücretsiz İptal (Kurye paketi almadı)'
+        })
+
+        // 3. İptal işlemini gerçekleştir
         const { error } = await supabase
             .from('packages')
             .update({
                 status: 'cancelled',
                 courier_id: null,  // Kurye bağlantısını kopar
                 cancelled_at: new Date().toISOString(),
-                cancelled_by: 'admin'
+                cancelled_by: 'admin',
+                is_chargeable_cancellation: isChargeableCancellation
             })
             .eq('id', packageId)
 
         if (error) throw error
 
-        return { success: true }
+        // 4. Kullanıcıya bilgi ver
+        if (isChargeableCancellation) {
+            alert('⚠️ Ücretli İptal\n\nKurye paketi aldığı için bu iptal hesaplamalara dahil edilecek.\n(Restoran borcu, kurye kazancı)')
+        }
+
+        return { success: true, isChargeableCancellation }
     } catch (error) {
         console.error('Sipariş iptal hatası:', error)
         return { success: false, error }

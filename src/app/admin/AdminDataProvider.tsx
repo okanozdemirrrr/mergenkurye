@@ -191,12 +191,12 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
 
           const totalDebt = (debts || []).reduce((sum, debt) => sum + (debt.remaining_amount || 0), 0)
 
-          // Bugün teslim edilen paketleri çek (delivered_by_courier_id kullan)
+          // Bugün teslim edilen paketleri çek (delivered + ücretli iptaller)
           const { data: todayDeliveries } = await supabase
             .from('packages')
-            .select('id')
-            .eq('delivered_by_courier_id', courier.id)  // courier_id yerine delivered_by_courier_id
-            .eq('status', 'delivered')
+            .select('id, status, is_chargeable_cancellation')
+            .eq('delivered_by_courier_id', courier.id)
+            .or('status.eq.delivered,and(status.eq.cancelled,is_chargeable_cancellation.eq.true)')
             .gte('delivered_at', todayStart.toISOString())
 
           const todayDeliveryCount = (todayDeliveries || []).length
@@ -210,12 +210,12 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
 
           const activePackageCount = (activePackages || []).length
 
-          // Toplam teslimat sayısı (delivered_by_courier_id kullan)
+          // Toplam teslimat sayısı (delivered + ücretli iptaller)
           const { data: allDeliveries } = await supabase
             .from('packages')
-            .select('id')
-            .eq('delivered_by_courier_id', courier.id)  // courier_id yerine delivered_by_courier_id
-            .eq('status', 'delivered')
+            .select('id, status, is_chargeable_cancellation')
+            .eq('delivered_by_courier_id', courier.id)
+            .or('status.eq.delivered,and(status.eq.cancelled,is_chargeable_cancellation.eq.true)')
 
           const deliveryCount = (allDeliveries || []).length
 
@@ -270,14 +270,15 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
       console.log('📅 Admin Panel - Today Delivered Count Start:', todayStart.toISOString())
 
       // ⚡ EGRESS OPTİMİZASYONU: head: true ile sadece count çek, veri çekme!
+      // Delivered + Ücretli İptaller
       const { count, error } = await supabase
         .from('packages')
         .select('id', { count: 'exact', head: true })
-        .eq('status', 'delivered')
+        .or('status.eq.delivered,and(status.eq.cancelled,is_chargeable_cancellation.eq.true)')
         .gte('delivered_at', todayStart.toISOString())
 
       if (error) throw error
-      console.log('📊 Bugün teslim edilen toplam:', count)
+      console.log('📊 Bugün teslim edilen toplam (delivered + ücretli iptaller):', count)
       setTodayDeliveredCount(count || 0)
     } catch (error: any) {
       console.error('Günlük teslimat sayısı yüklenemedi:', error)
