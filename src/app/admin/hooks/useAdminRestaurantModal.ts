@@ -73,7 +73,6 @@ export function useAdminRestaurantModal({
   // 🔥 TARİHLER DEĞİŞTİĞİNDE OTOMATİK VERİ ÇEK
   useEffect(() => {
     if (modalType === 'restaurant' && restaurantId && restaurantStartDate && restaurantEndDate) {
-      console.log('🔥 Fetching data with dates:', { restaurantStartDate, restaurantEndDate })
       fetchRestaurantOrders(restaurantId)
       fetchRestaurantDebts(restaurantId)
     }
