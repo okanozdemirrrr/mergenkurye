@@ -31,9 +31,10 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
   const [isLoading, setIsLoading] = useState(true)
   const [showNewOrderModal, setShowNewOrderModal] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
-  const [activeTab, setActiveTab] = useState<'active' | 'delivered'>('active')
+  const [activeTab, setActiveTab] = useState<'active' | 'delivered' | 'cancelled'>('active')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [cancelledPackages, setCancelledPackages] = useState<Package[]>([])
   
   // Günlük finansal özet state'leri
   const [todayStats, setTodayStats] = useState({
@@ -162,11 +163,11 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
           .select('*')
           .eq('restaurant_id', restaurantId)
           .in('status', ['new_order', 'getting_ready', 'ready', 'assigned', 'picking_up', 'on_the_way'])
-          .order('created_at', { ascending: false })
+          .order('created_at', { ascending: false})
 
         if (error) throw error
         setPackages(data || [])
-      } else {
+      } else if (activeTab === 'delivered') {
         // Teslim edilen siparişler
         let query = supabase
           .from('packages')
@@ -192,6 +193,32 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
 
         if (error) throw error
         setDeliveredPackages(data || [])
+      } else if (activeTab === 'cancelled') {
+        // İptal edilen siparişler
+        let query = supabase
+          .from('packages')
+          .select(`
+            *,
+            courier:couriers!packages_courier_id_fkey(full_name)
+          `)
+          .eq('restaurant_id', restaurantId)
+          .eq('status', 'cancelled')
+          .order('cancelled_at', { ascending: false })
+
+        // Tarih filtreleri
+        if (startDate) {
+          query = query.gte('cancelled_at', new Date(startDate).toISOString())
+        }
+        if (endDate) {
+          const endDateTime = new Date(endDate)
+          endDateTime.setHours(23, 59, 59, 999)
+          query = query.lte('cancelled_at', endDateTime.toISOString())
+        }
+
+        const { data, error } = await query
+
+        if (error) throw error
+        setCancelledPackages(data || [])
       }
     } catch (error) {
       console.error('Siparişler alınamadı:', error)
@@ -336,7 +363,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
           </p>
 
           {/* Tab Buttons */}
-          <div className="flex justify-center gap-2 mt-4">
+          <div className="flex justify-center gap-2 mt-4 flex-wrap">
             <button
               onClick={() => setActiveTab('active')}
               className={`px-6 py-2 rounded-lg font-semibold transition-all ${
@@ -351,6 +378,35 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
             >
               📦 Aktif Siparişler
             </button>
+            <button
+              onClick={() => setActiveTab('delivered')}
+              className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+                activeTab === 'delivered'
+                  ? darkMode
+                    ? 'bg-green-600 text-white'
+                    : 'bg-green-500 text-white'
+                  : darkMode
+                  ? 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                  : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+              }`}
+            >
+              ✅ Teslim Edilenler
+            </button>
+            <button
+              onClick={() => setActiveTab('cancelled')}
+              className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+                activeTab === 'cancelled'
+                  ? darkMode
+                    ? 'bg-red-600 text-white'
+                    : 'bg-red-500 text-white'
+                  : darkMode
+                  ? 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                  : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+              }`}
+            >
+              ❌ İptal Edilenler
+            </button>
+          </div>
             <button
               onClick={() => setActiveTab('delivered')}
               className={`px-6 py-2 rounded-lg font-semibold transition-all ${
@@ -611,6 +667,157 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                             <p>🕐 Oluşturulma: {formatTurkishTime(pkg.created_at)}</p>
                             {pkg.delivered_at && (
                               <p>✅ Teslim: {formatTurkishTime(pkg.delivered_at)}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* İptal Edilenler Listesi */}
+        {activeTab === 'cancelled' && (
+          <div className={`rounded-xl p-6 ${darkMode ? 'bg-slate-900' : 'bg-white'} shadow-lg`}>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                ❌ İptal Edilen Siparişler
+              </h2>
+              
+              {/* Tarih Filtreleri */}
+              <div className="flex gap-2 items-center">
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className={`px-3 py-2 rounded-lg border text-sm ${
+                    darkMode 
+                      ? 'bg-slate-800 border-slate-700 text-white' 
+                      : 'bg-white border-gray-300 text-gray-900'
+                  }`}
+                />
+                <span className={darkMode ? 'text-slate-400' : 'text-gray-600'}>-</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className={`px-3 py-2 rounded-lg border text-sm ${
+                    darkMode 
+                      ? 'bg-slate-800 border-slate-700 text-white' 
+                      : 'bg-white border-gray-300 text-gray-900'
+                  }`}
+                />
+              </div>
+            </div>
+
+            <div>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-20">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
+                </div>
+              ) : cancelledPackages.length === 0 ? (
+                <div className={`text-center py-12 ${darkMode ? 'text-slate-500' : 'text-gray-400'}`}>
+                  <p className="text-4xl mb-2">✅</p>
+                  <p className="text-sm">İptal edilmiş sipariş bulunmuyor</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {cancelledPackages.map((pkg: any) => (
+                    <div
+                      key={pkg.id}
+                      className={`p-4 rounded-lg border ${
+                        darkMode 
+                          ? 'bg-slate-800 border-slate-700 hover:bg-slate-750' 
+                          : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                      } transition-colors`}
+                    >
+                      <div className="flex flex-wrap gap-4 items-start justify-between">
+                        {/* Sol Taraf - Sipariş Bilgileri */}
+                        <div className="flex-1 min-w-[250px]">
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <span className={`text-sm font-bold px-2 py-1 rounded ${
+                              darkMode ? 'bg-orange-900/50 text-orange-300' : 'bg-orange-100 text-orange-700'
+                            }`}>
+                              {pkg.order_number || '......'}
+                            </span>
+                            {pkg.platform && (
+                              <span className={`text-xs py-0.5 px-2 rounded ${getPlatformBadgeClass(pkg.platform)}`}>
+                                {getPlatformDisplayName(pkg.platform)}
+                              </span>
+                            )}
+                            <span className={`text-xs px-2 py-1 rounded ${
+                              darkMode ? 'bg-red-900/50 text-red-300' : 'bg-red-100 text-red-700'
+                            }`}>
+                              ❌ İptal Edildi
+                            </span>
+                            
+                            {/* Ücretli/Ücretsiz İptal Badge */}
+                            {pkg.is_chargeable_cancellation ? (
+                              <span className={`text-xs px-2 py-1 rounded font-bold ${
+                                darkMode ? 'bg-yellow-900/50 text-yellow-300 border border-yellow-700' : 'bg-yellow-100 text-yellow-800 border border-yellow-300'
+                              }`}>
+                                💰 Ücretlendirildi
+                              </span>
+                            ) : (
+                              <span className={`text-xs px-2 py-1 rounded ${
+                                darkMode ? 'bg-green-900/50 text-green-300' : 'bg-green-100 text-green-700'
+                              }`}>
+                                🆓 Ücretsiz İptal
+                              </span>
+                            )}
+                          </div>
+                          
+                          <div className={`space-y-1 text-sm ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                            <p className="font-semibold">👤 {pkg.customer_name}</p>
+                            {pkg.customer_phone && <p className="text-xs">📞 {pkg.customer_phone}</p>}
+                            <p className="text-xs">📍 {pkg.delivery_address}</p>
+                            {pkg.content && <p className="text-xs">📝 {pkg.content}</p>}
+                            {pkg.cancellation_reason && (
+                              <p className={`text-xs mt-2 p-2 rounded ${
+                                darkMode ? 'bg-red-900/20 text-red-300' : 'bg-red-50 text-red-700'
+                              }`}>
+                                ⚠️ İptal Nedeni: {pkg.cancellation_reason}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Orta - Kurye ve Ödeme */}
+                        <div className="flex-1 min-w-[200px]">
+                          <div className={`space-y-2 text-sm ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                            {pkg.courier?.full_name && (
+                              <div>
+                                <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>Kurye</p>
+                                <p className="font-medium">🚴 {pkg.courier.full_name}</p>
+                              </div>
+                            )}
+                            <div>
+                              <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>Ödeme</p>
+                              <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                                pkg.payment_method === 'cash'
+                                  ? 'bg-green-900/50 text-green-300'
+                                  : pkg.payment_method === 'iban'
+                                  ? 'bg-purple-900/50 text-purple-300'
+                                  : 'bg-orange-900/50 text-orange-300'
+                              }`}>
+                                {pkg.payment_method === 'cash' ? '💵 Nakit' : pkg.payment_method === 'iban' ? '🏦 IBAN' : '💳 Kart'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Sağ Taraf - Tutar ve Tarih */}
+                        <div className="text-right min-w-[150px]">
+                          <p className={`text-2xl font-bold mb-2 ${darkMode ? 'text-red-400' : 'text-red-600'}`}>
+                            {pkg.amount}₺
+                          </p>
+                          <div className={`text-xs space-y-1 ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                            <p>🕐 Oluşturulma: {formatTurkishTime(pkg.created_at)}</p>
+                            {pkg.cancelled_at && (
+                              <p>❌ İptal: {formatTurkishTime(pkg.cancelled_at)}</p>
                             )}
                           </div>
                         </div>
