@@ -371,7 +371,7 @@ export function RestaurantsTab({
         )
     }
 
-    // Ödemeler
+    // Ödemeler - KURUMSAL FİNANS PANELİ
     if (restaurantSubTab === 'payments') {
         // Her restoran için sipariş ve ciro hesapla
         const restaurantsWithStats = restaurants.map(restaurant => {
@@ -390,97 +390,180 @@ export function RestaurantsTab({
             })
             
             const totalOrders = todayOrders.length
-            const totalRevenue = restaurantOrders.reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
+            const totalRevenue = todayOrders.reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
             const fallbackFee = restaurant.package_fee || 100
             
             // 2. DASHBOARD MATH: applied_price toplamı (fallback: restaurant.package_fee)
-            const totalDebt = restaurantOrders.reduce((sum, pkg) => {
+            const totalDebt = todayOrders.reduce((sum, pkg) => {
                 const price = (pkg as any).applied_price ?? fallbackFee
                 return sum + price
             }, 0)
+            
+            const netBalance = totalRevenue - totalDebt
             
             return {
                 ...restaurant,
                 totalOrders,
                 totalRevenue,
                 totalDebt,
+                netBalance,
                 packageFee: fallbackFee
             }
         })
 
+        // Toplam hesaplamalar
+        const grandTotalRevenue = restaurantsWithStats.reduce((sum, r) => sum + r.totalRevenue, 0)
+        const grandTotalDebt = restaurantsWithStats.reduce((sum, r) => sum + r.totalDebt, 0)
+        const grandNetBalance = grandTotalRevenue - grandTotalDebt
+        const grandTotalOrders = restaurantsWithStats.reduce((sum, r) => sum + r.totalOrders, 0)
+
         return (
-            <div className="bg-slate-900 shadow-xl rounded-2xl p-6">
-                <h2 className="text-2xl font-bold mb-6">💳 Restoranların Ödemesi</h2>
+            <div className="bg-slate-950 min-h-screen p-6">
+                {/* 🏦 KURUMSAL BAŞLIK */}
+                <div className="mb-8">
+                    <h1 className="text-3xl font-black text-slate-100 tracking-tight mb-1">
+                        Finansal Raporlama Paneli
+                    </h1>
+                    <p className="text-sm text-slate-500 tracking-tight">
+                        Restoran ödemeleri ve günlük hak ediş hesaplamaları
+                    </p>
+                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {restaurants.length === 0 ? (
-                        <div className="col-span-full text-center py-8 text-slate-500">
-                            <div className="text-4xl mb-2">🏪</div>
-                            <div className="font-bold">Restoran bulunamadı!</div>
-                        </div>
-                    ) : (
-                        restaurantsWithStats.map(r => (
-                            <div key={r.id} className="bg-slate-50 p-4 rounded-xl border">
-                                <div className="flex justify-between items-start mb-3">
-                                    <button
-                                        onClick={() => onRestaurantClick(r.id)}
-                                        className="font-bold text-lg text-orange-600 hover:text-orange-800 transition-colors cursor-pointer text-left"
-                                    >
-                                        🏪 {r.name}
-                                    </button>
-                                </div>
-
-                                <div className="space-y-2 text-sm">
-                                    <div className="flex justify-between">
-                                        <span className="text-slate-600">Paket Başı Ücret:</span>
-                                        <span className="font-bold text-blue-600">{r.packageFee}₺</span>
-                                    </div>
-
-                                    <div className="flex justify-between">
-                                        <span className="text-slate-600">Bugünkü Sipariş:</span>
-                                        <span className="font-bold text-orange-600">{r.totalOrders}</span>
-                                    </div>
-
-                                    <div className="flex justify-between">
-                                        <span className="text-slate-600">Toplam Ciro:</span>
-                                        <span className="font-bold text-green-600">{r.totalRevenue.toFixed(2)} ₺</span>
-                                    </div>
-
-                                    <div className="flex justify-between">
-                                        <span className="text-slate-600">Restoranın Paket Masrafı:</span>
-                                        <span className={`font-bold ${r.totalDebt > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                            {r.totalDebt.toFixed(2)} ₺
-                                        </span>
-                                    </div>
-
-                                    <div className="flex justify-between">
-                                        <span className="text-slate-600">Restoranın Net Cirosu:</span>
-                                        <span className={`font-bold ${(r.totalRevenue - r.totalDebt) >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                                            {(r.totalRevenue - r.totalDebt).toFixed(2)} ₺
-                                        </span>
-                                    </div>
-
-                                    <div className="mt-3 pt-2 border-t border-slate-200 space-y-2">
-                                        <button
-                                            onClick={() => onRestaurantClick(r.id)}
-                                            className="w-full text-xs bg-orange-100 text-orange-700 py-2 rounded-lg hover:bg-orange-200 transition-colors"
-                                        >
-                                            📊 Detaylı Rapor Görüntüle
-                                        </button>
-
-                                        {r.totalDebt > 0 && onDebtPayClick && (
-                                            <button
-                                                onClick={() => onDebtPayClick(r.id)}
-                                                className="w-full text-xs bg-red-100 text-red-700 py-2 rounded-lg hover:bg-red-200 transition-colors"
-                                            >
-                                                💳 Borç Öde
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
+                {/* 📊 3'LÜ FİNANSAL KART YAPISI */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                    {/* KART 1: TOPLAM CİRO */}
+                    <div className="bg-slate-900 border border-slate-800 rounded-lg p-5">
+                        <div className="flex items-start justify-between mb-3">
+                            <div>
+                                <p className="text-xs font-medium text-slate-500 tracking-tight uppercase mb-1">
+                                    Toplam Ciro
+                                </p>
+                                <p className="text-3xl font-black text-slate-100 tracking-tight">
+                                    {grandTotalRevenue.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
+                                </p>
                             </div>
-                        ))
-                    )}
+                            <div className="text-slate-700 text-2xl">💰</div>
+                        </div>
+                        <p className="text-xs text-slate-600 tracking-tight">
+                            Nakit + Kart ödemeleri toplamı
+                        </p>
+                    </div>
+
+                    {/* KART 2: SERVİS BEDELİ (Muted Rose) */}
+                    <div className="bg-slate-900 border border-rose-900/30 rounded-lg p-5">
+                        <div className="flex items-start justify-between mb-3">
+                            <div>
+                                <p className="text-xs font-medium text-rose-400/70 tracking-tight uppercase mb-1">
+                                    Servis Bedeli
+                                </p>
+                                <p className="text-3xl font-black text-rose-300/90 tracking-tight">
+                                    {grandTotalDebt.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
+                                </p>
+                            </div>
+                            <div className="text-rose-900/50 text-2xl">📦</div>
+                        </div>
+                        <p className="text-xs text-slate-600 tracking-tight">
+                            {grandTotalOrders} Paket × Dinamik Ücret
+                        </p>
+                    </div>
+
+                    {/* KART 3: NET BAKİYE (Koyu Emerald) */}
+                    <div className="bg-slate-900 border border-emerald-900/40 rounded-lg p-5">
+                        <div className="flex items-start justify-between mb-3">
+                            <div>
+                                <p className="text-xs font-medium text-emerald-400/70 tracking-tight uppercase mb-1">
+                                    Restorana Kalan Net
+                                </p>
+                                <p className="text-3xl font-black text-emerald-300/90 tracking-tight">
+                                    {grandNetBalance.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
+                                </p>
+                            </div>
+                            <div className="text-emerald-900/50 text-2xl">✓</div>
+                        </div>
+                        <p className="text-xs text-slate-600 tracking-tight">
+                            Ciro - Servis Bedeli
+                        </p>
+                    </div>
+                </div>
+
+                {/* 🏪 RESTORAN LİSTESİ - KURUMSAL TABLO */}
+                <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
+                    <div className="px-6 py-4 border-b border-slate-800">
+                        <h2 className="text-lg font-bold text-slate-100 tracking-tight">
+                            Restoran Bazlı Detaylar
+                        </h2>
+                    </div>
+
+                    <div className="divide-y divide-slate-800">
+                        {restaurants.length === 0 ? (
+                            <div className="text-center py-12 text-slate-600">
+                                <div className="text-4xl mb-2 opacity-30">🏪</div>
+                                <p className="text-sm tracking-tight">Restoran bulunamadı</p>
+                            </div>
+                        ) : (
+                            restaurantsWithStats.map((r) => (
+                                <div
+                                    key={r.id}
+                                    className="px-6 py-4 hover:bg-slate-800/50 transition-colors"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        {/* Sol: Restoran Bilgileri */}
+                                        <div className="flex-1">
+                                            <button
+                                                onClick={() => onRestaurantClick(r.id)}
+                                                className="text-base font-bold text-slate-200 hover:text-slate-100 transition-colors text-left tracking-tight"
+                                            >
+                                                {r.name}
+                                            </button>
+                                            <p className="text-xs text-slate-600 mt-1 tracking-tight">
+                                                {r.totalOrders} paket × {r.packageFee}₺
+                                            </p>
+                                        </div>
+
+                                        {/* Orta: Finansal Metrikler */}
+                                        <div className="flex items-center gap-8 mr-8">
+                                            <div className="text-right">
+                                                <p className="text-xs text-slate-600 tracking-tight">Ciro</p>
+                                                <p className="text-sm font-bold text-slate-300 tracking-tight">
+                                                    {r.totalRevenue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
+                                                </p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-xs text-slate-600 tracking-tight">Servis</p>
+                                                <p className="text-sm font-bold text-rose-400/70 tracking-tight">
+                                                    {r.totalDebt.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
+                                                </p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-xs text-slate-600 tracking-tight">Net</p>
+                                                <p className="text-sm font-bold text-emerald-400/80 tracking-tight">
+                                                    {r.netBalance.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {/* Sağ: Aksiyon Butonları */}
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => onRestaurantClick(r.id)}
+                                                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded border border-slate-700 transition-colors tracking-tight"
+                                            >
+                                                Gün Sonu Al
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+
+                {/* 📝 FOOTER NOT */}
+                <div className="mt-6 px-4 py-3 bg-slate-900 border border-slate-800 rounded-lg">
+                    <p className="text-xs text-slate-600 tracking-tight">
+                        <span className="font-semibold text-slate-500">Not:</span> Tüm hesaplamalar bugünün (00:00 - 23:59) teslim edilmiş siparişleri üzerinden yapılmaktadır. 
+                        Servis bedeli, her paket için dinamik ücret (applied_price) üzerinden hesaplanır.
+                    </p>
                 </div>
             </div>
         )
