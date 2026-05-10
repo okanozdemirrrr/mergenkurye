@@ -1,11 +1,11 @@
 ﻿/**
  * @file src/app/admin/components/modals/RestaurantDetailModal.tsx
  * @description Restoran Detay ve Rapor Modalı - Business Dark Theme.
- * Seçili restoranın belirli bir tarih aralığındaki sipariş hacmini ve toplam 
- * cirosunu gösterir. 3'lü finansal kart yapısı ile kurumsal raporlama sunar.
+ * STATELESS MODAL: Kendi state'i yok, sadece props'u kullanır.
  */
 'use client'
 
+import { useEffect } from 'react'
 import { Package, Restaurant } from '@/types'
 import { formatTurkishTime } from '@/utils/dateHelpers'
 
@@ -54,14 +54,25 @@ export function RestaurantDetailModal({
     
     const netPayment = totalRevenue - totalDebt
 
+    // 🔥 KAPATMA FONKSİYONU - Sayfa yenilenmesini önle
+    const handleClose = (e: React.MouseEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        onClose()
+    }
+
     return (
         <div
             className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
-            onClick={(e) => {
-                if (e.target === e.currentTarget) onClose()
-            }}
+            onClick={handleClose}
         >
-            <div className="bg-slate-950 border border-slate-800 rounded-xl max-w-6xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+            <div 
+                className="bg-slate-950 border border-slate-800 rounded-xl max-w-6xl w-full max-h-[90vh] overflow-hidden shadow-2xl"
+                onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                }}
+            >
                 {/* Modal Header - Business Dark */}
                 <div className="flex justify-between items-center p-6 border-b border-slate-800">
                     <div className="flex items-center gap-4 flex-1">
@@ -69,7 +80,7 @@ export function RestaurantDetailModal({
                             {restaurant.name} - Detaylı Rapor
                         </h3>
 
-                        {/* Tarih Aralığı Seçici */}
+                        {/* Tarih Aralığı Seçici - PROPS'U DİREKT KULLAN */}
                         <div className="flex items-center gap-2">
                             <input
                                 type="date"
@@ -89,15 +100,27 @@ export function RestaurantDetailModal({
                         {/* Hesap Öde Butonu */}
                         {restaurantStartDate && restaurantEndDate && (
                             <button
-                                onClick={onPaymentClick}
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    onPaymentClick()
+                                }}
                                 className="ml-auto px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded font-medium text-sm border border-slate-700 transition-colors"
                             >
                                 💰 Hesap Öde
                             </button>
                         )}
                     </div>
+                    {/* 🔥 X BUTONU - type="button" + preventDefault */}
                     <button
-                        onClick={onClose}
+                        type="button"
+                        onClick={handleClose}
+                        className="flex items-center justify-center w-8 h-8 ml-4 text-slate-500 hover:text-slate-300 hover:bg-slate-800 rounded transition-colors text-2xl font-light"
+                    >
+                        ×
+                    </button>
+                </div>
                         className="flex items-center justify-center w-8 h-8 ml-4 text-slate-500 hover:text-slate-300 hover:bg-slate-800 rounded transition-colors text-2xl font-light"
                     >
                         ×
