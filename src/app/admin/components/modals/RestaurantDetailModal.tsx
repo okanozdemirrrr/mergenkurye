@@ -121,11 +121,6 @@ export function RestaurantDetailModal({
                         ×
                     </button>
                 </div>
-                        className="flex items-center justify-center w-8 h-8 ml-4 text-slate-500 hover:text-slate-300 hover:bg-slate-800 rounded transition-colors text-2xl font-light"
-                    >
-                        ×
-                    </button>
-                </div>
 
                 {/* Modal Content */}
                 <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)] admin-scrollbar">
