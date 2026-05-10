@@ -840,7 +840,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
           darkMode={darkMode}
         />
       )}
-    </div>
+      </div>
     </PullToRefresh>
   )
 }
