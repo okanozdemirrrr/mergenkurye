@@ -29,6 +29,10 @@ export function AdminModals() {
   const modalType = searchParams.get('modal')
   const courierId = searchParams.get('courierId')
   const restaurantId = searchParams.get('restaurantId')
+  
+  // 🎯 Ana sayfadan gelen tarih parametrelerini oku
+  const parentStartDate = searchParams.get('parentStartDate')
+  const parentEndDate = searchParams.get('parentEndDate')
 
   // Kurye Modal Hook
   const courierModal = useAdminCourierModal({
@@ -45,7 +49,9 @@ export function AdminModals() {
     modalType,
     setSuccessMessage,
     setErrorMessage,
-    fetchRestaurants
+    fetchRestaurants,
+    parentStartDate, // 🎯 Ana sayfadan gelen başlangıç tarihi
+    parentEndDate    // 🎯 Ana sayfadan gelen bitiş tarihi
   })
 
   const closeModal = () => {

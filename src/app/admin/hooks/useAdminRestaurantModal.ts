@@ -17,6 +17,8 @@ interface UseAdminRestaurantModalProps {
   setSuccessMessage: (msg: string) => void
   setErrorMessage: (msg: string) => void
   fetchRestaurants: () => void
+  parentStartDate: string | null  // 🎯 Ana sayfadan gelen başlangıç tarihi
+  parentEndDate: string | null    // 🎯 Ana sayfadan gelen bitiş tarihi
 }
 
 export function useAdminRestaurantModal({
@@ -24,7 +26,9 @@ export function useAdminRestaurantModal({
   modalType,
   setSuccessMessage,
   setErrorMessage,
-  fetchRestaurants
+  fetchRestaurants,
+  parentStartDate,
+  parentEndDate
 }: UseAdminRestaurantModalProps) {
   // State Management
   const [selectedRestaurantOrders, setSelectedRestaurantOrders] = useState<Package[]>([])
@@ -39,27 +43,44 @@ export function useAdminRestaurantModal({
   const [restaurantDebtPayAmount, setRestaurantDebtPayAmount] = useState('')
   const [restaurantDebtPayProcessing, setRestaurantDebtPayProcessing] = useState(false)
 
-  // Initialize dates - ORİJİNAL MANTIK
+  // Initialize dates - 🎯 ANA SAYFADAN GELEN TARİHLERİ KULLAN
   useEffect(() => {
     if (modalType === 'restaurant' && restaurantId) {
-      if (!restaurantStartDate || !restaurantEndDate) {
-        const today = new Date().toISOString().split('T')[0]
-        setRestaurantStartDate(today)
-        setRestaurantEndDate(today)
+      // 🎯 Ana sayfadan tarih geliyorsa onları kullan, yoksa bugünü kullan
+      if (parentStartDate && parentEndDate) {
+        setRestaurantStartDate(parentStartDate)
+        setRestaurantEndDate(parentEndDate)
+      } else if (!restaurantStartDate || !restaurantEndDate) {
+        // Business Day mantığı: Sabah 05:00'ten itibaren
+        const now = new Date()
+        const currentHour = now.getHours()
+        
+        const todayStart = new Date(now)
+        if (currentHour < 5) {
+          todayStart.setDate(todayStart.getDate() - 1)
+        }
+        todayStart.setHours(5, 0, 0, 0)
+        
+        const todayStartStr = todayStart.toISOString().split('T')[0]
+        const todayEndStr = new Date().toISOString().split('T')[0]
+        
+        setRestaurantStartDate(todayStartStr)
+        setRestaurantEndDate(todayEndStr)
       }
+      
       fetchRestaurantOrders(restaurantId)
       fetchRestaurantDebts(restaurantId)
     }
-  }, [modalType, restaurantId])
+  }, [modalType, restaurantId, parentStartDate, parentEndDate])
 
-  // Fetch Restaurant Orders - ORİJİNAL MANTIK
+  // Fetch Restaurant Orders - 🎯 ÜCRETLİ İPTALLER DAHİL
   const fetchRestaurantOrders = async (id: string) => {
     try {
       let query = supabase
         .from('packages')
         .select('*, couriers!delivered_by_courier_id(full_name)')
         .eq('restaurant_id', id)
-        .eq('status', 'delivered')
+        .or('status.eq.delivered,and(status.eq.cancelled,is_chargeable_cancellation.eq.true)')
         .order('delivered_at', { ascending: false })
 
       if (restaurantStartDate && restaurantEndDate) {

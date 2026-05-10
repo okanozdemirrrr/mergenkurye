@@ -680,7 +680,16 @@ export function RestaurantsTab({
                                         {/* Sağ: Aksiyon Butonları */}
                                         <div className="flex items-center gap-2">
                                             <button
-                                                onClick={() => onRestaurantClick(r.id)}
+                                                onClick={() => {
+                                                    // Ana sayfadaki tarihleri URL parametresi olarak gönder
+                                                    const params = new URLSearchParams()
+                                                    params.set('modal', 'restaurant')
+                                                    params.set('restaurantId', r.id.toString())
+                                                    if (startDate) params.set('parentStartDate', startDate)
+                                                    if (endDate) params.set('parentEndDate', endDate)
+                                                    window.history.pushState({}, '', `?${params.toString()}`)
+                                                    onRestaurantClick(r.id)
+                                                }}
                                                 className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded border border-slate-700 transition-colors tracking-tight"
                                             >
                                                 Gün Sonu Al
