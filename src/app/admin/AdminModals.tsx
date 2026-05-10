@@ -119,9 +119,10 @@ export function AdminModals() {
         loadingDebts={courierModal.loadingDebts}
       />
 
-      {/* Restaurant Detail Modal - 🔥 CONDITIONAL RENDERING (Unmount when closed) */}
+      {/* Restaurant Detail Modal - 🔥 FORCE REMOUNT with KEY */}
       {modalType === 'restaurant' && restaurantId && restaurant && (
         <RestaurantDetailModal
+          key={`${restaurantId}-${restaurantModal.restaurantStartDate}-${restaurantModal.restaurantEndDate}`}
           show={true}
           onClose={closeModal}
           restaurant={restaurant}
