@@ -36,6 +36,10 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
   const [endDate, setEndDate] = useState('')
   const [cancelledPackages, setCancelledPackages] = useState<Package[]>([])
   
+  // 🎯 Manuel Filtreleme için Temporary State
+  const [tempStartDate, setTempStartDate] = useState('')
+  const [tempEndDate, setTempEndDate] = useState('')
+  
   // Günlük finansal özet state'leri
   const [todayStats, setTodayStats] = useState({
     packageCount: 0,
@@ -168,7 +172,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
         if (error) throw error
         setPackages(data || [])
       } else if (activeTab === 'delivered') {
-        // Teslim edilen siparişler
+        // Teslim edilen siparişler - MANUEL FİLTRELEME (sadece startDate/endDate değiştiğinde)
         let query = supabase
           .from('packages')
           .select(`
@@ -179,7 +183,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
           .eq('status', 'delivered')
           .order('delivered_at', { ascending: false })
 
-        // Tarih filtreleri
+        // Tarih filtreleri (sadece startDate/endDate state'i değiştiğinde uygulanır)
         if (startDate) {
           query = query.gte('delivered_at', new Date(startDate).toISOString())
         }
@@ -316,7 +320,20 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
     ])
   }, [fetchRestaurant, fetchPackages, fetchTodayStats])
 
-  // Sekme değiştiğinde paketleri yeniden yükle
+  // 🎯 Manuel Filtreleme Fonksiyonları
+  const handleApplyFilter = useCallback(() => {
+    setStartDate(tempStartDate)
+    setEndDate(tempEndDate)
+  }, [tempStartDate, tempEndDate])
+
+  const handleClearFilter = useCallback(() => {
+    setTempStartDate('')
+    setTempEndDate('')
+    setStartDate('')
+    setEndDate('')
+  }, [])
+
+  // Sekme değiştiğinde paketleri yeniden yükle (SADECE activeTab ve gerçek startDate/endDate değiştiğinde)
   useEffect(() => {
     fetchPackages()
   }, [activeTab, startDate, endDate, fetchPackages])
@@ -521,15 +538,15 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
           <div className={`rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'}`}>
             {/* Tarih Filtreleri */}
             <div className={`p-4 border-b ${darkMode ? 'border-slate-800' : 'border-gray-200'}`}>
-              <div className="flex flex-wrap gap-4 items-center">
+              <div className="flex flex-wrap gap-4 items-end">
                 <div className="flex-1 min-w-[200px]">
                   <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
                     Başlangıç Tarihi
                   </label>
                   <input
                     type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
+                    value={tempStartDate}
+                    onChange={(e) => setTempStartDate(e.target.value)}
                     className={`w-full px-3 py-2 rounded-lg border ${
                       darkMode 
                         ? 'bg-slate-800 border-slate-700 text-white' 
@@ -543,8 +560,8 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                   </label>
                   <input
                     type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
+                    value={tempEndDate}
+                    onChange={(e) => setTempEndDate(e.target.value)}
                     className={`w-full px-3 py-2 rounded-lg border ${
                       darkMode 
                         ? 'bg-slate-800 border-slate-700 text-white' 
@@ -552,12 +569,34 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                     }`}
                   />
                 </div>
+                
+                {/* 📊 Dinamik Sayaç Kutusu */}
+                <div className={`px-4 py-2 rounded-lg border ${
+                  darkMode 
+                    ? 'bg-slate-800 border-slate-700' 
+                    : 'bg-blue-50 border-blue-200'
+                }`}>
+                  <p className={`text-xs font-medium mb-0.5 ${darkMode ? 'text-slate-400' : 'text-blue-600'}`}>
+                    Toplam Paket
+                  </p>
+                  <p className={`text-2xl font-black ${darkMode ? 'text-blue-400' : 'text-blue-700'}`}>
+                    {deliveredPackages.length}
+                  </p>
+                </div>
+
                 <div className="flex gap-2">
                   <button
-                    onClick={() => {
-                      setStartDate('')
-                      setEndDate('')
-                    }}
+                    onClick={handleApplyFilter}
+                    className={`px-6 py-2 rounded-lg font-semibold transition-all hover:scale-105 ${
+                      darkMode
+                        ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                        : 'bg-blue-500 hover:bg-blue-600 text-white'
+                    }`}
+                  >
+                    🔍 Filtrele
+                  </button>
+                  <button
+                    onClick={handleClearFilter}
                     className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                       darkMode
                         ? 'bg-slate-700 hover:bg-slate-600 text-white'
