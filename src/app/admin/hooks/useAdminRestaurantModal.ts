@@ -67,11 +67,16 @@ export function useAdminRestaurantModal({
         setRestaurantStartDate(todayStartStr)
         setRestaurantEndDate(todayEndStr)
       }
-      
+    }
+  }, [modalType, restaurantId, parentStartDate, parentEndDate])
+
+  // 🔥 TARİHLER DEĞİŞTİĞİNDE OTOMATİK VERİ ÇEK
+  useEffect(() => {
+    if (modalType === 'restaurant' && restaurantId && restaurantStartDate && restaurantEndDate) {
       fetchRestaurantOrders(restaurantId)
       fetchRestaurantDebts(restaurantId)
     }
-  }, [modalType, restaurantId, parentStartDate, parentEndDate])
+  }, [modalType, restaurantId, restaurantStartDate, restaurantEndDate])
 
   // Fetch Restaurant Orders - 🎯 ÜCRETLİ İPTALLER DAHİL
   const fetchRestaurantOrders = async (id: string) => {

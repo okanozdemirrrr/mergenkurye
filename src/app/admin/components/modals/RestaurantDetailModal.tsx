@@ -38,9 +38,10 @@ export function RestaurantDetailModal({
     getPlatformBadgeClass,
     getPlatformDisplayName
 }: RestaurantDetailModalProps) {
+    // 🔥 CONDITIONAL RENDERING: Modal kapalıyken DOM'da hiç olmamalı
     if (!show || !selectedRestaurantId || !restaurant) return null
 
-    // 📊 Finansal Hesaplamalar
+    // 📊 Finansal Hesaplamalar - PROPS'U DİREKT KULLAN (Local state yok!)
     const totalOrders = selectedRestaurantOrders.length
     const totalRevenue = selectedRestaurantOrders.reduce((sum, o) => sum + (o.amount || 0), 0)
     const packageFee = restaurant.package_fee || 100

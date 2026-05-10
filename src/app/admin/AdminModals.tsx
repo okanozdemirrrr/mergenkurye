@@ -119,8 +119,8 @@ export function AdminModals() {
         loadingDebts={courierModal.loadingDebts}
       />
 
-      {/* Restaurant Detail Modal */}
-      {modalType === 'restaurant' && restaurantId && (
+      {/* Restaurant Detail Modal - 🔥 CONDITIONAL RENDERING (Unmount when closed) */}
+      {modalType === 'restaurant' && restaurantId && restaurant && (
         <RestaurantDetailModal
           show={true}
           onClose={closeModal}
