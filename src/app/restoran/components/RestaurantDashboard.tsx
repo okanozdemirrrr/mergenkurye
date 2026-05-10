@@ -723,7 +723,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                         {/* Sol Taraf - Sipariş Bilgileri */}
                         <div className="flex-1 min-w-[250px]">
                           <div className="flex items-center gap-2 mb-2 flex-wrap">
-                            <span className={`text-sm font-bold px-2 py-1 rounded ${
+                            <span classNamee={`text-sm font-bold px-2 py-1 rounded ${
                               darkMode ? 'bg-orange-900/50 text-orange-300' : 'bg-orange-100 text-orange-700'
                             }`}>
                               {pkg.order_number || '......'}
