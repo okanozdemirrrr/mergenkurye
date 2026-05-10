@@ -7,7 +7,7 @@
  */
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Restaurant, Package } from '@/types'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { supabase } from '@/app/lib/supabase'
@@ -373,28 +373,122 @@ export function RestaurantsTab({
 
     // Ödemeler - KURUMSAL FİNANS PANELİ
     if (restaurantSubTab === 'payments') {
-        // Her restoran için sipariş ve ciro hesapla
+        // 🎯 Tarih Filtreleme State'leri
+        const [startDate, setStartDate] = useState('')
+        const [endDate, setEndDate] = useState('')
+        const [tempStartDate, setTempStartDate] = useState('')
+        const [tempEndDate, setTempEndDate] = useState('')
+        const [filteredOrders, setFilteredOrders] = useState<Package[]>([])
+        const [isLoadingFilter, setIsLoadingFilter] = useState(false)
+
+        // 🔥 İLK YÜKLEME: Business Day (Sabah 05:00) mantığıyla bugünün verilerini çek
+        useEffect(() => {
+            const fetchTodayData = async () => {
+                const now = new Date()
+                const currentHour = now.getHours()
+                
+                const todayStart = new Date(now)
+                if (currentHour < 5) {
+                    todayStart.setDate(todayStart.getDate() - 1)
+                }
+                todayStart.setHours(5, 0, 0, 0)
+
+                try {
+                    const { data, error } = await supabase
+                        .from('packages')
+                        .select('*, restaurant:restaurants!packages_restaurant_id_fkey(id, name, package_fee)')
+                        .or('status.eq.delivered,and(status.eq.cancelled,is_chargeable_cancellation.eq.true)')
+                        .gte('delivered_at', todayStart.toISOString())
+
+                    if (error) throw error
+                    setFilteredOrders(data || [])
+                } catch (error) {
+                    console.error('❌ Bugünün verileri yüklenemedi:', error)
+                    setFilteredOrders([])
+                }
+            }
+
+            fetchTodayData()
+        }, [])
+
+        // 🎯 Manuel Filtreleme Fonksiyonu
+        const handleApplyFilter = async () => {
+            if (!tempStartDate || !tempEndDate) {
+                alert('⚠️ Lütfen başlangıç ve bitiş tarihlerini seçin!')
+                return
+            }
+
+            setIsLoadingFilter(true)
+            setStartDate(tempStartDate)
+            setEndDate(tempEndDate)
+
+            try {
+                const startDateTime = new Date(tempStartDate)
+                startDateTime.setHours(0, 0, 0, 0)
+
+                const endDateTime = new Date(tempEndDate)
+                endDateTime.setHours(23, 59, 59, 999)
+
+                const { data, error } = await supabase
+                    .from('packages')
+                    .select('*, restaurant:restaurants!packages_restaurant_id_fkey(id, name, package_fee)')
+                    .or('status.eq.delivered,and(status.eq.cancelled,is_chargeable_cancellation.eq.true)')
+                    .gte('delivered_at', startDateTime.toISOString())
+                    .lte('delivered_at', endDateTime.toISOString())
+
+                if (error) throw error
+                setFilteredOrders(data || [])
+            } catch (error) {
+                console.error('❌ Filtreleme hatası:', error)
+                alert('Filtreleme sırasında bir hata oluştu!')
+            } finally {
+                setIsLoadingFilter(false)
+            }
+        }
+
+        // 🎯 Filtreyi Temizle
+        const handleClearFilter = async () => {
+            setTempStartDate('')
+            setTempEndDate('')
+            setStartDate('')
+            setEndDate('')
+
+            // Bugünün verilerini tekrar yükle
+            const now = new Date()
+            const currentHour = now.getHours()
+            
+            const todayStart = new Date(now)
+            if (currentHour < 5) {
+                todayStart.setDate(todayStart.getDate() - 1)
+            }
+            todayStart.setHours(5, 0, 0, 0)
+
+            try {
+                const { data, error } = await supabase
+                    .from('packages')
+                    .select('*, restaurant:restaurants!packages_restaurant_id_fkey(id, name, package_fee)')
+                    .or('status.eq.delivered,and(status.eq.cancelled,is_chargeable_cancellation.eq.true)')
+                    .gte('delivered_at', todayStart.toISOString())
+
+                if (error) throw error
+                setFilteredOrders(data || [])
+            } catch (error) {
+                console.error('❌ Temizleme hatası:', error)
+            }
+        }
+
+        // 📊 Restoran Bazlı Hesaplamalar
         const restaurantsWithStats = restaurants.map(restaurant => {
-            const restaurantOrders = deliveredPackages.filter(
-                pkg => pkg.restaurant_id === restaurant.id && pkg.status === 'delivered'
+            const restaurantOrders = filteredOrders.filter(
+                pkg => pkg.restaurant_id === restaurant.id
             )
             
-            // Bugünkü siparişleri filtrele
-            const today = new Date()
-            today.setHours(0, 0, 0, 0)
-            const todayOrders = restaurantOrders.filter(pkg => {
-                if (!pkg.delivered_at) return false
-                const deliveredDate = new Date(pkg.delivered_at)
-                deliveredDate.setHours(0, 0, 0, 0)
-                return deliveredDate.getTime() === today.getTime()
-            })
-            
-            const totalOrders = todayOrders.length
-            const totalRevenue = todayOrders.reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
+            const totalOrders = restaurantOrders.length
+            const totalRevenue = restaurantOrders.reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
             const fallbackFee = restaurant.package_fee || 100
             
             // 2. DASHBOARD MATH: applied_price toplamı (fallback: restaurant.package_fee)
-            const totalDebt = todayOrders.reduce((sum, pkg) => {
+            const totalDebt = restaurantOrders.reduce((sum, pkg) => {
                 const price = (pkg as any).applied_price ?? fallbackFee
                 return sum + price
             }, 0)
@@ -411,7 +505,7 @@ export function RestaurantsTab({
             }
         })
 
-        // Toplam hesaplamalar
+        // 📊 Genel Toplamlar
         const grandTotalRevenue = restaurantsWithStats.reduce((sum, r) => sum + r.totalRevenue, 0)
         const grandTotalDebt = restaurantsWithStats.reduce((sum, r) => sum + r.totalDebt, 0)
         const grandNetBalance = grandTotalRevenue - grandTotalDebt
@@ -419,14 +513,55 @@ export function RestaurantsTab({
 
         return (
             <div className="bg-slate-950 min-h-screen p-6">
-                {/* 🏦 KURUMSAL BAŞLIK */}
-                <div className="mb-8">
-                    <h1 className="text-3xl font-black text-slate-100 tracking-tight mb-1">
-                        Finansal Raporlama Paneli
-                    </h1>
-                    <p className="text-sm text-slate-500 tracking-tight">
-                        Restoran ödemeleri ve günlük hak ediş hesaplamaları
-                    </p>
+                {/* 🏦 KURUMSAL BAŞLIK + FİLTRE */}
+                <div className="mb-8 flex items-start justify-between gap-6">
+                    <div>
+                        <h1 className="text-3xl font-black text-slate-100 tracking-tight mb-1">
+                            Finansal Raporlama Paneli
+                        </h1>
+                        <p className="text-sm text-slate-500 tracking-tight">
+                            Restoran ödemeleri ve günlük hak ediş hesaplamaları
+                        </p>
+                    </div>
+
+                    {/* 🔍 TARİH FİLTRELEME */}
+                    <div className="flex items-end gap-3">
+                        <div>
+                            <label className="block text-xs font-medium text-slate-500 mb-1 tracking-tight">
+                                Başlangıç
+                            </label>
+                            <input
+                                type="date"
+                                value={tempStartDate}
+                                onChange={(e) => setTempStartDate(e.target.value)}
+                                className="px-3 py-2 bg-slate-900 border border-slate-800 rounded text-sm text-slate-300 focus:border-slate-700 outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-slate-500 mb-1 tracking-tight">
+                                Bitiş
+                            </label>
+                            <input
+                                type="date"
+                                value={tempEndDate}
+                                onChange={(e) => setTempEndDate(e.target.value)}
+                                className="px-3 py-2 bg-slate-900 border border-slate-800 rounded text-sm text-slate-300 focus:border-slate-700 outline-none"
+                            />
+                        </div>
+                        <button
+                            onClick={handleApplyFilter}
+                            disabled={isLoadingFilter}
+                            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium rounded border border-slate-700 transition-colors tracking-tight disabled:opacity-50"
+                        >
+                            {isLoadingFilter ? '⏳' : '🔍'} Filtrele
+                        </button>
+                        <button
+                            onClick={handleClearFilter}
+                            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-slate-500 text-sm font-medium rounded border border-slate-800 transition-colors tracking-tight"
+                        >
+                            Temizle
+                        </button>
+                    </div>
                 </div>
 
                 {/* 📊 3'LÜ FİNANSAL KART YAPISI */}
@@ -561,8 +696,8 @@ export function RestaurantsTab({
                 {/* 📝 FOOTER NOT */}
                 <div className="mt-6 px-4 py-3 bg-slate-900 border border-slate-800 rounded-lg">
                     <p className="text-xs text-slate-600 tracking-tight">
-                        <span className="font-semibold text-slate-500">Not:</span> Tüm hesaplamalar bugünün (00:00 - 23:59) teslim edilmiş siparişleri üzerinden yapılmaktadır. 
-                        Servis bedeli, her paket için dinamik ücret (applied_price) üzerinden hesaplanır.
+                        <span className="font-semibold text-slate-500">Not:</span> Sayfa ilk açıldığında bugünün (Business Day: 05:00 - 05:00) verileri gösterilir. 
+                        Servis bedeli, her paket için dinamik ücret (applied_price) üzerinden hesaplanır. Ücretli iptaller (is_chargeable_cancellation = true) hesaplamalara dahildir.
                     </p>
                 </div>
             </div>
