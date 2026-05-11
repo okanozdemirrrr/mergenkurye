@@ -381,6 +381,74 @@ export function RestaurantsTab({
 
     // Ödemeler - KURUMSAL FİNANS PANELİ
     if (restaurantSubTab === 'payments') {
+        // 🔥 RESTORAN İSTATİSTİKLERİ STATE
+        const [restaurantsWithStats, setRestaurantsWithStats] = useState<any[]>([])
+        const [isLoadingStats, setIsLoadingStats] = useState(false)
+        
+        // 🔥 İSTATİSTİKLERİ HESAPLA (Ödemeler Dahil)
+        useEffect(() => {
+            const calculateStats = async () => {
+                setIsLoadingStats(true)
+                try {
+                    const stats = await Promise.all(restaurants.map(async (restaurant) => {
+                        const restaurantOrders = filteredOrders.filter(
+                            pkg => pkg.restaurant_id === restaurant.id
+                        )
+                        
+                        const totalOrders = restaurantOrders.length
+                        const totalRevenue = restaurantOrders.reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
+                        const fallbackFee = restaurant.package_fee || 100
+                        
+                        // 2. DASHBOARD MATH: applied_price toplamı (fallback: restaurant.package_fee)
+                        const totalDebt = restaurantOrders.reduce((sum, pkg) => {
+                            const price = (pkg as any).applied_price ?? fallbackFee
+                            return sum + price
+                        }, 0)
+                        
+                        // 🔥 YENİ: ÖNCEKİ ÖDEMELERİ ÇEK
+                        let totalPayments = 0
+                        if (startDate && endDate) {
+                            try {
+                                const { data: paymentsData, error: paymentsError } = await supabase
+                                    .from('restaurant_payment_transactions')
+                                    .select('amount_paid')
+                                    .eq('restaurant_id', restaurant.id)
+                                    .gte('transaction_date', startDate)
+                                    .lte('transaction_date', endDate)
+
+                                if (!paymentsError && paymentsData) {
+                                    totalPayments = paymentsData.reduce((sum, p) => sum + (p.amount_paid || 0), 0)
+                                }
+                            } catch (error) {
+                                console.error('❌ Ödeme verisi çekilemedi:', error)
+                            }
+                        }
+                        
+                        // 🔥 KUTSAL FORMÜL: Net Bakiye = (Ciro - Servis) - Ödemeler
+                        const netBalance = Math.max(0, totalRevenue - totalDebt - totalPayments)
+                        
+                        return {
+                            ...restaurant,
+                            totalOrders,
+                            totalRevenue,
+                            totalDebt,
+                            totalPayments,
+                            netBalance,
+                            packageFee: fallbackFee
+                        }
+                    }))
+                    
+                    setRestaurantsWithStats(stats)
+                } catch (error) {
+                    console.error('❌ İstatistik hesaplama hatası:', error)
+                } finally {
+                    setIsLoadingStats(false)
+                }
+            }
+            
+            calculateStats()
+        }, [restaurants, filteredOrders, startDate, endDate])
+        
         // 🎯 Manuel Filtreleme Fonksiyonu - BAŞTA 0 GÖSTER
         const handleApplyFilter = async () => {
             if (!tempStartDate || !tempEndDate) {
@@ -447,38 +515,10 @@ export function RestaurantsTab({
             }
         }
 
-        // 📊 Restoran Bazlı Hesaplamalar
-        const restaurantsWithStats = restaurants.map(restaurant => {
-            const restaurantOrders = filteredOrders.filter(
-                pkg => pkg.restaurant_id === restaurant.id
-            )
-            
-            const totalOrders = restaurantOrders.length
-            const totalRevenue = restaurantOrders.reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
-            const fallbackFee = restaurant.package_fee || 100
-            
-            // 2. DASHBOARD MATH: applied_price toplamı (fallback: restaurant.package_fee)
-            const totalDebt = restaurantOrders.reduce((sum, pkg) => {
-                const price = (pkg as any).applied_price ?? fallbackFee
-                return sum + price
-            }, 0)
-            
-            const netBalance = totalRevenue - totalDebt
-            
-            return {
-                ...restaurant,
-                totalOrders,
-                totalRevenue,
-                totalDebt,
-                netBalance,
-                packageFee: fallbackFee
-            }
-        })
-
         // 📊 Genel Toplamlar
         const grandTotalRevenue = restaurantsWithStats.reduce((sum, r) => sum + r.totalRevenue, 0)
         const grandTotalDebt = restaurantsWithStats.reduce((sum, r) => sum + r.totalDebt, 0)
-        const grandNetBalance = grandTotalRevenue - grandTotalDebt
+        const grandNetBalance = restaurantsWithStats.reduce((sum, r) => sum + r.netBalance, 0)
         const grandTotalOrders = restaurantsWithStats.reduce((sum, r) => sum + r.totalOrders, 0)
 
         return (
@@ -534,8 +574,8 @@ export function RestaurantsTab({
                     </div>
                 </div>
 
-                {/* 📊 3'LÜ FİNANSAL KART YAPISI */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                {/* 📊 4'LÜ FİNANSAL KART YAPISI - ÖDEMELER DAHİL */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                     {/* KART 1: TOPLAM CİRO */}
                     <div className="bg-slate-900 border border-slate-800 rounded-lg p-5">
                         <div className="flex items-start justify-between mb-3">
@@ -572,7 +612,25 @@ export function RestaurantsTab({
                         </p>
                     </div>
 
-                    {/* KART 3: NET BAKİYE (Koyu Emerald) */}
+                    {/* KART 3: TOPLAM ÖDEMELER (Amber) */}
+                    <div className="bg-slate-900 border border-amber-900/30 rounded-lg p-5">
+                        <div className="flex items-start justify-between mb-3">
+                            <div>
+                                <p className="text-xs font-medium text-amber-400/70 tracking-tight uppercase mb-1">
+                                    Yapılan Ödemeler
+                                </p>
+                                <p className="text-3xl font-black text-amber-300/90 tracking-tight">
+                                    {restaurantsWithStats.reduce((sum, r) => sum + r.totalPayments, 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
+                                </p>
+                            </div>
+                            <div className="text-amber-900/50 text-2xl">💳</div>
+                        </div>
+                        <p className="text-xs text-slate-600 tracking-tight">
+                            Restoralara ödenen
+                        </p>
+                    </div>
+
+                    {/* KART 4: NET BAKİYE (Koyu Emerald) */}
                     <div className="bg-slate-900 border border-emerald-900/40 rounded-lg p-5">
                         <div className="flex items-start justify-between mb-3">
                             <div>
@@ -586,7 +644,7 @@ export function RestaurantsTab({
                             <div className="text-emerald-900/50 text-2xl">✓</div>
                         </div>
                         <p className="text-xs text-slate-600 tracking-tight">
-                            Ciro - Servis Bedeli
+                            (Ciro - Servis) - Ödemeler
                         </p>
                     </div>
                 </div>
@@ -600,7 +658,12 @@ export function RestaurantsTab({
                     </div>
 
                     <div className="divide-y divide-slate-800">
-                        {restaurants.length === 0 ? (
+                        {isLoadingStats ? (
+                            <div className="text-center py-12 text-slate-500">
+                                <div className="text-4xl mb-2 animate-pulse">⏳</div>
+                                <p className="text-sm tracking-tight">Ödemeler hesaplanıyor...</p>
+                            </div>
+                        ) : restaurants.length === 0 ? (
                             <div className="text-center py-12 text-slate-600">
                                 <div className="text-4xl mb-2 opacity-30">🏪</div>
                                 <p className="text-sm tracking-tight">Restoran bulunamadı</p>
@@ -626,7 +689,7 @@ export function RestaurantsTab({
                                         </div>
 
                                         {/* Orta: Finansal Metrikler */}
-                                        <div className="flex items-center gap-8 mr-8">
+                                        <div className="flex items-center gap-6 mr-8">
                                             <div className="text-right">
                                                 <p className="text-xs text-slate-600 tracking-tight">Ciro</p>
                                                 <p className="text-sm font-bold text-slate-300 tracking-tight">
@@ -640,9 +703,19 @@ export function RestaurantsTab({
                                                 </p>
                                             </div>
                                             <div className="text-right">
+                                                <p className="text-xs text-slate-600 tracking-tight">Ödemeler</p>
+                                                <p className="text-sm font-bold text-amber-400/70 tracking-tight">
+                                                    {r.totalPayments.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
+                                                </p>
+                                            </div>
+                                            <div className="text-right">
                                                 <p className="text-xs text-slate-600 tracking-tight">Net</p>
-                                                <p className="text-sm font-bold text-emerald-400/80 tracking-tight">
-                                                    {r.netBalance.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
+                                                <p className={`text-sm font-bold tracking-tight ${
+                                                    r.netBalance === 0 
+                                                        ? 'text-emerald-500' 
+                                                        : 'text-emerald-400/80'
+                                                }`}>
+                                                    {r.netBalance === 0 ? '✓ Borç Yok' : `${r.netBalance.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺`}
                                                 </p>
                                             </div>
                                         </div>
