@@ -465,15 +465,31 @@ export function RestaurantsTab({
                 const endDateTime = new Date(tempEndDate)
                 endDateTime.setHours(23, 59, 59, 999)
 
-                const { data, error } = await supabase
+                // 🔥 İKİ AYRI SORGU: Delivered ve Chargeable Cancellations
+                // 1. Teslim edilen siparişler (delivered_at ile filtrele)
+                const { data: deliveredData, error: deliveredError } = await supabase
                     .from('packages')
                     .select('*, restaurant:restaurants!packages_restaurant_id_fkey(id, name, package_fee)')
-                    .or('status.eq.delivered,and(status.eq.cancelled,is_chargeable_cancellation.eq.true)')
+                    .eq('status', 'delivered')
                     .gte('delivered_at', startDateTime.toISOString())
                     .lte('delivered_at', endDateTime.toISOString())
 
-                if (error) throw error
-                setFilteredOrders(data || [])
+                if (deliveredError) throw deliveredError
+
+                // 2. Ücretli iptaller (updated_at ile filtrele)
+                const { data: cancelledData, error: cancelledError } = await supabase
+                    .from('packages')
+                    .select('*, restaurant:restaurants!packages_restaurant_id_fkey(id, name, package_fee)')
+                    .eq('status', 'cancelled')
+                    .eq('is_chargeable_cancellation', true)
+                    .gte('updated_at', startDateTime.toISOString())
+                    .lte('updated_at', endDateTime.toISOString())
+
+                if (cancelledError) throw cancelledError
+
+                // Birleştir
+                const combinedData = [...(deliveredData || []), ...(cancelledData || [])]
+                setFilteredOrders(combinedData)
             } catch (error) {
                 console.error('❌ Filtreleme hatası:', error)
                 alert('Filtreleme sırasında bir hata oluştu!')
