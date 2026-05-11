@@ -155,27 +155,32 @@ export function AdminModals() {
           globalStartDate={globalDates.start}
           globalEndDate={globalDates.end}
           onClose={closeModal}
-          onPaymentClick={() => restaurantModal.setShowRestaurantPaymentModal(true)}
+          onPaymentClick={(netAmount) => {
+            restaurantModal.setNetAmountToPay(netAmount)
+            restaurantModal.setShowRestaurantPaymentModal(true)
+          }}
           restaurant={restaurant}
+          onRefetch={restaurantModal.refetchTrigger}
         />
       )}
 
-      {/* Restaurant Payment Modal */}
-      <RestaurantPaymentModal
-        show={restaurantModal.showRestaurantPaymentModal}
-        onClose={() => restaurantModal.setShowRestaurantPaymentModal(false)}
-        restaurant={restaurant}
-        selectedRestaurantId={restaurantId}
-        restaurantPaymentAmount={restaurantModal.restaurantPaymentAmount}
-        setRestaurantPaymentAmount={restaurantModal.setRestaurantPaymentAmount}
-        onConfirm={restaurantModal.handleRestaurantPayment}
-        processing={restaurantModal.restaurantPaymentProcessing}
-        restaurantDebts={restaurantModal.restaurantDebts}
-        selectedRestaurantOrders={restaurantModal.selectedRestaurantOrders}
-        restaurantStartDate={restaurantModal.restaurantStartDate}
-        restaurantEndDate={restaurantModal.restaurantEndDate}
-        loadingDebts={restaurantModal.loadingRestaurantDebts}
-      />
+      {/* Restaurant Payment Modal - Force Remount with key */}
+      {restaurantModal.showRestaurantPaymentModal && (
+        <RestaurantPaymentModal
+          key={`${restaurantId}_${Date.now()}`}
+          show={restaurantModal.showRestaurantPaymentModal}
+          onClose={() => restaurantModal.setShowRestaurantPaymentModal(false)}
+          restaurant={restaurant}
+          selectedRestaurantId={restaurantId}
+          netAmountToPay={restaurantModal.netAmountToPay}
+          restaurantPaymentAmount={restaurantModal.restaurantPaymentAmount}
+          setRestaurantPaymentAmount={restaurantModal.setRestaurantPaymentAmount}
+          onConfirm={restaurantModal.handleRestaurantPayment}
+          processing={restaurantModal.restaurantPaymentProcessing}
+          restaurantDebts={restaurantModal.restaurantDebts}
+          loadingDebts={restaurantModal.loadingRestaurantDebts}
+        />
+      )}
 
       {/* Restaurant Debt Pay Modal */}
       <RestaurantDebtPayModal

@@ -36,6 +36,14 @@ export function RestaurantsTab({
     const [isUpdating, setIsUpdating] = useState(false)
     const [successMessage, setSuccessMessage] = useState('')
     const [errorMessage, setErrorMessage] = useState('')
+    
+    // 🎯 Tarih Filtreleme State'leri - HER ZAMAN EN ÜSTTE!
+    const [startDate, setStartDate] = useState('')
+    const [endDate, setEndDate] = useState('')
+    const [tempStartDate, setTempStartDate] = useState('')
+    const [tempEndDate, setTempEndDate] = useState('')
+    const [filteredOrders, setFilteredOrders] = useState<Package[]>([])
+    const [isLoadingFilter, setIsLoadingFilter] = useState(false)
 
     const handleUpdatePackageFee = async () => {
         if (!editingRestaurant) return
@@ -373,45 +381,7 @@ export function RestaurantsTab({
 
     // Ödemeler - KURUMSAL FİNANS PANELİ
     if (restaurantSubTab === 'payments') {
-        // 🎯 Tarih Filtreleme State'leri
-        const [startDate, setStartDate] = useState('')
-        const [endDate, setEndDate] = useState('')
-        const [tempStartDate, setTempStartDate] = useState('')
-        const [tempEndDate, setTempEndDate] = useState('')
-        const [filteredOrders, setFilteredOrders] = useState<Package[]>([])
-        const [isLoadingFilter, setIsLoadingFilter] = useState(false)
-
-        // 🔥 İLK YÜKLEME: Business Day (Sabah 05:00) mantığıyla bugünün verilerini çek
-        useEffect(() => {
-            const fetchTodayData = async () => {
-                const now = new Date()
-                const currentHour = now.getHours()
-                
-                const todayStart = new Date(now)
-                if (currentHour < 5) {
-                    todayStart.setDate(todayStart.getDate() - 1)
-                }
-                todayStart.setHours(5, 0, 0, 0)
-
-                try {
-                    const { data, error } = await supabase
-                        .from('packages')
-                        .select('*, restaurant:restaurants!packages_restaurant_id_fkey(id, name, package_fee)')
-                        .or('status.eq.delivered,and(status.eq.cancelled,is_chargeable_cancellation.eq.true)')
-                        .gte('delivered_at', todayStart.toISOString())
-
-                    if (error) throw error
-                    setFilteredOrders(data || [])
-                } catch (error) {
-                    console.error('❌ Bugünün verileri yüklenemedi:', error)
-                    setFilteredOrders([])
-                }
-            }
-
-            fetchTodayData()
-        }, [])
-
-        // 🎯 Manuel Filtreleme Fonksiyonu
+        // 🎯 Manuel Filtreleme Fonksiyonu - BAŞTA 0 GÖSTER
         const handleApplyFilter = async () => {
             if (!tempStartDate || !tempEndDate) {
                 alert('⚠️ Lütfen başlangıç ve bitiş tarihlerini seçin!')

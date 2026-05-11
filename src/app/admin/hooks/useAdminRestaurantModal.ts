@@ -45,6 +45,12 @@ export function useAdminRestaurantModal({
   const [showRestaurantDebtPayModal, setShowRestaurantDebtPayModal] = useState(false)
   const [restaurantDebtPayAmount, setRestaurantDebtPayAmount] = useState('')
   const [restaurantDebtPayProcessing, setRestaurantDebtPayProcessing] = useState(false)
+  
+  // 💰 NET TUTAR STATE - Detaylı Rapor'dan gelecek
+  const [netAmountToPay, setNetAmountToPay] = useState<number>(0)
+  
+  // 🔥 REFETCH TRIGGER - Ödeme sonrası modal'ı yenilemek için
+  const [refetchTrigger, setRefetchTrigger] = useState<number>(0)
 
   // 🎯 PARENT TARİHLER DEĞİŞTİĞİNDE STATE'İ GÜNCELLE
   useEffect(() => {
@@ -132,49 +138,144 @@ export function useAdminRestaurantModal({
     }
   }
 
-  // Handle Restaurant Payment - ORİJİNAL MANTIK
-  const handleRestaurantPayment = async () => {
-    if (!restaurantId) return
-    const amount = parseFloat(restaurantPaymentAmount)
-    if (isNaN(amount)) return
+  // Handle Restaurant Payment - YENİ MİMARİ + NÜKLEER HATA YAKALAMA
+  const handleRestaurantPayment = async (amountOverride?: number) => {
+    // 🔴 GUARD CLAUSE 1: Restaurant ID kontrolü
+    if (!restaurantId) {
+      const errorMsg = '❌ KRITIK HATA: Restoran ID bulunamadı!'
+      console.error(errorMsg, { restaurantId })
+      setErrorMessage(errorMsg)
+      setTimeout(() => setErrorMessage(''), 5000)
+      return
+    }
+
+    // 🔴 GUARD CLAUSE 2: Ödeme tutarı kontrolü
+    // Override varsa onu kullan, yoksa state'ten al
+    const amountStr = amountOverride !== undefined ? String(amountOverride) : restaurantPaymentAmount
+    const amount = parseFloat(amountStr)
+    
+    console.log('💰 ÖDEME TUTARI KONTROLÜ:', { 
+      amountOverride, 
+      restaurantPaymentAmount, 
+      amountStr, 
+      parsedAmount: amount,
+      isNaN: isNaN(amount)
+    })
+    
+    if (isNaN(amount) || amount <= 0) {
+      const errorMsg = '❌ Geçerli bir tutar girin (0\'dan büyük olmalı)'
+      console.error(errorMsg, { amountOverride, restaurantPaymentAmount, amountStr, parsedAmount: amount })
+      setErrorMessage(errorMsg)
+      setTimeout(() => setErrorMessage(''), 5000)
+      return
+    }
+
+    // 🔴 GUARD CLAUSE 3: Sipariş verisi kontrolü
+    if (!selectedRestaurantOrders || selectedRestaurantOrders.length === 0) {
+      const errorMsg = '❌ KRITIK HATA: Sipariş verisi bulunamadı!'
+      console.error(errorMsg, { selectedRestaurantOrders })
+      setErrorMessage(errorMsg)
+      setTimeout(() => setErrorMessage(''), 5000)
+      return
+    }
 
     setRestaurantPaymentProcessing(true)
-    const result = await handleRestaurantPaymentService(restaurantId, {
-      totalOrderAmount: selectedRestaurantOrders.reduce((sum, o) => sum + (o.amount || 0), 0),
-      amountPaid: amount,
-      orderIds: selectedRestaurantOrders.map(o => o.id)
-    })
+    
+    try {
+      // Finansal hesaplamalar - YENİ MANTIK
+      const brutCiro = selectedRestaurantOrders.reduce((sum, o) => sum + (o.amount || 0), 0)
+      const toplamMasraf = selectedRestaurantOrders.reduce((sum, pkg) => {
+        const price = (pkg as any).applied_price ?? 100
+        return sum + price
+      }, 0)
+      const netHakedis = brutCiro - toplamMasraf
+      
+      // 🔥 NÜKLEER LOG: Gönderilecek veriyi logla
+      console.log('💰 ÖDEME İŞLEMİ BAŞLIYOR:', {
+        restaurantId,
+        amount,
+        brutCiro,
+        toplamMasraf,
+        netHakedis,
+        orderCount: selectedRestaurantOrders.length,
+        orderIds: selectedRestaurantOrders.map(o => o.id)
+      })
+      
+      const result = await handleRestaurantPaymentService(restaurantId, {
+        brutCiro,
+        toplamMasraf,
+        netHakedis,
+        amountPaid: amount,
+        orderIds: selectedRestaurantOrders.map(o => o.id),
+        packageCount: selectedRestaurantOrders.length
+      })
 
-    if (result.success) {
-      setSuccessMessage('Ödeme başarıyla kaydedildi')
-      setShowRestaurantPaymentModal(false)
-      setRestaurantPaymentAmount('')
-      fetchRestaurants()
-      fetchRestaurantDebts(restaurantId)
-      fetchRestaurantOrders(restaurantId)
-    } else {
-      setErrorMessage('Ödeme kaydedilirken hata oluştu')
+      // 🔥 NÜKLEER LOG: Sonucu logla
+      console.log('💰 ÖDEME İŞLEMİ SONUCU:', result)
+
+      if (result.success) {
+        setSuccessMessage(result.message || '✅ Ödeme başarıyla kaydedildi')
+        setTimeout(() => setSuccessMessage(''), 3000)
+        
+        setShowRestaurantPaymentModal(false)
+        setRestaurantPaymentAmount('')
+        
+        // 🔥 REFETCH: Ana sayfayı ve modal verilerini yenile
+        fetchRestaurants()
+        fetchRestaurantDebts(restaurantId)
+        if (restaurantStartDate && restaurantEndDate) {
+          fetchRestaurantOrders(restaurantId)
+        }
+        
+        // 🔥 TRIGGER: RestaurantDetailModal'ı yenile
+        setRefetchTrigger(prev => prev + 1)
+      } else {
+        // 🔴 HATA DURUMU: Detaylı hata mesajı
+        const errorMsg = result.error?.message || 'Ödeme kaydedilirken bilinmeyen hata oluştu'
+        console.error('❌ ÖDEME BAŞARISIZ:', {
+          error: result.error,
+          errorMessage: errorMsg,
+          restaurantId,
+          amount
+        })
+        setErrorMessage(`❌ ÖDEME BAŞARISIZ: ${errorMsg}`)
+        setTimeout(() => setErrorMessage(''), 8000)
+        // MODAL AÇIK KALSIN - throw etme!
+      }
+    } catch (error: any) {
+      // 🔴 CATCH BLOĞU: Beklenmeyen hatalar
+      console.error('❌ BEKLENMEYEN ÖDEME HATASI:', {
+        error,
+        message: error.message,
+        stack: error.stack,
+        restaurantId,
+        amount
+      })
+      setErrorMessage(`❌ BEKLENMEYEN HATA: ${error.message || 'Bilinmeyen hata'}`)
+      setTimeout(() => setErrorMessage(''), 8000)
+      // MODAL AÇIK KALSIN - throw etme!
+    } finally {
+      setRestaurantPaymentProcessing(false)
     }
-    setRestaurantPaymentProcessing(false)
   }
 
-  // Handle Restaurant Debt Payment - ORİJİNAL MANTIK
+  // Handle Restaurant Debt Payment - YENİ MİMARİ (Masraf Ödemesi)
   const handleRestaurantDebtPayment = async () => {
     if (!restaurantId) return
     const amount = parseFloat(restaurantDebtPayAmount)
-    if (isNaN(amount)) return
+    if (isNaN(amount) || amount <= 0) return
 
     setRestaurantDebtPayProcessing(true)
-    const result = await handleRestaurantDebtPaymentService(restaurantId, amount, restaurantDebts)
+    const result = await handleRestaurantDebtPaymentService(restaurantId, amount)
 
     if (result.success) {
-      setSuccessMessage('Borç ödemesi başarıyla kaydedildi')
+      setSuccessMessage(result.message || '✅ Masraf ödemesi başarıyla kaydedildi')
       setShowRestaurantDebtPayModal(false)
       setRestaurantDebtPayAmount('')
       fetchRestaurants()
       fetchRestaurantDebts(restaurantId)
     } else {
-      setErrorMessage('Borç ödenirken hata oluştu')
+      setErrorMessage('❌ Masraf ödenirken hata oluştu')
     }
     setRestaurantDebtPayProcessing(false)
   }
@@ -198,6 +299,9 @@ export function useAdminRestaurantModal({
     restaurantDebtPayAmount,
     setRestaurantDebtPayAmount,
     restaurantDebtPayProcessing,
+    netAmountToPay,
+    setNetAmountToPay,
+    refetchTrigger,
     
     // Functions
     fetchRestaurantOrders,
