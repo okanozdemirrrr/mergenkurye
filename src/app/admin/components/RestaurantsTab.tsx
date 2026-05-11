@@ -658,7 +658,9 @@ export function RestaurantsTab({
                                                     // Tarihleri URL'ye eklemek için özel handler kullan
                                                     onRestaurantClick(r.id, startDate, endDate)
                                                 }}
-                                                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded border border-slate-700 transition-colors tracking-tight"
+                                                disabled={!startDate || !endDate || r.totalOrders === 0}
+                                                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded border border-slate-700 transition-colors tracking-tight disabled:opacity-50 disabled:cursor-not-allowed"
+                                                title={!startDate || !endDate ? 'Önce tarih seçip filtreleyin' : r.totalOrders === 0 ? 'Bu tarih aralığında sipariş yok' : 'Detaylı rapor ve ödeme'}
                                             >
                                                 Gün Sonu Al
                                             </button>

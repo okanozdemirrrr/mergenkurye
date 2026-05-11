@@ -172,8 +172,8 @@ export function useAdminRestaurantModal({
 
     // 🔴 GUARD CLAUSE 3: Sipariş verisi kontrolü
     if (!selectedRestaurantOrders || selectedRestaurantOrders.length === 0) {
-      const errorMsg = '❌ KRITIK HATA: Sipariş verisi bulunamadı!'
-      console.error(errorMsg, { selectedRestaurantOrders })
+      const errorMsg = '❌ Önce tarih seçip "Filtrele" butonuna basın!'
+      console.error('⚠️ Sipariş verisi yok:', { selectedRestaurantOrders, restaurantStartDate, restaurantEndDate })
       setErrorMessage(errorMsg)
       setTimeout(() => setErrorMessage(''), 5000)
       return
