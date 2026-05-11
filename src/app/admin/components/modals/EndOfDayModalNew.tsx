@@ -174,8 +174,9 @@ export function EndOfDayModalNew({
   const received = parseFloat(amountReceived) || 0
   const difference = received - remainingDebt
   const courierEarnings = (courier.package_rate || 0) * deliveryCount
-  // Kurye TÜM nakdi teslim eder, hakediş AYRICA ödenir
-  const mustHandOver = cashTotal
+  // 🔥 KUTSAL TOPLAM: Nakit + Kart + IBAN
+  const totalCollection = cashTotal + cardTotal + ibanTotal
+  const mustHandOver = totalCollection
 
   return (
     <div
@@ -266,18 +267,18 @@ export function EndOfDayModalNew({
               {/* ─── UYARI ─── */}
               <div className="bg-amber-900/20 border border-amber-700/40 rounded p-3 mb-5">
                 <p className="text-xs font-bold text-amber-400 tracking-tight text-center">
-                  ⚠️ KURYE TÜM NAKDİ TESLİM EDER, HAKEDİŞ AYRICA ÖDENİR
+                  ⚠️ KURYE TÜM TAHSİLATI TESLİM EDER, HAKEDİŞ AYRICA ÖDENİR
                 </p>
               </div>
 
-              {/* ─── BÖLÜM 3: VERMESİ GEREKEN ─── */}
+              {/* ─── BÖLÜM 3: TOPLAM TAHSİLAT ─── */}
               <div className="bg-emerald-900/20 border border-emerald-700/40 rounded-lg p-4 mb-5">
-                <div className="text-[10px] text-emerald-600 tracking-tight uppercase mb-2 font-medium">Kuryenin Teslim Edeceği Tutar</div>
+                <div className="text-[10px] text-emerald-600 tracking-tight uppercase mb-2 font-medium">Kuryenin Toplam Tahsilatı</div>
                 <div className="text-3xl font-black text-emerald-400 tracking-tight mb-1">
                   {mustHandOver.toFixed(2)}₺
                 </div>
                 <div className="text-[10px] text-emerald-600/60 tracking-tight">
-                  Nakit Toplam
+                  Nakit + Kart + IBAN
                 </div>
               </div>
 
@@ -304,7 +305,7 @@ export function EndOfDayModalNew({
                   step="0.01"
                   value={amountReceived}
                   onChange={(e) => setAmountReceived(e.target.value)}
-                  placeholder={`${cashTotal.toFixed(2)}`}
+                  placeholder={`${totalCollection.toFixed(2)}`}
                   autoFocus
                   className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded text-lg font-bold text-slate-100 placeholder-slate-600 outline-none focus:border-emerald-500 transition-colors tracking-tight"
                 />

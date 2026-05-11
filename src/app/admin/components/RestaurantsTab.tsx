@@ -394,8 +394,10 @@ export function RestaurantsTab({
                         // 🔥 KUTSAL AYRIM: Ciro vs Masraf
                         
                         // 1️⃣ TÜM GEÇERLİ PAKETLER (Delivered + Ücretli İptaller)
+                        // KABAK GİBİ BOOLEAN: is_chargeable_cancellation
                         const allChargeableOrders = filteredOrders.filter(
-                            pkg => pkg.restaurant_id === restaurant.id
+                            pkg => pkg.restaurant_id === restaurant.id &&
+                                   (pkg.status === 'delivered' || pkg.is_chargeable_cancellation === true)
                         )
                         
                         // 2️⃣ SADECE TESLİM EDİLENLER (Ciro için)
@@ -489,14 +491,14 @@ export function RestaurantsTab({
 
                 if (deliveredError) throw deliveredError
 
-                // 2. Ücretli iptaller (updated_at ile filtrele)
+                // 2. Ücretli iptaller (created_at ile filtrele - updated_at kolonu yok!)
                 const { data: cancelledData, error: cancelledError } = await supabase
                     .from('packages')
                     .select('*, restaurant:restaurants!packages_restaurant_id_fkey(id, name, package_fee)')
                     .eq('status', 'cancelled')
                     .eq('is_chargeable_cancellation', true)
-                    .gte('updated_at', startDateTime.toISOString())
-                    .lte('updated_at', endDateTime.toISOString())
+                    .gte('created_at', startDateTime.toISOString())
+                    .lte('created_at', endDateTime.toISOString())
 
                 if (cancelledError) throw cancelledError
 

@@ -51,9 +51,8 @@ SELECT
     picked_up_at,
     courier_id,
     amount,
-    created_at,
-    updated_at
+    created_at
 FROM packages
 WHERE restaurant_id = (SELECT id FROM restaurants WHERE name ILIKE '%ikram%')
     AND status = 'cancelled'
-ORDER BY updated_at DESC;
+ORDER BY created_at DESC;

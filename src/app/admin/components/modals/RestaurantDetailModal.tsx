@@ -53,23 +53,44 @@ export function RestaurantDetailModal({
             const end = new Date(endDate)
             end.setHours(23, 59, 59, 999)
 
-            // Siparişleri çek
-            const { data, error } = await supabase
+            // 🔥 İKİ AYRI SORGU: Delivered ve Chargeable Cancellations
+            // 1. Teslim edilen siparişler (delivered_at ile filtrele)
+            const { data: deliveredData, error: deliveredError } = await supabase
                 .from('packages')
                 .select('*, couriers!delivered_by_courier_id(full_name)')
                 .eq('restaurant_id', resId)
-                .or('status.eq.delivered,and(status.eq.cancelled,is_chargeable_cancellation.eq.true)')
+                .eq('status', 'delivered')
                 .gte('delivered_at', start.toISOString())
                 .lte('delivered_at', end.toISOString())
-                .order('delivered_at', { ascending: false })
 
-            if (error) throw error
+            if (deliveredError) throw deliveredError
 
-            const transformedData = (data || []).map((pkg: any) => ({
+            // 2. Ücretli iptaller (created_at ile filtrele - updated_at kolonu yok!)
+            const { data: cancelledData, error: cancelledError } = await supabase
+                .from('packages')
+                .select('*, couriers!delivered_by_courier_id(full_name)')
+                .eq('restaurant_id', resId)
+                .eq('status', 'cancelled')
+                .eq('is_chargeable_cancellation', true)
+                .gte('created_at', start.toISOString())
+                .lte('created_at', end.toISOString())
+
+            if (cancelledError) throw cancelledError
+
+            // Birleştir ve transform et
+            const combinedData = [...(deliveredData || []), ...(cancelledData || [])]
+            const transformedData = combinedData.map((pkg: any) => ({
                 ...pkg,
                 courier_name: pkg.couriers?.full_name,
                 couriers: undefined
             }))
+
+            // Tarihe göre sırala (en yeni en üstte)
+            transformedData.sort((a, b) => {
+                const dateA = new Date(a.delivered_at || a.created_at || 0).getTime()
+                const dateB = new Date(b.delivered_at || b.created_at || 0).getTime()
+                return dateB - dateA
+            })
 
             setOrders(transformedData)
             
@@ -140,11 +161,17 @@ export function RestaurantDetailModal({
     
     // 🔥 KUTSAL AYRIM: Ciro vs Masraf
     
+    // 0️⃣ TÜM GEÇERLİ PAKETLER (Delivered + Ücretli İptaller)
+    // KABAK GİBİ BOOLEAN: is_chargeable_cancellation
+    const allChargeableOrders = orders.filter(
+        o => o.status === 'delivered' || o.is_chargeable_cancellation === true
+    )
+    
     // 1️⃣ SADECE TESLİM EDİLENLER (Ciro için)
-    const deliveredOrders = orders.filter(o => o.status === 'delivered')
+    const deliveredOrders = allChargeableOrders.filter(o => o.status === 'delivered')
     
     // 2️⃣ PAKET SAYISI: Tüm geçerli paketler (delivered + ücretli iptaller)
-    const totalOrders = orders.length
+    const totalOrders = allChargeableOrders.length
     
     // 3️⃣ BRÜT CİRO: Sadece delivered paketlerin tutarı (Restoran SADECE bundan kazanır!)
     const brutCiro = deliveredOrders.reduce((sum, o) => sum + (o.amount || 0), 0)
@@ -152,7 +179,7 @@ export function RestaurantDetailModal({
     // 4️⃣ TOPLAM MASRAF: TÜM geçerli paketler (delivered + ücretli iptaller)
     // Kurye yola çıktıysa hak eder!
     const packageFee = restaurant.package_fee || 100
-    const toplamMasraf = orders.reduce((sum, pkg) => {
+    const toplamMasraf = allChargeableOrders.reduce((sum, pkg) => {
         const price = (pkg as any).applied_price ?? packageFee
         return sum + price
     }, 0)

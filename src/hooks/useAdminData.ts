@@ -103,24 +103,45 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
 
   const fetchDeliveredPackages = useCallback(async () => {
     try {
-      // ⚡ Sadece gerekli sütunları çek
-      const { data, error } = await supabase
+      // 🔥 KUTSAL AYRIM: Delivered + Ücretli İptaller
+      // 1. Teslim edilen paketler
+      const { data: deliveredData, error: deliveredError } = await supabase
         .from('packages')
         .select(`
           id, order_number, customer_name, customer_phone,
           delivery_address, amount, status, payment_method,
           restaurant_id, platform, delivered_at, settled_at,
-          restaurant_settled_at, courier_id,
+          restaurant_settled_at, courier_id, is_chargeable_cancellation,
           restaurants(id, name),
           couriers(full_name)
         `)
         .eq('status', 'delivered')
         .order('delivered_at', { ascending: false })
 
-      if (error) throw error
+      if (deliveredError) throw deliveredError
+
+      // 2. Ücretli iptaller (KABAK GİBİ BOOLEAN!)
+      const { data: cancelledData, error: cancelledError } = await supabase
+        .from('packages')
+        .select(`
+          id, order_number, customer_name, customer_phone,
+          delivery_address, amount, status, payment_method,
+          restaurant_id, platform, created_at, settled_at,
+          restaurant_settled_at, courier_id, is_chargeable_cancellation,
+          restaurants(id, name),
+          couriers(full_name)
+        `)
+        .eq('status', 'cancelled')
+        .eq('is_chargeable_cancellation', true)
+        .order('created_at', { ascending: false })
+
+      if (cancelledError) throw cancelledError
+
+      // 3. Birleştir
+      const combinedData = [...(deliveredData || []), ...(cancelledData || [])]
 
       // 🛡️ Type-safe transformation
-      const transformedData: Package[] = (data || []).map((pkg) => {
+      const transformedData: Package[] = combinedData.map((pkg) => {
         const restaurantData = Array.isArray(pkg.restaurants) ? pkg.restaurants[0] : pkg.restaurants;
         const courierData = Array.isArray(pkg.couriers) ? pkg.couriers[0] : (pkg.couriers as any);
         
@@ -128,9 +149,18 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
           ...pkg,
           restaurant: restaurantData as any,
           courier_name: courierData?.full_name,
+          // Ücretli iptaller için delivered_at yerine created_at kullan
+          delivered_at: pkg.delivered_at || pkg.created_at,
           restaurants: undefined,
           couriers: undefined
         } as Package;
+      })
+
+      // Tarihe göre sırala (en yeni en üstte)
+      transformedData.sort((a, b) => {
+        const dateA = new Date(a.delivered_at || 0).getTime()
+        const dateB = new Date(b.delivered_at || 0).getTime()
+        return dateB - dateA
       })
 
       setDeliveredPackages(transformedData)
