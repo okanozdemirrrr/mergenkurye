@@ -391,16 +391,29 @@ export function RestaurantsTab({
                 setIsLoadingStats(true)
                 try {
                     const stats = await Promise.all(restaurants.map(async (restaurant) => {
-                        const restaurantOrders = filteredOrders.filter(
+                        // 🔥 KUTSAL AYRIM: Ciro vs Masraf
+                        
+                        // 1️⃣ TÜM GEÇERLİ PAKETLER (Delivered + Ücretli İptaller)
+                        const allChargeableOrders = filteredOrders.filter(
                             pkg => pkg.restaurant_id === restaurant.id
                         )
                         
-                        const totalOrders = restaurantOrders.length
-                        const totalRevenue = restaurantOrders.reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
+                        // 2️⃣ SADECE TESLİM EDİLENLER (Ciro için)
+                        const deliveredOrders = allChargeableOrders.filter(
+                            pkg => pkg.status === 'delivered'
+                        )
+                        
+                        // 3️⃣ PAKET SAYISI: Tüm geçerli paketler (delivered + ücretli iptaller)
+                        const totalOrders = allChargeableOrders.length
+                        
+                        // 4️⃣ BRÜT CİRO: Sadece delivered paketlerin tutarı (Restoran SADECE bundan kazanır!)
+                        const totalRevenue = deliveredOrders.reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
+                        
                         const fallbackFee = restaurant.package_fee || 100
                         
-                        // 2. DASHBOARD MATH: applied_price toplamı (fallback: restaurant.package_fee)
-                        const totalDebt = restaurantOrders.reduce((sum, pkg) => {
+                        // 5️⃣ TOPLAM MASRAF: TÜM geçerli paketler (delivered + ücretli iptaller)
+                        // Kurye yola çıktıysa hak eder!
+                        const totalDebt = allChargeableOrders.reduce((sum, pkg) => {
                             const price = (pkg as any).applied_price ?? fallbackFee
                             return sum + price
                         }, 0)

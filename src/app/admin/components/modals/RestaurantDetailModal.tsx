@@ -135,16 +135,22 @@ export function RestaurantDetailModal({
         }
     }, [onRefetch])
 
-    // 📊 Finansal Hesaplamalar - YENİ MİMARİ + ÖNCEKİ ÖDEMELER
+    // 📊 Finansal Hesaplamalar - YENİ MİMARİ + KUTSAL AYRIM
     const [oncekiOdemeler, setOncekiOdemeler] = useState<number>(0)
     
+    // 🔥 KUTSAL AYRIM: Ciro vs Masraf
+    
+    // 1️⃣ SADECE TESLİM EDİLENLER (Ciro için)
+    const deliveredOrders = orders.filter(o => o.status === 'delivered')
+    
+    // 2️⃣ PAKET SAYISI: Tüm geçerli paketler (delivered + ücretli iptaller)
     const totalOrders = orders.length
     
-    // Brüt Ciro: Toplam paket tutarı
-    const brutCiro = orders.reduce((sum, o) => sum + (o.amount || 0), 0)
+    // 3️⃣ BRÜT CİRO: Sadece delivered paketlerin tutarı (Restoran SADECE bundan kazanır!)
+    const brutCiro = deliveredOrders.reduce((sum, o) => sum + (o.amount || 0), 0)
     
-    // Toplam Masraf: restaurant_debts'ten gelecek (şimdilik hesaplıyoruz)
-    // NOT: Gerçek uygulamada bu değer restaurant_debts tablosundan gelecek
+    // 4️⃣ TOPLAM MASRAF: TÜM geçerli paketler (delivered + ücretli iptaller)
+    // Kurye yola çıktıysa hak eder!
     const packageFee = restaurant.package_fee || 100
     const toplamMasraf = orders.reduce((sum, pkg) => {
         const price = (pkg as any).applied_price ?? packageFee
