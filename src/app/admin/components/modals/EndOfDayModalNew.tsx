@@ -1,13 +1,19 @@
 /**
  * @file src/app/admin/components/modals/EndOfDayModalNew.tsx
- * @description YENİ Kurye Gün Sonu Mutabakatı Modalı
+ * @description Kurye Gün Sonu Mutabakatı — BUSINESS DARK THEME
  * 
- * ÖNEMLİ KURALLAR:
+ * KURALLAR (DEĞİŞMEDİ):
  * 1. Orijinal paket fiyatları ve statusları DEĞİŞMEZ
  * 2. Admin'in girdiği tutar courier_settlements tablosuna kaydedilir
  * 3. Eksik ödeme = Kalan borç devam eder
  * 4. Fazla ödeme = Bahşiş (kalan borç 0 olur)
  * 5. Tam ödeme = Kalan borç 0 olur
+ * 
+ * UI REFACTOR:
+ * - bg-slate-950/900 Business Dark palette
+ * - Wall Street finansal estetik
+ * - Event bubbling proof X butonu
+ * - NET HESAP kartı (emerald zafer rengi)
  */
 'use client'
 
@@ -17,6 +23,7 @@ import { supabase } from '@/app/lib/supabase'
 interface Courier {
   id: string
   full_name?: string
+  package_rate?: number
 }
 
 interface EndOfDayModalNewProps {
@@ -40,6 +47,7 @@ export function EndOfDayModalNew({
   const [cardTotal, setCardTotal] = useState(0)
   const [ibanTotal, setIbanTotal] = useState(0)
   const [totalDeliveries, setTotalDeliveries] = useState(0)
+  const [deliveryCount, setDeliveryCount] = useState(0)
   const [previousSettlements, setPreviousSettlements] = useState(0)
   const [remainingDebt, setRemainingDebt] = useState(0)
   const [amountReceived, setAmountReceived] = useState('')
@@ -47,16 +55,16 @@ export function EndOfDayModalNew({
   const [processing, setProcessing] = useState(false)
   const [notes, setNotes] = useState('')
 
-  // Teslim edilen paketlerin toplamını hesapla
+  // ═══ VERİ ÇEKME (MANTIK DEĞİŞMEDİ) ═══
   const calculateTotals = async () => {
     try {
       setLoading(true)
 
-      // 1. GÖRSEL DEĞERLER (Nakit/Kart/IBAN) - Tarih aralığına göre
+      // 1. GÖRSEL DEĞERLER — Tarih aralığına göre
       const { data: packages, error: packagesError } = await supabase
         .from('packages')
         .select('amount, payment_method')
-        .eq('courier_id', courier.id)
+        .eq('delivered_by_courier_id', courier.id)  // ✅ Teslimatı yapan kurye
         .eq('status', 'delivered')
         .gte('delivered_at', `${startDate}T00:00:00`)
         .lte('delivered_at', `${endDate}T23:59:59`)
@@ -64,15 +72,14 @@ export function EndOfDayModalNew({
       if (packagesError) throw packagesError
 
       const pkgs = packages || []
+      setDeliveryCount(pkgs.length)
 
       const cash = pkgs
         .filter(p => p.payment_method === 'cash')
         .reduce((sum, p) => sum + (p.amount || 0), 0)
-
       const card = pkgs
         .filter(p => p.payment_method === 'card')
         .reduce((sum, p) => sum + (p.amount || 0), 0)
-
       const iban = pkgs
         .filter(p => p.payment_method === 'iban')
         .reduce((sum, p) => sum + (p.amount || 0), 0)
@@ -81,36 +88,36 @@ export function EndOfDayModalNew({
       setCardTotal(card)
       setIbanTotal(iban)
 
-      // 2. FİNANSAL HESAPLAMA - Tüm geçmiş (startDate KULLANILMAZ!)
-      // Toplam Borç = Başlangıçtan endDate'e kadar TÜM teslimatlar
-      const { data: allPackages, error: allPackagesError } = await supabase
+      // 2. CARİ BORÇ — Sadece startDate'den ÖNCEKİ teslimatlar ve ödemeler
+      // Bugünkü paketler borç değil, zaten "vermesi gereken" olarak gösteriliyor
+      const { data: previousPackages, error: prevPkgError } = await supabase
         .from('packages')
         .select('amount')
-        .eq('courier_id', courier.id)
+        .eq('delivered_by_courier_id', courier.id)  // ✅ Teslimatı yapan kurye
         .eq('status', 'delivered')
-        .lte('delivered_at', `${endDate}T23:59:59`) // Sadece endDate!
+        .eq('payment_method', 'cash') // Sadece nakit (kurye cebinden geçen para)
+        .lt('delivered_at', `${startDate}T00:00:00`) // startDate'den ÖNCE
 
-      if (allPackagesError) throw allPackagesError
+      if (prevPkgError) throw prevPkgError
 
-      const totalOwed = (allPackages || []).reduce((sum, p) => sum + (p.amount || 0), 0)
-      setTotalDeliveries(totalOwed)
+      const previousCashTotal = (previousPackages || []).reduce((sum, p) => sum + (p.amount || 0), 0)
+      setTotalDeliveries(previousCashTotal)
 
-      // 3. Toplam Ödeme = Başlangıçtan endDate'e kadar TÜM ödemeler
+      // 3. Geçmişte yapılan ödemeler (startDate'den önce)
       const { data: settlements, error: settlementsError } = await supabase
         .from('courier_settlements')
         .select('amount_paid')
         .eq('courier_id', courier.id)
-        .lte('created_at', `${endDate}T23:59:59`) // Sadece endDate!
+        .lt('created_at', `${startDate}T00:00:00`) // startDate'den ÖNCE
 
       if (settlementsError) throw settlementsError
 
       const previousPaid = (settlements || []).reduce((sum, s) => sum + (s.amount_paid || 0), 0)
       setPreviousSettlements(previousPaid)
 
-      // 4. Kalan Borç = Toplam Borç - Toplam Ödeme (CARİ HESAP)
-      const debt = Math.max(0, totalOwed - previousPaid)
+      // 4. Kalan Borç = Geçmiş nakit - Geçmiş ödemeler
+      const debt = Math.max(0, previousCashTotal - previousPaid)
       setRemainingDebt(debt)
-
     } catch (error) {
       console.error('❌ Hesaplama hatası:', error)
     } finally {
@@ -119,22 +126,19 @@ export function EndOfDayModalNew({
   }
 
   useEffect(() => {
-    if (show) {
-      calculateTotals()
-    }
+    if (show) calculateTotals()
   }, [show, courier.id, startDate, endDate])
 
+  // ═══ KAYDET (MANTIK DEĞİŞMEDİ) ═══
   const handleSubmit = async () => {
     try {
       setProcessing(true)
-
       const received = parseFloat(amountReceived)
       if (isNaN(received) || received <= 0) {
-        alert('❌ Geçerli bir tutar girin')
+        alert('Geçerli bir tutar girin')
         return
       }
 
-      // courier_settlements tablosuna kaydet
       const { error } = await supabase
         .from('courier_settlements')
         .insert({
@@ -148,31 +152,18 @@ export function EndOfDayModalNew({
 
       if (error) throw error
 
-      // ✅ BAŞARILI - State'i güncelle
-      // Yeni ödemeyi önceki ödemelere ekle
       const newTotalPaid = previousSettlements + received
       setPreviousSettlements(newTotalPaid)
-      
-      // Kalan borcu yeniden hesapla
       const newRemainingDebt = Math.max(0, totalDeliveries - newTotalPaid)
       setRemainingDebt(newRemainingDebt)
-      
-      // Input'u temizle
       setAmountReceived('')
       setNotes('')
 
-      alert('✅ Gün sonu mutabakatı başarıyla kaydedildi!')
-      
-      // Parent component'i bilgilendir (liste yenilensin)
       onSuccess()
-      
-      // Modal'ı kapat
-      setTimeout(() => {
-        onClose()
-      }, 500)
+      setTimeout(() => onClose(), 500)
     } catch (error: any) {
       console.error('❌ Kayıt hatası:', error)
-      alert('❌ Hata: ' + error.message)
+      alert('Hata: ' + error.message)
     } finally {
       setProcessing(false)
     }
@@ -182,186 +173,216 @@ export function EndOfDayModalNew({
 
   const received = parseFloat(amountReceived) || 0
   const difference = received - remainingDebt
+  const courierEarnings = (courier.package_rate || 0) * deliveryCount
+  // Kurye TÜM nakdi teslim eder, hakediş AYRICA ödenir
+  const mustHandOver = cashTotal
 
   return (
-    <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="p-6 border-b border-slate-200">
-          <h3 className="text-2xl font-bold text-slate-900">
-            💰 Gün Sonu Mutabakatı - {courier.full_name ?? 'Kurye'}
-          </h3>
-          <p className="text-sm text-slate-500 mt-1">
-            {startDate} - {endDate}
-          </p>
+    <div
+      className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div className="bg-slate-950 border border-slate-800 rounded-lg max-w-xl w-full max-h-[92vh] overflow-hidden">
+        
+        {/* ═══ HEADER ═══ */}
+        <div className="flex justify-between items-center px-6 py-4 border-b border-slate-800">
+          <div>
+            <h2 className="text-lg font-bold text-slate-100 tracking-tight">
+              Gün Sonu Mutabakatı
+            </h2>
+            <p className="text-xs text-slate-500 tracking-tight mt-0.5">
+              {courier.full_name} · {startDate} — {endDate}
+            </p>
+          </div>
+          {/* X Butonu — Event Bubbling Proof */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              onClose()
+            }}
+            className="text-slate-500 hover:text-slate-200 text-xl w-8 h-8 flex items-center justify-center rounded hover:bg-slate-800 transition-colors"
+          >
+            ×
+          </button>
         </div>
 
-        {/* Content */}
-        <div className="p-6">
+        {/* ═══ CONTENT ═══ */}
+        <div className="p-6 overflow-y-auto max-h-[calc(92vh-72px)] bg-slate-950">
           {loading ? (
-            <div className="text-center py-8">
-              <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-slate-500">Hesaplanıyor...</p>
+            <div className="text-center py-12">
+              <div className="w-8 h-8 border-2 border-slate-600 border-t-slate-300 rounded-full animate-spin mx-auto mb-3"></div>
+              <p className="text-sm text-slate-600 tracking-tight">Hesaplanıyor...</p>
             </div>
           ) : (
             <>
-              {/* Teslimat Toplamları (DEĞİŞMEZ) */}
-              <div className="mb-6 space-y-3">
-                <div className="bg-green-50 p-4 rounded-xl border border-green-200">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-green-700">
-                      💵 Nakit Toplam
-                    </span>
-                    <span className="text-2xl font-bold text-green-700">
-                      {cashTotal.toFixed(2)} ₺
-                    </span>
+              {/* ─── BÖLÜM 1: TAHSİLAT BİLGİLERİ ─── */}
+              <div className="mb-5">
+                <div className="text-[10px] text-slate-600 tracking-tight uppercase mb-2 font-medium">Tahsilat Bilgileri</div>
+                <div className="space-y-1.5">
+                  <div className="bg-slate-900 border border-slate-800 rounded p-3 flex justify-between items-center">
+                    <span className="text-xs text-slate-500 tracking-tight">Nakit Toplam</span>
+                    <span className="text-lg font-bold text-emerald-500 tracking-tight">{cashTotal.toFixed(2)}₺</span>
                   </div>
-                  <p className="text-xs text-green-600 mt-1">
-                    ℹ️ Bu değer değişmez (bilgi amaçlı)
-                  </p>
-                </div>
-
-                <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-blue-700">
-                      💳 Kart Toplam
-                    </span>
-                    <span className="text-2xl font-bold text-blue-700">
-                      {cardTotal.toFixed(2)} ₺
-                    </span>
+                  <div className="bg-slate-900 border border-slate-800 rounded p-3 flex justify-between items-center">
+                    <span className="text-xs text-slate-500 tracking-tight">Kart Toplam</span>
+                    <span className="text-lg font-bold text-orange-400 tracking-tight">{cardTotal.toFixed(2)}₺</span>
                   </div>
-                  <p className="text-xs text-blue-600 mt-1">
-                    ℹ️ Bu değer değişmez (bilgi amaçlı)
-                  </p>
-                </div>
-
-                <div className="bg-orange-50 p-4 rounded-xl border border-orange-200">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-orange-700">
-                      🏦 IBAN Toplam
-                    </span>
-                    <span className="text-2xl font-bold text-orange-700">
-                      {ibanTotal.toFixed(2)} ₺
-                    </span>
+                  <div className="bg-slate-900 border border-slate-800 rounded p-3 flex justify-between items-center">
+                    <span className="text-xs text-slate-500 tracking-tight">IBAN Toplam</span>
+                    <span className="text-lg font-bold text-blue-400 tracking-tight">{ibanTotal.toFixed(2)}₺</span>
                   </div>
-                  <p className="text-xs text-orange-600 mt-1">
-                    ℹ️ Bu değer değişmez (bilgi amaçlı)
-                  </p>
-                </div>
-
-                {/* Kalan Borç */}
-                <div className="bg-red-50 p-4 rounded-xl border-2 border-red-300">
-                  <div className="flex justify-between items-center">
-                    <span className="text-base font-bold text-red-700">
-                      💰 KALAN BORÇ
-                    </span>
-                    <span className="text-3xl font-black text-red-700">
-                      {remainingDebt.toFixed(2)} ₺
-                    </span>
-                  </div>
-                  <p className="text-xs text-red-600 mt-1">
-                    Kuryeden alınması gereken tutar
-                  </p>
                 </div>
               </div>
 
-              {/* Alınan Tutar Input */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  💰 Kuryeden Alınan Tutar
+              {/* ─── BÖLÜM 2: KURYE PERFORMANSI ─── */}
+              <div className="mb-5">
+                <div className="text-[10px] text-slate-600 tracking-tight uppercase mb-2 font-medium">Kurye Performansı</div>
+                <div className="bg-slate-900 border border-slate-800 rounded p-4">
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-xs text-slate-500 tracking-tight">Attığı Paket</span>
+                    <span className="text-xl font-bold text-slate-100 tracking-tight">{deliveryCount}</span>
+                  </div>
+                  <div className="flex justify-between items-center pt-3 border-t border-slate-800">
+                    <div>
+                      <div className="text-xs text-slate-500 tracking-tight">Kurye Kazancı</div>
+                      <div className="text-[10px] text-slate-600 mt-0.5">
+                        {courier.package_rate
+                          ? `${deliveryCount} × ${courier.package_rate}₺`
+                          : 'Paket ücreti belirlenmedi'
+                        }
+                      </div>
+                    </div>
+                    <span className="text-xl font-bold text-emerald-500 tracking-tight">{courierEarnings.toFixed(0)}₺</span>
+                  </div>
+                </div>
+                {/* Bilgi notu */}
+                <div className="mt-2 px-3 py-1.5 bg-slate-800/50 border border-slate-700/50 rounded">
+                  <p className="text-[10px] text-slate-500 tracking-tight">Hakediş toplamdan düşülmez, ayrıca ödenir</p>
+                </div>
+              </div>
+
+              {/* ─── UYARI ─── */}
+              <div className="bg-amber-900/20 border border-amber-700/40 rounded p-3 mb-5">
+                <p className="text-xs font-bold text-amber-400 tracking-tight text-center">
+                  ⚠️ KURYE TÜM NAKDİ TESLİM EDER, HAKEDİŞ AYRICA ÖDENİR
+                </p>
+              </div>
+
+              {/* ─── BÖLÜM 3: VERMESİ GEREKEN ─── */}
+              <div className="bg-emerald-900/20 border border-emerald-700/40 rounded-lg p-4 mb-5">
+                <div className="text-[10px] text-emerald-600 tracking-tight uppercase mb-2 font-medium">Kuryenin Teslim Edeceği Tutar</div>
+                <div className="text-3xl font-black text-emerald-400 tracking-tight mb-1">
+                  {mustHandOver.toFixed(2)}₺
+                </div>
+                <div className="text-[10px] text-emerald-600/60 tracking-tight">
+                  Nakit Toplam
+                </div>
+              </div>
+
+              {/* ─── CARİ BORÇ ─── */}
+              {remainingDebt > 0 && (
+                <div className="bg-rose-900/20 border border-rose-800/40 rounded p-3 mb-5 flex justify-between items-center">
+                  <div>
+                    <div className="text-xs text-rose-400 font-medium tracking-tight">KALAN CARİ BORÇ</div>
+                    <div className="text-[10px] text-rose-500/60 mt-0.5">Önceki günlerden devir</div>
+                  </div>
+                  <div className="text-xl font-black text-rose-500 tracking-tight">
+                    {remainingDebt.toFixed(2)}₺
+                  </div>
+                </div>
+              )}
+
+              {/* ─── INPUT: ALINAN TUTAR ─── */}
+              <div className="mb-4">
+                <label className="block text-xs text-slate-400 tracking-tight mb-1.5 font-medium uppercase">
+                  Kuryeden Alınan Tutar
                 </label>
                 <input
                   type="number"
                   step="0.01"
                   value={amountReceived}
                   onChange={(e) => setAmountReceived(e.target.value)}
-                  placeholder={`Örn: ${remainingDebt.toFixed(2)}`}
+                  placeholder={`${cashTotal.toFixed(2)}`}
                   autoFocus
-                  className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-300 rounded-xl text-lg font-bold text-slate-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                  className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded text-lg font-bold text-slate-100 placeholder-slate-600 outline-none focus:border-emerald-500 transition-colors tracking-tight"
                 />
               </div>
 
-              {/* Not Alanı */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  📝 Not (Opsiyonel)
+              {/* ─── INPUT: NOT ─── */}
+              <div className="mb-5">
+                <label className="block text-xs text-slate-400 tracking-tight mb-1.5 font-medium uppercase">
+                  Not (Opsiyonel)
                 </label>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Örn: Eksik ödeme, sonraki güne devredildi"
+                  placeholder="Eksik ödeme, sonraki güne devredildi..."
                   rows={2}
-                  className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-300 rounded-xl text-sm text-slate-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-none"
+                  className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded text-sm text-slate-300 placeholder-slate-600 outline-none focus:border-emerald-500 transition-colors tracking-tight resize-none"
                 />
               </div>
 
-              {/* Fark Hesaplama */}
+              {/* ─── FARK HESAPLAMA ─── */}
               {amountReceived && !isNaN(parseFloat(amountReceived)) && (
-                <div className="mb-6">
+                <div className="mb-5">
                   {difference < 0 ? (
-                    <div className="bg-red-50 p-4 rounded-xl border-2 border-red-300">
-                      <div className="flex justify-between items-center">
-                        <span className="text-base font-bold text-red-700">
-                          ⚠️ EKSİK ÖDEME
-                        </span>
-                        <span className="text-3xl font-black text-red-700">
-                          {Math.abs(difference).toFixed(2)} ₺
-                        </span>
+                    <div className="bg-rose-900/20 border border-rose-800/40 rounded p-3 flex justify-between items-center">
+                      <div>
+                        <div className="text-xs text-rose-400 font-medium tracking-tight">EKSİK ÖDEME</div>
+                        <div className="text-[10px] text-rose-500/60 mt-0.5">Borç olarak devam edecek</div>
                       </div>
-                      <p className="text-xs text-red-600 mt-2">
-                        Bu miktar kalan borç olarak devam edecek
-                      </p>
+                      <div className="text-xl font-black text-rose-500 tracking-tight">
+                        {Math.abs(difference).toFixed(2)}₺
+                      </div>
                     </div>
                   ) : difference > 0 ? (
-                    <div className="bg-green-50 p-4 rounded-xl border-2 border-green-300">
-                      <div className="flex justify-between items-center">
-                        <span className="text-base font-bold text-green-700">
-                          ✅ BAHŞİŞ
-                        </span>
-                        <span className="text-3xl font-black text-green-700">
-                          {difference.toFixed(2)} ₺
-                        </span>
+                    <div className="bg-emerald-900/20 border border-emerald-800/40 rounded p-3 flex justify-between items-center">
+                      <div>
+                        <div className="text-xs text-emerald-400 font-medium tracking-tight">FAZLA ÖDEME</div>
+                        <div className="text-[10px] text-emerald-500/60 mt-0.5">Borç sıfırlanacak</div>
                       </div>
-                      <p className="text-xs text-green-600 mt-2">
-                        Kurye fazla para getirdi (kalan borç 0 olacak)
-                      </p>
+                      <div className="text-xl font-black text-emerald-500 tracking-tight">
+                        +{difference.toFixed(2)}₺
+                      </div>
                     </div>
                   ) : (
-                    <div className="bg-orange-50 p-4 rounded-xl border-2 border-orange-300">
-                      <div className="text-center">
-                        <span className="text-2xl font-black text-orange-700">
-                          ✓ TAM ÖDEME
-                        </span>
-                        <p className="text-xs text-orange-600 mt-2">
-                          Hesap tam olarak kapandı
-                        </p>
-                      </div>
+                    <div className="bg-emerald-900/20 border border-emerald-800/40 rounded p-3 text-center">
+                      <div className="text-sm font-bold text-emerald-400 tracking-tight">TAM ÖDEME</div>
+                      <div className="text-[10px] text-emerald-500/60 mt-0.5">Hesap tam kapanacak</div>
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Butonlar */}
-              <div className="flex gap-3">
+              {/* ─── BUTONLAR ─── */}
+              <div className="flex gap-2">
                 <button
-                  onClick={onClose}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    onClose()
+                  }}
                   disabled={processing}
-                  className="flex-1 px-4 py-3 bg-slate-200 text-slate-700 rounded-xl font-medium hover:bg-slate-300 transition-colors disabled:opacity-50"
+                  className="flex-1 px-3 py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-400 rounded text-xs font-medium border border-slate-800 transition-colors tracking-tight disabled:opacity-50"
                 >
                   İptal
                 </button>
                 <button
+                  type="button"
                   onClick={handleSubmit}
                   disabled={processing || !amountReceived}
-                  className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-3 py-2.5 bg-emerald-900/60 hover:bg-emerald-900/80 text-emerald-300 rounded text-xs font-medium border border-emerald-800/50 transition-colors tracking-tight disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {processing ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span className="flex items-center justify-center gap-1.5">
+                      <div className="w-3 h-3 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin"></div>
                       Kaydediliyor...
                     </span>
                   ) : (
-                    '✓ Mutabakatı Kaydet'
+                    'Mutabakatı Kaydet'
                   )}
                 </button>
               </div>

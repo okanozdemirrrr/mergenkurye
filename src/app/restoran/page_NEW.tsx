@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import RestaurantDashboard from './components/RestaurantDashboard'
 import { useRestaurantRealtimeNotifications } from '@/hooks/useRestaurantRealtimeNotifications'
+import ChangelogModal from '@/components/ChangelogModal'
 
 const LOGIN_STORAGE_KEY = 'restoran_logged_in'
 const LOGIN_RESTAURANT_ID_KEY = 'restoran_logged_restaurant_id'
@@ -231,6 +232,9 @@ export default function RestoranPage() {
 
   return (
     <>
+      {/* Changelog Modal */}
+      <ChangelogModal userType="restaurant" userId={selectedRestaurantId} />
+      
       <RestaurantDashboard
         restaurantId={selectedRestaurantId!}
         darkMode={darkMode}

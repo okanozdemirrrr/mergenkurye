@@ -383,7 +383,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
           <div className="flex justify-center gap-2 mt-4 flex-wrap">
             <button
               onClick={() => setActiveTab('active')}
-              className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+              className={`text-sm px-3 py-2 md:text-base md:px-6 md:py-2 rounded-lg font-semibold transition-all ${
                 activeTab === 'active'
                   ? darkMode
                     ? 'bg-orange-600 text-white'
@@ -397,7 +397,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
             </button>
             <button
               onClick={() => setActiveTab('delivered')}
-              className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+              className={`text-sm px-3 py-2 md:text-base md:px-6 md:py-2 rounded-lg font-semibold transition-all ${
                 activeTab === 'delivered'
                   ? darkMode
                     ? 'bg-green-600 text-white'
@@ -411,7 +411,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
             </button>
             <button
               onClick={() => setActiveTab('cancelled')}
-              className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+              className={`text-sm px-3 py-2 md:text-base md:px-6 md:py-2 rounded-lg font-semibold transition-all ${
                 activeTab === 'cancelled'
                   ? darkMode
                     ? 'bg-red-600 text-white'
@@ -438,7 +438,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
           <div className="mb-2">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {/* Bugünkü Paket Sayısı */}
-            <div className={`p-4 rounded-xl border ${
+            <div className={`p-4 md:p-6 rounded-xl border ${
               darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'
             }`}>
               <div className="flex items-center justify-between">
@@ -462,7 +462,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
             </div>
 
             {/* Paket Masrafı */}
-            <div className={`p-4 rounded-xl border ${
+            <div className={`p-4 md:p-6 rounded-xl border ${
               darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'
             }`}>
               <div className="flex items-center justify-between">
@@ -486,7 +486,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
             </div>
 
             {/* Bugünkü Hak Ediş */}
-            <div className={`p-4 rounded-xl border-2 ${
+            <div className={`p-4 md:p-6 rounded-xl border-2 ${
               darkMode ? 'bg-gradient-to-br from-green-900/30 to-slate-900 border-green-700/50' : 'bg-gradient-to-br from-green-50 to-white border-green-300'
             }`}>
               <div className="flex items-center justify-between">

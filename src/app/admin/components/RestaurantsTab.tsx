@@ -16,7 +16,7 @@ interface RestaurantsTabProps {
     restaurants: Restaurant[]
     restaurantSubTab: string
     deliveredPackages: Package[]
-    onRestaurantClick: (id: number | string) => void
+    onRestaurantClick: (id: number | string, startDate?: string, endDate?: string) => void
     onDebtPayClick?: (id: number | string) => void
     restaurantChartFilter: 'today' | 'week' | 'month'
     setRestaurantChartFilter: (filter: 'today' | 'week' | 'month') => void
@@ -680,15 +680,13 @@ export function RestaurantsTab({
                                         {/* Sağ: Aksiyon Butonları */}
                                         <div className="flex items-center gap-2">
                                             <button
-                                                onClick={() => {
-                                                    // Ana sayfadaki tarihleri URL parametresi olarak gönder
-                                                    const params = new URLSearchParams()
-                                                    params.set('modal', 'restaurant')
-                                                    params.set('restaurantId', r.id.toString())
-                                                    if (startDate) params.set('parentStartDate', startDate)
-                                                    if (endDate) params.set('parentEndDate', endDate)
-                                                    window.history.pushState({}, '', `?${params.toString()}`)
-                                                    onRestaurantClick(r.id)
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.preventDefault()
+                                                    e.stopPropagation()
+                                                    // 🔥 TEK NAVIGATION: onRestaurantClick zaten router.push yapıyor
+                                                    // Tarihleri URL'ye eklemek için özel handler kullan
+                                                    onRestaurantClick(r.id, startDate, endDate)
                                                 }}
                                                 className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded border border-slate-700 transition-colors tracking-tight"
                                             >

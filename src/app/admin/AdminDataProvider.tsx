@@ -59,7 +59,7 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
       // ⚡ EGRESS OPTİMİZASYONU: Sadece gerekli kolonlar + limit
       const { data, error } = await supabase
         .from('packages')
-        .select('id, order_number, status, amount, payment_method, customer_name, customer_phone, delivery_address, content, created_at, courier_id, restaurant_id, restaurants(id, name, phone)')
+        .select('id, order_number, status, amount, payment_method, customer_name, customer_phone, delivery_address, content, created_at, getting_ready_at, ready_at, assigned_at, picked_up_at, delivered_at, courier_id, restaurant_id, restaurants(id, name, phone)')
         .in('status', ['new_order', 'getting_ready', 'ready', 'assigned', 'picking_up', 'on_the_way'])
         .order('created_at', { ascending: false })
         .limit(500) // ⚡ Maksimum 500 aktif sipariş
@@ -102,7 +102,7 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
       
       const { data, error } = await supabase
         .from('packages')
-        .select('id, order_number, status, amount, payment_method, delivered_at, cancelled_at, courier_id, restaurant_id, applied_price, delivered_by_courier_id, restaurants(id, name), couriers!packages_courier_id_fkey(id, full_name)')
+        .select('id, order_number, status, amount, payment_method, customer_name, customer_phone, delivery_address, content, created_at, getting_ready_at, ready_at, assigned_at, picked_up_at, delivered_at, cancelled_at, courier_id, restaurant_id, applied_price, delivered_by_courier_id, restaurants(id, name), couriers!packages_courier_id_fkey(id, full_name)')
         .in('status', ['delivered', 'cancelled'])
         .gte('created_at', sevenDaysAgo.toISOString()) // ⚡ Son 7 gün
         .order('created_at', { ascending: false })
@@ -210,21 +210,34 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
 
           const activePackageCount = (activePackages || []).length
 
-          // Toplam teslimat sayısı (delivered + ücretli iptaller)
-          const { data: allDeliveries } = await supabase
+          // Bu haftanın teslimat sayısı (Pazartesi 05:00'den itibaren, delivered + ücretli iptaller)
+          const now2 = new Date()
+          const dayOfWeek = now2.getDay() // 0=Pazar, 1=Pazartesi...
+          const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+          const weekStart = new Date(now2)
+          weekStart.setDate(weekStart.getDate() - diffToMonday)
+          weekStart.setHours(5, 0, 0, 0)
+          // Eğer şu an Pazartesi 05:00'den önceyse, geçen haftanın Pazartesisini al
+          if (now2 < weekStart) {
+            weekStart.setDate(weekStart.getDate() - 7)
+          }
+
+          const { data: weeklyDeliveries } = await supabase
             .from('packages')
-            .select('id, status, is_chargeable_cancellation')
+            .select('id')
             .eq('delivered_by_courier_id', courier.id)
             .or('status.eq.delivered,and(status.eq.cancelled,is_chargeable_cancellation.eq.true)')
+            .gte('delivered_at', weekStart.toISOString())
 
-          const deliveryCount = (allDeliveries || []).length
+          const weeklyDeliveryCount = (weeklyDeliveries || []).length
 
           return {
             ...courier,
             id: courier.id,
             full_name: courier.full_name || 'İsimsiz Kurye',
             is_active: Boolean(courier.is_active),
-            deliveryCount,
+            deliveryCount: weeklyDeliveryCount, // Geriye uyumluluk için
+            weeklyDeliveryCount,
             todayDeliveryCount,
             activePackageCount,
             totalDebt

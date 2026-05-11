@@ -17,6 +17,7 @@ import { getPlatformBadgeClass, getPlatformDisplayName } from '../lib/platformUt
 import { CourierEarningsStats } from '@/components/CourierEarningsStats'
 import { useCourierRealtimeNotifications } from '@/hooks/useCourierRealtimeNotifications'
 import PullToRefresh from '@/components/PullToRefresh'
+import ChangelogModal from '@/components/ChangelogModal'
 
 // ============================================
 // SAMSUN OPERASYON BÖLGESI TANIMLARI
@@ -1586,6 +1587,14 @@ export default function KuryePage() {
       return
     }
 
+    // Güvenlik kontrolü: Kurye ID'si yoksa işlemi durdur
+    const courierId = localStorage.getItem(STORAGE_KEYS.COURIER_ID)
+    if (!courierId) {
+      setErrorMessage('❌ Kurye kimliği bulunamadı, lütfen sayfayı yenileyin')
+      setTimeout(() => setErrorMessage(''), 3000)
+      return
+    }
+
     // IBAN seçildiyse modal aç
     if (paymentMethod === 'iban') {
       const pkg = packages.find(p => p.id === packageId)
@@ -1655,6 +1664,13 @@ export default function KuryePage() {
   const handleIbanPaymentSent = async () => {
     if (!ibanPackageId) return
 
+    // Güvenlik kontrolü: Kurye ID'si yoksa işlemi durdur
+    if (!selectedCourierId) {
+      setErrorMessage('❌ Kurye kimliği bulunamadı, lütfen sayfayı yenileyin')
+      setTimeout(() => setErrorMessage(''), 3000)
+      return
+    }
+
     setIsUpdating(prev => new Set(prev).add(ibanPackageId))
     setShowIbanModal(false)
 
@@ -1665,7 +1681,7 @@ export default function KuryePage() {
           status: 'delivered',
           delivered_at: new Date().toISOString(),
           payment_method: 'iban',
-          delivered_by_courier_id: courierId  // Teslimatı yapan kurye
+          delivered_by_courier_id: selectedCourierId  // Teslimatı yapan kurye
         })
         .eq('id', ibanPackageId)
 
@@ -2460,8 +2476,13 @@ export default function KuryePage() {
 
   const handleUpdateStatus = async (packageId: number, nextStatus: Package['status'], additionalData: any = {}) => {
     try {
-      // Kurye ID'yi al
+      // Kurye ID'yi al ve güvenlik kontrolü yap
       const courierId = localStorage.getItem(STORAGE_KEYS.COURIER_ID)
+      if (!courierId) {
+        setErrorMessage('❌ Kurye kimliği bulunamadı, lütfen sayfayı yenileyin')
+        setTimeout(() => setErrorMessage(''), 3000)
+        return
+      }
       
       // IBAN seçildiyse ve delivered durumuna geçiliyorsa modal aç
       if (nextStatus === 'delivered' && additionalData.payment_method === 'iban') {
@@ -2478,7 +2499,7 @@ export default function KuryePage() {
 
       // Basit UPDATE - delivered durumunda delivered_by_courier_id ekle
       const updateData: any = { status: nextStatus, ...additionalData }
-      if (nextStatus === 'delivered' && courierId) {
+      if (nextStatus === 'delivered') {
         updateData.delivered_by_courier_id = courierId  // Teslimatı yapan kurye
         console.log('✅ delivered_by_courier_id set ediliyor:', courierId)
       }
@@ -2595,6 +2616,9 @@ export default function KuryePage() {
 
   return (
     <>
+    {/* Changelog Modal */}
+    <ChangelogModal userType="courier" userId={selectedCourierId} />
+    
     {/* ANA CONTAINER - Fixed height, no scroll */}
     <div className={`h-screen flex flex-col overflow-hidden ${darkMode ? 'bg-slate-950 text-white' : 'bg-gray-100 text-gray-900'}`}>
       
@@ -3782,7 +3806,7 @@ export default function KuryePage() {
                 {/* İsim */}
                 <div className="bg-slate-800 p-4 rounded-xl">
                   <p className="text-slate-400 text-xs mb-1">Alıcı Adı</p>
-                  <p className="text-white font-semibold text-lg">Yusuf Yarım</p>
+                  <p className="text-white font-semibold text-lg">Ayşe Yarım</p>
                 </div>
 
                 {/* IBAN */}

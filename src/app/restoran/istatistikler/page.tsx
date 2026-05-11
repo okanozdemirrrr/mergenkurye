@@ -6,7 +6,7 @@ import { supabase } from '@/app/lib/supabase'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 export default function IstatistiklerPage() {
-  const { restaurantId } = useRestoran()
+  const { restaurantId, restaurant } = useRestoran()
   
   // Varsayılan tarihler: Bugün 00:00 - Bugün 23:59
   const getTodayStr = () => new Date().toISOString().split('T')[0]
@@ -18,10 +18,12 @@ export default function IstatistiklerPage() {
   const [statisticsData, setStatisticsData] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   
-  // Özet İstatistikleri
+  // Özet İstatistikleri - 3'lü Finansal Sistem
   const [summary, setSummary] = useState({
     totalPackages: 0,
-    totalRevenue: 0
+    totalRevenue: 0,
+    courierCost: 0,
+    netProfit: 0
   })
 
   const fetchStatisticsData = useCallback(async () => {
@@ -75,10 +77,17 @@ export default function IstatistiklerPage() {
         ciro: d.revenue
       }))
 
+      // Finansal Hesaplamalar
+      const packageFee = restaurant?.package_fee || 0
+      const courierCost = totalP * packageFee
+      const netProfit = totalR - courierCost
+
       setStatisticsData(chartData)
       setSummary({
         totalPackages: totalP,
-        totalRevenue: totalR
+        totalRevenue: totalR,
+        courierCost: courierCost,
+        netProfit: netProfit
       })
     } catch (error) {
       console.error('İstatistik verileri yüklenemedi:', error)
@@ -146,29 +155,53 @@ export default function IstatistiklerPage() {
           </button>
         </div>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div className="bg-slate-800/40 p-6 rounded-2xl border border-blue-500/20 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-              <span className="text-6xl">📦</span>
-            </div>
-            <div className="relative z-10">
-              <div className="text-4xl font-black text-white mb-1">
-                {isLoading ? '...' : summary.totalPackages}
-              </div>
-              <div className="text-blue-400 text-xs font-bold uppercase tracking-wider">Teslim Edilen Paket</div>
-            </div>
-          </div>
-          
-          <div className="bg-slate-800/40 p-6 rounded-2xl border border-emerald-500/20 relative overflow-hidden group">
+        {/* 3'lü Finansal Kart Sistemi */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          {/* KART 1: TOPLAM CİRO */}
+          <div className="bg-slate-900 p-4 md:p-6 rounded-2xl border border-slate-800 relative overflow-hidden group">
             <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
               <span className="text-6xl">💰</span>
             </div>
             <div className="relative z-10">
-              <div className="text-4xl font-black text-white mb-1">
+              <div className="text-3xl md:text-4xl font-black text-white mb-1">
                 {isLoading ? '...' : summary.totalRevenue.toLocaleString('tr-TR')}₺
               </div>
-              <div className="text-emerald-400 text-xs font-bold uppercase tracking-wider">Toplam Ciro</div>
+              <div className="text-slate-400 text-xs font-bold uppercase tracking-wider">Toplam Ciro</div>
+            </div>
+          </div>
+          
+          {/* KART 2: KURYE MASRAFI */}
+          <div className="bg-slate-900 p-4 md:p-6 rounded-2xl border border-slate-800 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+              <span className="text-6xl">🚴</span>
+            </div>
+            <div className="relative z-10">
+              <div className="text-3xl md:text-4xl font-black text-rose-500 mb-1">
+                {isLoading ? '...' : summary.courierCost.toLocaleString('tr-TR')}₺
+              </div>
+              <div className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Kurye Masrafı</div>
+              {!isLoading && restaurant?.package_fee ? (
+                <div className="text-[10px] text-slate-500 font-medium">
+                  {summary.totalPackages} Paket × {restaurant.package_fee}₺
+                </div>
+              ) : !isLoading && !restaurant?.package_fee ? (
+                <div className="text-[10px] text-amber-500 font-medium">
+                  ⚠️ Ücret Girilmemiş
+                </div>
+              ) : null}
+            </div>
+          </div>
+          
+          {/* KART 3: NET KÂR (Size Kalan) */}
+          <div className="bg-slate-900 p-4 md:p-6 rounded-2xl border border-emerald-500/30 relative overflow-hidden group shadow-lg shadow-emerald-900/10">
+            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+              <span className="text-6xl">✨</span>
+            </div>
+            <div className="relative z-10">
+              <div className="text-3xl md:text-4xl font-black text-emerald-500 mb-1">
+                {isLoading ? '...' : summary.netProfit.toLocaleString('tr-TR')}₺
+              </div>
+              <div className="text-emerald-400 text-xs font-bold uppercase tracking-wider">Net Kâr (Size Kalan)</div>
             </div>
           </div>
         </div>

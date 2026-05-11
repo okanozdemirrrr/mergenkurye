@@ -50,8 +50,21 @@ export function RestaurantPaymentModal({
     const difference = grandTotal - paid
 
     return (
-        <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto admin-scrollbar">
+        <div 
+            className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4"
+            onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                onClose()
+            }}
+        >
+            <div 
+                className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto admin-scrollbar"
+                onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                }}
+            >
                 {/* Modal Header */}
                 <div className="flex justify-between items-center p-6 border-b border-slate-200">
                     <div>
@@ -63,8 +76,13 @@ export function RestaurantPaymentModal({
                         </p>
                     </div>
                     <button
-                        onClick={onClose}
-                        className="text-slate-500 hover:text-slate-700:text-slate-200 text-2xl ml-4"
+                        type="button"
+                        onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            onClose()
+                        }}
+                        className="text-slate-500 hover:text-slate-700 text-2xl ml-4"
                     >
                         ×
                     </button>
@@ -199,13 +217,23 @@ export function RestaurantPaymentModal({
                             {/* Butonlar */}
                             <div className="flex gap-3">
                                 <button
-                                    onClick={onClose}
-                                    className="flex-1 px-4 py-3 bg-slate-200 text-slate-700 rounded-xl font-medium hover:bg-slate-300:bg-slate-600 transition-colors"
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.preventDefault()
+                                        e.stopPropagation()
+                                        onClose()
+                                    }}
+                                    className="flex-1 px-4 py-3 bg-slate-200 text-slate-700 rounded-xl font-medium hover:bg-slate-300 transition-colors"
                                 >
                                     İptal
                                 </button>
                                 <button
-                                    onClick={onConfirm}
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.preventDefault()
+                                        e.stopPropagation()
+                                        onConfirm()
+                                    }}
                                     disabled={processing || !restaurantPaymentAmount || parseFloat(restaurantPaymentAmount) > grandTotal}
                                     className="flex-1 px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                 >

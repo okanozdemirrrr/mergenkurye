@@ -288,7 +288,7 @@ export default function IstatistiklerPage() {
             <div className="text-orange-400 text-sm mb-2">🏦 IBAN</div>
             <div className="text-3xl font-bold text-orange-300">{stats.iban.toFixed(2)} ₺</div>
             <div className="text-orange-500 text-xs mt-1">{getPercentage(stats.iban)}%</div>
-            <div className="text-orange-600 text-[10px] mt-1">İbrahim Okan Özdemir</div>
+            <div className="text-orange-600 text-[10px] mt-1">Ayşe Yarım</div>
           </div>
         </div>
 
@@ -367,7 +367,7 @@ export default function IstatistiklerPage() {
                     <span className="text-orange-400 font-bold">{getPercentage(stats.iban)}%</span>
                   </div>
                   <div className="text-2xl font-bold text-orange-300">{stats.iban.toFixed(2)} ₺</div>
-                  <div className="text-orange-500 text-xs mt-1">İbrahim Okan Özdemir</div>
+                  <div className="text-orange-500 text-xs mt-1">Ayşe Yarım</div>
                 </div>
               </div>
             </div>

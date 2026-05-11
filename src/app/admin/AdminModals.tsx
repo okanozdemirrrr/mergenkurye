@@ -1,14 +1,16 @@
 /**
  * @file src/app/admin/AdminModals.tsx
- * @description Admin Panel Modal Yöneticisi - URL parametreleri ile kontrol
+ * @description Admin Panel Modal Yöneticisi
  * 
- * REFACTOR NOTU: Bu dosya temizlenmiş ve sadeleştirilmiştir.
- * Tüm iş mantığı (business logic) custom hook'lara taşınmıştır.
- * HİÇBİR MANTIK DEĞİŞİKLİĞİ YAPILMAMIŞTIR - Sadece organizasyon iyileştirilmiştir.
+ * REFACTOR: RestaurantDetailModal artık STATELESS.
+ * - Kendi tarih state'i yok → globalStartDate/globalEndDate proplarıyla çalışır
+ * - show prop'u yok → conditional render ile açılıp kapanır  
+ * - closeModal → router.back() yerine URL temizleme (çifte-back problemi çözüldü)
+ * - Auto-fetch: Modal mount olduğu an veri çeker
  */
 'use client'
 
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { useAdminData } from './AdminDataProvider'
 import { CourierDetailModal } from './components/modals/CourierDetailModal'
 import { RestaurantDetailModal } from './components/modals/RestaurantDetailModal'
@@ -23,6 +25,7 @@ import { useAdminRestaurantModal } from './hooks/useAdminRestaurantModal'
 
 export function AdminModals() {
   const router = useRouter()
+  const pathname = usePathname()
   const searchParams = useSearchParams()
   const { couriers, restaurants, setSuccessMessage, setErrorMessage, fetchCouriers, fetchRestaurants } = useAdminData()
 
@@ -43,29 +46,54 @@ export function AdminModals() {
     fetchCouriers
   })
 
-  // Restoran Modal Hook
+  // Restoran Modal Hook (ödeme ve borç modalleri için hâlâ lazım)
   const restaurantModal = useAdminRestaurantModal({
     restaurantId,
     modalType,
     setSuccessMessage,
     setErrorMessage,
     fetchRestaurants,
-    parentStartDate, // 🎯 Ana sayfadan gelen başlangıç tarihi
-    parentEndDate    // 🎯 Ana sayfadan gelen bitiş tarihi
+    parentStartDate,
+    parentEndDate
   })
 
+  // 🔥 CLEAN CLOSE: URL parametrelerini temizle, router.back() KULLANMA!
+  // router.back() çifte-back sorununa neden oluyordu.
   const closeModal = () => {
-    router.back()
+    router.replace(pathname, { scroll: false })
   }
 
   const courier = couriers.find(c => c.id === courierId)
   const restaurant = restaurants.find(r => r.id === restaurantId)
+
+  // 🎯 RestaurantDetailModal için tarih hesaplama
+  // Parent'tan tarih geliyorsa onu kullan, yoksa Business Day (05:00) mantığı
+  const getGlobalDates = () => {
+    if (parentStartDate && parentEndDate) {
+      return { start: parentStartDate, end: parentEndDate }
+    }
+    // Fallback: Business Day (bugün)
+    const now = new Date()
+    const currentHour = now.getHours()
+    const todayStart = new Date(now)
+    if (currentHour < 5) {
+      todayStart.setDate(todayStart.getDate() - 1)
+    }
+    todayStart.setHours(5, 0, 0, 0)
+    return {
+      start: todayStart.toISOString().split('T')[0],
+      end: new Date().toISOString().split('T')[0]
+    }
+  }
+
+  const globalDates = getGlobalDates()
 
   return (
     <>
       {/* Courier Detail Modal */}
       {modalType === 'courier' && courierId && (
         <CourierDetailModal
+          key={`${courierId}-${courierModal.courierStartDate}-${courierModal.courierEndDate}`}
           show={true}
           onClose={closeModal}
           courier={courier}
@@ -88,6 +116,7 @@ export function AdminModals() {
       {/* End of Day Modal - YENİ VERSİYON */}
       {courierModal.showEndOfDayModal && courier && (
         <EndOfDayModalNew
+          key={`eod-${courierId}-${courierModal.courierStartDate}-${courierModal.courierEndDate}`}
           show={courierModal.showEndOfDayModal}
           onClose={() => courierModal.setShowEndOfDayModal(false)}
           courier={courier}
@@ -119,22 +148,15 @@ export function AdminModals() {
         loadingDebts={courierModal.loadingDebts}
       />
 
-      {/* Restaurant Detail Modal - 🔥 FORCE REMOUNT with KEY */}
+      {/* 🔥 Restaurant Detail Modal - STATELESS, CONDITIONAL UNMOUNT */}
       {modalType === 'restaurant' && restaurantId && restaurant && (
         <RestaurantDetailModal
-          key={`${restaurantId}-${restaurantModal.restaurantStartDate}-${restaurantModal.restaurantEndDate}`}
-          show={true}
+          restaurantId={restaurantId}
+          globalStartDate={globalDates.start}
+          globalEndDate={globalDates.end}
           onClose={closeModal}
-          restaurant={restaurant}
-          selectedRestaurantId={restaurantId}
-          restaurantStartDate={restaurantModal.restaurantStartDate}
-          setRestaurantStartDate={restaurantModal.setRestaurantStartDate}
-          restaurantEndDate={restaurantModal.restaurantEndDate}
-          setRestaurantEndDate={restaurantModal.setRestaurantEndDate}
           onPaymentClick={() => restaurantModal.setShowRestaurantPaymentModal(true)}
-          selectedRestaurantOrders={restaurantModal.selectedRestaurantOrders}
-          getPlatformBadgeClass={getPlatformBadgeClass}
-          getPlatformDisplayName={getPlatformDisplayName}
+          restaurant={restaurant}
         />
       )}
 

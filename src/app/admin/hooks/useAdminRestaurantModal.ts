@@ -70,13 +70,13 @@ export function useAdminRestaurantModal({
     }
   }, [parentStartDate, parentEndDate, modalType, restaurantId])
 
-  // 🔥 TARİHLER DEĞİŞTİĞİNDE OTOMATİK VERİ ÇEK
+  // 🔥 SADECE MODAL İLK AÇILDIĞINDA VERİ ÇEK (Tarih değişikliğinde değil!)
   useEffect(() => {
     if (modalType === 'restaurant' && restaurantId && restaurantStartDate && restaurantEndDate) {
       fetchRestaurantOrders(restaurantId)
       fetchRestaurantDebts(restaurantId)
     }
-  }, [modalType, restaurantId, restaurantStartDate, restaurantEndDate])
+  }, [modalType, restaurantId]) // 🔥 Tarih dependency'lerini KALDIRDIK
 
   // Fetch Restaurant Orders - 🎯 ÜCRETLİ İPTALLER DAHİL
   const fetchRestaurantOrders = async (id: string) => {

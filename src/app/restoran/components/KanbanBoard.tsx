@@ -278,7 +278,7 @@ export default function KanbanBoard({
       </div>
 
       {/* Column Content */}
-      <div className="p-4 space-y-3 min-h-[400px] max-h-[calc(100vh-300px)] overflow-y-auto">
+      <div className="p-4 space-y-3 max-h-[60vh] lg:max-h-[calc(100vh-300px)] overflow-y-auto">
         {orders.length === 0 ? (
           <div className={`text-center py-12 ${darkMode ? 'text-slate-500' : 'text-gray-400'}`}>
             <p className="text-4xl mb-2">📭</p>
@@ -511,7 +511,7 @@ export default function KanbanBoard({
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
       {/* Yeni Siparişler */}
       <Column
         title="Yeni Siparişler"

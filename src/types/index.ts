@@ -59,6 +59,9 @@ export interface Package {
     cancellation_reason?: string | null
     latitude?: number | null
     longitude?: number | null
+    delivered_by_courier_id?: string | null
+    is_paid_to_courier?: boolean
+    is_chargeable_cancellation?: boolean
 }
 
 // ============================================
@@ -78,6 +81,7 @@ export interface Courier {
     full_name?: string
     phone?: string
     deliveryCount?: number
+    weeklyDeliveryCount?: number
     todayDeliveryCount?: number
     is_active?: boolean
     activePackageCount?: number

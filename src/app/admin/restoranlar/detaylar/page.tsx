@@ -14,7 +14,7 @@ export default function RestoranDetaylarPage() {
   const { restaurants, deliveredPackages } = useAdminData()
   const [restaurantChartFilter, setRestaurantChartFilter] = useState<'today' | 'week' | 'month'>('today')
 
-  const handleRestaurantClick = (id: number | string) => {
+  const handleRestaurantClick = (id: number | string, _startDate?: string, _endDate?: string) => {
     router.push(`/admin/restoranlar/detaylar?modal=restaurant&restaurantId=${id}`)
   }
 

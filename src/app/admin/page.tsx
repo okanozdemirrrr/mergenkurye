@@ -10,6 +10,7 @@ import { useState } from 'react'
 import { assignCourier, cancelOrder } from '@/services/orderService'
 import { useAdminRealtimeNotifications } from '@/hooks/useAdminRealtimeNotifications'
 import { useReadyPackageNotification } from '@/hooks/useReadyPackageNotification'
+import ChangelogModal from '@/components/ChangelogModal'
 
 export default function AdminPage() {
   const { packages, couriers, restaurants, isLoading, setSuccessMessage, setErrorMessage, fetchPackages, todayDeliveredCount } = useAdminData()

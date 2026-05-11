@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @file src/app/admin/components/CouriersTab.tsx
  * @description Kurye Yönetim Paneli Bileşeni.
  * Kuryelerin listelendiği, performans grafiklerinin (son 30 gün) ve 
@@ -33,17 +33,25 @@ export function CouriersTab({
     const [selectedCourierForStatus, setSelectedCourierForStatus] = useState<Courier | null>(null)
     const [refreshTrigger, setRefreshTrigger] = useState(0)
 
-    // Kurye Hesapları
+    // Kurye Hesapları — BUSINESS DARK THEME
     if (courierSubTab === 'accounts') {
         return (
-            <div className="bg-slate-900 shadow-xl rounded-2xl p-6">
-                <h2 className="text-2xl font-bold mb-6">👥 Kurye Listesi</h2>
+            <div className="bg-slate-950 min-h-screen p-6">
+                {/* Başlık */}
+                <div className="mb-8">
+                    <h1 className="text-3xl font-black text-slate-100 tracking-tight mb-1">
+                        Kurye Yönetimi
+                    </h1>
+                    <p className="text-sm text-slate-500 tracking-tight">
+                        Aktif kurye hesapları ve günlük performans özeti
+                    </p>
+                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {couriers.length === 0 ? (
-                        <div className="col-span-full text-center py-8 text-slate-500">
-                            <div className="text-4xl mb-2">🚫</div>
-                            <div className="font-bold">Kurye bulunamadı!</div>
+                        <div className="col-span-full text-center py-16 text-slate-600">
+                            <div className="text-4xl mb-3 opacity-30">🚴</div>
+                            <p className="text-sm tracking-tight">Kurye bulunamadı</p>
                         </div>
                     ) : (
                         couriers
@@ -52,71 +60,81 @@ export function CouriersTab({
                             <div
                                 key={courier.id}
                                 onClick={() => onCourierClick(courier.id)}
-                                className="bg-gradient-to-br from-slate-50 to-slate-100 p-5 rounded-xl border-2 border-slate-200 shadow-lg hover:shadow-xl transition-all cursor-pointer hover:scale-105"
+                                className="bg-slate-900 border border-slate-800 rounded-lg p-5 hover:border-slate-700 transition-colors cursor-pointer"
                             >
+                                {/* Kurye Adı + Durum */}
                                 <div className="flex justify-between items-start mb-4">
                                     <div>
-                                        <h3 className="font-bold text-lg text-slate-900">
+                                        <h3 className="font-bold text-base text-slate-100 tracking-tight">
                                             {courier.full_name}
                                         </h3>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <div className={`w-2 h-2 rounded-full ${courier.is_active ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                                            <span className={`text-xs font-medium ${courier.is_active ? 'text-green-600' : 'text-red-600'}`}>
+                                        <div className="flex items-center gap-1.5 mt-1">
+                                            <div className={`w-1.5 h-1.5 rounded-full ${courier.is_active ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                                            <span className={`text-xs font-medium tracking-tight ${courier.is_active ? 'text-green-500/80' : 'text-red-500/80'}`}>
                                                 {courier.is_active ? 'Aktif' : 'Pasif'}
                                             </span>
                                         </div>
                                     </div>
+                                    {/* Paket Rate Badge */}
+                                    {courier.package_rate ? (
+                                        <span className="text-xs text-slate-500 tracking-tight bg-slate-800 px-2 py-1 rounded border border-slate-700">
+                                            {courier.package_rate}₺/paket
+                                        </span>
+                                    ) : null}
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="bg-slate-900 p-3 rounded-lg">
-                                        <div className="text-xs text-slate-600 mb-1">Bugün</div>
-                                        <div className="text-xl font-bold text-green-600">
+                                {/* 4'lü Finansal Grid */}
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="bg-slate-800/50 border border-slate-800 p-3 rounded">
+                                        <div className="text-xs text-slate-500 tracking-tight mb-1">Bugün</div>
+                                        <div className="text-lg font-bold text-slate-200 tracking-tight">
                                             {courier.todayDeliveryCount || 0}
                                         </div>
                                     </div>
-                                    <div className="bg-slate-900 p-3 rounded-lg">
-                                        <div className="text-xs text-slate-600 mb-1">Bugünkü Kazanç</div>
-                                        <div className="text-xl font-bold text-orange-600">
+                                    <div className="bg-slate-800/50 border border-slate-800 p-3 rounded">
+                                        <div className="text-xs text-slate-500 tracking-tight mb-1">Bugünkü Kazanç</div>
+                                        <div className="text-lg font-bold text-emerald-500 tracking-tight">
                                             {((courier.todayDeliveryCount || 0) * (courier.package_rate || 0)).toFixed(0)}₺
                                         </div>
                                     </div>
-                                    <div className="bg-slate-900 p-3 rounded-lg">
-                                        <div className="text-xs text-slate-600 mb-1">Toplam</div>
-                                        <div className="text-xl font-bold text-indigo-600">
-                                            {courier.deliveryCount || 0}
+                                    <div className="bg-slate-800/50 border border-slate-800 p-3 rounded">
+                                        <div className="text-xs text-slate-500 tracking-tight mb-1">Bu Hafta</div>
+                                        <div className="text-lg font-bold text-blue-400 tracking-tight">
+                                            {courier.weeklyDeliveryCount || 0}
                                         </div>
                                     </div>
-                                    <div className="bg-slate-900 p-3 rounded-lg">
-                                        <div className="text-xs text-slate-600 mb-1">Borç</div>
-                                        <div className={`text-xl font-bold ${(courier.totalDebt || 0) > 0
-                                            ? 'text-red-600'
-                                            : 'text-green-600'
+                                    <div className="bg-slate-800/50 border border-slate-800 p-3 rounded">
+                                        <div className="text-xs text-slate-500 tracking-tight mb-1">Borç</div>
+                                        <div className={`text-lg font-bold tracking-tight ${(courier.totalDebt || 0) > 0
+                                            ? 'text-rose-500'
+                                            : 'text-slate-500'
                                             }`}>
                                             {(courier.totalDebt || 0).toFixed(2)}₺
                                         </div>
                                     </div>
                                 </div>
 
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation()
-                                        onCourierClick(courier.id)
-                                    }}
-                                    className="w-full mt-4 bg-orange-600 hover:bg-orange-700 text-white py-2 rounded-lg font-medium transition-colors"
-                                >
-                                    📊 Detaylı Rapor Görüntüle
-                                </button>
-                                
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation()
-                                        setSelectedCourierForStatus(courier)
-                                    }}
-                                    className="w-full mt-2 bg-slate-700 hover:bg-slate-800 text-white py-2 rounded-lg font-medium transition-colors text-sm"
-                                >
-                                    ⚙️ Hesap Durumu Yönet
-                                </button>
+                                {/* Butonlar — Kurumsal */}
+                                <div className="flex gap-2 mt-4">
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            onCourierClick(courier.id)
+                                        }}
+                                        className="flex-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded border border-slate-700 transition-colors tracking-tight"
+                                    >
+                                        Detaylı Rapor
+                                    </button>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            setSelectedCourierForStatus(courier)
+                                        }}
+                                        className="flex-1 px-3 py-2 bg-slate-900 hover:bg-slate-800 text-slate-400 text-xs font-medium rounded border border-slate-800 transition-colors tracking-tight"
+                                    >
+                                        Hesap Yönet
+                                    </button>
+                                </div>
                             </div>
                         ))
                     )}
@@ -161,7 +179,7 @@ export function CouriersTab({
                 const { data, error } = await supabase
                     .from('packages')
                     .select('delivered_at')
-                    .eq('courier_id', courierId)
+                    .eq('delivered_by_courier_id', courierId)  // ✅ Teslimatı yapan kurye
                     .eq('status', 'delivered')
                     .gte('delivered_at', startDate.toISOString())
                     .lte('delivered_at', endDate.toISOString())

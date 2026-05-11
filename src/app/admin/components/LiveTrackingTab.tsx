@@ -239,29 +239,55 @@ export function LiveTrackingTab({
 
                             {/* Zaman Bilgileri */}
                             <div className="bg-slate-800 p-4 rounded-lg space-y-2">
-                                <h4 className="text-white font-semibold mb-2">Zaman Bilgileri</h4>
+                                <h4 className="text-white font-semibold mb-2">⏱️ Zaman Çizelgesi</h4>
+                                
+                                {/* 1. Oluşturulma */}
                                 <div className="flex justify-between text-sm">
-                                    <span className="text-slate-400">Oluşturulma:</span>
-                                    <span className="text-white">🕐 {formatTurkishTime(selectedPackage.created_at)}</span>
+                                    <span className="text-slate-400">📝 Oluşturulma:</span>
+                                    <span className="text-white font-medium">
+                                        {selectedPackage.created_at ? formatTurkishTime(selectedPackage.created_at) : '-'}
+                                    </span>
                                 </div>
-                                {selectedPackage.assigned_at && (
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-slate-400">Atanma:</span>
-                                        <span className="text-white">🕐 {formatTurkishTime(selectedPackage.assigned_at)}</span>
-                                    </div>
-                                )}
-                                {selectedPackage.picked_up_at && (
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-slate-400">Alınma:</span>
-                                        <span className="text-white">🕐 {formatTurkishTime(selectedPackage.picked_up_at)}</span>
-                                    </div>
-                                )}
-                                {selectedPackage.delivered_at && (
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-slate-400">Teslim:</span>
-                                        <span className="text-white">🕐 {formatTurkishTime(selectedPackage.delivered_at)}</span>
-                                    </div>
-                                )}
+                                
+                                {/* 2. Hazırlamaya Başlama */}
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-slate-400">👨‍🍳 Hazırlamaya Başlama:</span>
+                                    <span className="text-white font-medium">
+                                        {selectedPackage.getting_ready_at ? formatTurkishTime(selectedPackage.getting_ready_at) : '-'}
+                                    </span>
+                                </div>
+                                
+                                {/* 3. Hazır Olma */}
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-slate-400">✅ Hazır Olma:</span>
+                                    <span className="text-white font-medium">
+                                        {selectedPackage.ready_at ? formatTurkishTime(selectedPackage.ready_at) : '-'}
+                                    </span>
+                                </div>
+                                
+                                {/* 4. Kurye Kabul Saati */}
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-slate-400">✔️ Kurye Kabul Saati:</span>
+                                    <span className="text-white font-medium">
+                                        {selectedPackage.assigned_at ? formatTurkishTime(selectedPackage.assigned_at) : '-'}
+                                    </span>
+                                </div>
+                                
+                                {/* 5. Esnaftan Alınma */}
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-slate-400">🏪 Esnaftan Alınma:</span>
+                                    <span className="text-white font-medium">
+                                        {selectedPackage.picked_up_at ? formatTurkishTime(selectedPackage.picked_up_at) : '-'}
+                                    </span>
+                                </div>
+                                
+                                {/* 6. Teslim Edilme */}
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-slate-400">🎯 Teslim Edilme:</span>
+                                    <span className="text-white font-medium">
+                                        {selectedPackage.delivered_at ? formatTurkishTime(selectedPackage.delivered_at) : '-'}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>
