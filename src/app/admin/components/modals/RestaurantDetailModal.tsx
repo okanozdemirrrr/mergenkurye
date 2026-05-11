@@ -73,13 +73,13 @@ export function RestaurantDetailModal({
 
             setOrders(transformedData)
             
-            // 🔥 ÖNCEKİ ÖDEMELERİ ÇEK
+            // 🔥 ÖNCEKİ ÖDEMELERİ ÇEK - TÜM ZAMANLAR (FİLTREDEN BAĞIMSIZ!)
+            // Cari hesap bakiyesi her zaman GÜNCEL olmalı
             const { data: paymentsData, error: paymentsError } = await supabase
                 .from('restaurant_payment_transactions')
                 .select('amount_paid')
                 .eq('restaurant_id', resId)
-                .gte('transaction_date', startDate)
-                .lte('transaction_date', endDate)
+                // ❌ TARİH FİLTRESİ YOK! Tüm ödemeleri çek
 
             if (paymentsError) throw paymentsError
 
@@ -330,8 +330,8 @@ export function RestaurantDetailModal({
                                                 </div>
                                                 <div className="text-amber-900/50 text-2xl">💳</div>
                                             </div>
-                                            <p className="text-xs text-slate-600 tracking-tight">
-                                                Daha önce ödenen
+                                            <p className="text-xs text-amber-400/60 tracking-tight">
+                                                Tüm zamanlar toplamı
                                             </p>
                                         </div>
 
@@ -352,6 +352,14 @@ export function RestaurantDetailModal({
                                                 Hakediş - Ödemeler
                                             </p>
                                         </div>
+                                    </div>
+                                    
+                                    {/* 📝 AÇIKLAYICI NOT */}
+                                    <div className="mt-4 px-4 py-3 bg-slate-900 border border-slate-800 rounded-lg">
+                                        <p className="text-xs text-slate-500 tracking-tight">
+                                            <span className="font-semibold text-slate-400">💡 Not:</span> "Önceki Ödemeler" kartı <span className="text-amber-400">tüm zamanlar</span> toplamını gösterir (tarih filtresinden bağımsız). 
+                                            Bugün yaptığınız ödemeler anında bu kartı günceller. Ciro ve Masraf ise seçili tarih aralığına göre hesaplanır.
+                                        </p>
                                     </div>
                                 </div>
                             )}

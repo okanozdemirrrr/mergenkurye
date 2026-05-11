@@ -405,23 +405,21 @@ export function RestaurantsTab({
                             return sum + price
                         }, 0)
                         
-                        // 🔥 YENİ: ÖNCEKİ ÖDEMELERİ ÇEK
+                        // 🔥 YENİ: ÖNCEKİ ÖDEMELERİ ÇEK - TÜM ZAMANLAR (FİLTREDEN BAĞIMSIZ!)
+                        // Cari hesap bakiyesi her zaman GÜNCEL olmalı
                         let totalPayments = 0
-                        if (startDate && endDate) {
-                            try {
-                                const { data: paymentsData, error: paymentsError } = await supabase
-                                    .from('restaurant_payment_transactions')
-                                    .select('amount_paid')
-                                    .eq('restaurant_id', restaurant.id)
-                                    .gte('transaction_date', startDate)
-                                    .lte('transaction_date', endDate)
+                        try {
+                            const { data: paymentsData, error: paymentsError } = await supabase
+                                .from('restaurant_payment_transactions')
+                                .select('amount_paid')
+                                .eq('restaurant_id', restaurant.id)
+                                // ❌ TARİH FİLTRESİ YOK! Tüm ödemeleri çek
 
-                                if (!paymentsError && paymentsData) {
-                                    totalPayments = paymentsData.reduce((sum, p) => sum + (p.amount_paid || 0), 0)
-                                }
-                            } catch (error) {
-                                console.error('❌ Ödeme verisi çekilemedi:', error)
+                            if (!paymentsError && paymentsData) {
+                                totalPayments = paymentsData.reduce((sum, p) => sum + (p.amount_paid || 0), 0)
                             }
+                        } catch (error) {
+                            console.error('❌ Ödeme verisi çekilemedi:', error)
                         }
                         
                         // 🔥 KUTSAL FORMÜL: Net Bakiye = (Ciro - Servis) - Ödemeler
@@ -647,6 +645,14 @@ export function RestaurantsTab({
                             (Ciro - Servis) - Ödemeler
                         </p>
                     </div>
+                </div>
+                
+                {/* 📝 AÇIKLAYICI NOT */}
+                <div className="mt-6 px-4 py-3 bg-slate-900 border border-slate-800 rounded-lg">
+                    <p className="text-xs text-slate-600 tracking-tight">
+                        <span className="font-semibold text-slate-500">💡 Not:</span> "Yapılan Ödemeler" kartı ve liste kolonundaki "Ödemeler" <span className="text-amber-400">tüm zamanlar</span> toplamını gösterir (tarih filtresinden bağımsız). 
+                        Bugün yaptığınız ödemeler anında bu değerleri günceller. Ciro ve Servis ise seçili tarih aralığına göre hesaplanır.
+                    </p>
                 </div>
 
                 {/* 🏪 RESTORAN LİSTESİ - KURUMSAL TABLO */}
