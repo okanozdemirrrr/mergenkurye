@@ -26,19 +26,33 @@ export function useAdminCourierModal({
   setErrorMessage,
   fetchCouriers
 }: UseAdminCourierModalProps) {
-  // State Management - Varsayılan olarak bugünün tarihi (Türkiye saat dilimi)
-  const getTodayInTurkey = () => {
+  // State Management - Varsayılan olarak bugünün tarihi (Business Day mantığı)
+  const getBusinessDayDates = () => {
     const now = new Date()
-    // Türkiye saat dilimine göre tarih
-    const turkeyDate = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Istanbul' }))
-    return turkeyDate.toISOString().split('T')[0]
+    const currentHour = now.getHours()
+    
+    // Business Day: 05:00 - 04:59 (ertesi gün)
+    const startDate = new Date(now)
+    if (currentHour < 5) {
+      startDate.setDate(startDate.getDate() - 1)
+    }
+    startDate.setHours(5, 0, 0, 0)
+    
+    const endDate = new Date(startDate)
+    endDate.setDate(endDate.getDate() + 1)
+    endDate.setHours(4, 59, 59, 999)
+    
+    return {
+      start: startDate.toISOString().split('T')[0],
+      end: endDate.toISOString().split('T')[0]
+    }
   }
   
-  const today = getTodayInTurkey()
+  const businessDates = getBusinessDayDates()
   const [selectedCourierOrders, setSelectedCourierOrders] = useState<Package[]>([])
   const [courierDebts, setCourierDebts] = useState<CourierDebt[]>([])
-  const [courierStartDate, setCourierStartDate] = useState(today)
-  const [courierEndDate, setCourierEndDate] = useState(today)
+  const [courierStartDate, setCourierStartDate] = useState(businessDates.start)
+  const [courierEndDate, setCourierEndDate] = useState(businessDates.end)
   const [loadingDebts, setLoadingDebts] = useState(false)
   const [showEndOfDayModal, setShowEndOfDayModal] = useState(false)
   const [endOfDayAmount, setEndOfDayAmount] = useState('')
