@@ -88,20 +88,20 @@ export function EndOfDayModalNew({
       setCardTotal(card)
       setIbanTotal(iban)
 
-      // 2. CARİ BORÇ — TÜM ZAMANLAR (Geçmiş + Bugün)
-      // Bugünkü nakit paketler de BORÇ olarak sayılmalı!
-      const { data: allCashPackages, error: allCashError } = await supabase
+      // 2. CARİ BORÇ — TÜM ZAMANLAR (Nakit + Kart + IBAN)
+      // 🔥 KURYE TÜM TAHSİLATI TESLİM ETMEK ZORUNDA!
+      const { data: allPackages, error: allPackagesError } = await supabase
         .from('packages')
-        .select('amount')
+        .select('amount, payment_method')
         .eq('delivered_by_courier_id', courier.id)  // ✅ Teslimatı yapan kurye
         .eq('status', 'delivered')
-        .eq('payment_method', 'cash') // Sadece nakit (kurye cebinden geçen para)
-        .lte('delivered_at', `${endDate}T23:59:59`) // endDate'e kadar TÜM nakit paketler
+        .lte('delivered_at', `${endDate}T23:59:59`) // endDate'e kadar TÜM paketler
 
-      if (allCashError) throw allCashError
+      if (allPackagesError) throw allPackagesError
 
-      const totalCashDeliveries = (allCashPackages || []).reduce((sum, p) => sum + (p.amount || 0), 0)
-      setTotalDeliveries(totalCashDeliveries)
+      // 🔥 NAKİT + KART + IBAN = TOPLAM TAHSİLAT
+      const totalCollectionDebt = (allPackages || []).reduce((sum, p) => sum + (p.amount || 0), 0)
+      setTotalDeliveries(totalCollectionDebt)
 
       // 3. TÜM ZAMANLAR yapılan ödemeler
       const { data: settlements, error: settlementsError } = await supabase
@@ -115,8 +115,8 @@ export function EndOfDayModalNew({
       const totalPaid = (settlements || []).reduce((sum, s) => sum + (s.amount_paid || 0), 0)
       setPreviousSettlements(totalPaid)
 
-      // 4. TOPLAM KALAN BORÇ = Tüm nakit teslimatlar - Tüm ödemeler
-      const debt = Math.max(0, totalCashDeliveries - totalPaid)
+      // 4. TOPLAM KALAN BORÇ = Tüm tahsilat (nakit+kart+iban) - Tüm ödemeler
+      const debt = Math.max(0, totalCollectionDebt - totalPaid)
       setRemainingDebt(debt)
     } catch (error) {
       console.error('❌ Hesaplama hatası:', error)
@@ -267,7 +267,7 @@ export function EndOfDayModalNew({
               {/* ─── UYARI ─── */}
               <div className="bg-amber-900/20 border border-amber-700/40 rounded p-3 mb-5">
                 <p className="text-xs font-bold text-amber-400 tracking-tight text-center">
-                  ⚠️ NAKİT PAKETLER BORÇ OLARAK SAYILIR, HAKEDİŞ AYRICA ÖDENİR
+                  ⚠️ NAKİT + KART + IBAN = TOPLAM TAHSİLAT, HAKEDİŞ AYRICA ÖDENİR
                 </p>
               </div>
 
@@ -278,7 +278,7 @@ export function EndOfDayModalNew({
                   {remainingDebt.toFixed(2)}₺
                 </div>
                 <div className="text-[10px] text-rose-500/60 tracking-tight">
-                  Tüm nakit teslimatlar - Ödemeler
+                  Nakit + Kart + IBAN - Ödemeler
                 </div>
               </div>
 
