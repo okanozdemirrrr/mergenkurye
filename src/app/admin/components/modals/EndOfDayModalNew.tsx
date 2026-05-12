@@ -88,35 +88,35 @@ export function EndOfDayModalNew({
       setCardTotal(card)
       setIbanTotal(iban)
 
-      // 2. CARİ BORÇ — Sadece startDate'den ÖNCEKİ teslimatlar ve ödemeler
-      // Bugünkü paketler borç değil, zaten "vermesi gereken" olarak gösteriliyor
-      const { data: previousPackages, error: prevPkgError } = await supabase
+      // 2. CARİ BORÇ — TÜM ZAMANLAR (Geçmiş + Bugün)
+      // Bugünkü nakit paketler de BORÇ olarak sayılmalı!
+      const { data: allCashPackages, error: allCashError } = await supabase
         .from('packages')
         .select('amount')
         .eq('delivered_by_courier_id', courier.id)  // ✅ Teslimatı yapan kurye
         .eq('status', 'delivered')
         .eq('payment_method', 'cash') // Sadece nakit (kurye cebinden geçen para)
-        .lt('delivered_at', `${startDate}T00:00:00`) // startDate'den ÖNCE
+        .lte('delivered_at', `${endDate}T23:59:59`) // endDate'e kadar TÜM nakit paketler
 
-      if (prevPkgError) throw prevPkgError
+      if (allCashError) throw allCashError
 
-      const previousCashTotal = (previousPackages || []).reduce((sum, p) => sum + (p.amount || 0), 0)
-      setTotalDeliveries(previousCashTotal)
+      const totalCashDeliveries = (allCashPackages || []).reduce((sum, p) => sum + (p.amount || 0), 0)
+      setTotalDeliveries(totalCashDeliveries)
 
-      // 3. Geçmişte yapılan ödemeler (startDate'den önce)
+      // 3. TÜM ZAMANLAR yapılan ödemeler
       const { data: settlements, error: settlementsError } = await supabase
         .from('courier_settlements')
         .select('amount_paid')
         .eq('courier_id', courier.id)
-        .lt('created_at', `${startDate}T00:00:00`) // startDate'den ÖNCE
+        .lte('created_at', `${endDate}T23:59:59`) // endDate'e kadar TÜM ödemeler
 
       if (settlementsError) throw settlementsError
 
-      const previousPaid = (settlements || []).reduce((sum, s) => sum + (s.amount_paid || 0), 0)
-      setPreviousSettlements(previousPaid)
+      const totalPaid = (settlements || []).reduce((sum, s) => sum + (s.amount_paid || 0), 0)
+      setPreviousSettlements(totalPaid)
 
-      // 4. Kalan Borç = Geçmiş nakit - Geçmiş ödemeler
-      const debt = Math.max(0, previousCashTotal - previousPaid)
+      // 4. TOPLAM KALAN BORÇ = Tüm nakit teslimatlar - Tüm ödemeler
+      const debt = Math.max(0, totalCashDeliveries - totalPaid)
       setRemainingDebt(debt)
     } catch (error) {
       console.error('❌ Hesaplama hatası:', error)
@@ -267,33 +267,20 @@ export function EndOfDayModalNew({
               {/* ─── UYARI ─── */}
               <div className="bg-amber-900/20 border border-amber-700/40 rounded p-3 mb-5">
                 <p className="text-xs font-bold text-amber-400 tracking-tight text-center">
-                  ⚠️ KURYE TÜM TAHSİLATI TESLİM EDER, HAKEDİŞ AYRICA ÖDENİR
+                  ⚠️ NAKİT PAKETLER BORÇ OLARAK SAYILIR, HAKEDİŞ AYRICA ÖDENİR
                 </p>
               </div>
 
-              {/* ─── BÖLÜM 3: TOPLAM TAHSİLAT ─── */}
-              <div className="bg-emerald-900/20 border border-emerald-700/40 rounded-lg p-4 mb-5">
-                <div className="text-[10px] text-emerald-600 tracking-tight uppercase mb-2 font-medium">Kuryenin Toplam Tahsilatı</div>
-                <div className="text-3xl font-black text-emerald-400 tracking-tight mb-1">
-                  {mustHandOver.toFixed(2)}₺
+              {/* ─── CARİ BORÇ (TOPLAM) ─── */}
+              <div className="bg-rose-900/20 border border-rose-800/40 rounded-lg p-4 mb-5">
+                <div className="text-[10px] text-rose-400 tracking-tight uppercase mb-2 font-medium">Toplam Kalan Borç</div>
+                <div className="text-3xl font-black text-rose-400 tracking-tight mb-1">
+                  {remainingDebt.toFixed(2)}₺
                 </div>
-                <div className="text-[10px] text-emerald-600/60 tracking-tight">
-                  Nakit + Kart + IBAN
+                <div className="text-[10px] text-rose-500/60 tracking-tight">
+                  Tüm nakit teslimatlar - Ödemeler
                 </div>
               </div>
-
-              {/* ─── CARİ BORÇ ─── */}
-              {remainingDebt > 0 && (
-                <div className="bg-rose-900/20 border border-rose-800/40 rounded p-3 mb-5 flex justify-between items-center">
-                  <div>
-                    <div className="text-xs text-rose-400 font-medium tracking-tight">KALAN CARİ BORÇ</div>
-                    <div className="text-[10px] text-rose-500/60 mt-0.5">Önceki günlerden devir</div>
-                  </div>
-                  <div className="text-xl font-black text-rose-500 tracking-tight">
-                    {remainingDebt.toFixed(2)}₺
-                  </div>
-                </div>
-              )}
 
               {/* ─── INPUT: ALINAN TUTAR ─── */}
               <div className="mb-4">
@@ -305,7 +292,7 @@ export function EndOfDayModalNew({
                   step="0.01"
                   value={amountReceived}
                   onChange={(e) => setAmountReceived(e.target.value)}
-                  placeholder={`${totalCollection.toFixed(2)}`}
+                  placeholder={`${remainingDebt.toFixed(2)}`}
                   autoFocus
                   className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded text-lg font-bold text-slate-100 placeholder-slate-600 outline-none focus:border-emerald-500 transition-colors tracking-tight"
                 />
