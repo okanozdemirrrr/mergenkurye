@@ -171,11 +171,11 @@ export function EndOfDayModalNew({
 
   if (!show) return null
 
+  // 🔥 KUTSAL TOPLAM: Nakit + Kart + IBAN
+  const totalCollection = cashTotal + cardTotal + ibanTotal
   const received = parseFloat(amountReceived) || 0
   const difference = received - remainingDebt
   const courierEarnings = (courier.package_rate || 0) * deliveryCount
-  // 🔥 KUTSAL TOPLAM: Nakit + Kart + IBAN
-  const totalCollection = cashTotal + cardTotal + ibanTotal
   const mustHandOver = totalCollection
 
   return (
