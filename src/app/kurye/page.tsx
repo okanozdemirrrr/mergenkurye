@@ -85,7 +85,7 @@ interface Package {
   customer_phone?: string
   delivery_address: string
   amount: number
-  status: 'waiting' | 'assigned' | 'picking_up' | 'on_the_way' | 'delivered' | 'cancelled'
+  status: 'new' | 'preparing' | 'ready' | 'assigned' | 'picking_up' | 'on_the_way' | 'delivered' | 'cancelled' | 'waiting'
   content?: string
   courier_id?: string | null
   payment_method?: 'cash' | 'card' | 'iban' | null
@@ -105,6 +105,7 @@ interface Package {
   cancelled_at?: string | null
   cancelled_by?: 'admin' | 'restaurant' | null
   cancellation_reason?: string | null
+  ready_at?: string | null
 }
 
 interface CourierLeaderboard {
@@ -608,9 +609,9 @@ export default function KuryePage() {
       // ⚡ OPTİMİZE: Sadece gerekli kolonları çek + LIMIT
       const { data, error } = await supabase
         .from('packages')
-        .select('id, order_number, customer_name, customer_phone, delivery_address, amount, status, payment_method, content, created_at, assigned_at, picked_up_at, restaurant_id, restaurants(name, phone, address)')
+        .select('id, order_number, customer_name, customer_phone, delivery_address, amount, status, payment_method, content, created_at, assigned_at, ready_at, picked_up_at, restaurant_id, restaurants(name, phone, address)')
         .eq('courier_id', courierId)
-        .in('status', ['assigned', 'picking_up', 'on_the_way'])
+        .in('status', ['new', 'preparing', 'ready', 'assigned', 'picking_up', 'on_the_way'])
         .order('created_at', { ascending: false })
         .limit(50)
 
@@ -3013,8 +3014,15 @@ export default function KuryePage() {
                         )}
                       </div>
                       <div className="text-right">
-                        <p className="text-xl font-bold text-green-400">{pkg.amount}₺</p>
-                        <p className="text-xs text-slate-500">
+                        <div className="flex flex-col items-end gap-1">
+                          <p className="text-xl font-bold text-green-400">{pkg.amount}₺</p>
+                          {pkg.ready_at && (
+                            <p className="text-[10px] font-bold text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded border border-amber-400/20 flex items-center gap-1 animate-pulse">
+                              ⏰ Hazır: {new Date(pkg.ready_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-500 mt-1">
                           {pkg.payment_method === 'cash' ? 'Nakit' : 'Kart'}
                         </p>
                       </div>
@@ -3038,24 +3046,36 @@ export default function KuryePage() {
 
                     {/* Durum Badge */}
                     <div className="mb-3">
-                      <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${pkg.status === 'assigned' ? 'bg-blue-500/20 text-blue-400' :
+                      <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                        pkg.status === 'new' ? 'bg-slate-500/20 text-slate-400' :
+                        pkg.status === 'preparing' ? 'bg-amber-500/20 text-amber-400' :
+                        pkg.status === 'ready' || pkg.status === 'assigned' ? 'bg-blue-500/20 text-blue-400' :
                         pkg.status === 'picking_up' ? 'bg-yellow-500/20 text-yellow-400' :
-                          'bg-red-500/20 text-red-400'
-                        }`}>
-                        {pkg.status === 'assigned' ? 'Yeni Paket' :
-                          pkg.status === 'picking_up' ? 'Almaya Git' :
-                            'Teslimatta'}
+                        'bg-red-500/20 text-red-400'
+                      }`}>
+                        {pkg.status === 'new' ? 'Paket Bekleniyor' :
+                         pkg.status === 'preparing' ? 'Hazırlanıyor' :
+                         (pkg.status === 'ready' || pkg.status === 'assigned') ? 'Yeni Paket (Hazır)' :
+                         pkg.status === 'picking_up' ? 'Almaya Git' :
+                         'Teslimatta'}
                       </span>
                     </div>
 
                     {/* Aksiyon Butonları - Mobil Responsive */}
-                    {pkg.status === 'assigned' && (
+                    {(pkg.status === 'new' || pkg.status === 'preparing' || pkg.status === 'ready' || pkg.status === 'assigned') && (
                       <button
-                        disabled={isUpdating.has(pkg.id)}
+                        disabled={isUpdating.has(pkg.id) || pkg.status === 'new' || pkg.status === 'preparing'}
                         onClick={() => handleUpdateStatus(pkg.id, 'picking_up')}
-                        className="w-full py-2 sm:py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm sm:text-base font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className={`w-full py-2 sm:py-2.5 text-white text-sm sm:text-base font-bold rounded-lg transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg ${
+                          (pkg.status === 'new' || pkg.status === 'preparing')
+                            ? 'bg-slate-700 grayscale cursor-not-allowed'
+                            : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'
+                        }`}
                       >
-                        {isUpdating.has(pkg.id) ? 'İşleniyor...' : 'Kabul Et'}
+                        {isUpdating.has(pkg.id) ? 'İşleniyor...' : 
+                         pkg.status === 'new' ? 'Paket Bekleniyor...' :
+                         pkg.status === 'preparing' ? 'Hazırlanıyor...' :
+                         'Kabul Et'}
                       </button>
                     )}
 
