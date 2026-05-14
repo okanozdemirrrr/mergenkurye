@@ -11,6 +11,7 @@ import { useState, useEffect } from 'react'
 import { Restaurant, Package } from '@/types'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { supabase } from '@/app/lib/supabase'
+import { getAllRestaurantsFinancials } from '@/services/restaurantService'
 
 interface RestaurantsTabProps {
     restaurants: Restaurant[]
@@ -43,7 +44,6 @@ export function RestaurantsTab({
     const [tempStartDate, setTempStartDate] = useState('')
     const [tempEndDate, setTempEndDate] = useState('')
     const [filteredOrders, setFilteredOrders] = useState<Package[]>([])
-    const [isLoadingFilter, setIsLoadingFilter] = useState(false)
 
     const handleUpdatePackageFee = async () => {
         if (!editingRestaurant) return
@@ -238,11 +238,8 @@ export function RestaurantsTab({
             const deliveredCount = restaurantPackages.length
             const fallbackFee = restaurant.package_fee || 100
             
-            // 2. DASHBOARD MATH: applied_price toplamı (fallback: restaurant.package_fee)
-            const debt = restaurantPackages.reduce((sum, pkg) => {
-                const price = (pkg as any).applied_price ?? fallbackFee
-                return sum + price
-            }, 0)
+            // 2. DASHBOARD MATH: KURAL 2: package_fee üzerinden sabit hesaplama
+            const debt = deliveredCount * fallbackFee
 
             return {
                 ...restaurant,
@@ -385,170 +382,50 @@ export function RestaurantsTab({
         const [restaurantsWithStats, setRestaurantsWithStats] = useState<any[]>([])
         const [isLoadingStats, setIsLoadingStats] = useState(false)
         
-        // 🔥 İSTATİSTİKLERİ HESAPLA (Ödemeler Dahil)
+        // 🔥 İSTATİSTİKLERİ HESAPLA (RPC Üzerinden Toplu)
         useEffect(() => {
-            const calculateStats = async () => {
+            const fetchStats = async () => {
                 setIsLoadingStats(true)
                 try {
-                    const stats = await Promise.all(restaurants.map(async (restaurant) => {
-                        // 🔥 KUTSAL AYRIM: Ciro vs Masraf
-                        
-                        // 1️⃣ TÜM GEÇERLİ PAKETLER (Delivered + Ücretli İptaller)
-                        // KABAK GİBİ BOOLEAN: is_chargeable_cancellation
-                        const allChargeableOrders = filteredOrders.filter(
-                            pkg => pkg.restaurant_id === restaurant.id &&
-                                   (pkg.status === 'delivered' || pkg.is_chargeable_cancellation === true)
-                        )
-                        
-                        // 2️⃣ SADECE TESLİM EDİLENLER (Ciro için)
-                        const deliveredOrders = allChargeableOrders.filter(
-                            pkg => pkg.status === 'delivered'
-                        )
-                        
-                        // 3️⃣ PAKET SAYISI: Tüm geçerli paketler (delivered + ücretli iptaller)
-                        const totalOrders = allChargeableOrders.length
-                        
-                        // 4️⃣ BRÜT CİRO: Sadece delivered paketlerin tutarı (Restoran SADECE bundan kazanır!)
-                        const totalRevenue = deliveredOrders.reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
-                        
-                        const fallbackFee = restaurant.package_fee || 100
-                        
-                        // 5️⃣ TOPLAM MASRAF: TÜM geçerli paketler (delivered + ücretli iptaller)
-                        // Kurye yola çıktıysa hak eder!
-                        const totalDebt = allChargeableOrders.reduce((sum, pkg) => {
-                            const price = (pkg as any).applied_price ?? fallbackFee
-                            return sum + price
-                        }, 0)
-                        
-                        // 🔥 YENİ: ÖNCEKİ ÖDEMELERİ ÇEK - TÜM ZAMANLAR (FİLTREDEN BAĞIMSIZ!)
-                        // Cari hesap bakiyesi her zaman GÜNCEL olmalı
-                        let totalPayments = 0
-                        try {
-                            const { data: paymentsData, error: paymentsError } = await supabase
-                                .from('restaurant_payment_transactions')
-                                .select('amount_paid')
-                                .eq('restaurant_id', restaurant.id)
-                                // ❌ TARİH FİLTRESİ YOK! Tüm ödemeleri çek
-
-                            if (!paymentsError && paymentsData) {
-                                totalPayments = paymentsData.reduce((sum, p) => sum + (p.amount_paid || 0), 0)
-                            }
-                        } catch (error) {
-                            console.error('❌ Ödeme verisi çekilemedi:', error)
-                        }
-                        
-                        // 🔥 KUTSAL FORMÜL: Net Bakiye = (Ciro - Servis) - Ödemeler
-                        const netBalance = Math.max(0, totalRevenue - totalDebt - totalPayments)
-                        
-                        return {
-                            ...restaurant,
-                            totalOrders,
-                            totalRevenue,
-                            totalDebt,
-                            totalPayments,
-                            netBalance,
-                            packageFee: fallbackFee
-                        }
-                    }))
-                    
-                    setRestaurantsWithStats(stats)
+                    const result = await getAllRestaurantsFinancials(startDate, endDate)
+                    if (result.success && result.data) {
+                        setRestaurantsWithStats(result.data)
+                    } else {
+                        console.error('❌ RPC Hatası:', result.error)
+                    }
                 } catch (error) {
-                    console.error('❌ İstatistik hesaplama hatası:', error)
+                    console.error('❌ İstatistik çekme hatası:', error)
                 } finally {
                     setIsLoadingStats(false)
                 }
             }
             
-            calculateStats()
-        }, [restaurants, filteredOrders, startDate, endDate])
+            fetchStats()
+        }, [startDate, endDate])
         
         // 🎯 Manuel Filtreleme Fonksiyonu - BAŞTA 0 GÖSTER
-        const handleApplyFilter = async () => {
+        const handleApplyFilter = () => {
             if (!tempStartDate || !tempEndDate) {
                 alert('⚠️ Lütfen başlangıç ve bitiş tarihlerini seçin!')
                 return
             }
-
-            setIsLoadingFilter(true)
             setStartDate(tempStartDate)
             setEndDate(tempEndDate)
-
-            try {
-                const startDateTime = new Date(tempStartDate)
-                startDateTime.setHours(0, 0, 0, 0)
-
-                const endDateTime = new Date(tempEndDate)
-                endDateTime.setHours(23, 59, 59, 999)
-
-                // 🔥 İKİ AYRI SORGU: Delivered ve Chargeable Cancellations
-                // 1. Teslim edilen siparişler (delivered_at ile filtrele)
-                const { data: deliveredData, error: deliveredError } = await supabase
-                    .from('packages')
-                    .select('*, restaurant:restaurants!packages_restaurant_id_fkey(id, name, package_fee)')
-                    .eq('status', 'delivered')
-                    .gte('delivered_at', startDateTime.toISOString())
-                    .lte('delivered_at', endDateTime.toISOString())
-
-                if (deliveredError) throw deliveredError
-
-                // 2. Ücretli iptaller (created_at ile filtrele - updated_at kolonu yok!)
-                const { data: cancelledData, error: cancelledError } = await supabase
-                    .from('packages')
-                    .select('*, restaurant:restaurants!packages_restaurant_id_fkey(id, name, package_fee)')
-                    .eq('status', 'cancelled')
-                    .eq('is_chargeable_cancellation', true)
-                    .gte('created_at', startDateTime.toISOString())
-                    .lte('created_at', endDateTime.toISOString())
-
-                if (cancelledError) throw cancelledError
-
-                // Birleştir
-                const combinedData = [...(deliveredData || []), ...(cancelledData || [])]
-                setFilteredOrders(combinedData)
-            } catch (error) {
-                console.error('❌ Filtreleme hatası:', error)
-                alert('Filtreleme sırasında bir hata oluştu!')
-            } finally {
-                setIsLoadingFilter(false)
-            }
         }
 
         // 🎯 Filtreyi Temizle
-        const handleClearFilter = async () => {
+        const handleClearFilter = () => {
             setTempStartDate('')
             setTempEndDate('')
             setStartDate('')
             setEndDate('')
-
-            // Bugünün verilerini tekrar yükle
-            const now = new Date()
-            const currentHour = now.getHours()
-            
-            const todayStart = new Date(now)
-            if (currentHour < 5) {
-                todayStart.setDate(todayStart.getDate() - 1)
-            }
-            todayStart.setHours(5, 0, 0, 0)
-
-            try {
-                const { data, error } = await supabase
-                    .from('packages')
-                    .select('*, restaurant:restaurants!packages_restaurant_id_fkey(id, name, package_fee)')
-                    .or('status.eq.delivered,and(status.eq.cancelled,is_chargeable_cancellation.eq.true)')
-                    .gte('delivered_at', todayStart.toISOString())
-
-                if (error) throw error
-                setFilteredOrders(data || [])
-            } catch (error) {
-                console.error('❌ Temizleme hatası:', error)
-            }
         }
 
         // 📊 Genel Toplamlar
-        const grandTotalRevenue = restaurantsWithStats.reduce((sum, r) => sum + r.totalRevenue, 0)
-        const grandTotalDebt = restaurantsWithStats.reduce((sum, r) => sum + r.totalDebt, 0)
-        const grandNetBalance = restaurantsWithStats.reduce((sum, r) => sum + r.netBalance, 0)
-        const grandTotalOrders = restaurantsWithStats.reduce((sum, r) => sum + r.totalOrders, 0)
+        const grandTotalRevenue = restaurantsWithStats.reduce((sum, r) => sum + (r.period?.revenue || 0), 0)
+        const grandTotalDebt = restaurantsWithStats.reduce((sum, r) => sum + (r.period?.cost || 0), 0)
+        const grandNetBalance = restaurantsWithStats.reduce((sum, r) => sum + (r.current_balance || 0), 0)
+        const grandTotalOrders = restaurantsWithStats.reduce((sum, r) => sum + (r.period?.total_package_count || 0), 0)
 
         return (
             <div className="bg-slate-950 min-h-screen p-6">
@@ -589,10 +466,9 @@ export function RestaurantsTab({
                         </div>
                         <button
                             onClick={handleApplyFilter}
-                            disabled={isLoadingFilter}
-                            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium rounded border border-slate-700 transition-colors tracking-tight disabled:opacity-50"
+                            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium rounded border border-slate-700 transition-colors tracking-tight"
                         >
-                            {isLoadingFilter ? '⏳' : '🔍'} Filtrele
+                            🔍 Filtrele
                         </button>
                         <button
                             onClick={handleClearFilter}
@@ -641,39 +517,47 @@ export function RestaurantsTab({
                         </p>
                     </div>
 
-                    {/* KART 3: TOPLAM ÖDEMELER (Amber) */}
-                    <div className="bg-slate-900 border border-amber-900/30 rounded-lg p-5">
+                    {/* KART 3: TOPLAM BAKİYE (Emerald/Rose) */}
+                    <div className={`border rounded-lg p-5 ${
+                        grandNetBalance >= 0 
+                            ? 'bg-emerald-950/20 border-emerald-900/30' 
+                            : 'bg-rose-950/20 border-rose-900/30'
+                    }`}>
                         <div className="flex items-start justify-between mb-3">
                             <div>
-                                <p className="text-xs font-medium text-amber-400/70 tracking-tight uppercase mb-1">
-                                    Yapılan Ödemeler
+                                <p className={`text-xs font-medium tracking-tight uppercase mb-1 ${
+                                    grandNetBalance >= 0 ? 'text-emerald-400/70' : 'text-rose-400/70'
+                                }`}>
+                                    Toplam Cari Bakiye
                                 </p>
-                                <p className="text-3xl font-black text-amber-300/90 tracking-tight">
-                                    {restaurantsWithStats.reduce((sum, r) => sum + r.totalPayments, 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
+                                <p className={`text-3xl font-black tracking-tight ${
+                                    grandNetBalance >= 0 ? 'text-emerald-300/90' : 'text-rose-300/90'
+                                }`}>
+                                    {Math.abs(grandNetBalance).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
                                 </p>
                             </div>
-                            <div className="text-amber-900/50 text-2xl">💳</div>
+                            <div className="text-2xl">{grandNetBalance >= 0 ? '💰' : '📉'}</div>
                         </div>
                         <p className="text-xs text-slate-600 tracking-tight">
-                            Restoralara ödenen
+                            Tüm zamanların net durumu
                         </p>
                     </div>
 
-                    {/* KART 4: NET BAKİYE (Koyu Emerald) */}
-                    <div className="bg-slate-900 border border-emerald-900/40 rounded-lg p-5">
+                    {/* KART 4: TOPLAM PAKET SAYISI */}
+                    <div className="bg-slate-900 border border-slate-800 rounded-lg p-5">
                         <div className="flex items-start justify-between mb-3">
                             <div>
-                                <p className="text-xs font-medium text-emerald-400/70 tracking-tight uppercase mb-1">
-                                    Restorana Kalan Net
+                                <p className="text-xs font-medium text-slate-500 tracking-tight uppercase mb-1">
+                                    Toplam Paket
                                 </p>
-                                <p className="text-3xl font-black text-emerald-300/90 tracking-tight">
-                                    {grandNetBalance.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
+                                <p className="text-3xl font-black text-slate-100 tracking-tight">
+                                    {grandTotalOrders}
                                 </p>
                             </div>
-                            <div className="text-emerald-900/50 text-2xl">✓</div>
+                            <div className="text-slate-700 text-2xl">📦</div>
                         </div>
                         <p className="text-xs text-slate-600 tracking-tight">
-                            (Ciro - Servis) - Ödemeler
+                            Seçili dönemdeki hacim
                         </p>
                     </div>
                 </div>
@@ -681,8 +565,7 @@ export function RestaurantsTab({
                 {/* 📝 AÇIKLAYICI NOT */}
                 <div className="mt-6 px-4 py-3 bg-slate-900 border border-slate-800 rounded-lg">
                     <p className="text-xs text-slate-600 tracking-tight">
-                        <span className="font-semibold text-slate-500">💡 Not:</span> "Yapılan Ödemeler" kartı ve liste kolonundaki "Ödemeler" <span className="text-amber-400">tüm zamanlar</span> toplamını gösterir (tarih filtresinden bağımsız). 
-                        Bugün yaptığınız ödemeler anında bu değerleri günceller. Ciro ve Servis ise seçili tarih aralığına göre hesaplanır.
+                        <span className="font-semibold text-slate-500">💡 Not:</span> <span className="text-slate-200">Bakiye</span> kolonu daima <span className="text-amber-400">tüm zamanlar</span> kümülatif durumunu gösterir. Ciro ve Servis ise seçili tarih aralığına göre hesaplanır.
                     </p>
                 </div>
 
@@ -721,7 +604,7 @@ export function RestaurantsTab({
                                                 {r.name}
                                             </button>
                                             <p className="text-xs text-slate-600 mt-1 tracking-tight">
-                                                {r.totalOrders} paket × {r.packageFee}₺
+                                                {r.period?.total_package_count || 0} paket × {r.package_fee || 0}₺
                                             </p>
                                         </div>
 
@@ -730,29 +613,25 @@ export function RestaurantsTab({
                                             <div className="text-right">
                                                 <p className="text-xs text-slate-600 tracking-tight">Ciro</p>
                                                 <p className="text-sm font-bold text-slate-300 tracking-tight">
-                                                    {r.totalRevenue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
+                                                    {(r.period?.revenue || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
                                                 </p>
                                             </div>
                                             <div className="text-right">
                                                 <p className="text-xs text-slate-600 tracking-tight">Servis</p>
                                                 <p className="text-sm font-bold text-rose-400/70 tracking-tight">
-                                                    {r.totalDebt.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
+                                                    {(r.period?.cost || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
                                                 </p>
                                             </div>
                                             <div className="text-right">
-                                                <p className="text-xs text-slate-600 tracking-tight">Ödemeler</p>
-                                                <p className="text-sm font-bold text-amber-400/70 tracking-tight">
-                                                    {r.totalPayments.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
-                                                </p>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="text-xs text-slate-600 tracking-tight">Net</p>
+                                                <p className="text-xs text-slate-600 tracking-tight">Özet Bakiye</p>
                                                 <p className={`text-sm font-bold tracking-tight ${
-                                                    r.netBalance === 0 
+                                                    (r.current_balance || 0) === 0 
                                                         ? 'text-emerald-500' 
-                                                        : 'text-emerald-400/80'
+                                                        : (r.current_balance || 0) > 0 
+                                                        ? 'text-emerald-400' 
+                                                        : 'text-rose-400'
                                                 }`}>
-                                                    {r.netBalance === 0 ? '✓ Borç Yok' : `${r.netBalance.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺`}
+                                                    {(r.current_balance || 0) === 0 ? '✓ Borç Yok' : `${(r.current_balance || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺`}
                                                 </p>
                                             </div>
                                         </div>

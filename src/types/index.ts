@@ -114,7 +114,7 @@ export interface RestaurantDebt {
     restaurant_id: number | string
     debt_date: string
     amount: number
-    remaining_amount: number
+    // remaining_amount: kaldırıldı — DB'de DROP edilmiş kolon
     status: DebtStatus
     created_at: string
 }

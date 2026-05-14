@@ -1,11 +1,6 @@
 /**
  * @file src/app/admin/components/modals/RestaurantDetailModal.tsx
- * @description Restoran Detay ve Rapor Modalı - Business Dark Theme.
- * 
- * STATELESS MODAL: Kendi tarih state'i YOK.
- * Sadece parent'tan gelen prop'ları ekrana basar.
- * Açıldığı an Supabase'den veri çeker.
- * Kapatıldığında parent state null olur → DOM'dan silinir.
+ * @description B2B SaaS Kurallarına Uygun Restoran Finans Paneli (Hero Card Mimarisi)
  */
 'use client'
 
@@ -14,568 +9,394 @@ import { Package, Restaurant } from '@/types'
 import { supabase } from '@/app/lib/supabase'
 import { formatTurkishTime } from '@/utils/dateHelpers'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
+import { getRestaurantFinancials, RestaurantFinancialsV2 } from '@/services/restaurantService'
 
 interface RestaurantDetailModalProps {
-    restaurantId: string
-    globalStartDate: string
-    globalEndDate: string
-    onClose: () => void
-    onPaymentClick: (netAmount: number) => void
-    restaurant: Restaurant
-    onRefetch?: () => void  // 🔥 Ödeme sonrası refetch callback
+  restaurantId: string
+  globalStartDate: string
+  globalEndDate: string
+  onClose: () => void
+  onPaymentClick: (guncelBakiye: number) => void
+  restaurant: Restaurant
+  onRefetch?: number 
 }
 
 export function RestaurantDetailModal({
-    restaurantId,
-    globalStartDate,
-    globalEndDate,
-    onClose,
-    onPaymentClick,
-    restaurant,
-    onRefetch
+  restaurantId,
+  globalStartDate,
+  globalEndDate,
+  onClose,
+  onPaymentClick,
+  restaurant,
+  onRefetch,
 }: RestaurantDetailModalProps) {
-    // ✅ SADECE veri state'i var - tarih state'i YOK
-    const [orders, setOrders] = useState<Package[]>([])
-    const [isLoading, setIsLoading] = useState(true)
-    
-    // 🏦 ÖDEME GEÇMİŞİ STATE'LERİ
-    const [activeTab, setActiveTab] = useState<'orders' | 'payments'>('orders')
-    const [paymentHistory, setPaymentHistory] = useState<any[]>([])
-    const [loadingPayments, setLoadingPayments] = useState(false)
+  // Sipariş listesi (Periyot Tablosu)
+  const [orders, setOrders] = useState<Package[]>([])
+  
+  // Finansal Veriler (RPC'den gelen)
+  const [financials, setFinancials] = useState<RestaurantFinancialsV2 | null>(null)
+  
+  const [isLoading, setIsLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<'orders' | 'payments'>('orders')
+  const [paymentHistory, setPaymentHistory] = useState<any[]>([])
 
-    // 📡 Veri çekme fonksiyonu - ÖNCEKİ ÖDEMELER DAHİL
-    const fetchRapor = useCallback(async (resId: string, startDate: string, endDate: string) => {
-        setIsLoading(true)
-        setLoadingPayments(true)
-        try {
-            const start = new Date(startDate)
-            start.setHours(0, 0, 0, 0)
-            const end = new Date(endDate)
-            end.setHours(23, 59, 59, 999)
+  // Veri Çekme
+  const fetchData = useCallback(async () => {
+    setIsLoading(true)
 
-            // 🔥 İKİ AYRI SORGU: Delivered ve Chargeable Cancellations
-            // 1. Teslim edilen siparişler (delivered_at ile filtrele)
-            const { data: deliveredData, error: deliveredError } = await supabase
-                .from('packages')
-                .select('*, couriers!delivered_by_courier_id(full_name)')
-                .eq('restaurant_id', resId)
-                .eq('status', 'delivered')
-                .gte('delivered_at', start.toISOString())
-                .lte('delivered_at', end.toISOString())
+    try {
+      // 1. Süper Hızlı RPC Çağrısı (Kümülatif + Periyot tek seferde)
+      const finResult = await getRestaurantFinancials(restaurantId, globalStartDate, globalEndDate)
+      if (finResult.success && finResult.data) {
+        setFinancials(finResult.data)
+      } else {
+        console.error('❌ Finansal özet hatası:', finResult.error)
+      }
 
-            if (deliveredError) throw deliveredError
+      // 2. Sadece tabloyu doldurmak için gerekli olan dönem siparişleri
+      const start = new Date(globalStartDate)
+      start.setHours(0, 0, 0, 0)
+      const end = new Date(globalEndDate)
+      end.setHours(23, 59, 59, 999)
 
-            // 2. Ücretli iptaller (created_at ile filtrele - updated_at kolonu yok!)
-            const { data: cancelledData, error: cancelledError } = await supabase
-                .from('packages')
-                .select('*, couriers!delivered_by_courier_id(full_name)')
-                .eq('restaurant_id', resId)
-                .eq('status', 'cancelled')
-                .eq('is_chargeable_cancellation', true)
-                .gte('created_at', start.toISOString())
-                .lte('created_at', end.toISOString())
+      const { data: deliveredData, error: delErr } = await supabase
+        .from('packages')
+        .select('*, couriers!delivered_by_courier_id(full_name)')
+        .eq('restaurant_id', restaurantId)
+        .eq('status', 'delivered')
+        .gte('delivered_at', start.toISOString())
+        .lte('delivered_at', end.toISOString())
 
-            if (cancelledError) throw cancelledError
+      if (delErr) throw delErr
 
-            // Birleştir ve transform et
-            const combinedData = [...(deliveredData || []), ...(cancelledData || [])]
-            const transformedData = combinedData.map((pkg: any) => ({
-                ...pkg,
-                courier_name: pkg.couriers?.full_name,
-                couriers: undefined
-            }))
+      const { data: cancelledData, error: canErr } = await supabase
+        .from('packages')
+        .select('*, couriers!delivered_by_courier_id(full_name)')
+        .eq('restaurant_id', restaurantId)
+        .eq('status', 'cancelled')
+        .eq('is_chargeable_cancellation', true)
+        .gte('created_at', start.toISOString())
+        .lte('created_at', end.toISOString())
 
-            // Tarihe göre sırala (en yeni en üstte)
-            transformedData.sort((a, b) => {
-                const dateA = new Date(a.delivered_at || a.created_at || 0).getTime()
-                const dateB = new Date(b.delivered_at || b.created_at || 0).getTime()
-                return dateB - dateA
-            })
+      if (canErr) throw canErr
 
-            setOrders(transformedData)
-            
-            // 🔥 ÖNCEKİ ÖDEMELERİ ÇEK - TÜM ZAMANLAR (FİLTREDEN BAĞIMSIZ!)
-            // Cari hesap bakiyesi her zaman GÜNCEL olmalı
-            const { data: paymentsData, error: paymentsError } = await supabase
-                .from('restaurant_payment_transactions')
-                .select('amount_paid')
-                .eq('restaurant_id', resId)
-                // ❌ TARİH FİLTRESİ YOK! Tüm ödemeleri çek
+      const combined = [
+        ...(deliveredData || []),
+        ...(cancelledData || []),
+      ]
+        .map((pkg: any) => ({
+          ...pkg,
+          courier_name: pkg.couriers?.full_name,
+          couriers: undefined,
+        }))
+        .sort(
+          (a, b) =>
+            new Date(b.delivered_at || b.created_at || 0).getTime() -
+            new Date(a.delivered_at || a.created_at || 0).getTime()
+        )
 
-            if (paymentsError) throw paymentsError
+      setOrders(combined)
+    } catch (error: any) {
+      console.error('❌ Veri hatası:', error.message)
+      setOrders([])
+    } finally {
+      setIsLoading(false)
+    }
+  }, [restaurantId, globalStartDate, globalEndDate])
 
-            const totalPaid = (paymentsData || []).reduce((sum, p) => sum + (p.amount_paid || 0), 0)
-            setOncekiOdemeler(totalPaid)
-            
-        } catch (error: any) {
-            console.error('Restoran verileri yüklenirken hata:', error.message)
-            setOrders([])
-            setOncekiOdemeler(0)
-        } finally {
-            setIsLoading(false)
-            setLoadingPayments(false)
-        }
-    }, [])
-    
-    // 🏦 ÖDEME GEÇMİŞİNİ ÇEK
-    const fetchPaymentHistory = useCallback(async (resId: string) => {
-        setLoadingPayments(true)
-        try {
-            const { data, error } = await supabase
-                .from('restaurant_payment_transactions')
-                .select('*')
-                .eq('restaurant_id', resId)
-                .order('created_at', { ascending: false })
-                .limit(50) // Son 50 ödeme
+  const fetchPaymentHistory = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('restaurant_payment_transactions')
+        .select('*')
+        .eq('restaurant_id', restaurantId)
+        .order('created_at', { ascending: false })
+        .limit(50)
 
-            if (error) throw error
-            
-            console.log('💳 ÖDEME GEÇMİŞİ:', { restaurantId: resId, count: data?.length || 0, data })
-            setPaymentHistory(data || [])
-        } catch (error: any) {
-            console.error('❌ Ödeme geçmişi yüklenemedi:', error.message)
-            setPaymentHistory([])
-        } finally {
-            setLoadingPayments(false)
-        }
-    }, [])
+      if (error) throw error
+      setPaymentHistory(data || [])
+    } catch (error: any) {
+      console.error('❌ Ödeme geçmişi hatası:', error.message)
+      setPaymentHistory([])
+    }
+  }, [restaurantId])
 
-    // 🔥 AUTO-FETCH: Modal mount olduğu an verileri çek
-    useEffect(() => {
-        if (restaurantId && globalStartDate && globalEndDate) {
-            fetchRapor(restaurantId, globalStartDate, globalEndDate)
-            fetchPaymentHistory(restaurantId) // Ödeme geçmişini de çek
-        }
-    }, [restaurantId, globalStartDate, globalEndDate, fetchRapor, fetchPaymentHistory])
-    
-    // 🔥 REFETCH: onRefetch callback değiştiğinde yeniden çek
-    useEffect(() => {
-        if (onRefetch && restaurantId && globalStartDate && globalEndDate) {
-            fetchRapor(restaurantId, globalStartDate, globalEndDate)
-            fetchPaymentHistory(restaurantId) // Ödeme geçmişini de yenile
-        }
-    }, [onRefetch])
+  useEffect(() => {
+    fetchData()
+    fetchPaymentHistory()
+  }, [fetchData, fetchPaymentHistory])
 
-    // 📊 Finansal Hesaplamalar - YENİ MİMARİ + KUTSAL AYRIM
-    const [oncekiOdemeler, setOncekiOdemeler] = useState<number>(0)
-    
-    // 🔥 KUTSAL AYRIM: Ciro vs Masraf
-    
-    // 0️⃣ TÜM GEÇERLİ PAKETLER (Delivered + Ücretli İptaller)
-    // KABAK GİBİ BOOLEAN: is_chargeable_cancellation
-    const allChargeableOrders = orders.filter(
-        o => o.status === 'delivered' || o.is_chargeable_cancellation === true
-    )
-    
-    // 1️⃣ SADECE TESLİM EDİLENLER (Ciro için)
-    const deliveredOrders = allChargeableOrders.filter(o => o.status === 'delivered')
-    
-    // 2️⃣ PAKET SAYISI: Tüm geçerli paketler (delivered + ücretli iptaller)
-    const totalOrders = allChargeableOrders.length
-    
-    // 3️⃣ BRÜT CİRO: Sadece delivered paketlerin tutarı (Restoran SADECE bundan kazanır!)
-    const brutCiro = deliveredOrders.reduce((sum, o) => sum + (o.amount || 0), 0)
-    
-    // 4️⃣ TOPLAM MASRAF: TÜM geçerli paketler (delivered + ücretli iptaller)
-    // Kurye yola çıktıysa hak eder!
-    const packageFee = restaurant.package_fee || 100
-    const toplamMasraf = allChargeableOrders.reduce((sum, pkg) => {
-        const price = (pkg as any).applied_price ?? packageFee
-        return sum + price
-    }, 0)
-    
-    // Net Hakediş: Ciro - Masraf
-    const netHakedis = brutCiro - toplamMasraf
-    
-    // 🔥 NET ÖDENMESİ GEREKEN: Net Hakediş - Önceki Ödemeler
-    const netOdenecek = netHakedis - oncekiOdemeler
+  useEffect(() => {
+    if (onRefetch !== undefined) {
+      fetchData()
+      fetchPaymentHistory()
+    }
+  }, [onRefetch])
 
-    return (
-        <div
-            className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
-            onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                onClose()
-            }}
-        >
-            <div 
-                className="bg-slate-950 border border-slate-800 rounded-xl max-w-6xl w-full max-h-[90vh] overflow-hidden shadow-2xl"
-                onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                }}
+  const guncelBakiye = financials?.current_balance ?? 0
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose() }}
+    >
+      <div
+        className="bg-slate-950 border border-slate-800 rounded-xl max-w-6xl w-full max-h-[95vh] overflow-hidden shadow-2xl flex flex-col"
+        onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
+      >
+        {/* ── Header Bar ── */}
+        <div className="flex justify-between items-center px-6 py-4 border-b border-slate-800 bg-slate-900/50">
+          <div className="flex items-center gap-4 flex-1">
+            <h3 className="text-xl font-bold text-slate-100 tracking-tight">
+              {restaurant.name} <span className="text-slate-500 font-normal">| Finans Yönetimi</span>
+            </h3>
+
+            {/* Tarih Filtresi Barı */}
+            <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-lg p-1">
+              <span className="px-3 py-1.5 text-slate-300 text-sm font-medium">
+                {globalStartDate}
+              </span>
+              <span className="text-slate-600">-</span>
+              <span className="px-3 py-1.5 text-slate-300 text-sm font-medium">
+                {globalEndDate}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); fetchData(); fetchPaymentHistory() }}
+              className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-sm border border-slate-700 transition-colors"
+              title="Yenile"
             >
-                {/* Modal Header - Business Dark */}
-                <div className="flex justify-between items-center p-6 border-b border-slate-800">
-                    <div className="flex items-center gap-4 flex-1">
-                        <h3 className="text-2xl font-bold text-slate-100 tracking-tight">
-                            {restaurant.name} - Detaylı Rapor
-                        </h3>
+              🔄
+            </button>
+          </div>
 
-                        {/* Tarih Aralığı Gösterimi - SADECE READONLY */}
-                        <div className="flex items-center gap-2">
-                            <span className="px-3 py-2 bg-slate-900 text-slate-300 rounded border border-slate-800 text-sm">
-                                {globalStartDate}
-                            </span>
-                            <span className="text-slate-600">-</span>
-                            <span className="px-3 py-2 bg-slate-900 text-slate-300 rounded border border-slate-800 text-sm">
-                                {globalEndDate}
-                            </span>
-                            
-                            {/* 🏦 Geçmiş Ödemeler Butonu */}
-                            <button
-                                type="button"
-                                onClick={(e) => {
-                                    e.preventDefault()
-                                    e.stopPropagation()
-                                    setActiveTab(activeTab === 'orders' ? 'payments' : 'orders')
-                                }}
-                                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-sm border border-slate-700 transition-colors flex items-center gap-2"
-                                title={activeTab === 'orders' ? 'Ödeme Geçmişini Göster' : 'Siparişlere Dön'}
-                            >
-                                {activeTab === 'orders' ? (
-                                    <>
-                                        <span>💳</span>
-                                        <span>Geçmiş Ödemeler</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <span>📦</span>
-                                        <span>Siparişlere Dön</span>
-                                    </>
-                                )}
-                            </button>
-                            
-                            {/* Manuel Yenile Butonu */}
-                            <button
-                                type="button"
-                                onClick={(e) => {
-                                    e.preventDefault()
-                                    e.stopPropagation()
-                                    fetchRapor(restaurantId, globalStartDate, globalEndDate)
-                                    fetchPaymentHistory(restaurantId)
-                                }}
-                                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-sm border border-slate-700 transition-colors"
-                                title="Verileri Yenile"
-                            >
-                                🔄
-                            </button>
-                        </div>
+          <button
+            type="button"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose() }}
+            className="flex items-center justify-center w-8 h-8 text-slate-500 hover:text-slate-300 hover:bg-slate-800 rounded transition-colors text-2xl font-light"
+          >
+            ×
+          </button>
+        </div>
 
-                        {/* Hesap Öde Butonu */}
-                        {orders.length > 0 && (
-                            <button
-                                type="button"
-                                onClick={(e) => {
-                                    e.preventDefault()
-                                    e.stopPropagation()
-                                    onPaymentClick(netOdenecek)
-                                }}
-                                disabled={loadingPayments || netOdenecek <= 0}
-                                className="ml-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-medium text-sm border border-emerald-500 transition-colors shadow-lg shadow-emerald-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                💰 Hesap Öde
-                            </button>
-                        )}
+        {/* ── Scrollable Content ── */}
+        <div className="overflow-y-auto flex-1 admin-scrollbar">
+          {isLoading ? (
+            <div className="text-center py-24 text-slate-500">
+              <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+              <p className="text-sm font-medium">Veriler Hesaplanıyor (RPC)...</p>
+            </div>
+          ) : (
+            <div className="p-6 space-y-6">
+              
+              {/* ── 1. DEV HERO CARD (GÜNCEL KÜMÜLATİF BAKİYE) ── */}
+              <div className={`rounded-2xl p-8 border-2 shadow-2xl relative overflow-hidden ${
+                guncelBakiye > 0 
+                  ? 'bg-gradient-to-br from-emerald-900/80 to-slate-900 border-emerald-500/50 shadow-emerald-900/20' 
+                  : guncelBakiye < 0
+                  ? 'bg-gradient-to-br from-rose-900/80 to-slate-900 border-rose-500/50 shadow-rose-900/20'
+                  : 'bg-gradient-to-br from-slate-800 to-slate-900 border-slate-700 shadow-slate-900/50'
+              }`}>
+                {/* BG Glow */}
+                <div className={`absolute top-0 right-0 w-96 h-96 bg-white opacity-[0.02] blur-3xl rounded-full translate-x-1/3 -translate-y-1/3 pointer-events-none`} />
+                
+                <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-6">
+                  <div>
+                    <h2 className="text-slate-300 font-bold tracking-widest uppercase text-sm mb-2 flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
+                      Güncel Kümülatif Bakiye
+                    </h2>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-6xl font-black text-white tracking-tighter">
+                        {Math.abs(guncelBakiye).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                      </span>
+                      <span className="text-3xl text-white/60 font-bold">₺</span>
+                    </div>
+                    <p className="text-white/60 text-sm mt-2 font-medium">
+                      {guncelBakiye > 0 
+                        ? 'Restoranın size ödemesi gereken net tutar' 
+                        : guncelBakiye < 0 
+                        ? 'Restoranın sizden alacağı tutar (Fazla ödenmiş)'
+                        : 'Hesaplar sıfırlandı, borç yok'}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col gap-3 min-w-[200px]">
+                    <button
+                      onClick={() => onPaymentClick(guncelBakiye)}
+                      className={`w-full py-4 px-6 rounded-xl font-black text-lg transition-all shadow-lg ${
+                        guncelBakiye > 0 
+                          ? 'bg-emerald-500 hover:bg-emerald-400 text-emerald-950 shadow-emerald-500/30'
+                          : 'bg-slate-100 hover:bg-white text-slate-900 shadow-white/10'
+                      }`}
+                    >
+                      💳 HESAP ÖDE
+                    </button>
+                    <div className="text-xs text-center text-white/40 font-medium">
+                      Tüm zamanların hesabı
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── 2. DÖNEM EKSTRESİ BÖLÜMÜ ── */}
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-bold text-slate-200 tracking-tight flex items-center gap-2">
+                    📅 Dönem Ekstresi
+                    <span className="text-xs font-normal text-slate-500 bg-slate-900 border border-slate-800 px-2 py-1 rounded">
+                      {globalStartDate} — {globalEndDate}
+                    </span>
+                  </h3>
+                  
+                  {/* Tab Geçişi */}
+                  <div className="flex bg-slate-900 p-1 rounded-lg border border-slate-800">
+                    <button
+                      onClick={() => setActiveTab('orders')}
+                      className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                        activeTab === 'orders' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-300'
+                      }`}
+                    >
+                      Siparişler
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('payments')}
+                      className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                        activeTab === 'payments' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-300'
+                      }`}
+                    >
+                      Ödemeler
+                    </button>
+                  </div>
+                </div>
+
+                {activeTab === 'orders' ? (
+                  <>
+                    {/* Periyot Finansal Özet Kartları */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                      <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-5">
+                        <p className="text-xs font-bold text-slate-500 tracking-widest uppercase mb-1">Dönem Cirosu</p>
+                        <p className="text-2xl font-black text-slate-200">
+                          {(financials?.period.revenue ?? 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
+                        </p>
+                        <p className="text-xs text-slate-500 mt-1">{financials?.period.delivered_count ?? 0} teslim edilen paket</p>
+                      </div>
+                      
+                      <div className="bg-rose-950/20 border border-rose-900/30 rounded-xl p-5">
+                        <p className="text-xs font-bold text-rose-500/70 tracking-widest uppercase mb-1">Dönem Masrafı</p>
+                        <p className="text-2xl font-black text-rose-400">
+                          {(financials?.period.cost ?? 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
+                        </p>
+                        <p className="text-xs text-rose-500/50 mt-1">
+                          {financials?.period.total_package_count ?? 0} paket × {financials?.package_fee ?? 0}₺
+                        </p>
+                      </div>
+
+                      <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-5">
+                        <p className="text-xs font-bold text-slate-500 tracking-widest uppercase mb-1">Net (Sadece Bu Dönem)</p>
+                        <p className="text-2xl font-black text-slate-300">
+                          {((financials?.period.revenue ?? 0) - (financials?.period.cost ?? 0)).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
+                        </p>
+                        <p className="text-xs text-slate-500 mt-1">Sadece bu tarih aralığındaki kâr</p>
+                      </div>
                     </div>
 
-                    {/* 🔥 KUSURSUZ X BUTONU - Event bubbling'i kesin engeller */}
-                    <button
-                        type="button"
-                        onClick={(e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            onClose()
-                        }}
-                        className="flex items-center justify-center w-8 h-8 ml-4 text-slate-500 hover:text-slate-300 hover:bg-slate-800 rounded transition-colors text-2xl font-light"
-                    >
-                        ×
-                    </button>
-                </div>
-
-                {/* Modal Content */}
-                <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)] admin-scrollbar">
-                    {/* Loading State */}
-                    {isLoading ? (
-                        <div className="text-center py-12 text-slate-500">
-                            <div className="text-4xl mb-2 animate-pulse">⏳</div>
-                            <p className="text-sm tracking-tight">Veriler yükleniyor...</p>
+                    {/* Sipariş Tablosu */}
+                    <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+                      {orders.length === 0 ? (
+                        <div className="text-center py-16 text-slate-500">
+                          <p>Bu tarih aralığında sipariş bulunamadı</p>
                         </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm text-left">
+                            <thead className="text-xs text-slate-400 uppercase bg-slate-950/50 border-b border-slate-800">
+                              <tr>
+                                <th className="px-6 py-4 font-medium">No</th>
+                                <th className="px-6 py-4 font-medium">Oluşturulma</th>
+                                <th className="px-6 py-4 font-medium">Müşteri</th>
+                                <th className="px-6 py-4 font-medium">Kurye</th>
+                                <th className="px-6 py-4 font-medium">Tutar</th>
+                                <th className="px-6 py-4 font-medium">Teslim Tarihi</th>
+                                <th className="px-6 py-4 font-medium text-right">Durum</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-800/50">
+                              {orders.map((order) => (
+                                <tr key={order.id} className="hover:bg-slate-800/30 transition-colors">
+                                  <td className="px-6 py-4 font-medium text-slate-300">
+                                    {order.order_number || '......'}
+                                  </td>
+                                  <td className="px-6 py-4 text-slate-400">
+                                    {formatTurkishTime(order.created_at)}
+                                  </td>
+                                  <td className="px-6 py-4 text-slate-400 truncate max-w-[120px]">{order.customer_name}</td>
+                                  <td className="px-6 py-4 text-slate-500">{order.courier_name || '-'}</td>
+                                  <td className="px-6 py-4 font-bold text-slate-300 whitespace-nowrap">{order.amount} ₺</td>
+                                  <td className="px-6 py-4 text-slate-400 whitespace-nowrap">
+                                    {order.delivered_at 
+                                      ? new Date(order.delivered_at).toLocaleString('tr-TR', {
+                                          day: '2-digit',
+                                          month: 'short',
+                                          hour: '2-digit',
+                                          minute: '2-digit',
+                                          timeZone: 'Europe/Istanbul'
+                                        }).replace(', ', ' - ')
+                                      : '-'}
+                                  </td>
+                                  <td className="px-6 py-4 text-right">
+                                    {order.status === 'cancelled' ? (
+                                      <span className="px-2 py-1 bg-rose-500/10 text-rose-400 rounded text-xs font-bold border border-rose-500/20">
+                                        İptal (Ücretli)
+                                      </span>
+                                    ) : (
+                                      <span className="px-2 py-1 bg-emerald-500/10 text-emerald-400 rounded text-xs font-bold border border-emerald-500/20">
+                                        Teslim Edildi
+                                      </span>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  /* Ödeme Geçmişi */
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+                    {paymentHistory.length === 0 ? (
+                      <div className="text-center py-16 text-slate-500">
+                        <p>Henüz ödeme kaydı bulunmuyor</p>
+                      </div>
                     ) : (
-                        <>
-                            {/* 🏦 SEKME SİSTEMİ: SİPARİŞLER / ÖDEMELER */}
-                            {activeTab === 'orders' ? (
-                                <>
-                                    {/* 📊 4'LÜ FİNANSAL KART YAPISI - ÖNCEKİ ÖDEMELER DAHİL */}
-                                    {orders.length > 0 && (
-                                <div className="mb-6">
-                                    <h4 className="text-lg font-bold mb-4 text-slate-100 tracking-tight">
-                                        💼 Finansal Özet
-                                    </h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                        {/* KART 1: BRÜT CİRO */}
-                                        <div className="bg-slate-900 border border-slate-800 rounded-lg p-5">
-                                            <div className="flex items-start justify-between mb-3">
-                                                <div>
-                                                    <p className="text-xs font-medium text-slate-500 tracking-tight uppercase mb-1">
-                                                        Brüt Ciro
-                                                    </p>
-                                                    <p className="text-2xl font-black text-slate-100 tracking-tight">
-                                                        {brutCiro.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
-                                                    </p>
-                                                </div>
-                                                <div className="text-slate-700 text-2xl">💰</div>
-                                            </div>
-                                            <p className="text-xs text-slate-600 tracking-tight">
-                                                Toplam paket tutarı
-                                            </p>
-                                        </div>
-
-                                        {/* KART 2: TOPLAM MASRAF (Rose) */}
-                                        <div className="bg-slate-900 border border-rose-900/30 rounded-lg p-5">
-                                            <div className="flex items-start justify-between mb-3">
-                                                <div>
-                                                    <p className="text-xs font-medium text-rose-400/70 tracking-tight uppercase mb-1">
-                                                        Toplam Masraf
-                                                    </p>
-                                                    <p className="text-2xl font-black text-rose-300/90 tracking-tight">
-                                                        {toplamMasraf.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
-                                                    </p>
-                                                </div>
-                                                <div className="text-rose-900/50 text-2xl">📦</div>
-                                            </div>
-                                            <p className="text-xs text-slate-600 tracking-tight">
-                                                {totalOrders} Paket × Dinamik Ücret
-                                            </p>
-                                        </div>
-
-                                        {/* KART 3: ÖNCEKİ ÖDEMELER (Amber) */}
-                                        <div className="bg-slate-900 border border-amber-900/30 rounded-lg p-5">
-                                            <div className="flex items-start justify-between mb-3">
-                                                <div>
-                                                    <p className="text-xs font-medium text-amber-400/70 tracking-tight uppercase mb-1">
-                                                        Önceki Ödemeler
-                                                    </p>
-                                                    <p className="text-2xl font-black text-amber-300/90 tracking-tight">
-                                                        {loadingPayments ? '...' : oncekiOdemeler.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
-                                                    </p>
-                                                </div>
-                                                <div className="text-amber-900/50 text-2xl">💳</div>
-                                            </div>
-                                            <p className="text-xs text-amber-400/60 tracking-tight">
-                                                Tüm zamanlar toplamı
-                                            </p>
-                                        </div>
-
-                                        {/* KART 4: NET ÖDENMESİ GEREKEN (Emerald - DEVASA) */}
-                                        <div className="bg-gradient-to-br from-emerald-900/40 to-emerald-950/40 border-2 border-emerald-500/30 rounded-lg p-5 shadow-xl shadow-emerald-900/20">
-                                            <div className="flex items-start justify-between mb-3">
-                                                <div>
-                                                    <p className="text-xs font-medium text-emerald-400/70 tracking-tight uppercase mb-1">
-                                                        Net Ödenecek
-                                                    </p>
-                                                    <p className="text-3xl font-black text-emerald-300 tracking-tight">
-                                                        {loadingPayments ? '...' : netOdenecek.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
-                                                    </p>
-                                                </div>
-                                                <div className="text-emerald-900/50 text-2xl">✓</div>
-                                            </div>
-                                            <p className="text-xs text-emerald-400/60 tracking-tight">
-                                                Hakediş - Ödemeler
-                                            </p>
-                                        </div>
-                                    </div>
-                                    
-                                    {/* 📝 AÇIKLAYICI NOT */}
-                                    <div className="mt-4 px-4 py-3 bg-slate-900 border border-slate-800 rounded-lg">
-                                        <p className="text-xs text-slate-500 tracking-tight">
-                                            <span className="font-semibold text-slate-400">💡 Not:</span> "Önceki Ödemeler" kartı <span className="text-amber-400">tüm zamanlar</span> toplamını gösterir (tarih filtresinden bağımsız). 
-                                            Bugün yaptığınız ödemeler anında bu kartı günceller. Ciro ve Masraf ise seçili tarih aralığına göre hesaplanır.
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Sipariş Detay Tablosu - Business Dark */}
+                      <div className="divide-y divide-slate-800/50">
+                        {paymentHistory.map((payment) => (
+                          <div key={payment.id} className="p-6 flex justify-between items-center hover:bg-slate-800/30">
                             <div>
-                                <h4 className="text-lg font-bold mb-4 text-slate-100 tracking-tight">
-                                    Sipariş Detayları
-                                </h4>
-                                {orders.length === 0 ? (
-                                    <div className="text-center py-12 text-slate-600">
-                                        <div className="text-4xl mb-2 opacity-30">📭</div>
-                                        <p className="text-sm tracking-tight">Bu tarih aralığında sipariş bulunamadı</p>
-                                    </div>
-                                ) : (
-                                    <div className="overflow-x-auto admin-scrollbar">
-                                        <table className="w-full text-sm">
-                                            <thead>
-                                                <tr className="border-b border-slate-800 bg-slate-900">
-                                                    <th className="text-left py-3 px-4 font-semibold text-slate-400 tracking-tight">Sipariş No</th>
-                                                    <th className="text-left py-3 px-4 font-semibold text-slate-400 tracking-tight">Tarih/Saat</th>
-                                                    <th className="text-left py-3 px-4 font-semibold text-slate-400 tracking-tight">Müşteri</th>
-                                                    <th className="text-left py-3 px-4 font-semibold text-slate-400 tracking-tight">Kurye</th>
-                                                    <th className="text-left py-3 px-4 font-semibold text-slate-400 tracking-tight">Tutar</th>
-                                                    <th className="text-left py-3 px-4 font-semibold text-slate-400 tracking-tight">Ödeme</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-slate-800">
-                                                {orders.map((order) => (
-                                                    <tr key={order.id} className="hover:bg-slate-900/50 transition-colors">
-                                                        <td className="py-3 px-4">
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="font-bold text-slate-300 tracking-tight">
-                                                                    {order.order_number || '......'}
-                                                                </span>
-                                                                {order.platform && (
-                                                                    <span className={`text-xs py-0.5 px-2 rounded ${getPlatformBadgeClass(order.platform)}`}>
-                                                                        {getPlatformDisplayName(order.platform)}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </td>
-                                                        <td className="py-3 px-4">
-                                                            <div className="text-sm">
-                                                                <div className="font-medium text-slate-400 tracking-tight">
-                                                                    {formatTurkishTime(order.delivered_at)}
-                                                                </div>
-                                                                <div className="text-slate-600 text-xs tracking-tight">
-                                                                    {order.delivered_at ? new Date(order.delivered_at).toLocaleDateString('tr-TR') : '-'}
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                        <td className="py-3 px-4 font-medium text-slate-400 tracking-tight">
-                                                            {order.customer_name}
-                                                        </td>
-                                                        <td className="py-3 px-4 text-slate-500 tracking-tight">
-                                                            {order.courier_name || 'Bilinmeyen'}
-                                                        </td>
-                                                        <td className="py-3 px-4">
-                                                            <span className="font-bold text-slate-300 tracking-tight">
-                                                                {order.amount} ₺
-                                                            </span>
-                                                        </td>
-                                                        <td className="py-3 px-4">
-                                                            <span className={`px-2 py-1 rounded text-xs font-medium tracking-tight ${order.payment_method === 'cash'
-                                                                ? 'bg-green-900/30 text-green-400/80 border border-green-900/50'
-                                                                : 'bg-orange-900/30 text-orange-400/80 border border-orange-900/50'
-                                                                }`}>
-                                                                {order.payment_method === 'cash' ? '💵 Nakit' : '💳 Kart'}
-                                                            </span>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                )}
+                              <p className="font-medium text-slate-300">
+                                {new Date(payment.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                              </p>
+                              {payment.notes && <p className="text-sm text-slate-500 mt-1">{payment.notes}</p>}
                             </div>
-                        </>
-                    ) : (
-                        /* 🏦 ÖDEME GEÇMİŞİ SEKMESİ - BANKA EKSTRESİ GİBİ */
-                        <div>
-                            <h4 className="text-lg font-bold mb-4 text-slate-100 tracking-tight">
-                                💳 Ödeme Geçmişi
-                            </h4>
-                            
-                            {loadingPayments ? (
-                                <div className="text-center py-12 text-slate-500">
-                                    <div className="text-4xl mb-2 animate-pulse">⏳</div>
-                                    <p className="text-sm tracking-tight">Ödeme geçmişi yükleniyor...</p>
-                                </div>
-                            ) : paymentHistory.length === 0 ? (
-                                /* BOŞDURUMU */
-                                <div className="text-center py-16 text-slate-600">
-                                    <div className="text-6xl mb-4 opacity-20">🧾</div>
-                                    <p className="text-sm tracking-tight">
-                                        Bu restorana ait henüz bir ödeme kaydı bulunmamaktadır.
-                                    </p>
-                                </div>
-                            ) : (
-                                /* ÖDEME LİSTESİ - BANKA EKSTRESİ TARZI */
-                                <div className="space-y-0 border border-slate-800 rounded-lg overflow-hidden">
-                                    {paymentHistory.map((payment, index) => {
-                                        const paymentDate = new Date(payment.created_at)
-                                        const formattedDate = paymentDate.toLocaleDateString('tr-TR', {
-                                            day: 'numeric',
-                                            month: 'long',
-                                            year: 'numeric'
-                                        })
-                                        const formattedTime = paymentDate.toLocaleTimeString('tr-TR', {
-                                            hour: '2-digit',
-                                            minute: '2-digit'
-                                        })
-                                        
-                                        return (
-                                            <div
-                                                key={payment.id}
-                                                className={`flex items-center justify-between px-6 py-4 hover:bg-slate-900/50 transition-colors ${
-                                                    index !== paymentHistory.length - 1 ? 'border-b border-slate-800' : ''
-                                                }`}
-                                            >
-                                                {/* Sol: Tarih ve Saat */}
-                                                <div className="flex-1">
-                                                    <div className="text-sm font-medium text-slate-300 tracking-tight">
-                                                        {formattedDate}
-                                                    </div>
-                                                    <div className="text-xs text-slate-600 tracking-tight mt-0.5">
-                                                        {formattedTime}
-                                                    </div>
-                                                    {payment.notes && (
-                                                        <div className="text-xs text-slate-500 tracking-tight mt-1">
-                                                            {payment.notes}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                
-                                                {/* Orta: Finansal Detaylar (Varsa) */}
-                                                {(payment.brut_ciro || payment.toplam_masraf || payment.net_hakedis) && (
-                                                    <div className="flex items-center gap-6 mr-6 text-xs">
-                                                        {payment.brut_ciro > 0 && (
-                                                            <div className="text-center">
-                                                                <div className="text-slate-600">Ciro</div>
-                                                                <div className="text-slate-400 font-medium">
-                                                                    {payment.brut_ciro.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                        {payment.toplam_masraf > 0 && (
-                                                            <div className="text-center">
-                                                                <div className="text-slate-600">Masraf</div>
-                                                                <div className="text-rose-400/70 font-medium">
-                                                                    {payment.toplam_masraf.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                        {payment.package_count > 0 && (
-                                                            <div className="text-center">
-                                                                <div className="text-slate-600">Paket</div>
-                                                                <div className="text-slate-400 font-medium">
-                                                                    {payment.package_count}
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
-                                                
-                                                {/* Sağ: Ödenen Tutar - YEŞIL VURGU */}
-                                                <div className="text-right">
-                                                    <div className="text-2xl font-black text-emerald-400 tracking-tight">
-                                                        + {payment.amount_paid.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                            )}
-                        </div>
+                            <div className="text-2xl font-black text-emerald-400">
+                              + {payment.amount_paid.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     )}
-                        </>
-                    )}
-                </div>
+                  </div>
+                )}
+              </div>
+              
             </div>
+          )}
         </div>
-    )
+      </div>
+    </div>
+  )
 }

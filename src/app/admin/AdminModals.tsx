@@ -17,7 +17,6 @@ import { RestaurantDetailModal } from './components/modals/RestaurantDetailModal
 import { EndOfDayModalNew } from './components/modals/EndOfDayModalNew'
 import { PayDebtModal } from './components/modals/PayDebtModal'
 import { RestaurantPaymentModal } from './components/modals/RestaurantPaymentModal'
-import { RestaurantDebtPayModal } from './components/modals/RestaurantDebtPayModal'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '../lib/platformUtils'
 import { calculateCashSummary, calculateRestaurantSummary } from '@/utils/adminCalculations'
 import { useAdminCourierModal } from './hooks/useAdminCourierModal'
@@ -155,8 +154,8 @@ export function AdminModals() {
           globalStartDate={globalDates.start}
           globalEndDate={globalDates.end}
           onClose={closeModal}
-          onPaymentClick={(netAmount) => {
-            restaurantModal.setNetAmountToPay(netAmount)
+          onPaymentClick={(guncelBakiye) => {
+            restaurantModal.setGuncelBakiye(guncelBakiye)
             restaurantModal.setShowRestaurantPaymentModal(true)
           }}
           restaurant={restaurant}
@@ -172,29 +171,13 @@ export function AdminModals() {
           onClose={() => restaurantModal.setShowRestaurantPaymentModal(false)}
           restaurant={restaurant}
           selectedRestaurantId={restaurantId}
-          netAmountToPay={restaurantModal.netAmountToPay}
+          guncelBakiye={restaurantModal.guncelBakiye}
           restaurantPaymentAmount={restaurantModal.restaurantPaymentAmount}
           setRestaurantPaymentAmount={restaurantModal.setRestaurantPaymentAmount}
           onConfirm={restaurantModal.handleRestaurantPayment}
           processing={restaurantModal.restaurantPaymentProcessing}
-          restaurantDebts={restaurantModal.restaurantDebts}
-          loadingDebts={restaurantModal.loadingRestaurantDebts}
         />
       )}
-
-      {/* Restaurant Debt Pay Modal */}
-      <RestaurantDebtPayModal
-        show={restaurantModal.showRestaurantDebtPayModal}
-        onClose={() => restaurantModal.setShowRestaurantDebtPayModal(false)}
-        restaurant={restaurant}
-        selectedRestaurantId={restaurantId}
-        restaurantDebtPayAmount={restaurantModal.restaurantDebtPayAmount}
-        setRestaurantDebtPayAmount={restaurantModal.setRestaurantDebtPayAmount}
-        onConfirm={restaurantModal.handleRestaurantDebtPayment}
-        processing={restaurantModal.restaurantDebtPayProcessing}
-        restaurantDebts={restaurantModal.restaurantDebts}
-        loadingDebts={restaurantModal.loadingRestaurantDebts}
-      />
     </>
   )
 }
