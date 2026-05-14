@@ -6,7 +6,7 @@ import KanbanBoard from './KanbanBoard'
 import NewOrderModal from './NewOrderModal'
 import PullToRefresh from '@/components/PullToRefresh'
 import { Package, Courier } from '@/types'
-import { formatTurkishTime } from '@/utils/dateHelpers'
+import { formatTurkishTime, formatShortDateTime } from '@/utils/dateHelpers'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
 import { useRestaurantReminder } from '@/hooks/useRestaurantReminder'
 
@@ -683,14 +683,14 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                         </div>
 
                         {/* Sağ Taraf - Tutar ve Tarih */}
-                        <div className="text-right min-w-[150px]">
+                        <div className="text-right min-w-[160px] flex flex-col justify-between">
                           <p className={`text-2xl font-bold mb-2 ${darkMode ? 'text-green-400' : 'text-green-600'}`}>
                             {pkg.amount}₺
                           </p>
-                          <div className={`text-xs space-y-1 ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
-                            <p>🕐 Oluşturulma: {formatTurkishTime(pkg.created_at)}</p>
+                          <div className={`text-[10px] sm:text-xs space-y-1 font-medium ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                            <p className="whitespace-nowrap">🕐 Oluşturulma: {formatShortDateTime(pkg.created_at)}</p>
                             {pkg.delivered_at && (
-                              <p>✅ Teslim: {formatTurkishTime(pkg.delivered_at)}</p>
+                              <p className="whitespace-nowrap font-bold text-green-500/80">✅ Teslim: {formatShortDateTime(pkg.delivered_at)}</p>
                             )}
                           </div>
                         </div>
@@ -834,14 +834,14 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                         </div>
 
                         {/* Sağ Taraf - Tutar ve Tarih */}
-                        <div className="text-right min-w-[150px]">
+                        <div className="text-right min-w-[160px] flex flex-col justify-between">
                           <p className={`text-2xl font-bold mb-2 ${darkMode ? 'text-red-400' : 'text-red-600'}`}>
                             {pkg.amount}₺
                           </p>
-                          <div className={`text-xs space-y-1 ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
-                            <p>🕐 Oluşturulma: {formatTurkishTime(pkg.created_at)}</p>
+                          <div className={`text-[10px] sm:text-xs space-y-1 font-medium ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                            <p className="whitespace-nowrap">🕐 Oluşturulma: {formatShortDateTime(pkg.created_at)}</p>
                             {pkg.cancelled_at && (
-                              <p>❌ İptal: {formatTurkishTime(pkg.cancelled_at)}</p>
+                              <p className="whitespace-nowrap font-bold text-red-500/80">❌ İptal: {formatShortDateTime(pkg.cancelled_at)}</p>
                             )}
                           </div>
                         </div>

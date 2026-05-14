@@ -84,6 +84,41 @@ export function formatTurkishDateTime(dateString?: string | null): string {
 }
 
 /**
+ * Türkiye saatine göre kısa tarih ve saat formatlar (Örn: 11 May - 17:40)
+ */
+export function formatShortDateTime(dateString?: string | null): string {
+    if (!dateString) return '-'
+
+    try {
+        const date = new Date(dateString)
+        
+        if (isNaN(date.getTime())) {
+            console.warn('⚠️ Geçersiz tarih:', dateString)
+            return '-'
+        }
+        
+        // Gün ve Ay İsmi (Örn: 11 May)
+        const datePart = date.toLocaleDateString('tr-TR', {
+            day: 'numeric',
+            month: 'short',
+            timeZone: 'Europe/Istanbul'
+        })
+
+        // Saat:Dakika (Örn: 17:40)
+        const timePart = date.toLocaleTimeString('tr-TR', {
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: 'Europe/Istanbul'
+        })
+
+        return `${datePart} - ${timePart}`
+    } catch (error) {
+        console.error('❌ Tarih formatlama hatası:', error, dateString)
+        return '-'
+    }
+}
+
+/**
  * Teslimat süresini dakika cinsinden hesaplar
  */
 export function calculateDeliveryDuration(pickedUpAt?: string, deliveredAt?: string): number | null {
