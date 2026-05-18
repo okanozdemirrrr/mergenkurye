@@ -9,6 +9,7 @@ import { Package, Courier } from '@/types'
 import { formatTurkishTime, formatShortDateTime } from '@/utils/dateHelpers'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
 import { useRestaurantReminder } from '@/hooks/useRestaurantReminder'
+import { useRestoran } from '../RestoranProvider'
 
 interface Restaurant {
   id: string
@@ -29,9 +30,11 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
   const [deliveredPackages, setDeliveredPackages] = useState<Package[]>([])
   const [couriers, setCouriers] = useState<Courier[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [showNewOrderModal, setShowNewOrderModal] = useState(false)
+  const { showNewOrderModal, setShowNewOrderModal } = useRestoran()
   const [successMessage, setSuccessMessage] = useState('')
   const [activeTab, setActiveTab] = useState<'active' | 'delivered' | 'cancelled'>('active')
+  const [displayLimit, setDisplayLimit] = useState(50) // 🎯 Teslim edilenler listesi gösterim limiti
+  const [currentPage, setCurrentPage] = useState(0) // 🎯 Teslim edilenler listesi sayfa numarası (0'dan başlar)
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [cancelledPackages, setCancelledPackages] = useState<Package[]>([])
@@ -43,6 +46,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
   // Günlük finansal özet state'leri
   const [todayStats, setTodayStats] = useState({
     packageCount: 0,
+    chargeableCount: 0, // Teslim Edilen + Ücretli İptal Sayısı
     packageFee: 0,
     totalRevenue: 0,
     netRevenue: 0,
@@ -193,6 +197,11 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
           query = query.lte('delivered_at', endDateTime.toISOString())
         }
 
+        // Sayfalama optimizasyonu - SQL seviyesinde kısıtlama (range)
+        const fromOffset = currentPage * displayLimit
+        const toOffset = (currentPage + 1) * displayLimit - 1
+        query = query.range(fromOffset, toOffset)
+
         const { data, error } = await query
 
         if (error) throw error
@@ -231,7 +240,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
         setIsLoading(false)
       }
     }
-  }, [restaurantId, activeTab, startDate, endDate, packages.length])
+  }, [restaurantId, activeTab, startDate, endDate, packages.length, displayLimit, currentPage])
 
   const fetchCouriers = useCallback(async () => {
     try {
@@ -248,6 +257,10 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
   }, [])
 
   const fetchTodayStats = useCallback(async () => {
+    // 📌 VERİTABANI STATÜ AYARLARI (Gerektiğinde buradan manuel güncelleyebilirsiniz)
+    const CHARGED_CANCEL_STATUS = 'cancelled' // Ücretli iptal için status değeri
+    const IS_CHARGEABLE_COLUMN = 'is_chargeable_cancellation' // Ücretli olduğunu belirten boolean kolon
+
     try {
       const todayStart = new Date()
       todayStart.setHours(0, 0, 0, 0)
@@ -261,19 +274,25 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
 
       if (restaurantError) throw restaurantError
 
+      // Hem teslim edilen hem de ücretli iptal edilen paketleri çek
       const { data, error } = await supabase
         .from('packages')
-        .select('amount, applied_price')
+        .select(`amount, applied_price, status, ${IS_CHARGEABLE_COLUMN}`)
         .eq('restaurant_id', restaurantId)
-        .eq('status', 'delivered')
+        .or(`status.eq.delivered,and(status.eq.${CHARGED_CANCEL_STATUS},${IS_CHARGEABLE_COLUMN}.eq.true)`)
         .gte('delivered_at', todayStart.toISOString())
 
       if (error) throw error
 
-      const packageCount = data?.length || 0
-      const totalRevenue = data?.reduce((sum, pkg) => sum + (pkg.amount || 0), 0) || 0
+      // Bugünkü paket sayısı ve ciroyu sadece başarılı teslimatlardan hesapla
+      const deliveredPackages = data?.filter(pkg => pkg.status === 'delivered') || []
+      const packageCount = deliveredPackages.length
+      const totalRevenue = deliveredPackages.reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
       
-      // 2. DASHBOARD MATH: applied_price toplamı (fallback: restaurant.package_fee)
+      // Toplam ücretlendirilen paket sayısı (Başarılı Teslimat + Ücretli İptaller)
+      const chargeableCount = data?.length || 0
+      
+      // Toplam Masraf (Paket Masrafı): Hem teslim edilenler hem de ücretlendirilen iptaller dahildir!
       const fallbackPrice = restaurantData?.package_fee || PACKAGE_FEE
       const calculatedTotalCost = data?.reduce((sum, pkg) => {
         const price = pkg.applied_price ?? fallbackPrice
@@ -284,6 +303,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
         restaurantId,
         todayStart: todayStart.toISOString(),
         packageCount,
+        chargeableCount,
         totalRevenue,
         fallbackPrice,
         calculatedTotalCost,
@@ -295,6 +315,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
 
       setTodayStats({
         packageCount,
+        chargeableCount,
         packageFee: calculatedTotalCost,
         totalRevenue,
         netRevenue,
@@ -324,6 +345,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
   const handleApplyFilter = useCallback(() => {
     setStartDate(tempStartDate)
     setEndDate(tempEndDate)
+    setCurrentPage(0) // Filtre uygulandığında sayfayı sıfırla
   }, [tempStartDate, tempEndDate])
 
   const handleClearFilter = useCallback(() => {
@@ -331,33 +353,20 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
     setTempEndDate('')
     setStartDate('')
     setEndDate('')
+    setCurrentPage(0) // Filtre temizlendiğinde sayfayı sıfırla
   }, [])
 
-  // Sekme değiştiğinde paketleri yeniden yükle (SADECE activeTab ve gerçek startDate/endDate değiştiğinde)
+  // Sekme, limit veya sayfa değiştiğinde paketleri yeniden yükle
   useEffect(() => {
     fetchPackages()
-  }, [activeTab, startDate, endDate, fetchPackages])
+  }, [activeTab, startDate, endDate, displayLimit, currentPage, fetchPackages])
 
   return (
-    <PullToRefresh onRefresh={handleRefresh} darkMode={darkMode}>
-      <div className={`min-h-screen py-6 px-4 ${darkMode ? 'bg-slate-950' : 'bg-gray-100'}`}>
-      {/* Dark Mode Toggle */}
-      <button
-        onClick={() => setDarkMode(!darkMode)}
-        className={`fixed bottom-6 right-6 p-3 rounded-full shadow-xl transition-all hover:scale-110 border z-50 ${
-          darkMode 
-            ? 'bg-slate-800 hover:bg-slate-700 text-white border-slate-600' 
-            : 'bg-white hover:bg-gray-50 text-gray-900 border-gray-300'
-        }`}
-        title={darkMode ? 'Gündüz Modu' : 'Gece Modu'}
-      >
-        <span className="text-xl">{darkMode ? '☀️' : '🌙'}</span>
-      </button>
-
+    <>
       {/* Floating Action Button - Yeni Sipariş */}
       <button
         onClick={() => setShowNewOrderModal(true)}
-        className="fixed bottom-6 left-6 p-4 bg-orange-600 hover:bg-orange-700 text-white rounded-full shadow-2xl transition-all hover:scale-110 z-50 group"
+        className="fixed bottom-6 left-6 p-4 bg-orange-600 hover:bg-orange-700 text-white rounded-full shadow-2xl transition-all hover:scale-110 z-[9999] group"
         title="Yeni Sipariş"
       >
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -368,6 +377,9 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
           YENİ
         </span>
       </button>
+
+      <PullToRefresh onRefresh={handleRefresh} darkMode={darkMode}>
+        <div className={`min-h-screen py-6 px-4 ${darkMode ? 'bg-slate-950' : 'bg-gray-100'}`}>
 
       <div className="max-w-7xl mx-auto">
         {/* Header */}
@@ -382,7 +394,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
           {/* Tab Buttons */}
           <div className="flex justify-center gap-2 mt-4 flex-wrap">
             <button
-              onClick={() => setActiveTab('active')}
+              onClick={() => { setActiveTab('active'); setCurrentPage(0); }}
               className={`text-sm px-3 py-2 md:text-base md:px-6 md:py-2 rounded-lg font-semibold transition-all ${
                 activeTab === 'active'
                   ? darkMode
@@ -396,7 +408,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
               📦 Aktif Siparişler
             </button>
             <button
-              onClick={() => setActiveTab('delivered')}
+              onClick={() => { setActiveTab('delivered'); setCurrentPage(0); }}
               className={`text-sm px-3 py-2 md:text-base md:px-6 md:py-2 rounded-lg font-semibold transition-all ${
                 activeTab === 'delivered'
                   ? darkMode
@@ -410,7 +422,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
               ✅ Teslim Edilenler
             </button>
             <button
-              onClick={() => setActiveTab('cancelled')}
+              onClick={() => { setActiveTab('cancelled'); setCurrentPage(0); }}
               className={`text-sm px-3 py-2 md:text-base md:px-6 md:py-2 rounded-lg font-semibold transition-all ${
                 activeTab === 'cancelled'
                   ? darkMode
@@ -478,7 +490,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                     </p>
                   )}
                   <p className={`text-xs mt-0.5 ${darkMode ? 'text-slate-500' : 'text-gray-500'}`}>
-                    {todayStats.packageCount} × {restaurant?.package_fee || PACKAGE_FEE}₺
+                    {todayStats.chargeableCount} × {restaurant?.package_fee || PACKAGE_FEE}₺
                   </p>
                 </div>
                 <div className="text-3xl opacity-20">💸</div>
@@ -621,7 +633,20 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                   <p className="text-sm">Teslim edilmiş sipariş bulunmuyor</p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <>
+                  {/* 💡 Yön Tuşları Bilgilendirme Kutusu */}
+                  <div className={`mb-4 p-4 rounded-xl border flex items-center gap-3 transition-all duration-300 ${
+                    darkMode 
+                      ? 'bg-blue-950/20 border-blue-900/40 text-blue-300 shadow-lg shadow-blue-950/10' 
+                      : 'bg-blue-50 border-blue-150 text-blue-850 shadow-sm'
+                  }`}>
+                    <span className="text-xl shrink-0">💡</span>
+                    <p className="text-xs sm:text-sm font-semibold tracking-wide leading-relaxed">
+                      Paketlerinizin tamamına ulaşmak için en aşağıdan yön tuşlarını kullanabilirsiniz.
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
                   {deliveredPackages.map((pkg: any) => (
                     <div
                       key={pkg.id}
@@ -698,6 +723,84 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                     </div>
                   ))}
                 </div>
+
+                {/* 🎯 Sayfalama ve Limit Seçici Buton Grubu */}
+                  <div className="flex flex-col items-center justify-center mt-8 pt-6 border-t border-dashed border-slate-700/30">
+                    <p className={`text-xs font-semibold mb-3 tracking-wider uppercase ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                      Sipariş Gösterimi (Sayfa {currentPage + 1})
+                    </p>
+                    <div className="flex items-center gap-3 flex-wrap justify-center">
+                      {/* Sol Yön Tuşu */}
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
+                        disabled={currentPage === 0}
+                        className={`p-2.5 rounded-lg border transition-all duration-200 ${
+                          currentPage === 0
+                            ? 'opacity-40 cursor-not-allowed border-slate-800 text-slate-500'
+                            : darkMode
+                            ? 'bg-slate-800 hover:bg-slate-750 text-white border-slate-700 hover:scale-105 active:scale-95'
+                            : 'bg-white hover:bg-gray-100 text-gray-800 border-gray-300 hover:scale-105 active:scale-95 shadow-sm'
+                        }`}
+                        title="Önceki Sayfa"
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                      </button>
+
+                      {/* Limit Seçim Butonları */}
+                      <div className={`flex items-center gap-2 p-1.5 rounded-xl border ${
+                        darkMode 
+                          ? 'bg-slate-950/40 border-slate-800' 
+                          : 'bg-gray-100 border-gray-200'
+                      }`}>
+                        {[50, 100, 200, 500].map((limit) => (
+                          <button
+                            key={limit}
+                            onClick={() => {
+                              setDisplayLimit(limit)
+                              setCurrentPage(0)
+                            }}
+                            className={`px-5 py-2 text-sm font-bold rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 ${
+                              displayLimit === limit
+                                ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/30'
+                                : darkMode
+                                ? 'bg-slate-800 hover:bg-slate-750 text-slate-300'
+                                : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                            }`}
+                          >
+                            {limit}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Sağ Yön Tuşu */}
+                      <button
+                        onClick={() => setCurrentPage(prev => prev + 1)}
+                        disabled={deliveredPackages.length < displayLimit}
+                        className={`p-2.5 rounded-lg border transition-all duration-200 ${
+                          deliveredPackages.length < displayLimit
+                            ? 'opacity-40 cursor-not-allowed border-slate-800 text-slate-500'
+                            : darkMode
+                            ? 'bg-slate-800 hover:bg-slate-750 text-white border-slate-700 hover:scale-105 active:scale-95'
+                            : 'bg-white hover:bg-gray-100 text-gray-800 border-gray-300 hover:scale-105 active:scale-95 shadow-sm'
+                        }`}
+                        title="Sonraki Sayfa"
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                      </button>
+                    </div>
+
+                    {/* Gösterilen Aralık Bilgisi */}
+                    {deliveredPackages.length > 0 && (
+                      <p className={`text-xs mt-3 font-semibold ${darkMode ? 'text-slate-500' : 'text-gray-500'}`}>
+                        Gösterilen: {currentPage * displayLimit + 1} - {currentPage * displayLimit + deliveredPackages.length} arası siparişler
+                      </p>
+                    )}
+                  </div>
+                </>
               )}
             </div>
           </div>
@@ -866,5 +969,6 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
       </div>
       </div>
     </PullToRefresh>
+  </>
   )
 }

@@ -61,6 +61,7 @@ export interface Package {
     longitude?: number | null
     delivered_by_courier_id?: string | null
     is_paid_to_courier?: boolean
+    is_paid_to_restaurant?: boolean
     is_chargeable_cancellation?: boolean
 }
 
@@ -244,3 +245,20 @@ export interface NotificationState {
 }
 
 export type NotificationPermission = 'default' | 'granted' | 'denied'
+
+// ============================================
+// 👤 MÜŞTERİ (CUSTOMER) TİPLERİ
+// ============================================
+
+export interface Customer {
+    id: string
+    full_name: string
+    phone: string
+    address: string
+    restaurant_id: string | number
+    district?: string
+    neighborhood?: string
+    street_address?: string
+    floor?: string
+    door_number?: string
+}

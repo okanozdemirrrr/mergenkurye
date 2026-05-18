@@ -10,6 +10,7 @@ import Link from 'next/link'
 import { App } from '@capacitor/app'
 import { supabase } from '../lib/supabase'
 import { RestoranProvider, useRestoran } from './RestoranProvider'
+import CallerIdListener from './components/CallerIdListener'
 
 const LOGIN_STORAGE_KEY = 'restoran_logged_in'
 const LOGIN_RESTAURANT_ID_KEY = 'restoran_logged_restaurant_id'
@@ -119,7 +120,7 @@ export default function RestoranLayout({ children }: { children: React.ReactNode
     e.preventDefault()
 
     const restaurant = restaurants.find(
-      r => r.name === loginForm.username && r.password === loginForm.password
+      r => r.name.trim() === loginForm.username.trim() && r.password.trim() === loginForm.password.trim()
     )
 
     if (restaurant) {
@@ -157,13 +158,16 @@ export default function RestoranLayout({ children }: { children: React.ReactNode
             <img src="/logo.png" alt="Logo" className="w-64 h-64 mx-auto mb-4" />
             <h1 className="text-2xl font-bold text-white mb-2">Restoran Girişi</h1>
           </div>
-          <input
-            type="text"
-            placeholder="Restoran Adı"
-            className="w-full p-3 mb-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors"
+          <select
+            className="w-full p-3 mb-3 bg-slate-800 border border-slate-700 rounded-lg text-white outline-none focus:border-orange-500 transition-colors"
             value={loginForm.username}
             onChange={e => setLoginForm({ ...loginForm, username: e.target.value })}
-          />
+          >
+            <option value="">Restoran Seçin</option>
+            {restaurants.map(r => (
+              <option key={r.id} value={r.name}>{r.name}</option>
+            ))}
+          </select>
           <input
             type="password"
             placeholder="Şifre"
@@ -219,6 +223,7 @@ function RestoranContent({ children, pathname }: { children: React.ReactNode, pa
       )}
 
       <RestoranMessages />
+      <CallerIdListener />
       <MenuSidebar showMenu={showMenu} setShowMenu={setShowMenu} isActive={isActive} />
       {children}
     </>

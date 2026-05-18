@@ -6,6 +6,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
+import { Customer } from '@/types'
 
 interface Package {
   id: number
@@ -31,6 +32,8 @@ interface Package {
   applied_price?: number | null
 }
 
+
+
 interface Restaurant {
   id: string
   name: string
@@ -46,10 +49,13 @@ interface RestoranContextType {
   restaurantId: string | null
   restaurant: Restaurant | null
   packages: Package[]
-  successMessage: string
   errorMessage: string
+  showNewOrderModal: boolean
+  cidCustomer: Customer | null
   setSuccessMessage: (msg: string) => void
   setErrorMessage: (msg: string) => void
+  setShowNewOrderModal: (show: boolean) => void
+  setCidCustomer: (customer: Customer | null) => void
   fetchPackages: () => Promise<void>
 }
 
@@ -61,6 +67,8 @@ export function RestoranProvider({ children }: { children: ReactNode }) {
   const [packages, setPackages] = useState<Package[]>([])
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
+  const [showNewOrderModal, setShowNewOrderModal] = useState(false)
+  const [cidCustomer, setCidCustomer] = useState<Customer | null>(null)
 
   useEffect(() => {
     const storedId = localStorage.getItem('restoran_logged_restaurant_id')
@@ -91,19 +99,20 @@ export function RestoranProvider({ children }: { children: ReactNode }) {
     try {
       const { data, error } = await supabase
         .from('packages')
-        .select('*, couriers(full_name)')
+        .select('*, courier:couriers!packages_courier_id_fkey(full_name)')
         .eq('restaurant_id', restaurantId)
         .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('❌ Supabase sorgu hatası:', error)
+        console.error('❌ Supabase sorgu hatası (Full):', JSON.stringify(error, null, 2))
+        console.error('❌ Error Message:', error.message)
         throw error
       }
 
       const transformedData = (data || []).map((pkg: any) => ({
         ...pkg,
-        courier_name: pkg.couriers?.full_name,
-        couriers: undefined
+        courier_name: pkg.courier?.full_name,
+        courier: undefined
       }))
 
       console.log('✅ Siparişler yüklendi:', transformedData.length, 'adet')
@@ -157,10 +166,13 @@ export function RestoranProvider({ children }: { children: ReactNode }) {
         restaurantId,
         restaurant,
         packages,
-        successMessage,
         errorMessage,
+        showNewOrderModal,
+        cidCustomer,
         setSuccessMessage,
         setErrorMessage,
+        setShowNewOrderModal,
+        setCidCustomer,
         fetchPackages
       }}
     >

@@ -11,7 +11,7 @@ import { useState, useEffect } from 'react'
 import { Restaurant, Package } from '@/types'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { supabase } from '@/app/lib/supabase'
-import { getAllRestaurantsFinancials } from '@/services/restaurantService'
+import { getAllRestaurantsUnpaidBalances } from '@/services/restaurantService'
 
 interface RestaurantsTabProps {
     restaurants: Restaurant[]
@@ -387,7 +387,11 @@ export function RestaurantsTab({
             const fetchStats = async () => {
                 setIsLoadingStats(true)
                 try {
-                    const result = await getAllRestaurantsFinancials(startDate, endDate)
+                    // Tarih filtresi varsa gönder, yoksa global ödenmemiş bakiyeler
+                    const result = await getAllRestaurantsUnpaidBalances(
+                        startDate || undefined,
+                        endDate || undefined
+                    )
                     if (result.success && result.data) {
                         setRestaurantsWithStats(result.data)
                     } else {
@@ -402,6 +406,9 @@ export function RestaurantsTab({
             
             fetchStats()
         }, [startDate, endDate])
+
+        const hasDateFilter = !!(startDate && endDate)
+        const filterLabel = hasDateFilter ? `${startDate} — ${endDate}` : 'Tüm Zamanlar'
         
         // 🎯 Manuel Filtreleme Fonksiyonu - BAŞTA 0 GÖSTER
         const handleApplyFilter = () => {
@@ -422,10 +429,10 @@ export function RestaurantsTab({
         }
 
         // 📊 Genel Toplamlar
-        const grandTotalRevenue = restaurantsWithStats.reduce((sum, r) => sum + (r.period?.revenue || 0), 0)
-        const grandTotalDebt = restaurantsWithStats.reduce((sum, r) => sum + (r.period?.cost || 0), 0)
+        const grandTotalRevenue = restaurantsWithStats.reduce((sum, r) => sum + (r.unpaid_revenue || 0), 0)
+        const grandTotalDebt = restaurantsWithStats.reduce((sum, r) => sum + (r.unpaid_cost || 0), 0)
         const grandNetBalance = restaurantsWithStats.reduce((sum, r) => sum + (r.current_balance || 0), 0)
-        const grandTotalOrders = restaurantsWithStats.reduce((sum, r) => sum + (r.period?.total_package_count || 0), 0)
+        const grandTotalOrders = restaurantsWithStats.reduce((sum, r) => sum + (r.unpaid_package_count || 0), 0)
 
         return (
             <div className="bg-slate-950 min-h-screen p-6">
@@ -486,7 +493,7 @@ export function RestaurantsTab({
                         <div className="flex items-start justify-between mb-3">
                             <div>
                                 <p className="text-xs font-medium text-slate-500 tracking-tight uppercase mb-1">
-                                    Toplam Ciro
+                                    {hasDateFilter ? 'Ödenmemiş Ciro (Filtreli)' : 'Ödenmemiş Ciro'}
                                 </p>
                                 <p className="text-3xl font-black text-slate-100 tracking-tight">
                                     {grandTotalRevenue.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
@@ -495,7 +502,7 @@ export function RestaurantsTab({
                             <div className="text-slate-700 text-2xl">💰</div>
                         </div>
                         <p className="text-xs text-slate-600 tracking-tight">
-                            Nakit + Kart ödemeleri toplamı
+                            {hasDateFilter ? `Seçili dönem: ${filterLabel}` : 'Ödenmemiş paketlerin toplamı'}
                         </p>
                     </div>
 
@@ -528,7 +535,7 @@ export function RestaurantsTab({
                                 <p className={`text-xs font-medium tracking-tight uppercase mb-1 ${
                                     grandNetBalance >= 0 ? 'text-emerald-400/70' : 'text-rose-400/70'
                                 }`}>
-                                    Toplam Cari Bakiye
+                                    {hasDateFilter ? 'Dönem Bakiye' : 'Toplam Cari Bakiye'}
                                 </p>
                                 <p className={`text-3xl font-black tracking-tight ${
                                     grandNetBalance >= 0 ? 'text-emerald-300/90' : 'text-rose-300/90'
@@ -539,7 +546,7 @@ export function RestaurantsTab({
                             <div className="text-2xl">{grandNetBalance >= 0 ? '💰' : '📉'}</div>
                         </div>
                         <p className="text-xs text-slate-600 tracking-tight">
-                            Tüm zamanların net durumu
+                            {hasDateFilter ? `Seçili dönem: ${filterLabel}` : 'Tüm zamanların net durumu'}
                         </p>
                     </div>
 
@@ -557,7 +564,7 @@ export function RestaurantsTab({
                             <div className="text-slate-700 text-2xl">📦</div>
                         </div>
                         <p className="text-xs text-slate-600 tracking-tight">
-                            Seçili dönemdeki hacim
+                            {hasDateFilter ? `Dönem: ${filterLabel}` : 'Ödenmemiş paketler'}
                         </p>
                     </div>
                 </div>
@@ -565,7 +572,9 @@ export function RestaurantsTab({
                 {/* 📝 AÇIKLAYICI NOT */}
                 <div className="mt-6 px-4 py-3 bg-slate-900 border border-slate-800 rounded-lg">
                     <p className="text-xs text-slate-600 tracking-tight">
-                        <span className="font-semibold text-slate-500">💡 Not:</span> <span className="text-slate-200">Bakiye</span> kolonu daima <span className="text-amber-400">tüm zamanlar</span> kümülatif durumunu gösterir. Ciro ve Servis ise seçili tarih aralığına göre hesaplanır.
+                        <span className="font-semibold text-slate-500">💡 Not:</span> {hasDateFilter 
+                            ? <><span className="text-amber-400">Filtre aktif ({filterLabel})</span>. Rakamlar sadece seçili dönemdeki <span className="text-slate-200">ödenmemiş</span> paketleri gösterir.</>
+                            : <><span className="text-slate-200">Bakiye</span> kolonu daima <span className="text-amber-400">ödenmemiş paketlerin</span> net durumunu gösterir (is_paid_to_restaurant = false). Ödeme yapıldığında paketler ödendi olarak işaretlenir.</>}
                     </p>
                 </div>
 
@@ -604,22 +613,22 @@ export function RestaurantsTab({
                                                 {r.name}
                                             </button>
                                             <p className="text-xs text-slate-600 mt-1 tracking-tight">
-                                                {r.period?.total_package_count || 0} paket × {r.package_fee || 0}₺
+                                                {r.unpaid_package_count || 0} ödenmemiş paket × {r.package_fee || 0}₺
                                             </p>
                                         </div>
 
                                         {/* Orta: Finansal Metrikler */}
                                         <div className="flex items-center gap-6 mr-8">
                                             <div className="text-right">
-                                                <p className="text-xs text-slate-600 tracking-tight">Ciro</p>
+                                                <p className="text-xs text-slate-600 tracking-tight">Ödenmemiş Ciro</p>
                                                 <p className="text-sm font-bold text-slate-300 tracking-tight">
-                                                    {(r.period?.revenue || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
+                                                    {(r.unpaid_revenue || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
                                                 </p>
                                             </div>
                                             <div className="text-right">
-                                                <p className="text-xs text-slate-600 tracking-tight">Servis</p>
+                                                <p className="text-xs text-slate-600 tracking-tight">Masraf</p>
                                                 <p className="text-sm font-bold text-rose-400/70 tracking-tight">
-                                                    {(r.period?.cost || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
+                                                    {(r.unpaid_cost || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
                                                 </p>
                                             </div>
                                             <div className="text-right">

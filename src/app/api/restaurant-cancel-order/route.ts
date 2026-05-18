@@ -226,7 +226,8 @@ export async function POST(request: NextRequest) {
         status: 'cancelled',
         cancelled_at: new Date().toISOString(),
         cancelled_by: 'restaurant',
-        cancellation_reason: cancellationReason
+        cancellation_reason: cancellationReason,
+        is_chargeable_cancellation: true
       })
       .eq('id', pkg.id) // pkg.id kullan, packageId değil (güvenlik)
 

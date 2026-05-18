@@ -283,6 +283,11 @@ export default function KuryePage() {
   const [ibanPackageAmount, setIbanPackageAmount] = useState<number>(0)
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
+
+  // Ücretlendirilmiş İptal State'leri
+  const [showCancelModal, setShowCancelModal] = useState(false)
+  const [cancellingPackage, setCancellingPackage] = useState<Package | null>(null)
+  const [cancelLoading, setCancelLoading] = useState(false)
   const [cashTotal, setCashTotal] = useState(0)
   const [cardTotal, setCardTotal] = useState(0)
   const [showSummary, setShowSummary] = useState(false)
@@ -1580,6 +1585,60 @@ export default function KuryePage() {
     }
   }
 
+  // Ücretlendirilmiş İptal Handlers
+  const handleOpenCancelModal = (pkg: Package) => {
+    setCancellingPackage(pkg)
+    setShowCancelModal(true)
+  }
+
+  const handleConfirmCancel = async () => {
+    if (!cancellingPackage) return
+    const courierId = localStorage.getItem(STORAGE_KEYS.COURIER_ID)
+    if (!courierId) {
+      setErrorMessage('❌ Kurye kimliği bulunamadı, lütfen sayfayı yenileyin')
+      setTimeout(() => setErrorMessage(''), 3000)
+      return
+    }
+
+    setCancelLoading(true)
+    try {
+      const { error } = await supabase
+        .from('packages')
+        .update({
+          status: 'cancelled',
+          is_chargeable_cancellation: true,
+          cancelled_at: new Date().toISOString(),
+          delivered_at: new Date().toISOString(), // Raporlar ve cüzdan için tarih bilgisi
+          cancelled_by: 'courier',
+          delivered_by_courier_id: courierId // Bu iptali yapan kuryeyi belirlemek için
+        })
+        .eq('id', cancellingPackage.id)
+
+      if (error) throw error
+
+      // Yerel state'i anında güncelle - paketi listeden çıkar
+      setPackages(prev => prev.filter(pkg => pkg.id !== cancellingPackage.id))
+      
+      setSuccessMessage('✅ Sipariş ücretlendirilmiş olarak iptal edildi!')
+      setTimeout(() => setSuccessMessage(''), 3000)
+      
+      // Modalı kapat
+      setShowCancelModal(false)
+      setCancellingPackage(null)
+      
+      // İstatistikleri ve verileri yenile
+      fetchDailyStats()
+      fetchTodayDeliveredPackages()
+      fetchLeaderboard()
+    } catch (error: any) {
+      console.error('İptal hatası:', error)
+      setErrorMessage('❌ Hata: ' + error.message)
+      setTimeout(() => setErrorMessage(''), 3000)
+    } finally {
+      setCancelLoading(false)
+    }
+  }
+
   const handleDeliver = async (packageId: number) => {
     const paymentMethod = selectedPaymentMethods[packageId]
     if (!paymentMethod) {
@@ -2699,38 +2758,6 @@ export default function KuryePage() {
       <PullToRefresh onRefresh={handleRefresh} darkMode={darkMode}>
         <div className="flex-1 overflow-y-auto pt-20 pb-20">
           <div className="max-w-2xl mx-auto px-2 sm:px-0">
-            {/* DURUM TOGGLE VE MİKROFON - SAĞ ALT KÖŞE */}
-            {activeTab === 'packages' && (
-              <div className="fixed bottom-24 right-4 z-50">
-                {/* Mikrofon Butonu - Yukarıda */}
-                <button
-              onClick={toggleVoiceRecognition}
-              onMouseUp={() => {
-                // PC'de mouse bırakıldığında zorla durdur
-                if (isListening && recognition) {
-                  console.log('🖱️ Mouse released - forcing stop')
-                  recognition.abort()
-                  setIsListening(false)
-                }
-              }}
-              onTouchEnd={() => {
-                // Mobilde dokunma bittiğinde zorla durdur
-                if (isListening && recognition) {
-                  console.log('👆 Touch released - forcing stop')
-                  recognition.abort()
-                  setIsListening(false)
-                }
-              }}
-              className={`w-16 h-16 rounded-full shadow-2xl transition-all duration-300 flex items-center justify-center text-2xl ${
-                isListening
-                  ? 'bg-red-600 animate-pulse'
-                  : 'bg-blue-600 hover:bg-blue-700 active:scale-95'
-              }`}
-            >
-              {isListening ? '🔴' : '🎤'}
-            </button>
-          </div>
-        )}
 
         {/* SESLİ KOMUT YARDIM POP-UP */}
         {showVoiceHelp && (
@@ -2929,6 +2956,16 @@ export default function KuryePage() {
                               💳 IBAN At
                             </button>
                           )}
+
+                          {/* İPTAL BUTONU - Ücretlendirilmiş İptal */}
+                          {(pkg.status === 'assigned' || pkg.status === 'picking_up' || pkg.status === 'on_the_way') && (
+                            <button
+                              onClick={() => handleOpenCancelModal(pkg)}
+                              className="text-xs px-2 py-0.5 bg-red-600 hover:bg-red-700 text-white rounded transition-colors flex items-center gap-1 font-semibold shadow-sm"
+                            >
+                              ❌ İptal
+                            </button>
+                          )}
                         </div>
                         <p className="font-medium text-sm sm:text-base text-white">{pkg.customer_name}</p>
 
@@ -3028,9 +3065,21 @@ export default function KuryePage() {
                       </div>
                     </div>
 
-                    {/* Adres */}
-                    <div className="mb-2 p-2 bg-slate-800/50 rounded-lg">
-                      <p className="text-xs text-slate-300">{pkg.delivery_address}</p>
+                    {/* Adres & Dinamik Konuma Git Butonu */}
+                    <div className="mb-2 p-2 bg-slate-800/50 rounded-lg flex items-center justify-between gap-3">
+                      <p className="text-xs text-slate-300 flex-1">{pkg.delivery_address}</p>
+                      {pkg.latitude !== null && pkg.latitude !== undefined && String(pkg.latitude).trim() !== '' &&
+                       pkg.longitude !== null && pkg.longitude !== undefined && String(pkg.longitude).trim() !== '' && (
+                        <a
+                          href={`https://www.google.com/maps/dir/?api=1&destination=${pkg.latitude},${pkg.longitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600/10 hover:bg-emerald-600/25 active:bg-emerald-600/35 border border-emerald-500/25 text-emerald-400 hover:text-emerald-300 text-xs font-semibold rounded-lg transition-all active:scale-[0.93] shrink-0 shadow-sm"
+                          title="Google Haritalar ile Yol Tarifi Al"
+                        >
+                          📍 <span className="text-xs">Konuma Git</span>
+                        </a>
+                      )}
                     </div>
 
                     {/* NAVİGASYON BUTONU - Sadece on_the_way durumunda göster */}
@@ -3595,25 +3644,6 @@ export default function KuryePage() {
               </div>
             )}
 
-            {/* Dark Mode Toggle */}
-            <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-white">Tema</p>
-                  <p className="text-xs text-slate-400">
-                    {darkMode ? 'Gece modu aktif' : 'Gündüz modu aktif'}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setDarkMode(!darkMode)}
-                  className={`p-3 rounded-lg transition-colors ${darkMode ? 'bg-slate-800 text-white' : 'bg-white text-gray-900 border border-gray-300'
-                    }`}
-                >
-                  <span className="text-2xl">{darkMode ? '☀️' : '🌙'}</span>
-                </button>
-              </div>
-            </div>
-
             {/* Şifre Değiştir */}
             <button
               onClick={() => setShowPasswordModal(true)}
@@ -3874,6 +3904,73 @@ export default function KuryePage() {
           </div>
         )
       }
+
+      {/* ÜCRET TAHSİL EDİLEREK İPTAL ONAY MODALI */}
+      {showCancelModal && cancellingPackage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-slate-900 rounded-2xl border-2 border-red-500/50 shadow-2xl w-full max-w-md overflow-hidden">
+            {/* Header */}
+            <div className="bg-red-950/30 border-b border-slate-800 p-5 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-red-500 flex items-center gap-2">
+                🚫 Ücretlendirilmiş İptal
+              </h2>
+              <button
+                onClick={() => {
+                  setShowCancelModal(false)
+                  setCancellingPackage(null)
+                }}
+                className="text-slate-400 hover:text-white transition-colors text-2xl font-bold"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-6">
+              <p className="text-slate-200 text-lg leading-relaxed text-center">
+                <span className="font-bold text-red-400">
+                  {cancellingPackage.order_number || '......'}
+                </span>{' '}
+                numaralı siparişi iptal etmek istediğinize emin misiniz?
+              </p>
+
+              <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-center">
+                <p className="text-xs text-red-400 font-medium">
+                  ⚠️ Bu işlem siparişi kuryeye ücretlendirilmiş olarak iptal edecek, restoranın borcuna yansıtacak ve geri alınamayacaktır.
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-4">
+                <button
+                  onClick={() => {
+                    setShowCancelModal(false)
+                    setCancellingPackage(null)
+                  }}
+                  disabled={cancelLoading}
+                  className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold transition-all disabled:opacity-50"
+                >
+                  Hayır
+                </button>
+                <button
+                  onClick={handleConfirmCancel}
+                  disabled={cancelLoading}
+                  className="flex-[2] py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-red-600/20"
+                >
+                  {cancelLoading ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      İptal Ediliyor...
+                    </>
+                  ) : (
+                    'Evet, İptal Et'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ŞİFRE DEĞİŞTİRME MODAL */}
       {showPasswordModal && (

@@ -1,151 +1,214 @@
 /**
  * @file src/services/restaurantService.ts
- * @description Restoran Finansal Servisi — B2B RPC Mimarisi
+ * @description Restoran Finansal Servisi — Paket Bazlı is_paid_to_restaurant Mimarisi
  *
- * TEK KAYNAK: Supabase RPC (get_restaurant_financials_v2)
- *
- * Yük veritabanına aktarıldı. Frontend'de binlerce satırlık veri çekilip reduce EDİLMEZ.
+ * YENİ SİSTEM:
+ * - Kümülatif global bakiye YOK
+ * - Her paket is_paid_to_restaurant flag'i taşır
+ * - Hesaplama: filtrelenen tarih aralığındaki ödenmemiş paketler üzerinden
+ * - Ödeme: Supabase RPC (process_restaurant_payment) ile atomik transaction
  */
 import { supabase } from '@/app/lib/supabase'
 
-export interface RestaurantFinancialsV2 {
+// ── TİP TANIMLARI ──────────────────────────────────────────────
+
+export interface PeriodFinancials {
   package_fee: number
-  current_balance: number // Kümülatif Bakiye (Tarih bağımsız)
-  period: {
-    revenue: number
-    cost: number
-    payments?: number
-    delivered_count?: number
-    chargeable_count?: number
-    total_package_count: number
+  unpaid_revenue: number
+  unpaid_package_count: number
+  unpaid_cost: number
+  net_payable: number
+  paid_revenue: number
+  paid_package_count: number
+  total_package_count: number
+}
+
+export interface UnpaidBalance {
+  id: string
+  name: string
+  package_fee: number
+  unpaid_revenue: number
+  unpaid_package_count: number
+  unpaid_cost: number
+  current_balance: number
+}
+
+// ── 1. DÖNEM FİNANSALLARI (RestaurantDetailModal için) ─────────
+
+export async function getRestaurantPeriodFinancials(
+  restaurantId: string,
+  startDate: string,
+  endDate: string
+): Promise<{ success: boolean; data?: PeriodFinancials; error?: string }> {
+  try {
+    const start = new Date(startDate)
+    start.setHours(0, 0, 0, 0)
+    const end = new Date(endDate)
+    end.setHours(23, 59, 59, 999)
+
+    const { data, error } = await supabase.rpc('get_restaurant_period_financials', {
+      p_restaurant_id: restaurantId,
+      p_start_date: start.toISOString(),
+      p_end_date: end.toISOString(),
+    })
+
+    if (error) {
+      console.error('❌ RPC Hatası (get_restaurant_period_financials):', JSON.stringify(error, null, 2))
+      return { success: false, error: error.message }
+    }
+
+    return { success: true, data: data as PeriodFinancials }
+  } catch (err: any) {
+    console.error('❌ getRestaurantPeriodFinancials CATCH:', err.message)
+    return { success: false, error: err.message }
   }
 }
 
+// ── 2. TÜM RESTORANLARIN ÖDENMEMİŞ BAKİYELERİ (RestaurantsTab) ─
+
+export async function getAllRestaurantsUnpaidBalances(
+  startDate?: string,
+  endDate?: string
+): Promise<{
+  success: boolean
+  data?: UnpaidBalance[]
+  error?: string
+}> {
+  try {
+    // Tarih parametrelerini hazırla (boşsa null gönder → RPC tüm zamanları döner)
+    const params: Record<string, any> = {}
+    if (startDate && endDate) {
+      const start = new Date(startDate)
+      start.setHours(0, 0, 0, 0)
+      const end = new Date(endDate)
+      end.setHours(23, 59, 59, 999)
+      params.p_start_date = start.toISOString()
+      params.p_end_date = end.toISOString()
+    }
+
+    const { data, error } = await supabase.rpc('get_all_restaurants_unpaid_balances', params)
+
+    if (error) {
+      console.error('❌ RPC Hatası (get_all_restaurants_unpaid_balances):', JSON.stringify(error, null, 2))
+      return { success: false, error: error.message }
+    }
+
+    return { success: true, data: (data || []) as UnpaidBalance[] }
+  } catch (err: any) {
+    console.error('❌ getAllRestaurantsUnpaidBalances CATCH:', err.message)
+    return { success: false, error: err.message }
+  }
+}
+
+// ── 3. ÖDEME İŞLEMİ (Atomik RPC) ──────────────────────────────
 /**
- * Restoran finansal özetini RPC üzerinden çeker.
- * 
- * @param restaurantId Restoran UUID'si
- * @param startDate İsteğe bağlı başlangıç tarihi (ISO String)
- * @param endDate İsteğe bağlı bitiş tarihi (ISO String)
+ * Filtrelenen tarih aralığındaki ödenmemiş paketleri "ödendi" olarak işaretler
+ * ve ödeme makbuzu kaydı oluşturur.
+ *
+ * KURAL: Filtre dışındaki günlere KESİNLİKLE DOKUNMAZ.
  */
+export async function processRestaurantPayment(
+  restaurantId: string,
+  startDate: string,
+  endDate: string,
+  notes?: string
+): Promise<{
+  success: boolean
+  message?: string
+  error?: string
+  data?: { package_count: number; revenue: number; cost: number; net_paid: number }
+}> {
+  try {
+    const start = new Date(startDate)
+    start.setHours(0, 0, 0, 0)
+    const end = new Date(endDate)
+    end.setHours(23, 59, 59, 999)
+
+    console.log('📤 Ödeme RPC çağrılıyor:', {
+      restaurant_id: restaurantId,
+      start: start.toISOString(),
+      end: end.toISOString(),
+    })
+
+    const { data, error } = await supabase.rpc('process_restaurant_payment', {
+      p_restaurant_id: restaurantId,
+      p_start_date: start.toISOString(),
+      p_end_date: end.toISOString(),
+      p_notes: notes || null,
+    })
+
+    if (error) {
+      console.error('❌ RPC Hatası (process_restaurant_payment):', JSON.stringify(error, null, 2))
+      return { success: false, error: error.message }
+    }
+
+    const result = data as any
+    if (!result?.success) {
+      return { success: false, error: result?.error || 'Ödeme işlemi başarısız' }
+    }
+
+    console.log('✅ Ödeme başarılı:', JSON.stringify(result, null, 2))
+    return {
+      success: true,
+      message: result.message,
+      data: {
+        package_count: result.package_count,
+        revenue: result.revenue,
+        cost: result.cost,
+        net_paid: result.net_paid,
+      },
+    }
+  } catch (err: any) {
+    console.error('❌ processRestaurantPayment CATCH:', JSON.stringify({
+      name: err?.name,
+      message: err?.message,
+    }, null, 2))
+    return { success: false, error: err?.message || 'Beklenmeyen hata' }
+  }
+}
+
+// ── ESKİ FONKSİYONLAR (Geriye Uyumluluk) ──────────────────────
+// RestaurantsTab'daki eski çağrılar kırılmasın diye geçici wrapper'lar
+
+/** @deprecated Yeni sistem: getRestaurantPeriodFinancials kullanın */
 export async function getRestaurantFinancials(
   restaurantId: string,
   startDate?: string,
   endDate?: string
-): Promise<{ success: boolean; data?: RestaurantFinancialsV2; error?: string }> {
-  try {
-    let start: string | undefined = undefined
-    let end: string | undefined = undefined
-
-    if (startDate && endDate) {
-      // Başlangıç günün başı, bitiş günün sonu
-      const sDate = new Date(startDate)
-      sDate.setHours(0, 0, 0, 0)
-      start = sDate.toISOString()
-
-      const eDate = new Date(endDate)
-      eDate.setHours(23, 59, 59, 999)
-      end = eDate.toISOString()
+) {
+  if (startDate && endDate) {
+    const result = await getRestaurantPeriodFinancials(restaurantId, startDate, endDate)
+    if (result.success && result.data) {
+      // Eski formata dönüştür (geriye uyumluluk)
+      return {
+        success: true,
+        data: {
+          package_fee: result.data.package_fee,
+          current_balance: result.data.net_payable,
+          period: {
+            revenue: result.data.unpaid_revenue + result.data.paid_revenue,
+            cost: result.data.unpaid_cost + (result.data.paid_package_count * result.data.package_fee),
+            total_package_count: result.data.total_package_count,
+            delivered_count: result.data.total_package_count,
+          },
+        },
+      }
     }
-
-    const { data, error } = await supabase.rpc('get_restaurant_financials_v2', {
-      p_restaurant_id: restaurantId,
-      p_start_date: start || null,
-      p_end_date: end || null
-    })
-
-    if (error) {
-      console.error('❌ Supabase RPC Hatası (get_restaurant_financials_v2):', error)
-      return { success: false, error: error.message }
-    }
-
-    return {
-      success: true,
-      data: data as RestaurantFinancialsV2
-    }
-  } catch (error: any) {
-    console.error('❌ getRestaurantFinancials beklenmeyen hata:', error)
-    return { success: false, error: error.message || 'Bilinmeyen hata' }
+    return result
   }
+  return { success: false, error: 'Tarih aralığı gerekli' }
 }
 
-/**
- * Tüm restoranların finansal özetlerini RPC üzerinden toplu çeker.
- */
-export async function getAllRestaurantsFinancials(
-  startDate?: string,
-  endDate?: string
-): Promise<{ success: boolean; data?: (RestaurantFinancialsV2 & { id: string, name: string })[]; error?: string }> {
-  try {
-    let start: string | undefined = undefined
-    let end: string | undefined = undefined
-
-    if (startDate && endDate) {
-      const sDate = new Date(startDate)
-      sDate.setHours(0, 0, 0, 0)
-      start = sDate.toISOString()
-
-      const eDate = new Date(endDate)
-      eDate.setHours(23, 59, 59, 999)
-      end = eDate.toISOString()
-    }
-
-    const { data, error } = await supabase.rpc('get_all_restaurants_financials', {
-      p_start_date: start || null,
-      p_end_date: end || null
-    })
-
-    if (error) {
-      console.error('❌ Supabase RPC Hatası (get_all_restaurants_financials):', error)
-      return { success: false, error: error.message }
-    }
-
-    return {
-      success: true,
-      data: data as (RestaurantFinancialsV2 & { id: string, name: string })[]
-    }
-  } catch (error: any) {
-    console.error('❌ getAllRestaurantsFinancials beklenmeyen hata:', error)
-    return { success: false, error: error.message || 'Bilinmeyen hata' }
-  }
-}
-
-/**
- * Restoran ödeme kaydı oluşturur.
- * KURAL: Validasyon üst sınırı YOK.
- */
+/** @deprecated Yeni sistem: processRestaurantPayment kullanın */
 export async function handleRestaurantPayment(
   restaurantId: string | number,
   amountPaid: number,
-  notes?: string
-): Promise<{ success: boolean; message?: string; error?: string }> {
-  try {
-    if (amountPaid <= 0) {
-      return { success: false, error: 'Ödeme tutarı sıfırdan büyük olmalıdır' }
-    }
-
-    const { error } = await supabase
-      .from('restaurant_payment_transactions')
-      .insert({
-        restaurant_id: restaurantId,
-        transaction_date: new Date().toISOString().split('T')[0],
-        brut_ciro: 0,
-        toplam_masraf: 0,
-        net_hakedis: 0,
-        amount_paid: amountPaid,
-        package_count: 0,
-        order_ids: [],
-        notes: notes || `Ödeme — ${new Date().toLocaleDateString('tr-TR')}`,
-      })
-
-    if (error) {
-      console.error('❌ Ödeme INSERT hatası:', error)
-      return { success: false, error: error.message }
-    }
-
-    return { success: true, message: '✅ Ödeme başarıyla kaydedildi' }
-  } catch (error: any) {
-    console.error('❌ handleRestaurantPayment beklenmeyen hata:', error)
-    return { success: false, error: error.message || 'Bilinmeyen hata' }
+  notes?: string,
+  periodStart?: string | null,
+  periodEnd?: string | null
+) {
+  if (periodStart && periodEnd) {
+    return processRestaurantPayment(String(restaurantId), periodStart, periodEnd, notes)
   }
+  return { success: false, error: 'Tarih aralığı belirtilmeli (yeni sistem)' }
 }

@@ -1,13 +1,15 @@
 /**
  * @file src/app/admin/hooks/useAdminRestaurantModal.ts
- * @description Restoran Modal Yönetimi Custom Hook — 5 Altın Kural Mimarisi
+ * @description Restoran Modal Yönetimi — Paket Bazlı is_paid_to_restaurant Mimarisi
  *
- * restaurant_debts tamamen kaldırıldı.
- * Ödeme: handleRestaurantPayment(restaurantId, amount) — validasyon kısıtlaması yok.
+ * YENİ SİSTEM:
+ * - processRestaurantPayment RPC ile atomik ödeme
+ * - Tarih aralığı zorunlu (filtrelenen dönem ödenir)
+ * - Filtre dışı paketlere dokunulmaz
  */
 
 import { useState, useEffect } from 'react'
-import { handleRestaurantPayment as handleRestaurantPaymentService } from '@/services/restaurantService'
+import { processRestaurantPayment } from '@/services/restaurantService'
 
 interface UseAdminRestaurantModalProps {
   restaurantId: string | null
@@ -33,7 +35,7 @@ export function useAdminRestaurantModal({
   const [restaurantPaymentAmount, setRestaurantPaymentAmount] = useState('')
   const [restaurantPaymentProcessing, setRestaurantPaymentProcessing] = useState(false)
 
-  // Kümülatif bakiye — RestaurantDetailModal'dan gelir
+  // Dönem bakiyesi — RestaurantDetailModal'dan gelir
   const [guncelBakiye, setGuncelBakiye] = useState<number>(0)
 
   // Refetch trigger — ödeme sonrası RestaurantDetailModal'ı yenile
@@ -50,24 +52,20 @@ export function useAdminRestaurantModal({
     }
   }, [parentStartDate, parentEndDate])
 
-  // ── Ödeme İşlemi ────────────────────────────────────────────
-
+  // ── ÖDEME İŞLEMİ (YENİ SİSTEM) ──────────────────────────────
   /**
-   * Admin ödeme yapar.
-   * KURAL 4: Validasyon üst sınırı yok — sadece > 0 kontrolü.
+   * Filtrelenen tarih aralığındaki ödenmemiş paketleri ödendi olarak işaretler.
+   * Atomik RPC: packages UPDATE + payment INSERT tek transaction.
    */
-  const handleRestaurantPayment = async (amountOverride?: number) => {
+  const handleRestaurantPayment = async () => {
     if (!restaurantId) {
       setErrorMessage('❌ Restoran ID bulunamadı!')
       setTimeout(() => setErrorMessage(''), 5000)
       return
     }
 
-    const amountStr = amountOverride !== undefined ? String(amountOverride) : restaurantPaymentAmount
-    const amount = parseFloat(amountStr)
-
-    if (isNaN(amount) || amount <= 0) {
-      setErrorMessage('❌ Geçerli bir tutar girin (0\'dan büyük olmalı)')
+    if (!restaurantStartDate || !restaurantEndDate) {
+      setErrorMessage('❌ Tarih aralığı seçilmeli!')
       setTimeout(() => setErrorMessage(''), 5000)
       return
     }
@@ -75,28 +73,37 @@ export function useAdminRestaurantModal({
     setRestaurantPaymentProcessing(true)
 
     try {
-      const result = await handleRestaurantPaymentService(
+      const result = await processRestaurantPayment(
         restaurantId,
-        amount,
-        `Ödeme — ${new Date().toLocaleDateString('tr-TR')}`
+        restaurantStartDate,
+        restaurantEndDate,
+        `Dönem Ödemesi — ${restaurantStartDate} / ${restaurantEndDate}`
       )
 
       if (result.success) {
-        setSuccessMessage(result.message || '✅ Ödeme başarıyla kaydedildi')
-        setTimeout(() => setSuccessMessage(''), 3000)
+        const msg = result.message || '✅ Ödeme başarıyla kaydedildi'
+        const detail = result.data
+          ? ` (${result.data.package_count} paket, ${result.data.net_paid?.toFixed(2)} ₺ net)`
+          : ''
+        setSuccessMessage(msg + detail)
+        setTimeout(() => setSuccessMessage(''), 4000)
 
+        // UI anında güncelle
+        setGuncelBakiye(0)
         setShowRestaurantPaymentModal(false)
         setRestaurantPaymentAmount('')
 
-        // Ana sayfayı ve RestaurantDetailModal'ı yenile
+        // Listeleri yenile
         fetchRestaurants()
-        setRefetchTrigger((prev) => prev + 1)
+        setTimeout(() => {
+          setRefetchTrigger((prev) => prev + 1)
+        }, 300)
       } else {
         setErrorMessage(`❌ ${result.error || 'Ödeme kaydedilemedi'}`)
         setTimeout(() => setErrorMessage(''), 8000)
       }
     } catch (error: any) {
-      console.error('❌ handleRestaurantPayment beklenmeyen hata:', error)
+      console.error('❌ handleRestaurantPayment CATCH:', error)
       setErrorMessage(`❌ Beklenmeyen hata: ${error.message || 'Bilinmeyen hata'}`)
       setTimeout(() => setErrorMessage(''), 8000)
     } finally {

@@ -40,9 +40,9 @@ export default function IstatistiklerPage() {
 
       const { data, error } = await supabase
         .from('packages')
-        .select('id, amount, delivered_at')
+        .select('id, amount, delivered_at, status, is_chargeable_cancellation, applied_price')
         .eq('restaurant_id', restaurantId)
-        .eq('status', 'delivered')
+        .or('status.eq.delivered,and(status.eq.cancelled,is_chargeable_cancellation.eq.true)')
         .gte('delivered_at', start.toISOString())
         .lte('delivered_at', end.toISOString())
         .order('delivered_at', { ascending: true })
@@ -52,6 +52,9 @@ export default function IstatistiklerPage() {
       const groupedData: { [key: string]: { count: number; revenue: number } } = {}
       let totalP = 0
       let totalR = 0
+      let totalCourierCost = 0
+
+      const packageFee = restaurant?.package_fee || 0
 
       data?.forEach((pkg: any) => {
         if (!pkg.delivered_at) return
@@ -64,11 +67,18 @@ export default function IstatistiklerPage() {
           groupedData[key] = { count: 0, revenue: 0 }
         }
 
-        groupedData[key].count++
-        groupedData[key].revenue += pkg.amount || 0
+        // Ciro ve grafik paketi sadece başarılı teslimatları sayar
+        if (pkg.status === 'delivered') {
+          groupedData[key].count++
+          groupedData[key].revenue += pkg.amount || 0
+          
+          totalP++
+          totalR += pkg.amount || 0
+        }
         
-        totalP++
-        totalR += pkg.amount || 0
+        // Kurye masrafı hem başarılı teslimatları hem de ücretli iptalleri kapsar
+        const singleFee = pkg.applied_price ?? packageFee
+        totalCourierCost += singleFee
       })
 
       const chartData = Object.entries(groupedData).map(([date, d]) => ({
@@ -78,15 +88,13 @@ export default function IstatistiklerPage() {
       }))
 
       // Finansal Hesaplamalar
-      const packageFee = restaurant?.package_fee || 0
-      const courierCost = totalP * packageFee
-      const netProfit = totalR - courierCost
+      const netProfit = totalR - totalCourierCost
 
       setStatisticsData(chartData)
       setSummary({
         totalPackages: totalP,
         totalRevenue: totalR,
-        courierCost: courierCost,
+        courierCost: totalCourierCost,
         netProfit: netProfit
       })
     } catch (error) {

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/app/lib/supabase'
+import { useRestoran } from '../RestoranProvider'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface Customer {
@@ -162,15 +163,30 @@ export default function NewOrderModal({ onClose, onSuccess, restaurantId, darkMo
   const [showNewCustomerModal, setShowNewCustomerModal] = useState(false)
   const searchRef = useRef<HTMLDivElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const { cidCustomer, setCidCustomer } = useRestoran()
 
   // --- Form State ---
   const [formData, setFormData] = useState({
-    customerName: '',
-    customerPhone: '',
-    deliveryAddress: '',
+    customerName: cidCustomer?.full_name || '',
+    customerPhone: cidCustomer?.phone || '',
+    deliveryAddress: cidCustomer?.address || '',
     packageAmount: '',
     content: ''
   })
+
+  // CID ile müşteri geldiyse direkt seçili yap
+  useEffect(() => {
+    if (cidCustomer) {
+      setFormData({
+        customerName: cidCustomer.full_name,
+        customerPhone: cidCustomer.phone,
+        deliveryAddress: cidCustomer.address,
+        packageAmount: '',
+        content: ''
+      })
+      setSearchQuery(cidCustomer.full_name)
+    }
+  }, [cidCustomer])
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'online' | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -251,6 +267,7 @@ export default function NewOrderModal({ onClose, onSuccess, restaurantId, darkMo
   const clearCustomer = () => {
     setSelectedCustomer(null)
     setSearchQuery('')
+    setCidCustomer(null)
     setFormData(prev => ({ ...prev, customerName: '', customerPhone: '', deliveryAddress: '' }))
   }
 
@@ -319,7 +336,15 @@ export default function NewOrderModal({ onClose, onSuccess, restaurantId, darkMo
               <h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>🍽️ Yeni Sipariş</h2>
               <p className={`text-xs mt-0.5 ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>Müşteri ara veya bilgileri manuel gir</p>
             </div>
-            <button onClick={onClose} className={`text-2xl ${darkMode ? 'text-slate-400 hover:text-white' : 'text-gray-400 hover:text-gray-900'}`}>×</button>
+            <button 
+              onClick={() => {
+                setCidCustomer(null)
+                onClose()
+              }} 
+              className={`text-2xl ${darkMode ? 'text-slate-400 hover:text-white' : 'text-gray-400 hover:text-gray-900'}`}
+            >
+              ×
+            </button>
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 space-y-5">
