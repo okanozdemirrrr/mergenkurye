@@ -1602,11 +1602,19 @@ export default function KuryePage() {
 
     setCancelLoading(true)
     try {
+      // İş Mantığı: Kurye paketi teslim aldıysa → Ücretli İptal
+      // Kurye panelinden iptal = genelde kurye elinde, ama savunma amaçlı kontrol
+      const isChargeable = !!(
+        cancellingPackage.picked_up_at || 
+        cancellingPackage.status === 'picking_up' || 
+        cancellingPackage.status === 'on_the_way'
+      )
+
       const { error } = await supabase
         .from('packages')
         .update({
           status: 'cancelled',
-          is_chargeable_cancellation: true,
+          is_chargeable_cancellation: isChargeable,
           cancelled_at: new Date().toISOString(),
           delivered_at: new Date().toISOString(), // Raporlar ve cüzdan için tarih bilgisi
           cancelled_by: 'courier',
@@ -1619,7 +1627,10 @@ export default function KuryePage() {
       // Yerel state'i anında güncelle - paketi listeden çıkar
       setPackages(prev => prev.filter(pkg => pkg.id !== cancellingPackage.id))
       
-      setSuccessMessage('✅ Sipariş ücretlendirilmiş olarak iptal edildi!')
+      setSuccessMessage(isChargeable 
+        ? '✅ Sipariş ücretlendirilmiş olarak iptal edildi!'
+        : '✅ Sipariş ücretsiz olarak iptal edildi!'
+      )
       setTimeout(() => setSuccessMessage(''), 3000)
       
       // Modalı kapat

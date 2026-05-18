@@ -219,7 +219,26 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // ADIM 5: Paketi iptal et
+    // ADIM 5: Ücretli mi Ücretsiz mi İptal? (İş Mantığı Kontrolü)
+    // KURAL: Kurye paketi teslim ALMADIYSA → Ücretsiz İptal
+    //        Kurye paketi teslim ALDIYSA  → Ücretli İptal
+    const isChargeableCancellation = !!(
+      pkg.courier_id &&
+      (pkg.picked_up_at || pkg.status === 'picking_up' || pkg.status === 'on_the_way')
+    )
+
+    console.log('🔍 İptal Analizi (API Route):', {
+      packageId: pkg.id,
+      currentStatus: pkg.status,
+      courierId: pkg.courier_id,
+      pickedUpAt: pkg.picked_up_at,
+      isChargeableCancellation,
+      reason: isChargeableCancellation
+        ? '💰 Ücretli İptal (Kurye paketi aldı/yola çıktı)'
+        : '🆓 Ücretsiz İptal (Kurye paketi almadı)'
+    })
+
+    // ADIM 6: Paketi iptal et
     const { error: updateError } = await supabase
       .from('packages')
       .update({
@@ -227,7 +246,7 @@ export async function POST(request: NextRequest) {
         cancelled_at: new Date().toISOString(),
         cancelled_by: 'restaurant',
         cancellation_reason: cancellationReason,
-        is_chargeable_cancellation: true
+        is_chargeable_cancellation: isChargeableCancellation
       })
       .eq('id', pkg.id) // pkg.id kullan, packageId değil (güvenlik)
 
@@ -246,7 +265,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log('✅ Paket başarıyla iptal edildi:', { packageId: pkg.id, orderNumber: pkg.order_number })
+    console.log('✅ Paket başarıyla iptal edildi:', { 
+      packageId: pkg.id, 
+      orderNumber: pkg.order_number,
+      isChargeableCancellation 
+    })
 
     // ADIM 6: Kuryeye bildirim gönder (eğer atanmışsa)
     if (pkg.courier_id && courierData?.fcm_token) {
