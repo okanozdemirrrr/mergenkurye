@@ -264,6 +264,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
     try {
       const todayStart = new Date()
       todayStart.setHours(0, 0, 0, 0)
+      const todayStr = todayStart.toISOString()
 
       // Restoran bilgisini al (fallback için)
       const { data: restaurantData, error: restaurantError } = await supabase
@@ -274,25 +275,25 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
 
       if (restaurantError) throw restaurantError
 
-      // Hem teslim edilen hem de ücretli iptal edilen paketleri çek
+      // Hem teslim edilen (bugün teslim edilenler) hem de ücretli iptal edilen (bugün oluşturulanlar) paketleri çek
       const { data, error } = await supabase
         .from('packages')
         .select(`amount, applied_price, status, ${IS_CHARGEABLE_COLUMN}`)
         .eq('restaurant_id', restaurantId)
-        .or(`status.eq.delivered,and(status.eq.${CHARGED_CANCEL_STATUS},${IS_CHARGEABLE_COLUMN}.eq.true)`)
-        .gte('delivered_at', todayStart.toISOString())
+        .or(`and(status.eq.delivered,delivered_at.gte.${todayStr}),and(status.eq.${CHARGED_CANCEL_STATUS},${IS_CHARGEABLE_COLUMN}.eq.true,created_at.gte.${todayStr})`)
 
       if (error) throw error
 
-      // Bugünkü paket sayısı ve ciroyu sadece başarılı teslimatlardan hesapla
-      const deliveredPackages = data?.filter(pkg => pkg.status === 'delivered') || []
-      const packageCount = deliveredPackages.length
-      const totalRevenue = deliveredPackages.reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
+      // 🎯 DÜZELTME: "Teslim Edildi" VEYA "Ücretli İptal" olan paketlerin TOPLAM sayısı
+      const packageCount = data?.length || 0
       
-      // Toplam ücretlendirilen paket sayısı (Başarılı Teslimat + Ücretli İptaller)
-      const chargeableCount = data?.length || 0
+      // Toplam Ciro: Her iki statünün de toplam amount değeri
+      const totalRevenue = data?.reduce((sum, pkg) => sum + (pkg.amount || 0), 0) || 0
       
-      // Toplam Masraf (Paket Masrafı): Hem teslim edilenler hem de ücretlendirilen iptaller dahildir!
+      // Toplam ücretlendirilen paket sayısı (Yukarıdakiyle aynı)
+      const chargeableCount = packageCount
+      
+      // Toplam Masraf (Paket Masrafı): Hem teslim edilenler hem de ücretlendirilen iptaller
       const fallbackPrice = restaurantData?.package_fee || PACKAGE_FEE
       const calculatedTotalCost = data?.reduce((sum, pkg) => {
         const price = pkg.applied_price ?? fallbackPrice
@@ -301,7 +302,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
 
       console.log('📊 fetchTodayStats DEBUG:', {
         restaurantId,
-        todayStart: todayStart.toISOString(),
+        todayStart: todayStr,
         packageCount,
         chargeableCount,
         totalRevenue,
@@ -466,7 +467,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                     </p>
                   )}
                   <p className={`text-xs mt-0.5 ${darkMode ? 'text-slate-500' : 'text-gray-500'}`}>
-                    Teslim edildi
+                    Teslim edildi + Ücretli iptal
                   </p>
                 </div>
                 <div className="text-3xl opacity-20">📦</div>
@@ -865,7 +866,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                         {/* Sol Taraf - Sipariş Bilgileri */}
                         <div className="flex-1 min-w-[250px]">
                           <div className="flex items-center gap-2 mb-2 flex-wrap">
-                            <span classNamee={`text-sm font-bold px-2 py-1 rounded ${
+                            <span className={`text-sm font-bold px-2 py-1 rounded ${
                               darkMode ? 'bg-orange-900/50 text-orange-300' : 'bg-orange-100 text-orange-700'
                             }`}>
                               {pkg.order_number || '......'}
