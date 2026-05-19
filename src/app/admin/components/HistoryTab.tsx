@@ -125,30 +125,29 @@ export function HistoryTab({
                 const to = from + HISTORY_ITEMS_PER_PAGE - 1
                 query = query.range(from, to)
 
-                // 2. İSTATİSTİK SORGUSU: range sınırlaması olmadan sadece özet alanlar
-                let statsQuery = supabase
-                    .from('packages')
-                    .select('amount, payment_method, status')
-
-                if (statusFilter === 'all') {
-                    statsQuery = statsQuery.in('status', ['delivered', 'cancelled'])
-                } else {
-                    statsQuery = statsQuery.eq('status', statusFilter)
-                }
+                // 2. İSTATİSTİK RPC SORGUSU: Veritabanı seviyesinde özet istatistik hesabı
+                let rpcStart: string | null = null
+                let rpcEnd: string | null = null
 
                 if (startDate && startDate !== '') {
                     const start = new Date(startDate)
                     start.setHours(0, 0, 0, 0)
-                    statsQuery = statsQuery.gte('created_at', start.toISOString())
+                    rpcStart = start.toISOString()
                 }
                 if (endDate && endDate !== '') {
                     const end = new Date(endDate)
                     end.setHours(23, 59, 59, 999)
-                    statsQuery = statsQuery.lte('created_at', end.toISOString())
+                    rpcEnd = end.toISOString()
                 }
 
+                const statsPromise = supabase.rpc('get_orders_summary', {
+                    p_start_date: rpcStart,
+                    p_end_date: rpcEnd,
+                    p_status_filter: statusFilter
+                })
+
                 // Paralel API çağrıları
-                const [mainResult, statsResult] = await Promise.all([query, statsQuery])
+                const [mainResult, statsResult] = await Promise.all([query, statsPromise])
 
                 if (!active) return
 
@@ -184,27 +183,17 @@ export function HistoryTab({
                 })
 
                 setPackagesList(transformedData)
-                setTotalCount(mainResult.count || 0)
 
-                // İstatistik hesaplama (İptaller hariç)
-                const statsData = statsResult.data || []
-                const totalAmt = statsData
-                    .filter(p => p.status !== 'cancelled')
-                    .reduce((sum, p) => sum + (p.amount || 0), 0)
-                const cashAmt = statsData
-                    .filter(p => p.payment_method === 'cash' && p.status !== 'cancelled')
-                    .reduce((sum, p) => sum + (p.amount || 0), 0)
-                const cardAmt = statsData
-                    .filter(p => p.payment_method === 'card' && p.status !== 'cancelled')
-                    .reduce((sum, p) => sum + (p.amount || 0), 0)
-                const ibanAmt = statsData
-                    .filter(p => p.payment_method === 'iban' && p.status !== 'cancelled')
-                    .reduce((sum, p) => sum + (p.amount || 0), 0)
+                // RPC'den gelen veriyi parse etme ve state'e yazma
+                const summary = statsResult.data && statsResult.data.length > 0
+                    ? statsResult.data[0]
+                    : { total_orders: 0, total_amount: 0, total_cash: 0, total_card: 0 }
 
+                setTotalCount(Number(summary.total_orders) || mainResult.count || 0)
                 setStats({
-                    totalAmount: totalAmt,
-                    cashAmount: cashAmt,
-                    cardAmount: cardAmt + ibanAmt
+                    totalAmount: Number(summary.total_amount) || 0,
+                    cashAmount: Number(summary.total_cash) || 0,
+                    cardAmount: Number(summary.total_card) || 0
                 })
 
             } catch (error) {
