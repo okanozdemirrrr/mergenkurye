@@ -1602,13 +1602,10 @@ export default function KuryePage() {
 
     setCancelLoading(true)
     try {
-      // İş Mantığı: Kurye paketi teslim aldıysa → Ücretli İptal
-      // Kurye panelinden iptal = genelde kurye elinde, ama savunma amaçlı kontrol
-      const isChargeable = !!(
-        cancellingPackage.picked_up_at || 
-        cancellingPackage.status === 'picking_up' || 
-        cancellingPackage.status === 'on_the_way'
-      )
+      // İş Mantığı (YENİ KURAL):
+      // ✅ Ücretli İptal  → SADECE status = 'on_the_way' (Paket Yolda)
+      // 🆓 Ücretsiz İptal → new_order, getting_ready, ready, assigned, picking_up (kim iptal ederse etsin)
+      const isChargeable = cancellingPackage.status === 'on_the_way'
 
       const { error } = await supabase
         .from('packages')

@@ -37,12 +37,9 @@ export async function cancelOrder(packageId: number, details: string = 'Sipariş
         if (fetchError) throw fetchError
 
         // 2. Ücretli iptal mi kontrol et
-        // KURAL: Kurye atanmamışsa (null) -> Kesinlikle Ücretsiz İptal
-        // KURAL: Kurye atanmışsa VE paketi almışsa -> Ücretli İptal
-        const isChargeableCancellation = !!(
-            packageData.courier_id &&
-            (packageData.status === 'on_the_way' || packageData.status === 'picking_up' || packageData.picked_up_at)
-        )
+        // KURAL (YENİ): Sadece paketin durumu 'on_the_way' (Yolda) ise Ücretli İptal.
+        // 'picking_up' (Alınıyor) dahil diğer tüm durumlar ücretsiz.
+        const isChargeableCancellation = packageData.status === 'on_the_way'
 
         console.log('🔍 İptal Analizi:', {
             packageId,
