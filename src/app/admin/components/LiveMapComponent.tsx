@@ -66,22 +66,18 @@ export function LiveMapComponent({ packages, couriers, restaurants, onRefresh, o
   const BROADCAST_CHANNEL = 'courier-live-locations'
   const STALE_THRESHOLD_MS = 30_000 // 30 saniyeden eski konumu "eski" say
 
-  // Koordinatı olan kuryeleri filtrele:
-  // Önce Broadcast'ten gelen canlı konuma bak, yoksa DB'deki last_location'a bak
-  const couriersWithCoords = couriers.filter(courier => {
-    const live = liveLocations[courier.id]
-    if (live) return true // Broadcast konum var → göster (is_active şartı aranmaz)
-    return courier.last_location?.latitude && courier.last_location?.longitude && courier.is_active
-  })
+  // 📍 Supabase Egress ve Realtime kotalarını korumak için kurye koordinat takibi geçici olarak kapatılmıştır.
+  const couriersWithCoords: Courier[] = []
 
-  // Haritadaki aktif kurye sayısını üst bileşene bildir
+  // Haritadaki aktif kurye sayısını üst bileşene bildir (0 olarak bildiriliyor)
   useEffect(() => {
     if (onLiveCouriersChange) {
-      onLiveCouriersChange(couriersWithCoords.length)
+      onLiveCouriersChange(0)
     }
-  }, [couriersWithCoords.length, onLiveCouriersChange])
+  }, [onLiveCouriersChange])
 
-  // Bugünün tüm siparişlerinin koordinatlarını çek
+  // Bugünün tüm siparişlerinin koordinatlarını çek (Kota koruma nedeniyle geçici olarak devre dışı)
+  /*
   useEffect(() => {
     console.log('🗺️ Yoğunluk noktaları effect çalıştı, isClient:', isClient)
     
@@ -147,6 +143,7 @@ export function LiveMapComponent({ packages, couriers, restaurants, onRefresh, o
     const interval = setInterval(fetchTodayOrders, 120000)
     return () => clearInterval(interval)
   }, [isClient])
+  */
 
   // Client-side rendering kontrolü
   useEffect(() => {
@@ -164,7 +161,8 @@ export function LiveMapComponent({ packages, couriers, restaurants, onRefresh, o
     }
   }, [])
 
-  // ✅ BROADCAST LISTENER: Kurye canlı konumlarını WebSocket ile al (DB'ye 0 yazma)
+  // ✅ BROADCAST LISTENER: Kurye canlı konumlarını WebSocket ile al (Kota koruma kapsamında geçici olarak devre dışı)
+  /*
   useEffect(() => {
     const channel = supabase.channel(BROADCAST_CHANNEL, {
       config: { broadcast: { ack: false } }
@@ -210,8 +208,10 @@ export function LiveMapComponent({ packages, couriers, restaurants, onRefresh, o
       supabase.removeChannel(channel)
     }
   }, [])
+  */
 
-  // Bugünün tüm siparişlerinin koordinatlarını çek
+  // Bugünün tüm siparişlerinin koordinatlarını çek (Kota koruma kapsamında geçici olarak devre dışı)
+  /*
   useEffect(() => {
     if (!isClient) return
 
@@ -251,6 +251,7 @@ export function LiveMapComponent({ packages, couriers, restaurants, onRefresh, o
     document.addEventListener('visibilitychange', handleVisibilityChange)
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
   }, [isClient])
+  */
 
   // SSR sırasında loading göster
   if (!isClient) {
@@ -475,6 +476,19 @@ export function LiveMapComponent({ packages, couriers, restaurants, onRefresh, o
     <>
       <div className={`${isFullscreen ? 'fixed inset-0 z-50 bg-slate-950 p-4' : 'relative h-full'}`}>
         <div className="relative h-full rounded-xl overflow-hidden border border-slate-700">
+          {/* Devre Dışı Uyarı Katmanı */}
+          <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-[1px] z-[1010] flex flex-col items-center justify-center text-center p-6 select-none">
+            <div className="bg-slate-900/95 border border-slate-700/80 rounded-2xl p-8 max-w-md shadow-2xl">
+              <div className="w-16 h-16 bg-orange-500/10 border border-orange-500/30 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+                <span className="text-3xl">📍</span>
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">Canlı Harita</h3>
+              <p className="text-slate-300 text-sm font-medium leading-relaxed">
+                Canlı Harita optimizasyon çalışmaları nedeniyle geçici olarak devre dışıdır.
+              </p>
+            </div>
+          </div>
+
           {/* Büyüt/Küçült Butonu */}
           <button
             onClick={() => setIsFullscreen(!isFullscreen)}
