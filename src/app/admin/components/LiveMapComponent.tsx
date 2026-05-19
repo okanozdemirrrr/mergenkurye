@@ -1,12 +1,24 @@
-﻿/**
+/**
  * @file src/app/admin/components/LiveMapComponent.tsx
  * @description Canlı Malatya Haritası - Kurye ve Paket Takibi
  */
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Maximize2, Minimize2 } from 'lucide-react'
 import { Package, Courier } from '@/types'
+import { supabase } from '@/app/lib/supabase'
+
+// Broadcast'ten gelen anlık konum verisi
+interface LiveLocation {
+  courierId: string
+  courierName: string
+  latitude: number
+  longitude: number
+  accuracy?: number
+  timestamp: string
+  lastSeenMs?: number // ms cinsinden ne kadar önce geldi
+}
 
 interface Restaurant {
   id: number | string
@@ -44,8 +56,14 @@ function MapUpdater({ center }: { center: [number, number] }) {
 export function LiveMapComponent({ packages, couriers, restaurants, onRefresh }: LiveMapComponentProps) {
   const [isClient, setIsClient] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const [mapCenter] = useState<[number, number]>([41.494714153011856, 36.07827997146362]) // Samsun merkez - restoranların ortası
+  const [mapCenter] = useState<[number, number]>([41.494714153011856, 36.07827997146362])
   const [todayHeatmapPoints, setTodayHeatmapPoints] = useState<Array<{ lat: number, lng: number }>>([])
+
+  // 🔴 CANLI KONUMLAR: DB'den değil, Broadcast'ten (WebSocket)
+  const [liveLocations, setLiveLocations] = useState<Record<string, LiveLocation>>({})
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
+  const BROADCAST_CHANNEL = 'courier-live-locations'
+  const STALE_THRESHOLD_MS = 30_000 // 30 saniyeden eski konumu "eski" say
 
   // Bugünün tüm siparişlerinin koordinatlarını çek
   useEffect(() => {
@@ -130,7 +148,54 @@ export function LiveMapComponent({ packages, couriers, restaurants, onRefresh }:
     }
   }, [])
 
-  // Uygulama foreground'a geldiğinde haritayı yenile
+  // ✅ BROADCAST LISTENER: Kurye canlı konumlarını WebSocket ile al (DB'ye 0 yazma)
+  useEffect(() => {
+    const channel = supabase.channel(BROADCAST_CHANNEL, {
+      config: { broadcast: { ack: false } }
+    })
+
+    channel
+      .on('broadcast', { event: 'location_update' }, ({ payload }) => {
+        const now = Date.now()
+        setLiveLocations(prev => ({
+          ...prev,
+          [payload.courierId]: {
+            ...payload,
+            lastSeenMs: now
+          }
+        }))
+        console.log('📡 Canlı konum alındı:', payload.courierName, payload.latitude?.toFixed(4), payload.longitude?.toFixed(4))
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Admin harita: Broadcast kanalına bağlandı')
+        }
+      })
+
+    channelRef.current = channel
+
+    // Eski konumları 30 saniyede bir temizle (kurye çıkış yaptıysa)
+    const staleCleanup = setInterval(() => {
+      const now = Date.now()
+      setLiveLocations(prev => {
+        const updated = { ...prev }
+        Object.entries(updated).forEach(([id, loc]) => {
+          if (now - (loc.lastSeenMs ?? 0) > STALE_THRESHOLD_MS) {
+            delete updated[id]
+            console.log('🧹 Eski konum temizlendi:', id)
+          }
+        })
+        return updated
+      })
+    }, 30_000)
+
+    return () => {
+      clearInterval(staleCleanup)
+      supabase.removeChannel(channel)
+    }
+  }, [])
+
+  // Bugünün tüm siparişlerinin koordinatlarını çek
   useEffect(() => {
     if (!isClient) return
 
@@ -367,10 +432,13 @@ export function LiveMapComponent({ packages, couriers, restaurants, onRefresh }:
     pkg => pkg.status === 'assigned' || pkg.status === 'picking_up' || pkg.status === 'on_the_way'
   )
 
-  // Koordinatı olan kuryeleri filtrele
-  const couriersWithCoords = couriers.filter(
-    courier => courier.last_location?.latitude && courier.last_location?.longitude && courier.is_active
-  )
+  // Koordinatı olan kuryeleri filtrele:
+  // Önce Broadcast'ten gelen canlı konuma bak, yoksa DB'deki last_location'a bak
+  const couriersWithCoords = couriers.filter(courier => {
+    const live = liveLocations[courier.id]
+    if (live) return true // Broadcast konum var → göster (is_active şartı aranmaz)
+    return courier.last_location?.latitude && courier.last_location?.longitude && courier.is_active
+  })
 
   // TÜM restoranları göster (koordinatı olanlar)
   const restaurantsWithCoords = restaurants.filter(
@@ -541,17 +609,30 @@ export function LiveMapComponent({ packages, couriers, restaurants, onRefresh }:
                 pkg.status !== 'delivered' && 
                 pkg.status !== 'cancelled'
               )
+
+              // 🔴 Canlı konum varsa onu kullan, yoksa DB konumunu kullan
+              const live = liveLocations[courier.id]
+              const lat = live?.latitude ?? courier.last_location?.latitude
+              const lng = live?.longitude ?? courier.last_location?.longitude
+              const isLive = !!live
+              const lastSeenSec = live ? Math.round((Date.now() - (live.lastSeenMs ?? 0)) / 1000) : null
               
               return (
                 <Marker
                   key={`courier-${courier.id}`}
-                  position={[courier.last_location!.latitude, courier.last_location!.longitude]}
+                  position={[lat!, lng!]}
                   icon={getCourierIcon(courier)}
                 >
                   <Popup>
                     <div className="text-sm">
                       <div className="font-bold text-orange-600">🏍️ {courier.full_name}</div>
                       <div className="text-xs mt-1">
+                        {/* Canlı Konum Göstergesi */}
+                        <div className={`font-semibold mb-1 ${isLive ? 'text-green-600' : 'text-gray-500'}`}>
+                          {isLive
+                            ? `📡 CANLI (${lastSeenSec}s önce)`
+                            : '⚠️ SON KONUM (DB)'}
+                        </div>
                         <div><strong>Durum:</strong> {courier.is_active ? '✅ Aktif' : '❌ Pasif'}</div>
                         <div><strong>Telefon:</strong> {courier.phone || '-'}</div>
                         <div className="mt-1">

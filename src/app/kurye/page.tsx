@@ -16,6 +16,7 @@ import { supabase } from '../lib/supabase'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '../lib/platformUtils'
 import { CourierEarningsStats } from '@/components/CourierEarningsStats'
 import { useCourierRealtimeNotifications } from '@/hooks/useCourierRealtimeNotifications'
+import { useCourierLocationBroadcast } from '@/hooks/useCourierLocationBroadcast'
 import PullToRefresh from '@/components/PullToRefresh'
 import ChangelogModal from '@/components/ChangelogModal'
 
@@ -313,6 +314,13 @@ export default function KuryePage() {
 
   // Realtime bildirimler + FCM Token kaydı (UPDATE event'leri + Push)
   useCourierRealtimeNotifications(selectedCourierId, isLoggedIn)
+
+  // 📡 CANLI KONUM YAYINI (Supabase Broadcast - DB I/O Harcamayan WebSocket yapısı)
+  useCourierLocationBroadcast({
+    courierId: selectedCourierId || '',
+    courierName: courierName || 'Kurye',
+    isActive: isLoggedIn && is_active
+  })
 
   // Şifre değiştirme modal state'leri
   const [showPasswordModal, setShowPasswordModal] = useState(false)
