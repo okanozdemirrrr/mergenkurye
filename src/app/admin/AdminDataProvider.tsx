@@ -158,10 +158,10 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
 
   const fetchCouriers = async () => {
     try {
-      // ⚡ EGRESS OPTİMİZASYONU: Sadece gerekli courier kolonları
+      // ⚡ EGRESS OPTİMİZASYONU: Sadece gerekli courier kolonları (last_location dahil)
       const { data, error } = await supabase
         .from('couriers')
-        .select('id, username, full_name, is_active, package_rate, payment_type, account_status')
+        .select('id, username, full_name, is_active, package_rate, payment_type, account_status, last_location')
         .order('full_name', { ascending: true })
 
       if (error) throw error

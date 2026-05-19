@@ -34,6 +34,7 @@ interface LiveMapComponentProps {
   couriers: Courier[]
   restaurants: Restaurant[]
   onRefresh?: () => void
+  onLiveCouriersChange?: (count: number) => void
 }
 
 // Harita merkezini güncelleme komponenti
@@ -53,7 +54,7 @@ function MapUpdater({ center }: { center: [number, number] }) {
   return null
 }
 
-export function LiveMapComponent({ packages, couriers, restaurants, onRefresh }: LiveMapComponentProps) {
+export function LiveMapComponent({ packages, couriers, restaurants, onRefresh, onLiveCouriersChange }: LiveMapComponentProps) {
   const [isClient, setIsClient] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [mapCenter] = useState<[number, number]>([41.494714153011856, 36.07827997146362])
@@ -64,6 +65,21 @@ export function LiveMapComponent({ packages, couriers, restaurants, onRefresh }:
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
   const BROADCAST_CHANNEL = 'courier-live-locations'
   const STALE_THRESHOLD_MS = 30_000 // 30 saniyeden eski konumu "eski" say
+
+  // Koordinatı olan kuryeleri filtrele:
+  // Önce Broadcast'ten gelen canlı konuma bak, yoksa DB'deki last_location'a bak
+  const couriersWithCoords = couriers.filter(courier => {
+    const live = liveLocations[courier.id]
+    if (live) return true // Broadcast konum var → göster (is_active şartı aranmaz)
+    return courier.last_location?.latitude && courier.last_location?.longitude && courier.is_active
+  })
+
+  // Haritadaki aktif kurye sayısını üst bileşene bildir
+  useEffect(() => {
+    if (onLiveCouriersChange) {
+      onLiveCouriersChange(couriersWithCoords.length)
+    }
+  }, [couriersWithCoords.length, onLiveCouriersChange])
 
   // Bugünün tüm siparişlerinin koordinatlarını çek
   useEffect(() => {
@@ -431,14 +447,6 @@ export function LiveMapComponent({ packages, couriers, restaurants, onRefresh }:
   const activeOperationPackages = packagesWithCoords.filter(
     pkg => pkg.status === 'assigned' || pkg.status === 'picking_up' || pkg.status === 'on_the_way'
   )
-
-  // Koordinatı olan kuryeleri filtrele:
-  // Önce Broadcast'ten gelen canlı konuma bak, yoksa DB'deki last_location'a bak
-  const couriersWithCoords = couriers.filter(courier => {
-    const live = liveLocations[courier.id]
-    if (live) return true // Broadcast konum var → göster (is_active şartı aranmaz)
-    return courier.last_location?.latitude && courier.last_location?.longitude && courier.is_active
-  })
 
   // TÜM restoranları göster (koordinatı olanlar)
   const restaurantsWithCoords = restaurants.filter(

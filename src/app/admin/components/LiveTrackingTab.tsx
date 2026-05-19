@@ -54,6 +54,7 @@ export function LiveTrackingTab({
 }: LiveTrackingTabProps) {
     const [selectedPackage, setSelectedPackage] = useState<Package | null>(null)
     const [transferPackage, setTransferPackage] = useState<Package | null>(null)
+    const [liveCouriersCount, setLiveCouriersCount] = useState(0)
     
     // Sol panel: Sahipsiz paketler (kurye atanmamış ve iptal edilmemiş)
     // Yeni akışta: new_order, getting_ready, ready durumları da gösterilecek
@@ -332,7 +333,7 @@ export function LiveTrackingTab({
                                 </div>
                                 <div className="flex items-center gap-1">
                                     <span className="text-slate-400">🏍️ Kuryeler:</span>
-                                    <span className="font-bold text-white">{couriers.filter(c => c.last_location?.latitude && c.last_location?.longitude && c.is_active).length}</span>
+                                    <span className="font-bold text-white">{liveCouriersCount}</span>
                                 </div>
                                 
                                 {/* Renk Lejantı */}
@@ -353,7 +354,12 @@ export function LiveTrackingTab({
                             </div>
                         </div>
                         <div className="h-[40vh] lg:h-[500px] w-full rounded-xl overflow-hidden">
-                            <LiveMapComponent packages={packages} couriers={couriers} restaurants={restaurants} />
+                            <LiveMapComponent 
+                                packages={packages} 
+                                couriers={couriers} 
+                                restaurants={restaurants} 
+                                onLiveCouriersChange={setLiveCouriersCount}
+                            />
                         </div>
                     </div>
                 </div>
