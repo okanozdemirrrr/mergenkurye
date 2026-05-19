@@ -1,20 +1,20 @@
 /**
  * @file src/hooks/useCourierLocationBroadcast.ts
- * @description Kurye Anlık Konum Yayını (BROADCAST — Veritabanına YAZMIYOR)
+ * @description Kurye Anlık Konum Yayını (BROADCAST — watchPosition tabanlı)
  *
  * MİMARİ:
- * - navigator.geolocation ile konumu alır
- * - Supabase Realtime Broadcast kanalına fırlatır (WebSocket, 0 DB write)
- * - Admin haritası bu kanalı dinler ve marker'ı günceller
- * - 10 saniyede bir konum güncellenir
+ * - navigator.geolocation.watchPosition ile cihazın GPS donanımına doğrudan bağlanır.
+ * - Mobil işletim sistemlerinin (iOS/Android) arka planda setInterval'i dondurmasını (throttle) engeller.
+ * - Supabase Realtime Broadcast kanalına fırlatır (WebSocket, 0 DB write).
+ * - Aşırı yükü engellemek için 10 saniyelik bir throttle (sınırlandırma) uygular.
  */
 'use client'
 
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef } from 'react'
 import { supabase } from '@/app/lib/supabase'
 
-const BROADCAST_CHANNEL = 'courier-live-locations' // Sabit kanal adı
-const LOCATION_INTERVAL_MS = 10_000 // 10 saniye
+const BROADCAST_CHANNEL = 'courier-live-locations'
+const THROTTLE_INTERVAL_MS = 10_000 // En fazla 10 saniyede bir gönder
 
 interface LocationBroadcastOptions {
   courierId: string
@@ -28,85 +28,86 @@ export function useCourierLocationBroadcast({
   isActive
 }: LocationBroadcastOptions) {
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
-  const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const watchIdRef = useRef<number | null>(null)
+  const lastBroadcastTimeRef = useRef<number>(0)
   const isSubscribedRef = useRef(false)
 
-  const broadcastLocation = useCallback(() => {
-    if (!isSubscribedRef.current || !channelRef.current) return
-    if (!navigator.geolocation) {
-      console.warn('⚠️ Tarayıcı geolocation desteklemiyor')
-      return
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const payload = {
-          courierId,
-          courierName,
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          accuracy: position.coords.accuracy,
-          timestamp: new Date().toISOString()
-        }
-
-        channelRef.current!.send({
-          type: 'broadcast',
-          event: 'location_update',
-          payload
-        })
-
-        console.log('📡 Konum broadcast edildi:', {
-          lat: payload.latitude.toFixed(5),
-          lng: payload.longitude.toFixed(5)
-        })
-      },
-      (error) => {
-        console.warn('⚠️ Konum alınamadı:', error.message)
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 8000,
-        maximumAge: 5000
-      }
-    )
-  }, [courierId, courierName])
-
   useEffect(() => {
-    // Aktif değilse veya courierId yoksa broadcast yapma
+    // Aktif değilse veya courierId yoksa takip başlatma
     if (!isActive || !courierId) return
 
-    // Kanal oluştur ve abone ol
+    // 1. Kanala abone ol
     const channel = supabase.channel(BROADCAST_CHANNEL, {
-      config: { broadcast: { self: false } } // Kendi mesajını alma
+      config: { broadcast: { self: false } }
     })
 
     channel.subscribe((status) => {
       if (status === 'SUBSCRIBED') {
         isSubscribedRef.current = true
         console.log('✅ Kurye konum kanalına bağlandı:', courierId)
-
-        // İlk konumu hemen gönder
-        broadcastLocation()
-
-        // 10 saniyede bir gönder
-        intervalRef.current = setInterval(broadcastLocation, LOCATION_INTERVAL_MS)
-      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-        console.warn('⚠️ Broadcast kanal hatası:', status)
+      } else {
         isSubscribedRef.current = false
       }
     })
 
     channelRef.current = channel
 
+    // 2. watchPosition ile GPS donanımını dinle (mobil arkaplan/kilit koruması sağlar)
+    if (!navigator.geolocation) {
+      console.error('⚠️ Cihazda GPS/Geolocation desteği bulunamadı.')
+    } else {
+      console.log('📡 Cihaz GPS donanımı dinleniyor (watchPosition)...')
+      
+      watchIdRef.current = navigator.geolocation.watchPosition(
+        (position) => {
+          const now = Date.now()
+          // En fazla 10 saniyede bir broadcast et (Throttle)
+          if (now - lastBroadcastTimeRef.current >= THROTTLE_INTERVAL_MS) {
+            if (isSubscribedRef.current && channelRef.current) {
+              const payload = {
+                courierId,
+                courierName,
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+                accuracy: position.coords.accuracy,
+                timestamp: new Date().toISOString()
+              }
+
+              channelRef.current.send({
+                type: 'broadcast',
+                event: 'location_update',
+                payload
+              })
+
+              lastBroadcastTimeRef.current = now
+              console.log('📡 Konum watchPosition üzerinden yayınlandı:', {
+                lat: payload.latitude.toFixed(5),
+                lng: payload.longitude.toFixed(5),
+                accuracy: payload.accuracy
+              })
+            }
+          }
+        },
+        (error) => {
+          console.warn('⚠️ GPS Watch Hatası:', error.message, error.code)
+        },
+        {
+          enableHighAccuracy: true,
+          maximumAge: 0,
+          timeout: 10000
+        }
+      )
+    }
+
     return () => {
-      // Temizlik: interval ve kanal kapat
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-        intervalRef.current = null
+      // Temizlik: Watcher durdur ve kanaldan ayrıl
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current)
+        watchIdRef.current = null
       }
       isSubscribedRef.current = false
       supabase.removeChannel(channel)
-      console.log('🔌 Kurye konum kanalı kapatıldı:', courierId)
+      console.log('🔌 Kurye konum takibi durduruldu:', courierId)
     }
-  }, [courierId, isActive, broadcastLocation])
+  }, [courierId, courierName, isActive])
 }
