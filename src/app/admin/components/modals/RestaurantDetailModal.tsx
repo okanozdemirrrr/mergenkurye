@@ -212,7 +212,7 @@ export function RestaurantDetailModal({
   const [financials, setFinancials] = useState<PeriodFinancials | null>(null)
   
   const [isLoading, setIsLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'orders' | 'payments'>('orders')
+  const [activeTab, setActiveTab] = useState<'phone_orders' | 'web_orders' | 'payments'>('phone_orders')
   const [paymentHistory, setPaymentHistory] = useState<any[]>([])
 
   // ── KATMAN 2: İlgili Dönemin Paket Listesi (Sliding Drawer) State'leri ──
@@ -389,6 +389,17 @@ export function RestaurantDetailModal({
   const guncelBakiye = financials?.net_payable ?? 0
   const unpaidCount = financials?.unpaid_package_count ?? 0
 
+  // 📞 Telefon & 📱 Uygulama siparişlerini filtreleme mantığı
+  const filteredOrders = orders.filter((pkg: any) => {
+    if (activeTab === 'phone_orders') {
+      return !pkg.platform || pkg.platform !== 'web'
+    }
+    if (activeTab === 'web_orders') {
+      return pkg.platform === 'web'
+    }
+    return true
+  })
+
   return (
     <div
       className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
@@ -507,12 +518,20 @@ export function RestaurantDetailModal({
                   {/* Tab Geçişi */}
                   <div className="flex bg-slate-900 p-1 rounded-lg border border-slate-800">
                     <button
-                      onClick={() => setActiveTab('orders')}
+                      onClick={() => setActiveTab('phone_orders')}
                       className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                        activeTab === 'orders' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-300'
+                        activeTab === 'phone_orders' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-300'
                       }`}
                     >
-                      Siparişler
+                      Telefon
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('web_orders')}
+                      className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                        activeTab === 'web_orders' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-300'
+                      }`}
+                    >
+                      Uygulama
                     </button>
                     <button
                       onClick={() => setActiveTab('payments')}
@@ -525,7 +544,7 @@ export function RestaurantDetailModal({
                   </div>
                 </div>
 
-                {activeTab === 'orders' ? (
+                {activeTab !== 'payments' ? (
                   <>
                     {/* Dönem Finansal Özet Kartları (Paket Bazlı) */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-6">
@@ -580,9 +599,9 @@ export function RestaurantDetailModal({
 
                     {/* Sipariş Tablosu */}
                     <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-                      {orders.length === 0 ? (
+                      {filteredOrders.length === 0 ? (
                         <div className="text-center py-16 text-slate-500">
-                          <p>Bu tarih aralığında sipariş bulunamadı</p>
+                          <p>Bu kategoride sipariş bulunamadı</p>
                         </div>
                       ) : (
                         <div className="overflow-x-auto">
@@ -599,7 +618,7 @@ export function RestaurantDetailModal({
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-800/50">
-                              {orders.map((order) => (
+                              {filteredOrders.map((order) => (
                                 <tr key={order.id} className="hover:bg-slate-800/30 transition-colors">
                                   <td className="px-6 py-4 font-medium text-slate-300">
                                     {order.order_number || '......'}
