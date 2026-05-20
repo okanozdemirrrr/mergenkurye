@@ -622,7 +622,7 @@ export default function KuryePage() {
       // ⚡ OPTİMİZE: Sadece gerekli kolonları çek + LIMIT
       const { data, error } = await supabase
         .from('packages')
-        .select('id, order_number, customer_name, customer_phone, delivery_address, amount, status, payment_method, content, created_at, assigned_at, ready_at, picked_up_at, restaurant_id, restaurants(name, phone, address)')
+        .select('id, order_number, customer_name, customer_phone, delivery_address, amount, status, payment_method, content, created_at, assigned_at, ready_at, picked_up_at, restaurant_id, platform, latitude, longitude, restaurants(name, phone, address)')
         .eq('courier_id', courierId)
         .in('status', ['new', 'preparing', 'ready', 'assigned', 'picking_up', 'on_the_way'])
         .order('created_at', { ascending: false })
