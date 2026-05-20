@@ -17,6 +17,7 @@ export interface PeriodFinancials {
   unpaid_revenue: number
   unpaid_package_count: number
   unpaid_cost: number
+  unpaid_commission?: number
   net_payable: number
   paid_revenue: number
   paid_package_count: number
@@ -30,6 +31,7 @@ export interface UnpaidBalance {
   unpaid_revenue: number
   unpaid_package_count: number
   unpaid_cost: number
+  unpaid_commission?: number
   current_balance: number
 }
 

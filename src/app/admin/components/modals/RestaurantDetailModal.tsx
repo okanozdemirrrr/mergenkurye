@@ -528,7 +528,7 @@ export function RestaurantDetailModal({
                 {activeTab === 'orders' ? (
                   <>
                     {/* Dönem Finansal Özet Kartları (Paket Bazlı) */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-6">
                       <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-5">
                         <p className="text-xs font-bold text-slate-500 tracking-widest uppercase mb-1">Ödenmemiş Ciro</p>
                         <p className="text-2xl font-black text-slate-200">
@@ -547,6 +547,14 @@ export function RestaurantDetailModal({
                         </p>
                       </div>
 
+                      <div className="bg-rose-950/20 border border-rose-900/30 rounded-xl p-5">
+                        <p className="text-xs font-bold text-rose-500/70 tracking-widest uppercase mb-1">KOMİSYON KESİNTİSİ</p>
+                        <p className="text-2xl font-black text-rose-400">
+                          {(financials?.unpaid_commission ?? 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
+                        </p>
+                        <p className="text-xs text-rose-500/50 mt-1">Sistem komisyon kesintisi</p>
+                      </div>
+
                       <div className={`border rounded-xl p-5 ${
                         (financials?.net_payable ?? 0) > 0 
                           ? 'bg-emerald-950/20 border-emerald-900/30' 
@@ -558,7 +566,7 @@ export function RestaurantDetailModal({
                         }`}>
                           {(financials?.net_payable ?? 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
                         </p>
-                        <p className="text-xs text-emerald-500/50 mt-1">Ciro - Masraf</p>
+                        <p className="text-xs text-emerald-500/50 mt-1">Ciro - Masraf - Komisyon</p>
                       </div>
 
                       <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-5">
