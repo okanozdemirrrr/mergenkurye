@@ -2997,10 +2997,10 @@ export default function KuryePage() {
                             {pkg.status === 'on_the_way' ? (
                               <>
                                 <p className="text-xs text-slate-400 mb-2">📞 {pkg.customer_phone}</p>
-                                <div className="flex gap-2">
+                                <div className={`grid gap-2 ${pkg.latitude && pkg.longitude && pkg.platform === 'web' ? 'grid-cols-3' : 'grid-cols-2'}`}>
                                   <a
                                     href={`tel:${pkg.customer_phone}`}
-                                    className="flex-1 inline-flex items-center justify-center gap-2 py-3 px-4 bg-green-500 hover:bg-green-600 active:bg-green-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg hover:shadow-xl active:scale-95"
+                                    className="inline-flex items-center justify-center gap-2 py-3 px-4 bg-green-500 hover:bg-green-600 active:bg-green-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg hover:shadow-xl active:scale-95"
                                   >
                                     <span className="text-xl">📞</span>
                                     <span>Ara</span>
@@ -3009,11 +3009,24 @@ export default function KuryePage() {
                                     href={`https://wa.me/${formatPhoneForWhatsApp(pkg.customer_phone)}?text=${encodeURIComponent(`Merhaba ${pkg.customer_name}, siparişiniz yolda! 🏍️\n\nSiparişinizi buradan takip edebilirsiniz:\n${typeof window !== 'undefined' ? window.location.origin : ''}/takip?kod=${pkg.order_number}\n\nMergen Kurye`)}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="flex-1 inline-flex items-center justify-center gap-2 py-3 px-4 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white text-sm font-bold rounded-xl transition-all shadow-lg hover:shadow-xl active:scale-95"
+                                    className="inline-flex items-center justify-center gap-2 py-3 px-4 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white text-sm font-bold rounded-xl transition-all shadow-lg hover:shadow-xl active:scale-95"
                                   >
                                     <span className="text-xl">💬</span>
                                     <span>WhatsApp</span>
                                   </a>
+                                  {/* 🗺️ KONUMA GİT BUTONU - Koşullu Görünüm */}
+                                  {pkg.latitude && pkg.longitude && pkg.platform === 'web' && (
+                                    <button
+                                      onClick={() => {
+                                        const url = `https://www.google.com/maps/dir/?api=1&destination=${pkg.latitude},${pkg.longitude}`
+                                        window.open(url, '_blank')
+                                      }}
+                                      className="inline-flex items-center justify-center gap-2 py-3 px-4 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg hover:shadow-xl active:scale-95"
+                                    >
+                                      <span className="text-xl">🗺️</span>
+                                      <span>Konuma Git</span>
+                                    </button>
+                                  )}
                                 </div>
                               </>
                             ) : (
