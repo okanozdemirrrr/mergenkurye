@@ -102,14 +102,15 @@ export async function getAllRestaurantsUnpaidBalances(
 
 // ── 3. ÖDEME İŞLEMİ (Atomik RPC) ──────────────────────────────
 /**
- * Filtrelenen tarih aralığındaki ödenmemiş paketleri "ödendi" olarak işaretler
- * ve ödeme makbuzu kaydı oluşturur.
+ * p_end_date'e kadar (dahil) tüm ödenmemiş paketleri "ödendi" olarak işaretler.
+ * start_date KULLANILMAZ — geçmişten birikmiş tüm bakiye tek seferde kapatılır.
  *
- * KURAL: Filtre dışındaki günlere KESİNLİKLE DOKUNMAZ.
+ * KURAL: p_end_date tarihine kadar is_paid_to_restaurant = false olan
+ * TÜM paketler kapatılır. Dönem kör noktası (kara delik) oluşmaz.
  */
 export async function processRestaurantPayment(
   restaurantId: string,
-  startDate: string,
+  _startDate: string,   // Artık kullanılmıyor — geriye uyumluluk için imzada tutuluyor
   endDate: string,
   notes?: string
 ): Promise<{
@@ -119,22 +120,18 @@ export async function processRestaurantPayment(
   data?: { package_count: number; revenue: number; cost: number; net_paid: number }
 }> {
   try {
-    const start = new Date(startDate)
-    start.setHours(0, 0, 0, 0)
     const end = new Date(endDate)
     end.setHours(23, 59, 59, 999)
 
-    console.log('📤 Ödeme RPC çağrılıyor:', {
+    console.log('📤 Ödeme RPC çağrılıyor (tüm geçmiş kapatılıyor):', {
       restaurant_id: restaurantId,
-      start: start.toISOString(),
       end: end.toISOString(),
     })
 
     const { data, error } = await supabase.rpc('process_restaurant_payment', {
       p_restaurant_id: restaurantId,
-      p_start_date: start.toISOString(),
-      p_end_date: end.toISOString(),
-      p_notes: notes || null,
+      p_end_date:      end.toISOString(),
+      p_notes:         notes || null,
     })
 
     if (error) {

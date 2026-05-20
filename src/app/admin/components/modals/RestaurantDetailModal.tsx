@@ -488,7 +488,7 @@ export function RestaurantDetailModal({
                       {unpaidCount > 0 ? '💳 HESAP ÖDE' : '✓ ÖDENDİ'}
                     </button>
                     <div className="text-xs text-center text-white/40 font-medium">
-                      Sadece seçili dönem ({globalStartDate} — {globalEndDate})
+                      Bitiş tarihine ({globalEndDate}) kadar olan tüm ödenmemiş bakiyeyi kapatır
                     </div>
                   </div>
                 </div>

@@ -3094,33 +3094,10 @@ export default function KuryePage() {
                       </div>
                     </div>
 
-                    {/* Adres & Dinamik Konuma Git Butonu */}
-                    <div className="mb-2 p-2 bg-slate-800/50 rounded-lg flex items-center justify-between gap-3">
-                      <p className="text-xs text-slate-300 flex-1">{pkg.delivery_address}</p>
-                      {pkg.latitude !== null && pkg.latitude !== undefined && String(pkg.latitude).trim() !== '' &&
-                       pkg.longitude !== null && pkg.longitude !== undefined && String(pkg.longitude).trim() !== '' && (
-                        <a
-                          href={`https://www.google.com/maps/dir/?api=1&destination=${pkg.latitude},${pkg.longitude}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600/10 hover:bg-emerald-600/25 active:bg-emerald-600/35 border border-emerald-500/25 text-emerald-400 hover:text-emerald-300 text-xs font-semibold rounded-lg transition-all active:scale-[0.93] shrink-0 shadow-sm"
-                          title="Google Haritalar ile Yol Tarifi Al"
-                        >
-                          📍 <span className="text-xs">Konuma Git</span>
-                        </a>
-                      )}
+                    {/* Adres */}
+                    <div className="mb-2 p-2 bg-slate-800/50 rounded-lg">
+                      <p className="text-xs text-slate-300">{pkg.delivery_address}</p>
                     </div>
-
-                    {/* NAVİGASYON BUTONU - Sadece on_the_way durumunda göster */}
-                    {pkg.status === 'on_the_way' && pkg.latitude && pkg.longitude && (
-                      <button
-                        onClick={() => handleOpenNavigation(pkg)}
-                        className="w-full mb-2 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 active:from-indigo-800 active:to-purple-800 text-white text-sm font-medium rounded-lg transition-all shadow-md hover:shadow-lg active:scale-95 flex items-center justify-center gap-2"
-                      >
-                        <span>📍</span>
-                        <span>Konuma Git</span>
-                      </button>
-                    )}
 
                     {/* Durum Badge */}
                     <div className="mb-3">

@@ -418,6 +418,7 @@ export default function RestoranımPage() {
               products={products}
               toggleProductAvailability={toggleProductAvailability}
               onProductUpdate={loadRestaurantData}
+              setActiveTab={setActiveTab}
             />
           )}
           {activeTab === 'reviews' && (
@@ -698,7 +699,7 @@ function BrandingTab({ brandingForm, setBrandingForm, coverPreview, logoPreview,
 }
 
 // Menu Tab Component
-function MenuTab({ categories, products, toggleProductAvailability, onProductUpdate }: any) {
+function MenuTab({ categories, products, toggleProductAvailability, onProductUpdate, setActiveTab }: any) {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
@@ -805,7 +806,17 @@ function MenuTab({ categories, products, toggleProductAvailability, onProductUpd
       >
         {/* Yeni Ürün Ekle Butonu */}
         <button
-          onClick={() => setShowAddModal(true)}
+          onClick={() => {
+            if (categories.length === 0) {
+              // Kategori yoksa uyarı göster ve scroll yap
+              alert('⚠️ Önce bir kategori oluşturmalısınız!\n\nAşağıdaki alandan kategori ekleyebilirsiniz.')
+              const categorySection = document.getElementById('category-section')
+              categorySection?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            } else {
+              // Kategori varsa modal aç
+              setShowAddModal(true)
+            }
+          }}
           className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-4 rounded-xl transition-colors flex items-center justify-center gap-2"
         >
           <span className="text-2xl">+</span>
@@ -813,12 +824,21 @@ function MenuTab({ categories, products, toggleProductAvailability, onProductUpd
         </button>
 
         {categories.length === 0 ? (
-          <div className="bg-slate-900 rounded-xl p-12 border border-slate-800 text-center">
-            <p className="text-slate-400 text-lg">Henüz menü eklenmemiş</p>
-            <p className="text-slate-500 text-sm mt-2">Menü eklemek için admin paneline başvurun</p>
+          <div id="category-section" className="bg-slate-900 rounded-xl p-8 border border-slate-800">
+            <div className="text-center mb-6">
+              <p className="text-slate-400 text-lg font-semibold mb-2">📂 Henüz kategori eklenmemiş</p>
+              <p className="text-slate-500 text-sm">Ürün eklemek için önce bir kategori oluşturun</p>
+            </div>
+            
+            {/* Kategori Ekleme Formu */}
+            <CategoryAddForm onSuccess={onProductUpdate} />
           </div>
         ) : (
-          categories.map((category: Category) => (
+          <div id="category-section" className="space-y-4">
+            {/* Kategori Ekleme Formu (Kategoriler varken de göster) */}
+            <CategoryAddForm onSuccess={onProductUpdate} />
+            
+            {categories.map((category: Category) => (
             <div key={category.id} className="bg-slate-900 rounded-xl p-6 border border-slate-800">
               <h3 className="text-xl font-bold text-white mb-4">{category.name}</h3>
               <div className="space-y-3">
@@ -894,7 +914,8 @@ function MenuTab({ categories, products, toggleProductAvailability, onProductUpd
                   ))}
               </div>
             </div>
-          ))
+          ))}
+          </div>
         )}
       </motion.div>
 
@@ -907,6 +928,7 @@ function MenuTab({ categories, products, toggleProductAvailability, onProductUpd
             setShowAddModal(false)
             await onProductUpdate()
           }}
+          setActiveTab={setActiveTab}
         />
       )}
 
@@ -995,7 +1017,17 @@ function MenuTab({ categories, products, toggleProductAvailability, onProductUpd
 }
 
 // Product Add Modal Component
-function ProductAddModal({ categories, onClose, onSuccess }: { categories: Category[]; onClose: () => void; onSuccess: () => void }) {
+function ProductAddModal({ 
+  categories, 
+  onClose, 
+  onSuccess,
+  setActiveTab 
+}: { 
+  categories: Category[]; 
+  onClose: () => void; 
+  onSuccess: () => void;
+  setActiveTab: (tab: 'branding' | 'menu' | 'reviews') => void;
+}) {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -1145,17 +1177,57 @@ function ProductAddModal({ categories, onClose, onSuccess }: { categories: Categ
             <label className="block text-sm font-medium text-slate-300 mb-2">
               Kategori *
             </label>
-            <select
-              value={formData.category_id}
-              onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
-              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-orange-500 outline-none"
-            >
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
+            
+            {categories.length === 0 ? (
+              // Empty State: Kategori yoksa
+              <div className="space-y-3">
+                <select
+                  disabled
+                  className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-500 cursor-not-allowed"
+                >
+                  <option>Lütfen önce bir kategori oluşturun</option>
+                </select>
+                
+                {/* Kategori Oluştur Butonu */}
+                <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                  <div className="flex-1">
+                    <p className="text-amber-300 text-sm font-medium">
+                      ⚠️ Kategori bulunamadı
+                    </p>
+                    <p className="text-amber-300/70 text-xs mt-0.5">
+                      Ürün eklemek için önce bir kategori oluşturmalısınız
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      // Modal'ı kapat ve kategori bölümüne yönlendir
+                      onClose()
+                      setTimeout(() => {
+                        const categorySection = document.getElementById('category-section')
+                        categorySection?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                      }, 300)
+                    }}
+                    className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
+                  >
+                    + Yeni Kategori Oluştur
+                  </button>
+                </div>
+              </div>
+            ) : (
+              // Normal State: Kategoriler varsa
+              <select
+                value={formData.category_id}
+                onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
+                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-orange-500 outline-none"
+              >
+                <option value="">Kategori seçin...</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           {/* Image Upload */}
@@ -1754,6 +1826,104 @@ function UpsellModal({ product, allProducts, onClose, onSuccess }: {
           </button>
         </div>
       </motion.div>
+    </div>
+  )
+}
+
+
+// Category Add Form Component
+function CategoryAddForm({ onSuccess }: { onSuccess: () => void }) {
+  const [categoryName, setCategoryName] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleAddCategory = async () => {
+    if (!categoryName.trim()) {
+      setError('Kategori adı boş olamaz')
+      return
+    }
+
+    try {
+      setLoading(true)
+      setError('')
+
+      const restaurantId = localStorage.getItem('restoran_logged_restaurant_id')
+      if (!restaurantId) {
+        setError('Restoran ID bulunamadı')
+        return
+      }
+
+      // En yüksek display_order'ı bul
+      const { data: existingCategories } = await supabase
+        .from('categories')
+        .select('display_order')
+        .eq('restaurant_id', restaurantId)
+        .order('display_order', { ascending: false })
+        .limit(1)
+
+      const nextDisplayOrder = existingCategories && existingCategories.length > 0 
+        ? existingCategories[0].display_order + 1 
+        : 0
+
+      // Kategori ekle
+      const { error: insertError } = await supabase
+        .from('categories')
+        .insert({
+          restaurant_id: restaurantId,
+          name: categoryName.trim(),
+          display_order: nextDisplayOrder
+        })
+
+      if (insertError) throw insertError
+
+      // Başarı
+      setCategoryName('')
+      await onSuccess()
+      
+      // Toast mesajı
+      const event = new CustomEvent('show-toast', { 
+        detail: { message: '✅ Kategori başarıyla eklendi!', type: 'success' } 
+      })
+      window.dispatchEvent(event)
+    } catch (error: any) {
+      console.error('Kategori eklenemedi:', error)
+      setError('Kategori eklenemedi: ' + (error.message || 'Bilinmeyen hata'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+      <div className="flex items-center gap-3">
+        <div className="flex-1">
+          <input
+            type="text"
+            value={categoryName}
+            onChange={(e) => {
+              setCategoryName(e.target.value)
+              setError('')
+            }}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                handleAddCategory()
+              }
+            }}
+            placeholder="Yeni kategori adı (örn: Burgerler, Pizzalar...)"
+            className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:border-orange-500 outline-none"
+          />
+          {error && (
+            <p className="text-red-400 text-xs mt-1">{error}</p>
+          )}
+        </div>
+        <button
+          onClick={handleAddCategory}
+          disabled={loading || !categoryName.trim()}
+          className="px-6 py-3 bg-orange-600 hover:bg-orange-700 disabled:bg-slate-700 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors whitespace-nowrap"
+        >
+          {loading ? '⏳' : '+ Kategori Ekle'}
+        </button>
+      </div>
     </div>
   )
 }

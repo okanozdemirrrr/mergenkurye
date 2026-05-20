@@ -223,7 +223,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   }`}
                 >
                   <span className="mr-3">👥</span>
-                  Müşteriler
+                  Yemek & Sanal Market
                   <span className="float-right">{showCustomerSubmenu ? '▼' : '▶'}</span>
                 </button>
 
@@ -246,6 +246,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       }`}
                     >
                       🛒 Market Yönetimi
+                    </Link>
+                    <Link
+                      href="/admin/restoranlar/uygulama-siparisleri"
+                      onClick={() => setShowMenu(false)}
+                      className={`block w-full text-left px-4 py-2 rounded-lg text-sm transition-all ${
+                        isActive('/admin/restoranlar/uygulama-siparisleri') ? 'bg-orange-500 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                      }`}
+                    >
+                      📱 Restoranların Uygulama Siparişleri
                     </Link>
                   </div>
                 )}

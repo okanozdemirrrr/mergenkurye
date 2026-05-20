@@ -54,7 +54,7 @@ export function useAdminRestaurantModal({
 
   // ── ÖDEME İŞLEMİ (YENİ SİSTEM) ──────────────────────────────
   /**
-   * Filtrelenen tarih aralığındaki ödenmemiş paketleri ödendi olarak işaretler.
+   * p_end_date'e kadar tüm ödenmemiş paketleri kapatır (geçmiş dahil).
    * Atomik RPC: packages UPDATE + payment INSERT tek transaction.
    */
   const handleRestaurantPayment = async () => {
@@ -64,8 +64,8 @@ export function useAdminRestaurantModal({
       return
     }
 
-    if (!restaurantStartDate || !restaurantEndDate) {
-      setErrorMessage('❌ Tarih aralığı seçilmeli!')
+    if (!restaurantEndDate) {
+      setErrorMessage('❌ Bitiş tarihi seçilmeli!')
       setTimeout(() => setErrorMessage(''), 5000)
       return
     }
@@ -75,9 +75,9 @@ export function useAdminRestaurantModal({
     try {
       const result = await processRestaurantPayment(
         restaurantId,
-        restaurantStartDate,
+        restaurantStartDate,   // Artık RPC'de kullanılmıyor; geriye uyumluluk için geçiliyor
         restaurantEndDate,
-        `Dönem Ödemesi — ${restaurantStartDate} / ${restaurantEndDate}`
+        `Geçmiş Tüm Bakiye Kapatıldı — ${restaurantEndDate} tarihine kadar`
       )
 
       if (result.success) {
