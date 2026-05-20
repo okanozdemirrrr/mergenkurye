@@ -223,7 +223,7 @@ export function LiveTrackingTab({
                                             <p className="text-white">🚴 {couriers.find(c => c.id === selectedPackage.courier_id)?.full_name || 'Bilinmeyen'}</p>
                                         </div>
                                         {/* Kurye Devret Butonu - assigned ve picking_up durumlarında */}
-                                        {(selectedPackage.status === 'assigned' || selectedPackage.status === 'picking_up') && (
+                                        {(selectedPackage.status === 'assigned' || selectedPackage.status === 'picking_up' || selectedPackage.status === 'on_the_way') && (
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation()

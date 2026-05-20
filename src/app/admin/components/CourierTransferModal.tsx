@@ -32,10 +32,10 @@ export function CourierTransferModal({ package: pkg, couriers, onClose, onSucces
             return
         }
 
-        // 🚫 GÜVENLİK KONTROLÜ: Kurye paketi yola çıktıysa devir yapılamaz!
-        const blockedStatuses = ['on_the_way', 'delivered']
+        // 🚫 GÜVENLİK KONTROLÜ: Sadece teslim edilmiş paketlerde devir yapılamaz!
+        const blockedStatuses = ['delivered']
         if (blockedStatuses.includes(pkg.status)) {
-            setError(`❌ Bu paket "${pkg.status}" durumunda! Kurye yola çıktıktan sonra devir yapılamaz.`)
+            setError(`❌ Bu paket "${pkg.status}" durumunda! Teslim edildikten sonra devir yapılamaz.`)
             return
         }
 
@@ -53,6 +53,31 @@ export function CourierTransferModal({ package: pkg, couriers, onClose, onSucces
                 .eq('id', pkg.id)
 
             if (updateError) throw updateError
+
+            // 📝 Sıra dışı devir işlemini order_logs tablosuna kaydet
+            try {
+                const oldCourierName = currentCourier?.full_name || 'Bilinmeyen'
+                const newCourierName = couriers.find(c => c.id === selectedCourierId)?.full_name || 'Bilinmeyen'
+                
+                await supabase.from('order_logs').insert({
+                    package_id: pkg.id,
+                    action: 'courier_reassigned',
+                    details: {
+                        previous_courier_id: pkg.courier_id,
+                        previous_courier_name: oldCourierName,
+                        new_courier_id: selectedCourierId,
+                        new_courier_name: newCourierName,
+                        pkg_status: pkg.status,
+                        note: pkg.status === 'on_the_way'
+                            ? `Sipariş yoldayken ${oldCourierName}'den ${newCourierName}'ye devredildi.`
+                            : `Sipariş devredildi: ${oldCourierName} -> ${newCourierName}`
+                    },
+                    created_at: new Date().toISOString()
+                })
+                console.log('✅ Kurye devri loglandı')
+            } catch (logErr) {
+                console.error('⚠️ Kurye devri loglanamadı:', logErr)
+            }
 
             // Başarılı
             onSuccess()
