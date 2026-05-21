@@ -60,14 +60,36 @@ export function EndOfDayModalNew({
     try {
       setLoading(true)
 
+      let startIso = ''
+      let endIso = ''
+
+      if (startDate) {
+        const start = new Date(startDate)
+        if (!isNaN(start.getTime())) {
+          start.setHours(0, 0, 0, 0)
+          startIso = start.toISOString()
+        }
+      }
+
+      if (endDate) {
+        const end = new Date(endDate)
+        if (!isNaN(end.getTime())) {
+          end.setHours(23, 59, 59, 999)
+          endIso = end.toISOString()
+        }
+      }
+
+      if (!startIso) startIso = startDate
+      if (!endIso) endIso = endDate
+
       // 1. GÖRSEL DEĞERLER — Tarih aralığına göre
       const { data: packages, error: packagesError } = await supabase
         .from('packages')
         .select('amount, payment_method')
         .eq('delivered_by_courier_id', courier.id)  // ✅ Teslimatı yapan kurye
         .eq('status', 'delivered')
-        .gte('delivered_at', `${startDate}T00:00:00`)
-        .lte('delivered_at', `${endDate}T23:59:59`)
+        .gte('delivered_at', startIso)
+        .lte('delivered_at', endIso)
 
       if (packagesError) throw packagesError
 
@@ -95,7 +117,7 @@ export function EndOfDayModalNew({
         .select('amount, payment_method')
         .eq('delivered_by_courier_id', courier.id)  // ✅ Teslimatı yapan kurye
         .eq('status', 'delivered')
-        .lte('delivered_at', `${endDate}T23:59:59`) // endDate'e kadar TÜM paketler
+        .lte('delivered_at', endIso) // endDate'e kadar TÜM paketler
 
       if (allPackagesError) throw allPackagesError
 
@@ -108,7 +130,7 @@ export function EndOfDayModalNew({
         .from('courier_settlements')
         .select('amount_paid')
         .eq('courier_id', courier.id)
-        .lte('created_at', `${endDate}T23:59:59`) // endDate'e kadar TÜM ödemeler
+        .lte('created_at', endIso) // endDate'e kadar TÜM ödemeler
 
       if (settlementsError) throw settlementsError
 
