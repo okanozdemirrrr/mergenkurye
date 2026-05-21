@@ -58,6 +58,10 @@ export function EndOfDayModalNew({
   // ═══ VERİ ÇEKME (MANTIK DEĞİŞMEDİ) ═══
   const calculateTotals = async () => {
     try {
+      if (!courier?.id) {
+        console.error('❌ Kurye ID bulunamadı')
+        return
+      }
       setLoading(true)
 
       let startIso = ''
@@ -82,12 +86,13 @@ export function EndOfDayModalNew({
       if (!startIso) startIso = startDate
       if (!endIso) endIso = endDate
 
-      // 1. GÖRSEL DEĞERLER — Tarih aralığına göre
+      // 1. GÖRSEL DEĞERLER — Tarih aralığına göre, sadece parası kuryeye ödenmemiş olanlar
       const { data: packages, error: packagesError } = await supabase
         .from('packages')
         .select('amount, payment_method')
         .eq('delivered_by_courier_id', courier.id)  // ✅ Teslimatı yapan kurye
         .eq('status', 'delivered')
+        .eq('is_paid_to_courier', false)           // ✅ Sadece ödenmemiş paketler
         .gte('delivered_at', startIso)
         .lte('delivered_at', endIso)
 
@@ -237,6 +242,27 @@ export function EndOfDayModalNew({
             <div className="text-center py-12">
               <div className="w-8 h-8 border-2 border-slate-600 border-t-slate-300 rounded-full animate-spin mx-auto mb-3"></div>
               <p className="text-sm text-slate-600 tracking-tight">Hesaplanıyor...</p>
+            </div>
+          ) : deliveryCount === 0 ? (
+            <div className="space-y-5 py-6">
+              <div className="bg-amber-900/20 border border-amber-800/40 rounded-lg p-5 text-center">
+                <span className="text-2xl block mb-2">ℹ️</span>
+                <p className="text-sm font-bold text-amber-400 tracking-tight">Ödenecek bakiye bulunamadı</p>
+                <p className="text-xs text-slate-400 mt-1">Bu tarih aralığındaki tüm teslimatlar zaten kuryeye ödenmiş veya teslim edilmemiş.</p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    onClose()
+                  }}
+                  className="w-full px-3 py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-400 rounded text-xs font-medium border border-slate-800 transition-colors tracking-tight"
+                >
+                  Kapat
+                </button>
+              </div>
             </div>
           ) : (
             <>
