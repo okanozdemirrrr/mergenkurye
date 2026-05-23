@@ -48,13 +48,13 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
             .from('packages')
             .select(`
               id, order_number, customer_name, customer_phone, 
-              delivery_address, amount, status, content, courier_id, 
+              delivery_address, amount, status, courier_id, 
               payment_method, restaurant_id, platform, created_at, 
               assigned_at, picked_up_at, delivered_at, settled_at, 
               restaurant_settled_at, latitude, longitude,
               restaurants(id, name, phone, address)
             `)
-            .neq('status', 'delivered')
+            .in('status', ['waiting', 'assigned', 'picking_up', 'on_the_way'])
             .order('created_at', { ascending: false })
           
           if (error) throw error
@@ -117,6 +117,7 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
         `)
         .eq('status', 'delivered')
         .order('delivered_at', { ascending: false })
+        .limit(50)
 
       if (deliveredError) throw deliveredError
 
@@ -134,6 +135,7 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
         .eq('status', 'cancelled')
         .eq('is_chargeable_cancellation', true)
         .order('created_at', { ascending: false })
+        .limit(50)
 
       if (cancelledError) throw cancelledError
 
@@ -535,8 +537,40 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
         return
       }
 
-      await fetchPackages(false)
-      await fetchDeliveredPackages()
+      // 🚨 KURAL 2: Fetch iptal. Gelen payload'u state'e yediriyoruz.
+      if (payload.eventType === 'UPDATE' && payload.new) {
+        const newPkg = payload.new as any
+        
+        // Aktif paketler için güncelleme (ilişkili verileri koruyarak)
+        if (newPkg.status === 'delivered' || newPkg.status === 'cancelled') {
+          // Canlı listeden tamamen düşür
+          setPackages(prev => prev.filter(p => p.id !== newPkg.id))
+        } else {
+          setPackages(prev => prev.map(p => {
+            if (p.id === newPkg.id) {
+              return { ...p, ...newPkg, restaurant: p.restaurant, courier_name: p.courier_name }
+            }
+            return p
+          }))
+        }
+
+        // Eğer paket teslim/iptal edildiyse Delivered listesine ekle/güncelle (aktiften silinmesi backend view veya reload ile hallolur veya basitleştirilebilir)
+        if (newPkg.status === 'delivered' || newPkg.status === 'cancelled') {
+           setDeliveredPackages(prev => {
+             const exists = prev.find(p => p.id === newPkg.id)
+             if (exists) {
+               return prev.map(p => p.id === newPkg.id ? { ...p, ...newPkg, restaurant: p.restaurant, courier_name: p.courier_name } : p)
+             }
+             // Yeni bir geçmiş paketi ise state'e en başa ekle
+             return [{ ...newPkg, restaurant: null, courier_name: null } as Package, ...prev]
+           })
+        }
+      } else if (payload.eventType === 'INSERT' && payload.new) {
+        const newPkg = payload.new as any
+        setPackages(prev => [{ ...newPkg, restaurant: null, courier_name: null } as Package, ...prev])
+      } else if (payload.eventType === 'DELETE' && payload.old) {
+        setPackages(prev => prev.filter(p => p.id !== payload.old?.id))
+      }
     }
 
     const handleCourierChange = async () => {

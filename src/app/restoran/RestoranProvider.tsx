@@ -99,8 +99,10 @@ export function RestoranProvider({ children }: { children: ReactNode }) {
     try {
       const { data, error } = await supabase
         .from('packages')
-        .select('*, courier:couriers!packages_courier_id_fkey(full_name)')
+        // 🚨 KURAL 3: select('*') iptal. Sadece gerekenler (content yazıcı için şart)
+        .select('id, customer_name, customer_phone, delivery_address, amount, status, content, courier_id, payment_method, order_number, platform, created_at, assigned_at, picked_up_at, delivered_at, courier:couriers!packages_courier_id_fkey(full_name)')
         .eq('restaurant_id', restaurantId)
+        .in('status', ['waiting', 'assigned', 'picking_up', 'on_the_way'])
         .order('created_at', { ascending: false })
 
       if (error) {
@@ -143,20 +145,32 @@ export function RestoranProvider({ children }: { children: ReactNode }) {
           table: 'packages',
           filter: `restaurant_id=eq.${restaurantId}`
         },
-        () => {
-          fetchPackages()
+        (payload: any) => {
+          // 🚨 KURAL 2: Fetch yerine State entegrasyonu
+          if (payload.eventType === 'INSERT') {
+            const newPkg = payload.new as Package;
+            if (['waiting', 'assigned', 'picking_up', 'on_the_way'].includes(newPkg.status)) {
+               setPackages(prev => [newPkg, ...prev])
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedPkg = payload.new as Package;
+            if (updatedPkg.status === 'delivered' || updatedPkg.status === 'cancelled') {
+               // Aktif listeden tamamen düşür
+               setPackages(prev => prev.filter(p => p.id !== updatedPkg.id))
+            } else {
+               setPackages(prev => prev.map(p => p.id === updatedPkg.id ? { ...p, ...updatedPkg } : p))
+            }
+          } else if (payload.eventType === 'DELETE') {
+            setPackages(prev => prev.filter(p => p.id !== payload.old.id))
+          }
         }
       )
       .subscribe()
 
-    // 5 dakikalık otomatik yenileme
-    const refreshInterval = setInterval(() => {
-      fetchPackages()
-    }, 300000)
+    // 🚨 KURAL 1: setInterval polling TAMAMEN SİLİNDİ
 
     return () => {
       packagesChannel.unsubscribe()
-      clearInterval(refreshInterval)
     }
   }, [restaurantId])
 

@@ -110,8 +110,10 @@ export function CustomerTrackingMap({ packageData }: CustomerTrackingMapProps) {
 
     fetchCourierLocation()
 
-    // Her 5 saniyede bir güncelle (daha sık)
-    const interval = setInterval(fetchCourierLocation, 5000)
+    fetchCourierLocation()
+
+    // 🚨 KALDILRILDI: Her 5 saniyede bir güncelle (polling iptal)
+    // const interval = setInterval(fetchCourierLocation, 5000)
 
     // Realtime subscription
     const channel = supabase
@@ -140,7 +142,7 @@ export function CustomerTrackingMap({ packageData }: CustomerTrackingMapProps) {
       .subscribe()
 
     return () => {
-      clearInterval(interval)
+      // clearInterval(interval) polling iptal edildiği için kaldırıldı
       supabase.removeChannel(channel)
     }
   }, [packageData.courier_id, courierLocation])
