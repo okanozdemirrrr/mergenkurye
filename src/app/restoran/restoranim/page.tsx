@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/app/lib/supabase'
 import { Upload, Save, Image as ImageIcon, Star, MessageSquare, Eye, EyeOff, Trash2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import ProductOptionsManager, { OptionGroup } from '../components/ProductOptionsManager'
 
 interface Restaurant {
   id: string
@@ -37,6 +38,7 @@ interface Product {
   is_available: boolean
   display_order: number
   upsell_product_ids?: string[]
+  options?: OptionGroup[]
 }
 
 interface Review {
@@ -1034,6 +1036,7 @@ function ProductAddModal({
     price: '',
     category_id: categories[0]?.id || ''
   })
+  const [optionGroups, setOptionGroups] = useState<OptionGroup[]>([])
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -1130,7 +1133,8 @@ function ProductAddModal({
           price: price,
           image_url: imageUrl,
           is_available: true,
-          display_order: nextDisplayOrder
+          display_order: nextDisplayOrder,
+          options: optionGroups
         })
 
       if (insertError) throw insertError
@@ -1300,8 +1304,17 @@ function ProductAddModal({
             />
           </div>
 
+          {/* Opsiyon Yönetimi */}
+          <div className="border-t border-slate-800 pt-4">
+            <ProductOptionsManager
+              options={optionGroups}
+              onChange={setOptionGroups}
+              darkMode={true}
+            />
+          </div>
+
           {/* Buttons */}
-          <div className="flex gap-3">
+          <div className="flex gap-3 pt-4">
             <button
               onClick={onClose}
               className="flex-1 h-12 border-2 border-slate-700 text-slate-300 rounded-lg font-medium hover:bg-slate-800 transition-colors"
@@ -1330,6 +1343,9 @@ function ProductEditModal({ product, onClose, onSuccess }: { product: Product; o
     description: product.description || '',
     price: product.price.toString()
   })
+  const [optionGroups, setOptionGroups] = useState<OptionGroup[]>(
+    product.options ? (typeof product.options === 'string' ? JSON.parse(product.options) : product.options) : []
+  )
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(product.image_url || null)
   const [loading, setLoading] = useState(false)
@@ -1399,7 +1415,8 @@ function ProductEditModal({ product, onClose, onSuccess }: { product: Product; o
           name: formData.name.trim(),
           description: formData.description.trim() || null,
           price: price,
-          image_url: imageUrl
+          image_url: imageUrl,
+          options: optionGroups
         })
         .eq('id', product.id)
 
@@ -1512,8 +1529,17 @@ function ProductEditModal({ product, onClose, onSuccess }: { product: Product; o
             />
           </div>
 
+          {/* Opsiyon Yönetimi */}
+          <div className="border-t border-slate-800 pt-4">
+            <ProductOptionsManager
+              options={optionGroups}
+              onChange={setOptionGroups}
+              darkMode={true}
+            />
+          </div>
+
           {/* Buttons */}
-          <div className="flex gap-3">
+          <div className="flex gap-3 pt-4">
             <button
               onClick={onClose}
               className="flex-1 h-12 border-2 border-slate-700 text-slate-300 rounded-lg font-medium hover:bg-slate-800 transition-colors"

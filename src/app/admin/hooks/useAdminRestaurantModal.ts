@@ -58,16 +58,21 @@ export function useAdminRestaurantModal({
    * Atomik RPC: packages UPDATE + payment INSERT tek transaction.
    */
   const handleRestaurantPayment = async () => {
+    // 1. Restoran ID kontrolü
     if (!restaurantId) {
-      setErrorMessage('❌ Restoran ID bulunamadı!')
+      const errMsg = '❌ Restoran ID bulunamadı!'
+      setErrorMessage(errMsg)
       setTimeout(() => setErrorMessage(''), 5000)
-      return
+      throw new Error(errMsg) // PaymentModal'ın catch bloğunu tetikle
     }
 
-    if (!restaurantEndDate) {
-      setErrorMessage('❌ Bitiş tarihi seçilmeli!')
+    // 2. Bitiş tarihi kontrolü — boşsa parentEndDate'i fallback olarak kullan
+    const effectiveEndDate = restaurantEndDate || parentEndDate || ''
+    if (!effectiveEndDate) {
+      const errMsg = '❌ Bitiş tarihi seçilmeli! Lütfen ana ekrandan tarih filtresi seçin.'
+      setErrorMessage(errMsg)
       setTimeout(() => setErrorMessage(''), 5000)
-      return
+      throw new Error(errMsg)
     }
 
     setRestaurantPaymentProcessing(true)
@@ -75,9 +80,9 @@ export function useAdminRestaurantModal({
     try {
       const result = await processRestaurantPayment(
         restaurantId,
-        restaurantStartDate,   // Artık RPC'de kullanılmıyor; geriye uyumluluk için geçiliyor
-        restaurantEndDate,
-        `Geçmiş Tüm Bakiye Kapatıldı — ${restaurantEndDate} tarihine kadar`
+        restaurantStartDate || parentStartDate || '',
+        effectiveEndDate,
+        `Bakiye Kapatıldı — ${effectiveEndDate} tarihine kadar`
       )
 
       if (result.success) {
@@ -90,22 +95,30 @@ export function useAdminRestaurantModal({
 
         // UI anında güncelle
         setGuncelBakiye(0)
-        setShowRestaurantPaymentModal(false)
         setRestaurantPaymentAmount('')
 
-        // Listeleri yenile
+        // Listeleri yenile — anında refetch (timeout yok)
         fetchRestaurants()
-        setTimeout(() => {
-          setRefetchTrigger((prev) => prev + 1)
-        }, 300)
+        setRefetchTrigger((prev) => prev + 1)
+
+        // 🚪 Modal'ı kapatmayı PaymentModal'a bırak (konfeti sonrası)
+        // setShowRestaurantPaymentModal(false) — PaymentModal zaten onClose çağıracak
       } else {
-        setErrorMessage(`❌ ${result.error || 'Ödeme kaydedilemedi'}`)
+        // Başarısız sonuç → throw et ki PaymentModal hata gösterebilsin
+        const errMsg = result.error || 'Ödeme kaydedilemedi'
+        setErrorMessage(`❌ ${errMsg}`)
         setTimeout(() => setErrorMessage(''), 8000)
+        throw new Error(errMsg)
       }
     } catch (error: any) {
       console.error('❌ handleRestaurantPayment CATCH:', error)
-      setErrorMessage(`❌ Beklenmeyen hata: ${error.message || 'Bilinmeyen hata'}`)
-      setTimeout(() => setErrorMessage(''), 8000)
+      // Eğer hata zaten setErrorMessage ile gösterilmemişse göster
+      if (!error.message?.includes('Ödeme kaydedilemedi') && !error.message?.includes('❌')) {
+        const errMsg = `❌ Beklenmeyen hata: ${error.message || 'Bilinmeyen hata'}`
+        setErrorMessage(errMsg)
+        setTimeout(() => setErrorMessage(''), 8000)
+      }
+      throw error // PaymentModal'ın catch bloğunu tetikle
     } finally {
       setRestaurantPaymentProcessing(false)
     }

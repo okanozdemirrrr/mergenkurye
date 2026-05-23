@@ -357,10 +357,200 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
     setCurrentPage(0) // Filtre temizlendiğinde sayfayı sıfırla
   }, [])
 
-  // Sekme, limit veya sayfa değiştiğinde paketleri yeniden yükle
+  const printReceipt = useCallback((orderData: any) => {
+    if (typeof window === 'undefined') return
+
+    const iframe = document.getElementById('receipt-printer') as HTMLIFrameElement
+    if (!iframe) {
+      console.error('❌ Yazıcı iframe bulunamadı!')
+      return
+    }
+
+    const doc = iframe.contentDocument || iframe.contentWindow?.document
+    if (!doc) {
+      console.error('❌ Iframe document nesnesine erişilemedi!')
+      return
+    }
+
+    // Tarihi formatla
+    let formattedDate = ''
+    try {
+      formattedDate = new Date(orderData.created_at || new Date()).toLocaleString('tr-TR')
+    } catch (e) {
+      formattedDate = new Date().toLocaleString('tr-TR')
+    }
+
+    const restaurantName = restaurant?.name || 'Restoran'
+
+    const getPaymentMethodLabel = (method?: string) => {
+      switch (method) {
+        case 'cash': return 'Nakit'
+        case 'card': return 'Kredi Kartı'
+        case 'iban': return 'IBAN'
+        default: return 'Belirtilmemiş'
+      }
+    }
+
+    // Ürünleri HTML formatına dönüştür
+    const getProductsHtml = (content?: string) => {
+      if (!content) {
+        return `
+          <div class="item">
+            <span class="name">Belirtilmemiş</span>
+            <span class="price">-</span>
+          </div>
+        `
+      }
+      
+      const items = content.split(/,|\n/).map(item => item.trim()).filter(Boolean)
+      
+      return items.map(item => {
+        // Fiyat barındıran bir bitiş kısmı var mı kontrol et (Örn: "Lahmacun 100₺" veya "Adana - 150 TL")
+        const priceMatch = item.match(/(.*?)\s*[-–]?\s*(\d+(?:\.\d+)?)\s*(?:TL|₺|tl|tL|Tl)?$/)
+        
+        if (priceMatch) {
+          const name = priceMatch[1].trim()
+          const price = priceMatch[2].trim()
+          return `
+            <div class="item">
+              <span class="name">${name}</span>
+              <span class="price">${price} ₺</span>
+            </div>
+          `
+        } else {
+          return `
+            <div class="item">
+              <span class="name">${item}</span>
+              <span class="price"></span>
+            </div>
+          `
+        }
+      }).join('')
+    }
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Sipariş Fişi #${orderData.id}</title>
+        <style>
+          @page { size: 80mm; margin: 0; }
+          body {
+            width: 300px; 
+            margin: 0 auto;
+            background-color: white;
+            color: black;
+            font-family: monospace;
+            font-size: 14px;
+            padding: 10px;
+          }
+          .header { text-align: center; margin-bottom: 10px; }
+          .header h2 { margin: 0 0 5px 0; font-size: 20px; }
+          .header p { margin: 2px 0; font-size: 12px; }
+          .divider { text-align: center; margin: 10px 0; overflow: hidden; white-space: nowrap; }
+          .item { display: flex; justify-content: space-between; margin-bottom: 5px; font-weight: bold;}
+          .total-section { font-size: 18px; font-weight: bold; }
+          .total-line { display: flex; justify-content: space-between; border-top: 1px solid #000; padding-top: 5px;}
+          .customer-info p { margin: 3px 0; }
+          .bold { font-weight: bold; }
+          .receipt-footer-logo { text-align: center; margin-top: 15px; margin-bottom: 5px; }
+          .receipt-footer-logo img { width: 80px; height: auto; display: block; margin: 0 auto; filter: grayscale(100%) contrast(200%); }
+          .receipt-footer-logo p { font-size: 10px; margin-top: 5px; color: black; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h2>${restaurantName.toUpperCase()}</h2>
+          <p>${formattedDate}</p>
+          <p>Sipariş ID: #${orderData.id}</p>
+        </div>
+        
+        <div class="divider">--------------------------------</div>
+        
+        <div class="items">
+          ${getProductsHtml(orderData.content)}
+        </div>
+        
+        <div class="divider">--------------------------------</div>
+        
+        <div class="total-section">
+          <div class="total-line">
+            <span>TOPLAM:</span>
+            <span>${orderData.amount} ₺</span>
+          </div>
+        </div>
+        
+        <div class="divider">--------------------------------</div>
+        
+        <div class="customer-info">
+          <p class="bold">MÜŞTERİ BİLGİLERİ</p>
+          <p>${orderData.customer_name || 'Belirtilmemiş'}</p>
+          <p>${orderData.customer_phone || 'Belirtilmemiş'}</p>
+          <p>${orderData.delivery_address || 'Adres Belirtilmemiş (Gel-Al)'}</p>
+          <p class="bold">ÖDEME: ${getPaymentMethodLabel(orderData.payment_method).toUpperCase()}</p>
+        </div>
+        
+        <div class="divider">--------------------------------</div>
+        
+        <div class="receipt-footer-logo">
+          <img src="data:image/png;base64,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" />
+          <p>Otonom Termal Yazdırma Modu</p>
+        </div>
+      </body>
+      </html>
+    `
+
+    doc.open()
+    doc.write(htmlContent)
+    doc.close()
+
+    // Yazdırmayı tetikle
+    setTimeout(() => {
+      if (iframe.contentWindow) {
+        try {
+          iframe.contentWindow.focus()
+          iframe.contentWindow.print()
+          console.log('✅ Sipariş başarıyla yazıcı kuyruğuna gönderildi.')
+        } catch (printError) {
+          console.error('❌ Yazdırma işlemi başarısız:', printError)
+        }
+      }
+    }, 250)
+  }, [restaurant])
+
   useEffect(() => {
-    fetchPackages()
-  }, [activeTab, startDate, endDate, displayLimit, currentPage, fetchPackages])
+    if (!restaurantId) return
+
+    console.log('📡 Otonom Termal Yazdırma Realtime dinleyicisi kuruluyor...')
+
+    const channel = supabase
+      .channel(`restaurant-silent-printing-${restaurantId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'packages',
+          filter: `restaurant_id=eq.${restaurantId}`
+        },
+        (payload) => {
+          const newOrder = payload.new as any
+          if (newOrder && (newOrder.status === 'new' || newOrder.status === 'new_order')) {
+            console.log('🎉 Yeni sipariş Realtime ile yakalandı! Yazdırılıyor...', newOrder)
+            printReceipt(newOrder)
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log(`📡 Yazdırma Realtime Kanallı Dinleme Durumu: ${status}`)
+      })
+
+    return () => {
+      console.log('🔌 Otonom Termal Yazdırma Realtime dinleyicisi kaldırılıyor.')
+      supabase.removeChannel(channel)
+    }
+  }, [restaurantId, printReceipt])
 
   return (
     <>
@@ -967,6 +1157,9 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
             darkMode={darkMode}
           />
         )}
+
+        {/* Gizli Termal Yazıcı Iframe */}
+        <iframe id="receipt-printer" className="hidden" style={{ display: 'none' }}></iframe>
       </div>
       </div>
     </PullToRefresh>

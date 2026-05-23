@@ -40,14 +40,19 @@ export function RestaurantPaymentModal({
   endDate,
 }: RestaurantPaymentModalProps) {
   const [showConfetti, setShowConfetti] = useState(false)
+  const [localError, setLocalError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (show) setShowConfetti(false)
+    if (show) {
+      setShowConfetti(false)
+      setLocalError(null)
+    }
   }, [show])
 
   if (!show || !selectedRestaurantId || !restaurant) return null
 
   const handleConfirmPayment = async () => {
+    setLocalError(null)
     try {
       // 🔥 KRİTİK: Ödeme işlemini BEKLE (atomik RPC)
       await onConfirm()
@@ -60,6 +65,10 @@ export function RestaurantPaymentModal({
       }, 2000)
     } catch (error: any) {
       console.error('❌ Ödeme hatası:', error)
+      // Hata mesajını modal içinde göster (modal kapanmasın!)
+      const errorMsg = error?.message || 'Beklenmeyen bir hata oluştu'
+      // "❌" ile başlayan mesajları aynen göster, diğerlerine prefix ekle
+      setLocalError(errorMsg.startsWith('❌') ? errorMsg : `❌ ${errorMsg}`)
     }
   }
 
@@ -144,6 +153,16 @@ export function RestaurantPaymentModal({
               </div>
             </div>
           </div>
+
+          {/* Hata Mesajı (Modal İçi) */}
+          {localError && (
+            <div className="bg-rose-950/60 border border-rose-500/50 rounded-xl p-4 mb-6">
+              <p className="text-rose-300 text-sm font-bold">{localError}</p>
+              <p className="text-rose-400/70 text-xs mt-1">
+                Hata devam ediyorsa lütfen veritabanı bağlantısını kontrol edin veya sayfayı yenileyin.
+              </p>
+            </div>
+          )}
 
           {/* Uyarı */}
           <div className="bg-amber-950/30 p-4 rounded-xl border border-amber-700/30 mb-6">

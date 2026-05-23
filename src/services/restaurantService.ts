@@ -132,6 +132,7 @@ export async function processRestaurantPayment(
 
     const { data, error } = await supabase.rpc('process_restaurant_payment', {
       p_restaurant_id: restaurantId,
+      p_start_date:    _startDate || '2000-01-01T00:00:00.000Z', // Geriye dönük uyumluluk veya tam kapsama için
       p_end_date:      end.toISOString(),
       p_notes:         notes || null,
     })
