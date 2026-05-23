@@ -591,7 +591,7 @@ export function RestaurantDetailModal({
                       <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-5">
                         <p className="text-xs font-bold text-slate-500 tracking-widest uppercase mb-1">Ödenmiş</p>
                         <p className="text-2xl font-black text-slate-500">
-                          {(financials?.paid_revenue ?? 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
+                          {((financials?.paid_revenue ?? 0) - ((financials?.paid_package_count ?? 0) * (financials?.package_fee ?? 0))).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
                         </p>
                         <p className="text-xs text-slate-600 mt-1">{financials?.paid_package_count ?? 0} ödenmiş paket ✓</p>
                       </div>
