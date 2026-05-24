@@ -669,15 +669,21 @@ export default function KuryePage() {
         .from('packages')
         .select('amount, payment_method, status')
         .eq('delivered_by_courier_id', courierId)  // courier_id yerine delivered_by_courier_id
-        .eq('status', 'delivered')
-        .gte('delivered_at', todayStart.toISOString())
+        .or('status.eq.delivered,and(status.eq.cancelled,is_chargeable_cancellation.eq.true)')
+        .gte('created_at', todayStart.toISOString())
 
       if (error) throw error
 
       if (data) {
         setDeliveredCount(data.length)
-        setCashTotal(data.filter(p => p.payment_method === 'cash').reduce((sum, p) => sum + (p.amount || 0), 0))
-        setCardTotal(data.filter(p => p.payment_method === 'card').reduce((sum, p) => sum + (p.amount || 0), 0))
+        setCashTotal(data.filter(p => p.payment_method === 'cash').reduce((sum, p) => {
+          const amt = p.status === 'cancelled' ? 0 : (p.amount || 0)
+          return sum + amt
+        }, 0))
+        setCardTotal(data.filter(p => p.payment_method === 'card').reduce((sum, p) => {
+          const amt = p.status === 'cancelled' ? 0 : (p.amount || 0)
+          return sum + amt
+        }, 0))
       }
     } catch (error: any) {
       // ⚡ Timeout hatası için özel mesaj
@@ -710,11 +716,11 @@ export default function KuryePage() {
       // ⚡ OPTİMİZE: Sadece gerekli kolonları çek + LIMIT
       const { data, error } = await supabase
         .from('packages')
-        .select('id, order_number, customer_name, delivery_address, amount, payment_method, delivered_at, restaurant_id, restaurants(name)')
+        .select('id, order_number, customer_name, delivery_address, amount, payment_method, status, delivered_at, restaurant_id, restaurants(name)')
         .eq('delivered_by_courier_id', courierId)  // courier_id yerine delivered_by_courier_id
-        .eq('status', 'delivered')
-        .gte('delivered_at', todayStart.toISOString())
-        .order('delivered_at', { ascending: false })
+        .or('status.eq.delivered,and(status.eq.cancelled,is_chargeable_cancellation.eq.true)')
+        .gte('created_at', todayStart.toISOString())
+        .order('created_at', { ascending: false })
         .limit(100) // ⚡ LIMIT ekle
 
       if (error) throw error
@@ -1447,10 +1453,10 @@ export default function KuryePage() {
         .from('packages')
         .select('*, restaurants(name, phone, address)', { count: 'exact' })
         .eq('delivered_by_courier_id', courierId)  // courier_id yerine delivered_by_courier_id
-        .eq('status', 'delivered')
-        .gte('delivered_at', startDateTime)
-        .lte('delivered_at', endDateTime)
-        .order('delivered_at', { ascending: false })
+        .or('status.eq.delivered,and(status.eq.cancelled,is_chargeable_cancellation.eq.true)')
+        .gte('created_at', startDateTime)
+        .lte('created_at', endDateTime)
+        .order('created_at', { ascending: false })
 
       if (error) throw error
 
@@ -1478,14 +1484,17 @@ export default function KuryePage() {
       // 1. TÜM ZAMANLARIN teslimat toplamı (tarih filtresi YOK!)
       const { data: allPackages, error: packagesError } = await supabase
         .from('packages')
-        .select('amount')
+        .select('amount, status')
         .eq('delivered_by_courier_id', courierId)  // courier_id yerine delivered_by_courier_id
-        .eq('status', 'delivered')
+        .or('status.eq.delivered,and(status.eq.cancelled,is_chargeable_cancellation.eq.true)')
         // ⚠️ TARİH FİLTRESİ YOK - Tüm geçmiş dahil!
 
       if (packagesError) throw packagesError
 
-      const totalOwed = (allPackages || []).reduce((sum, pkg) => sum + (pkg.amount || 0), 0)
+      const totalOwed = (allPackages || []).reduce((sum, pkg) => {
+        const amt = pkg.status === 'cancelled' ? 0 : (pkg.amount || 0)
+        return sum + amt
+      }, 0)
 
       // 2. TÜM ZAMANLARIN ödeme toplamı (courier_settlements tablosundan)
       const { data: allSettlements, error: settlementsError } = await supabase
@@ -3305,8 +3314,15 @@ export default function KuryePage() {
                               {getPlatformDisplayName(pkg.platform)}
                             </span>
                           )}
-                          <span className="text-xs px-2 py-0.5 bg-green-500/20 text-green-400 rounded">
-                            ✓ Teslim Edildi
+                          <span className={`text-xs px-2 py-0.5 rounded ${
+                            pkg.status === 'delivered' 
+                              ? 'bg-green-500/20 text-green-400' 
+                              : pkg.status === 'cancelled'
+                              ? 'bg-red-500/20 text-red-400'
+                              : 'bg-gray-500/20 text-gray-400'
+                          }`}>
+                            {pkg.status === 'delivered' && '✓ Teslim Edildi'}
+                            {pkg.status === 'cancelled' && '✕ Ücretli İptal'}
                           </span>
                         </div>
                         <p className="font-medium text-sm sm:text-base text-white">{pkg.customer_name}</p>
