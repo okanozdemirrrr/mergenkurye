@@ -201,6 +201,16 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
         const effectiveStart = startDate || getTodayString()
         const effectiveEnd = endDate || getTodayString()
 
+        console.log('🔍 [DEBUG] Giden Parametreler (delivered):', {
+          restaurantId,
+          effectiveStart,
+          effectiveEnd,
+          startISO: `${effectiveStart}T00:00:00`,
+          endISO: `${effectiveEnd}T23:59:59`,
+          currentPage,
+          displayLimit
+        })
+
         query = query.gte('delivered_at', `${effectiveStart}T00:00:00`)
         query = query.lte('delivered_at', `${effectiveEnd}T23:59:59`)
 
@@ -210,6 +220,8 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
         query = query.range(fromOffset, toOffset)
 
         const { data, error } = await query
+
+        console.log('🔍 [DEBUG] Supabase Yanıtı (delivered):', { data, error, count: data?.length })
 
         if (error) throw error
         setDeliveredPackages(data || [])
@@ -229,10 +241,20 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
         const effectiveCancelStart = startDate || getTodayString()
         const effectiveCancelEnd = endDate || getTodayString()
 
+        console.log('🔍 [DEBUG] Giden Parametreler (cancelled):', {
+          restaurantId,
+          effectiveCancelStart,
+          effectiveCancelEnd,
+          startISO: `${effectiveCancelStart}T00:00:00`,
+          endISO: `${effectiveCancelEnd}T23:59:59`
+        })
+
         query = query.gte('cancelled_at', `${effectiveCancelStart}T00:00:00`)
         query = query.lte('cancelled_at', `${effectiveCancelEnd}T23:59:59`)
 
         const { data, error } = await query
+
+        console.log('🔍 [DEBUG] Supabase Yanıtı (cancelled):', { data, error, count: data?.length })
 
         if (error) throw error
         setCancelledPackages(data || [])
