@@ -2037,8 +2037,8 @@ export default function KuryePage() {
       // FİLTRE 1: NULL/ZERO KONTROLÜ
       // ============================================
       if (!latitude || !longitude || latitude === 0 || longitude === 0) {
-        console.error('❌ FİLTRE 1 REDDEDİLDİ: Geçersiz koordinatlar (0,0 veya null)')
-        console.error('❌ Son geçerli konum korunuyor')
+        console.warn('❌ FİLTRE 1 REDDEDİLDİ: Geçersiz koordinatlar (0,0 veya null)')
+        console.warn('❌ Son geçerli konum korunuyor')
         return
       }
 
@@ -2047,17 +2047,17 @@ export default function KuryePage() {
       // ============================================
       // Baz istasyonu verilerini engelle (1000m+ accuracy)
       if (!accuracy || accuracy > 1000) {
-        console.error('❌ FİLTRE 2 REDDEDİLDİ: Baz istasyonu verisi tespit edildi!')
-        console.error(`❌ Accuracy: ${accuracy ? accuracy.toFixed(0) : 'N/A'}m - Maksimum: 1000m`)
-        console.error('❌ Bu muhtemelen mobil operatör verisi, GPS değil')
+        console.warn('❌ FİLTRE 2 REDDEDİLDİ: Baz istasyonu verisi tespit edildi!')
+        console.warn(`❌ Accuracy: ${accuracy ? accuracy.toFixed(0) : 'N/A'}m - Maksimum: 1000m`)
+        console.warn('❌ Bu muhtemelen mobil operatör verisi, GPS değil')
         return
       }
 
       // Yüksek hassasiyet kontrolü (100m threshold)
       if (accuracy > 100) {
-        console.error('❌ FİLTRE 2 REDDEDİLDİ: Konum doğruluğu çok düşük')
-        console.error(`❌ Accuracy: ${accuracy.toFixed(0)}m - Minimum gereksinim: 100m`)
-        console.error('❌ Sadece yüksek hassasiyetli GPS verisi kabul edilir')
+        console.warn('❌ FİLTRE 2 REDDEDİLDİ: Konum doğruluğu çok düşük')
+        console.warn(`❌ Accuracy: ${accuracy.toFixed(0)}m - Minimum gereksinim: 100m`)
+        console.warn('❌ Sadece yüksek hassasiyetli GPS verisi kabul edilir')
         return
       }
 
@@ -2075,11 +2075,11 @@ export default function KuryePage() {
           longitude <= OPERATION_BOUNDS.maxLng
 
         if (!isInSamsun) {
-          console.error('🚫 FİLTRE 3 REDDEDİLDİ: COĞRAFİ ÇİT DIŞI!')
-          console.error(`🚫 Konum: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`)
-          console.error(`🚫 Beklenen: Samsun (${OPERATION_BOUNDS.minLat}-${OPERATION_BOUNDS.maxLat} Lat, ${OPERATION_BOUNDS.minLng}-${OPERATION_BOUNDS.maxLng} Lng)`)
-          console.error('🚫 Bu konum Ankara/İstanbul gibi alakasız bir şehir olabilir')
-          console.error('🚫 VERİ ÇÖPE ATILDI - Veritabanına yazılmayacak')
+          console.warn('🚫 FİLTRE 3 REDDEDİLDİ: COĞRAFİ ÇİT DIŞI!')
+          console.warn(`🚫 Konum: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`)
+          console.warn(`🚫 Beklenen: Samsun (${OPERATION_BOUNDS.minLat}-${OPERATION_BOUNDS.maxLat} Lat, ${OPERATION_BOUNDS.minLng}-${OPERATION_BOUNDS.maxLng} Lng)`)
+          console.warn('🚫 Bu konum Ankara/İstanbul gibi alakasız bir şehir olabilir')
+          console.warn('🚫 VERİ ÇÖPE ATILDI - Veritabanına yazılmayacak')
           return
         }
 
