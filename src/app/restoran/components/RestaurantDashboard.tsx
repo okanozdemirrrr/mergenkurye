@@ -196,19 +196,13 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
           .eq('status', 'delivered')
           .order('delivered_at', { ascending: false })
 
-        // Tarih filtreleri - UTC offset düzeltmesiyle doğru local zaman aralığı
+        // ✅ KESİN DÜZELTME: new Date() UTC offset'i bozar.
+        // "YYYY-MM-DD" → doğrudan string olarak gönder, Supabase local time olarak işler.
         const effectiveStart = startDate || getTodayString()
         const effectiveEnd = endDate || getTodayString()
 
-        // Güne başlangıç: 00:00:00 local time
-        const startObj = new Date(effectiveStart)
-        startObj.setHours(0, 0, 0, 0)
-        query = query.gte('delivered_at', startObj.toISOString())
-
-        // Günün sonu: 23:59:59.999 local time
-        const endObj = new Date(effectiveEnd)
-        endObj.setHours(23, 59, 59, 999)
-        query = query.lte('delivered_at', endObj.toISOString())
+        query = query.gte('delivered_at', `${effectiveStart}T00:00:00`)
+        query = query.lte('delivered_at', `${effectiveEnd}T23:59:59`)
 
         // Sayfalama optimizasyonu - SQL seviyesinde kısıtlama (range)
         const fromOffset = currentPage * displayLimit
@@ -231,17 +225,12 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
           .eq('status', 'cancelled')
           .order('cancelled_at', { ascending: false })
 
-        // Tarih filtreleri - UTC offset düzeltmesiyle doğru local zaman aralığı
+        // ✅ KESİN DÜZELTME: new Date() UTC offset'i bozar.
         const effectiveCancelStart = startDate || getTodayString()
         const effectiveCancelEnd = endDate || getTodayString()
 
-        const cancelStartObj = new Date(effectiveCancelStart)
-        cancelStartObj.setHours(0, 0, 0, 0)
-        query = query.gte('cancelled_at', cancelStartObj.toISOString())
-
-        const cancelEndObj = new Date(effectiveCancelEnd)
-        cancelEndObj.setHours(23, 59, 59, 999)
-        query = query.lte('cancelled_at', cancelEndObj.toISOString())
+        query = query.gte('cancelled_at', `${effectiveCancelStart}T00:00:00`)
+        query = query.lte('cancelled_at', `${effectiveCancelEnd}T23:59:59`)
 
         const { data, error } = await query
 
