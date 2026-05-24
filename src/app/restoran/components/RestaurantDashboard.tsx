@@ -35,13 +35,22 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
   const [activeTab, setActiveTab] = useState<'active' | 'delivered' | 'cancelled'>('active')
   const [displayLimit, setDisplayLimit] = useState(50) // 🎯 Teslim edilenler listesi gösterim limiti
   const [currentPage, setCurrentPage] = useState(0) // 🎯 Teslim edilenler listesi sayfa numarası (0'dan başlar)
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
+  // Bugünün tarihini YYYY-MM-DD formatında al (varsayılan filtre)
+  const getTodayString = () => {
+    const now = new Date()
+    const y = now.getFullYear()
+    const m = String(now.getMonth() + 1).padStart(2, '0')
+    const d = String(now.getDate()).padStart(2, '0')
+    return `${y}-${m}-${d}`
+  }
+
+  const [startDate, setStartDate] = useState(getTodayString)
+  const [endDate, setEndDate] = useState(getTodayString)
   const [cancelledPackages, setCancelledPackages] = useState<Package[]>([])
   
   // 🎯 Manuel Filtreleme için Temporary State
-  const [tempStartDate, setTempStartDate] = useState('')
-  const [tempEndDate, setTempEndDate] = useState('')
+  const [tempStartDate, setTempStartDate] = useState(getTodayString)
+  const [tempEndDate, setTempEndDate] = useState(getTodayString)
   
   // Günlük finansal özet state'leri
   const [todayStats, setTodayStats] = useState({
@@ -187,15 +196,19 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
           .eq('status', 'delivered')
           .order('delivered_at', { ascending: false })
 
-        // Tarih filtreleri (sadece startDate/endDate state'i değiştiğinde uygulanır)
-        if (startDate) {
-          query = query.gte('delivered_at', new Date(startDate).toISOString())
-        }
-        if (endDate) {
-          const endDateTime = new Date(endDate)
-          endDateTime.setHours(23, 59, 59, 999)
-          query = query.lte('delivered_at', endDateTime.toISOString())
-        }
+        // Tarih filtreleri - UTC offset düzeltmesiyle doğru local zaman aralığı
+        const effectiveStart = startDate || getTodayString()
+        const effectiveEnd = endDate || getTodayString()
+
+        // Güne başlangıç: 00:00:00 local time
+        const startObj = new Date(effectiveStart)
+        startObj.setHours(0, 0, 0, 0)
+        query = query.gte('delivered_at', startObj.toISOString())
+
+        // Günün sonu: 23:59:59.999 local time
+        const endObj = new Date(effectiveEnd)
+        endObj.setHours(23, 59, 59, 999)
+        query = query.lte('delivered_at', endObj.toISOString())
 
         // Sayfalama optimizasyonu - SQL seviyesinde kısıtlama (range)
         const fromOffset = currentPage * displayLimit
@@ -218,15 +231,17 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
           .eq('status', 'cancelled')
           .order('cancelled_at', { ascending: false })
 
-        // Tarih filtreleri
-        if (startDate) {
-          query = query.gte('cancelled_at', new Date(startDate).toISOString())
-        }
-        if (endDate) {
-          const endDateTime = new Date(endDate)
-          endDateTime.setHours(23, 59, 59, 999)
-          query = query.lte('cancelled_at', endDateTime.toISOString())
-        }
+        // Tarih filtreleri - UTC offset düzeltmesiyle doğru local zaman aralığı
+        const effectiveCancelStart = startDate || getTodayString()
+        const effectiveCancelEnd = endDate || getTodayString()
+
+        const cancelStartObj = new Date(effectiveCancelStart)
+        cancelStartObj.setHours(0, 0, 0, 0)
+        query = query.gte('cancelled_at', cancelStartObj.toISOString())
+
+        const cancelEndObj = new Date(effectiveCancelEnd)
+        cancelEndObj.setHours(23, 59, 59, 999)
+        query = query.lte('cancelled_at', cancelEndObj.toISOString())
 
         const { data, error } = await query
 
