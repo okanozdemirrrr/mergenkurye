@@ -152,6 +152,12 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
     }
   }, [restaurantId])
 
+  // ✅ KRİTİK FIX: Tab değişince, filtre uygulanınca veya sayfa değişince veriyi çek
+  useEffect(() => {
+    if (!restaurantId) return
+    fetchPackages()
+  }, [activeTab, startDate, endDate, currentPage])
+
   const fetchRestaurant = useCallback(async () => {
     try {
       const { data, error } = await supabase
