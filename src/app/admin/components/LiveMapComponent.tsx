@@ -8,6 +8,36 @@ import { useState, useEffect, useRef } from 'react'
 import { Maximize2, Minimize2 } from 'lucide-react'
 import { Package, Courier } from '@/types'
 import { supabase } from '@/app/lib/supabase'
+import dynamic from 'next/dynamic'
+import 'leaflet/dist/leaflet.css'
+
+// Dynamic React-Leaflet components to prevent SSR errors
+const MapContainer = dynamic(
+  () => import('react-leaflet').then((mod) => mod.MapContainer),
+  { ssr: false }
+)
+const TileLayer = dynamic(
+  () => import('react-leaflet').then((mod) => mod.TileLayer),
+  { ssr: false }
+)
+const Marker = dynamic(
+  () => import('react-leaflet').then((mod) => mod.Marker),
+  { ssr: false }
+)
+const Popup = dynamic(
+  () => import('react-leaflet').then((mod) => mod.Popup),
+  { ssr: false }
+)
+const Tooltip = dynamic(
+  () => import('react-leaflet').then((mod) => mod.Tooltip),
+  { ssr: false }
+)
+
+// Safely require Leaflet on the client side
+let L: any
+if (typeof window !== 'undefined') {
+  L = require('leaflet')
+}
 
 // Broadcast'ten gelen anlık konum verisi
 interface LiveLocation {
@@ -54,11 +84,21 @@ function MapUpdater({ center }: { center: [number, number] }) {
   return null
 }
 
-export function LiveMapComponent({ packages, couriers, restaurants, onRefresh, onLiveCouriersChange }: LiveMapComponentProps) {
+export function LiveMapComponent({ 
+  packages, 
+  couriers: initialCouriers, 
+  restaurants: initialRestaurants, 
+  onRefresh, 
+  onLiveCouriersChange 
+}: LiveMapComponentProps) {
   const [isClient, setIsClient] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [mapCenter] = useState<[number, number]>([41.494714153011856, 36.07827997146362])
   const [todayHeatmapPoints, setTodayHeatmapPoints] = useState<Array<{ lat: number, lng: number }>>([])
+
+  // Restoran ve Kurye verileri state'te tutulur
+  const [restaurants, setRestaurants] = useState<Restaurant[]>(initialRestaurants || [])
+  const [couriers, setCouriers] = useState<Courier[]>(initialCouriers || [])
 
   // 🔴 CANLI KONUMLAR: DB'den değil, Broadcast'ten (WebSocket)
   const [liveLocations, setLiveLocations] = useState<Record<string, LiveLocation>>({})
@@ -66,88 +106,140 @@ export function LiveMapComponent({ packages, couriers, restaurants, onRefresh, o
   const BROADCAST_CHANNEL = 'courier-live-locations'
   const STALE_THRESHOLD_MS = 30_000 // 30 saniyeden eski konumu "eski" say
 
-  // 📍 Supabase Egress ve Realtime kotalarını korumak için kurye koordinat takibi geçici olarak kapatılmıştır.
-  const couriersWithCoords: Courier[] = []
-
-  // Haritadaki aktif kurye sayısını üst bileşene bildir (0 olarak bildiriliyor)
+  // Veritabanından restoranları yükle
   useEffect(() => {
-    if (onLiveCouriersChange) {
-      onLiveCouriersChange(0)
-    }
-  }, [onLiveCouriersChange])
-
-  // Bugünün tüm siparişlerinin koordinatlarını çek (Kota koruma nedeniyle geçici olarak devre dışı)
-  /*
-  useEffect(() => {
-    console.log('🗺️ Yoğunluk noktaları effect çalıştı, isClient:', isClient)
-    
-    if (!isClient) {
-      console.log('⏳ Client henüz hazır değil, bekleniyor...')
-      return
-    }
-
-    const fetchTodayOrders = async () => {
+    async function fetchRestaurants() {
       try {
-        console.log('🗺️ fetchTodayOrders başladı')
-        
-        // Son 24 saatin siparişlerini göster
-        const twentyFourHoursAgo = new Date()
-        twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24)
-
-        const { supabase } = await import('../../lib/supabase')
-        console.log('🗺️ Supabase import edildi')
-        
-        // Sadece aktif paketleri çek (teslim edilmemiş ve iptal edilmemiş)
         const { data, error } = await supabase
-          .from('packages')
-          .select('latitude, longitude, created_at, status')
-          .gte('created_at', twentyFourHoursAgo.toISOString())
-          .not('status', 'in', '("delivered","cancelled")')
-
-        console.log('🗺️ Supabase sorgusu tamamlandı')
-        
+          .from('restaurants')
+          .select('id, name, latitude, longitude, phone, address')
         if (error) {
-          console.error('❌ Supabase hatası:', error)
-          throw error
+          console.error('Supabase restaurants query error:', error)
+        } else if (data) {
+          setRestaurants(data)
         }
-
-        console.log('🗺️ Çekilen aktif paketler:', data?.length || 0)
-        console.log('🗺️ İlk 3 paket:', data?.slice(0, 3))
-
-        const points = (data || [])
-          .filter(pkg => {
-            const hasCoords = pkg.latitude && pkg.longitude
-            if (!hasCoords) {
-              console.log('❌ Koordinatsız paket:', pkg)
-            }
-            return hasCoords
-          })
-          .map(pkg => ({ lat: pkg.latitude!, lng: pkg.longitude! }))
-
-        // Eski verileri temizle ve yeni verileri set et
-        setTodayHeatmapPoints([])
-        setTimeout(() => {
-          setTodayHeatmapPoints(points)
-          console.log('✅ Yoğunluk noktaları set edildi:', points.length)
-          console.log('🗺️ İlk 3 nokta:', points.slice(0, 3))
-        }, 100)
-      } catch (error) {
-        console.error('❌ Yoğunluk noktaları yüklenemedi:', error)
+      } catch (err) {
+        console.error('Error fetching restaurants:', err)
       }
     }
+    fetchRestaurants()
+  }, [])
 
-    console.log('🗺️ fetchTodayOrders çağrılıyor...')
-    fetchTodayOrders()
+  // Veritabanından aktif kuryeleri yükle
+  useEffect(() => {
+    async function fetchActiveCouriers() {
+      try {
+        const { data, error } = await supabase
+          .from('couriers')
+          .select('id, username, full_name, is_active, phone, last_location')
+          .eq('is_active', true)
+        if (error) {
+          console.error('Supabase active couriers query error:', error)
+        } else if (data) {
+          setCouriers(data)
+        }
+      } catch (err) {
+        console.error('Error fetching active couriers:', err)
+      }
+    }
+    fetchActiveCouriers()
+  }, [])
 
-    // Her 2 dakikada bir yenile (daha sık güncelleme)
-    const interval = setInterval(fetchTodayOrders, 120000)
-    return () => clearInterval(interval)
-  }, [isClient])
-  */
+  // Prop güncellemelerini state'e yansıt (Senkronizasyon - Sadece Kuryeler için, Restoranlar DB'den koordinatlı çekiliyor)
+
+  useEffect(() => {
+    if (initialCouriers && initialCouriers.length > 0) {
+      setCouriers(initialCouriers)
+    }
+  }, [initialCouriers])
+
+  // ✅ BROADCAST LISTENER: Kurye canlı konumlarını WebSocket ile al
+  useEffect(() => {
+    const channel = supabase.channel(BROADCAST_CHANNEL, {
+      config: { broadcast: { ack: false } }
+    })
+
+    channel
+      .on('broadcast', { event: 'location' }, (payload) => {
+        console.log('📡 Canlı konum yayını alındı:', payload)
+        const { courierId, courierName, latitude, longitude, accuracy, timestamp } = payload.payload as LiveLocation
+        
+        // 1. liveLocations state'ini güncelle
+        setLiveLocations(prev => ({
+          ...prev,
+          [courierId]: {
+            courierId,
+            courierName,
+            latitude,
+            longitude,
+            accuracy,
+            timestamp,
+            lastSeenMs: Date.now()
+          }
+        }))
+
+        // 2. couriers state'ine gelen veriyi güncelle (last_location alanını güncelle/ekle)
+        setCouriers(prevCouriers => {
+          const exists = prevCouriers.some(c => c.id === courierId)
+          if (exists) {
+            return prevCouriers.map(c => {
+              if (c.id === courierId) {
+                return {
+                  ...c,
+                  last_location: {
+                    latitude,
+                    longitude,
+                    updated_at: timestamp
+                  }
+                }
+              }
+              return c
+            })
+          } else {
+            return [
+              ...prevCouriers,
+              {
+                id: courierId,
+                full_name: courierName,
+                is_active: true,
+                last_location: {
+                  latitude,
+                  longitude,
+                  updated_at: timestamp
+                }
+              } as Courier
+            ]
+          }
+        })
+      })
+      .subscribe((status) => {
+        console.log(`📡 Broadcast kanal abonelik durumu (${BROADCAST_CHANNEL}):`, status)
+      })
+
+    channelRef.current = channel
+
+    return () => {
+      console.log('🔌 Harita aboneliği kapatılıyor...')
+      supabase.removeChannel(channel)
+    }
+  }, [])
+
+  // Koordinatı olan kuryeleri filtrele
+  const couriersWithCoords = couriers.filter(courier => {
+    const live = liveLocations[courier.id]
+    if (live) return true
+    return !!(courier.last_location?.latitude && courier.last_location?.longitude && courier.is_active)
+  })
+
+  // Haritadaki aktif kurye sayısını üst bileşene bildir
+  useEffect(() => {
+    if (onLiveCouriersChange) {
+      onLiveCouriersChange(couriersWithCoords.length)
+    }
+  }, [couriersWithCoords.length, onLiveCouriersChange])
 
   // Client-side rendering kontrolü
   useEffect(() => {
-    console.log('🗺️ setIsClient(true) çağrılıyor')
     setIsClient(true)
     
     // Leaflet CSS'ini dinamik olarak yükle
@@ -161,98 +253,6 @@ export function LiveMapComponent({ packages, couriers, restaurants, onRefresh, o
     }
   }, [])
 
-  // ✅ BROADCAST LISTENER: Kurye canlı konumlarını WebSocket ile al (Kota koruma kapsamında geçici olarak devre dışı)
-  /*
-  useEffect(() => {
-    const channel = supabase.channel(BROADCAST_CHANNEL, {
-      config: { broadcast: { ack: false } }
-    })
-
-    channel
-      .on('broadcast', { event: 'location_update' }, ({ payload }) => {
-        const now = Date.now()
-        setLiveLocations(prev => ({
-          ...prev,
-          [payload.courierId]: {
-            ...payload,
-            lastSeenMs: now
-          }
-        }))
-        console.log('📡 Canlı konum alındı:', payload.courierName, payload.latitude?.toFixed(4), payload.longitude?.toFixed(4))
-      })
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ Admin harita: Broadcast kanalına bağlandı')
-        }
-      })
-
-    channelRef.current = channel
-
-    // Eski konumları 30 saniyede bir temizle (kurye çıkış yaptıysa)
-    const staleCleanup = setInterval(() => {
-      const now = Date.now()
-      setLiveLocations(prev => {
-        const updated = { ...prev }
-        Object.entries(updated).forEach(([id, loc]) => {
-          if (now - (loc.lastSeenMs ?? 0) > STALE_THRESHOLD_MS) {
-            delete updated[id]
-            console.log('🧹 Eski konum temizlendi:', id)
-          }
-        })
-        return updated
-      })
-    }, 30_000)
-
-    return () => {
-      clearInterval(staleCleanup)
-      supabase.removeChannel(channel)
-    }
-  }, [])
-  */
-
-  // Bugünün tüm siparişlerinin koordinatlarını çek (Kota koruma kapsamında geçici olarak devre dışı)
-  /*
-  useEffect(() => {
-    if (!isClient) return
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        console.log('🗺️ Uygulama foreground\'a geldi, harita yenileniyor...')
-        // Harita verilerini yeniden çek
-        const fetchData = async () => {
-          const twentyFourHoursAgo = new Date()
-          twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24)
-
-          const { supabase } = await import('../../lib/supabase')
-          
-          const { data, error } = await supabase
-            .from('packages')
-            .select('latitude, longitude, created_at, status')
-            .gte('created_at', twentyFourHoursAgo.toISOString())
-            .not('status', 'in', '("delivered","cancelled")')
-
-          if (!error && data) {
-            const points = data
-              .filter(pkg => pkg.latitude && pkg.longitude)
-              .map(pkg => ({ lat: pkg.latitude!, lng: pkg.longitude! }))
-            
-            // Eski verileri temizle
-            setTodayHeatmapPoints([])
-            setTimeout(() => {
-              setTodayHeatmapPoints(points)
-              console.log('✅ Harita yenilendi, nokta sayısı:', points.length)
-            }, 100)
-          }
-        }
-        fetchData()
-      }
-    }
-
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
-  }, [isClient])
-  */
-
   // SSR sırasında loading göster
   if (!isClient) {
     return (
@@ -265,13 +265,8 @@ export function LiveMapComponent({ packages, couriers, restaurants, onRefresh, o
     )
   }
 
-  // Client-side'da Leaflet'i import et
-  const { MapContainer, TileLayer, Marker, Popup } = require('react-leaflet')
-  const L = require('leaflet')
-
   // Paket durumuna göre ikon oluştur
   const getPackageIcon = (pkg: Package) => {
-    // Sahipsiz paket: Kırmızı pulse effect
     const isUnassigned = !pkg.courier_id
     
     if (isUnassigned) {
@@ -316,7 +311,6 @@ export function LiveMapComponent({ packages, couriers, restaurants, onRefresh, o
       })
     }
     
-    // Atanmış paket: Yeşil sabit
     return L.divIcon({
       html: `
         <div style="
@@ -341,7 +335,6 @@ export function LiveMapComponent({ packages, couriers, restaurants, onRefresh, o
 
   // Kurye durumuna göre ikon oluştur
   const getCourierIcon = (courier: Courier) => {
-    // Kuryenin üzerindeki aktif paketleri bul
     const courierPackages = packages.filter(
       pkg => pkg.courier_id === courier.id && 
       pkg.status !== 'delivered' && 
@@ -349,33 +342,25 @@ export function LiveMapComponent({ packages, couriers, restaurants, onRefresh, o
     )
 
     let color = '#22c55e' // Varsayılan: Yeşil (Boşta)
-    let statusText = 'BOŞTA'
-
+    
     if (courierPackages.length > 0) {
-      // Hiyerarşi: Kırmızı > Sarı > Yeşil
-      
-      // 1. En az 1 paket restorandan alınmış mı? (picking_up veya on_the_way)
       const hasPickedUpPackage = courierPackages.some(
         pkg => pkg.status === 'picking_up' || pkg.status === 'on_the_way'
       )
       
       if (hasPickedUpPackage) {
         color = '#ef4444' // Kırmızı: Teslimat yapıyor
-        statusText = 'TESLİMATTA'
       } else {
-        // 2. Kabul edilmiş paket var mı? (assigned)
         const hasAssignedPackage = courierPackages.some(
           pkg => pkg.status === 'assigned'
         )
         
         if (hasAssignedPackage) {
           color = '#eab308' // Sarı: Restoran yolunda
-          statusText = 'RESTORAN YOLUNDA'
         }
       }
     }
 
-    // İsmi kısalt (sadece ilk isim)
     const firstName = courier.full_name?.split(' ')[0] || 'Kurye'
 
     return L.divIcon({
@@ -414,7 +399,7 @@ export function LiveMapComponent({ packages, couriers, restaurants, onRefresh, o
     })
   }
 
-  // Restoran ikonu oluştur (basit versiyon)
+  // Restoran ikonu oluştur
   const getRestaurantIcon = (name: string) => {
     return L.divIcon({
       html: `
@@ -438,56 +423,19 @@ export function LiveMapComponent({ packages, couriers, restaurants, onRefresh, o
     })
   }
 
-  // Koordinatı olan paketleri filtrele (atanmış + atanmamış)
   const packagesWithCoords = packages.filter(
     pkg => pkg.latitude && pkg.longitude && 
     pkg.status !== 'delivered' && pkg.status !== 'cancelled'
   )
   
-  // Aktif operasyondaki paketler (sayı için)
-  const activeOperationPackages = packagesWithCoords.filter(
-    pkg => pkg.status === 'assigned' || pkg.status === 'picking_up' || pkg.status === 'on_the_way'
-  )
-
-  // TÜM restoranları göster (koordinatı olanlar)
   const restaurantsWithCoords = restaurants.filter(
     restaurant => restaurant.latitude && restaurant.longitude
   )
-
-  // Debug - İlk restoranın koordinatlarını kontrol et
-  if (restaurantsWithCoords.length > 0) {
-    const firstRestaurant = restaurantsWithCoords[0]
-    console.log('🍽️ İlk restoran koordinatları:', {
-      name: firstRestaurant.name,
-      lat: firstRestaurant.latitude,
-      lng: firstRestaurant.longitude,
-      latType: typeof firstRestaurant.latitude,
-      lngType: typeof firstRestaurant.longitude
-    })
-  }
-
-  // Debug
-  console.log('📦 Toplam paket:', packages.length)
-  console.log('🍽️ Toplam restoran:', restaurants.length)
-  console.log('🍽️ Koordinatlı restoran:', restaurantsWithCoords.length, restaurantsWithCoords)
-  console.log('🍽️ Restaurants data:', restaurants)
 
   return (
     <>
       <div className={`${isFullscreen ? 'fixed inset-0 z-50 bg-slate-950 p-4' : 'relative h-full'}`}>
         <div className="relative h-full rounded-xl overflow-hidden border border-slate-700">
-          {/* Devre Dışı Uyarı Katmanı */}
-          <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-[1px] z-[1010] flex flex-col items-center justify-center text-center p-6 select-none">
-            <div className="bg-slate-900/95 border border-slate-700/80 rounded-2xl p-8 max-w-md shadow-2xl">
-              <div className="w-16 h-16 bg-orange-500/10 border border-orange-500/30 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
-                <span className="text-3xl">📍</span>
-              </div>
-              <h3 className="text-xl font-bold text-white mb-2">Canlı Harita</h3>
-              <p className="text-slate-300 text-sm font-medium leading-relaxed">
-                Canlı Harita optimizasyon çalışmaları nedeniyle geçici olarak devre dışıdır.
-              </p>
-            </div>
-          </div>
 
           {/* Büyüt/Küçült Butonu */}
           <button
@@ -537,25 +485,22 @@ export function LiveMapComponent({ packages, couriers, restaurants, onRefresh, o
           {/* Harita */}
           <MapContainer
             center={mapCenter}
-            zoom={12}
-            style={{ height: '100%', width: '100%' }}
+            zoom={15}
+            style={{ height: '100%', width: '100%', minHeight: '400px' }}
             zoomControl={true}
           >
             <MapUpdater center={mapCenter} />
             
-            {/* Koyu tema harita katmanı */}
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+            <TileLayer 
+              url="https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}.png"
+              attribution='&copy; Stadia Maps'
+              className="map-tiles"
             />
 
             {/* Restoran Markerları */}
             {restaurantsWithCoords.map(restaurant => {
               if (!restaurant) return null
               
-              console.log('🍽️ Restoran marker oluşturuluyor:', restaurant.name, restaurant.latitude, restaurant.longitude)
-              
-              // Bu restorana ait aktif paketler
               const restaurantPackages = packages.filter(
                 pkg => pkg.restaurant_id === restaurant.id && 
                 pkg.status !== 'delivered' && 
@@ -632,7 +577,6 @@ export function LiveMapComponent({ packages, couriers, restaurants, onRefresh, o
                 pkg.status !== 'cancelled'
               )
 
-              // 🔴 Canlı konum varsa onu kullan, yoksa DB konumunu kullan
               const live = liveLocations[courier.id]
               const lat = live?.latitude ?? courier.last_location?.latitude
               const lng = live?.longitude ?? courier.last_location?.longitude
@@ -645,11 +589,13 @@ export function LiveMapComponent({ packages, couriers, restaurants, onRefresh, o
                   position={[lat!, lng!]}
                   icon={getCourierIcon(courier)}
                 >
+                  <Tooltip direction="top" offset={[0, -20]} opacity={0.9}>
+                    <span className="font-semibold text-xs">{courier.full_name}</span>
+                  </Tooltip>
                   <Popup>
                     <div className="text-sm">
                       <div className="font-bold text-orange-600">🏍️ {courier.full_name}</div>
                       <div className="text-xs mt-1">
-                        {/* Canlı Konum Göstergesi */}
                         <div className={`font-semibold mb-1 ${isLive ? 'text-green-600' : 'text-gray-500'}`}>
                           {isLive
                             ? `📡 CANLI (${lastSeenSec}s önce)`
@@ -680,7 +626,7 @@ export function LiveMapComponent({ packages, couriers, restaurants, onRefresh, o
               )
             })}
 
-            {/* Yoğunluk İzleme Noktaları - Bugünün tüm siparişleri */}
+            {/* Yoğunluk İzleme Noktaları */}
             {todayHeatmapPoints.map((point, index) => {
               const heatmapIcon = L.divIcon({
                 html: `

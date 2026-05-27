@@ -300,6 +300,9 @@ export default function KuryePage() {
   const [myRank, setMyRank] = useState<number | null>(null)
   const [showLeaderboard, setShowLeaderboard] = useState(false) // Leaderboard modal
   const [activeTab, setActiveTab] = useState<'packages' | 'history' | 'earnings' | 'account'>('packages') // Aktif sekme
+  // Google Play Uyumlu Belirgin İzin Beyanı Modalı State'leri
+  const [showLocationDisclosure, setShowLocationDisclosure] = useState(false)
+  const [pendingStatusParams, setPendingStatusParams] = useState<{ status: 'idle' | 'busy', isActive: boolean } | null>(null)
   const [courierName, setCourierName] = useState<string>('') // Giriş yapan kuryenin ismi
   const [courierNameLoading, setCourierNameLoading] = useState(true) // Kurye adı yükleniyor mu?
   // YENİ: Ödeme sistemi state'leri
@@ -1804,151 +1807,11 @@ export default function KuryePage() {
     setTimeout(() => setSuccessMessage(''), 2000)
   }
 
-  // Arka plan konum takibi başlat
+  // Arka plan konum takibi başlat - Çift bildirim ve kaynak tüketimini önlemek için devre dışı bırakılmıştır.
+  // Bu işlev artık 15m filtreli ve Foreground Service destekli olarak useCourierLocationBroadcast hook'u tarafından yönetilmektedir.
   const startBackgroundLocationTracking = async (courierId: string) => {
-    if (typeof window === 'undefined') {
-      return null
-    }
-    
-    try {
-      if (window.navigator.userAgent.includes('Mobile')) {
-        if (typeof window === 'undefined') return null
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const bgGeoModule = await import('@capacitor-community/background-geolocation') as any
-        const BackgroundGeolocationPlugin = bgGeoModule.BackgroundGeolocationPlugin ?? bgGeoModule.default?.BackgroundGeolocationPlugin ?? bgGeoModule.default
-        
-        console.log('🔄 Arka plan konum takibi başlatılıyor...')
-        
-        const watcherId = await BackgroundGeolocationPlugin.addWatcher(
-            {
-              backgroundMessage: 'Konumunuz Takip Ediliyor',
-              backgroundTitle: 'Alda Gel Kurye Aktif',
-              requestPermissions: true,
-              stale: false,
-              distanceFilter: 10 // 10 metre hareket ettiğinde güncelle
-            },
-            async (location: { latitude: number; longitude: number; accuracy: number; speed: number | null; bearing: number | null; time: number | null } | undefined, error: Error | undefined) => {
-              if (error) {
-                console.error('❌ Arka plan konum hatası:', error)
-                return
-              }
-
-              if (!location) {
-                console.error('❌ Konum null geldi, işlenmiyor')
-                return
-              }
-
-              const { latitude, longitude, accuracy, speed, bearing, time } = location
-              const timestamp = time || Date.now()
-
-              console.log('📍 Arka plan konum alındı:', { latitude, longitude, accuracy })
-
-              // ============================================
-              // ARKA PLAN FİLTRELEME - AYNI KURALLAR
-              // ============================================
-              
-              // FİLTRE 1: NULL/ZERO
-              if (!latitude || !longitude || latitude === 0 || longitude === 0) {
-                console.error('❌ Arka plan FİLTRE 1 REDDEDİLDİ: Geçersiz koordinatlar')
-                return
-              }
-
-              // FİLTRE 2: DOĞRULUK BARAJI (1000m baz istasyonu + 100m hassasiyet)
-              if (!accuracy || accuracy > 1000) {
-                console.error('❌ Arka plan FİLTRE 2 REDDEDİLDİ: Baz istasyonu verisi')
-                console.error(`❌ Accuracy: ${accuracy ? accuracy.toFixed(0) : 'N/A'}m`)
-                return
-              }
-
-              if (accuracy > 100) {
-                console.error('❌ Arka plan FİLTRE 2 REDDEDİLDİ: Düşük hassasiyet')
-                console.error(`❌ Accuracy: ${accuracy.toFixed(0)}m - Gerekli: <100m`)
-                return
-              }
-
-              // FİLTRE 3: COĞRAFİ ÇİT (Samsun Geofencing)
-              if (!isDevelopment) {
-                const isInSamsun = 
-                  latitude >= OPERATION_BOUNDS.minLat && 
-                  latitude <= OPERATION_BOUNDS.maxLat && 
-                  longitude >= OPERATION_BOUNDS.minLng && 
-                  longitude <= OPERATION_BOUNDS.maxLng
-
-                if (!isInSamsun) {
-                  console.error('🚫 Arka plan FİLTRE 3 REDDEDİLDİ: COĞRAFİ ÇİT DIŞI!')
-                  console.error(`🚫 Konum: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`)
-                  console.error('🚫 VERİ ÇÖPE ATILDI')
-                  return
-                }
-              }
-
-              // FİLTRE 4: HIZ VE MESAFE FİLTRESİ
-              if (lastValidLocationRef.current) {
-                const lastLoc = lastValidLocationRef.current
-                const distance = calculateDistance(lastLoc.latitude, lastLoc.longitude, latitude, longitude)
-                const timeDiff = (timestamp - lastLoc.timestamp) / 1000
-                
-                if (timeDiff <= 0) {
-                  console.error('❌ Arka plan FİLTRE 4 REDDEDİLDİ: Zaman farkı sıfır')
-                  return
-                }
-
-                const speedKmh = (distance / timeDiff) * 3.6
-
-                if (speedKmh > 120) {
-                  console.error('⚡ Arka plan FİLTRE 4 REDDEDİLDİ: IŞINLANMA!')
-                  console.error(`⚡ Hız: ${speedKmh.toFixed(0)} km/h - Maksimum: 120 km/h`)
-                  console.error('⚡ VERİ BLOKLAND')
-                  return
-                }
-              }
-
-              console.log('✅ Arka plan: Tüm filtreler geçti')
-
-              // Son geçerli konumu güncelle
-              lastValidLocationRef.current = {
-                latitude,
-                longitude,
-                timestamp
-              }
-
-              console.log('✅ Arka plan konum geçerli, kaydediliyor')
-
-              // Veritabanına kaydet
-              try {
-                await supabase
-                  .from('couriers')
-                  .update({
-                    last_location: {
-                      latitude,
-                      longitude,
-                      accuracy: accuracy || null,
-                      heading: bearing || null,
-                      speed: speed || null,
-                      updated_at: new Date(timestamp).toISOString(),
-                      last_seen: new Date().toISOString()
-                    }
-                  })
-                  .eq('id', courierId)
-                
-                console.log('✅ Arka plan konum kaydedildi')
-              } catch (err) {
-                console.error('❌ Arka plan konum kaydetme hatası:', err)
-              }
-            }
-          )
-
-        console.log('✅ Arka plan konum takibi başlatıldı, watcher ID:', watcherId)
-        
-        return watcherId
-      } else {
-        console.log('ℹ️ Background geolocation sadece mobil cihazlarda desteklenir')
-        return null
-      }
-    } catch (error) {
-      console.error('❌ Arka plan konum takibi başlatılamadı:', error)
-      return null
-    }
+    console.log('ℹ️ Arka plan konum takibi ve Broadcast işlemleri useCourierLocationBroadcast hook\'u tarafından yönetilmektedir.')
+    return null
   }
 
   // Arka plan konum takibini durdur
@@ -2703,6 +2566,62 @@ export default function KuryePage() {
     <>
     {/* Changelog Modal */}
     <ChangelogModal userType="courier" userId={selectedCourierId} />
+
+    {/* Google Play Uyumlu Belirgin Konum Beyanı Modalı */}
+    {showLocationDisclosure && (
+      <div className="fixed inset-0 bg-black/80 z-[9999] flex items-center justify-center p-4">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-200">
+          <div className="w-12 h-12 bg-orange-600/10 border border-orange-500/20 text-orange-500 rounded-full flex items-center justify-center text-2xl mx-auto">
+            📍
+          </div>
+          
+          <h3 className="text-lg font-bold text-white text-center">
+            Konum Takibi ve Arka Plan İzni
+          </h3>
+          
+          <div className="text-slate-300 text-sm leading-relaxed space-y-3">
+            <p>
+              Mergen Kurye uygulaması, siz <strong>"Çevrimiçi"</strong> durumdayken:
+            </p>
+            <ul className="list-disc list-inside space-y-1.5 pl-1 text-slate-400">
+              <li>Size en yakın siparişleri atayabilmek,</li>
+              <li>Müşterilere ve restoranlara teslimat süresini canlı iletebilmek,</li>
+              <li>Harita üzerinde konum doğruluğunu sağlamak</li>
+            </ul>
+            <p>
+              amacıyla uygulama kapalıyken veya arka plandayken dahi <strong>kesintisiz olarak konum verilerinizi toplar ve sunucuya iletir.</strong>
+            </p>
+            <p className="text-slate-400 text-xs bg-slate-800 p-2.5 rounded border border-slate-700">
+              ⚠️ Cihazınızda konum izinlerini <strong>"Her zaman izin ver (Allow all the time)"</strong> olarak seçmeli ve pil tasarruf modunu <strong>"Kısıtlamasız"</strong> yapmalısınız.
+            </p>
+          </div>
+          
+          <div className="flex flex-col gap-2 pt-2">
+            <button
+              onClick={() => {
+                setShowLocationDisclosure(false)
+                if (pendingStatusParams) {
+                  updateCourierStatus(pendingStatusParams.status, pendingStatusParams.isActive)
+                  setPendingStatusParams(null)
+                }
+              }}
+              className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2.5 px-4 rounded-xl shadow-lg transition-colors text-sm"
+            >
+              Kabul Ediyorum ve Çevrimiçi Ol
+            </button>
+            <button
+              onClick={() => {
+                setShowLocationDisclosure(false)
+                setPendingStatusParams(null)
+              }}
+              className="w-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white font-medium py-2.5 px-4 rounded-xl transition-colors text-sm"
+            >
+              Kabul Etmiyorum / Vazgeç
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     
     {/* ANA CONTAINER - Fixed height, no scroll */}
     <div className={`h-screen flex flex-col overflow-hidden ${darkMode ? 'bg-slate-950 text-white' : 'bg-gray-100 text-gray-900'}`}>
@@ -3604,7 +3523,14 @@ export default function KuryePage() {
                   </p>
                 </div>
                 <button
-                  onClick={() => updateCourierStatus('idle', !is_active)}
+                  onClick={() => {
+                    if (!is_active) {
+                      setPendingStatusParams({ status: 'idle', isActive: true })
+                      setShowLocationDisclosure(true)
+                    } else {
+                      updateCourierStatus('idle', false)
+                    }
+                  }}
                   disabled={statusUpdating}
                   className={`relative w-14 h-7 rounded-full transition-all duration-300 disabled:opacity-50 ${is_active ? 'bg-green-600' : 'bg-slate-700'
                     }`}

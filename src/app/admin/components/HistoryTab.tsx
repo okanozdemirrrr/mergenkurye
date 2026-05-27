@@ -88,6 +88,7 @@ export function HistoryTab({
                             picked_up_at, 
                             delivered_at, 
                             cancelled_at, 
+                            is_chargeable_cancellation,
                             courier_id, 
                             restaurant_id, 
                             applied_price, 
@@ -280,13 +281,16 @@ export function HistoryTab({
                                 <div className="flex items-center justify-between">
                                     <span className="text-slate-400 text-sm">Durum:</span>
                                     <span className={`px-3 py-1.5 rounded-full text-sm font-semibold ${
-                                        selectedPackage.status === 'cancelled' ? 'bg-red-900/50 text-red-300' :
+                                        selectedPackage.status === 'cancelled' && selectedPackage.is_chargeable_cancellation ? 'bg-orange-900/50 text-orange-300' :
+                                        selectedPackage.status === 'cancelled' ? 'bg-slate-600/50 text-slate-300' :
                                         selectedPackage.status === 'assigned' ? 'bg-orange-900/50 text-orange-300' :
                                         selectedPackage.status === 'picking_up' ? 'bg-orange-900/50 text-orange-300' :
                                         selectedPackage.status === 'on_the_way' ? 'bg-blue-900/50 text-blue-300' :
                                         'bg-green-900/50 text-green-300'
                                     }`}>
-                                        {getStatusText(selectedPackage.status)}
+                                        {selectedPackage.status === 'cancelled'
+                                            ? (selectedPackage.is_chargeable_cancellation ? '💰 Ücretli İptal' : '🚫 Ücretsiz İptal')
+                                            : getStatusText(selectedPackage.status)}
                                     </span>
                                 </div>
                             </div>
@@ -622,8 +626,12 @@ export function HistoryTab({
                                                     </span>
                                                 )}
                                                 {pkg.status === 'cancelled' && (
-                                                    <span className="text-xs py-0.5 px-2 rounded bg-red-900/40 text-red-300 font-semibold">
-                                                        🚫 İPTAL
+                                                    <span className={`text-xs py-0.5 px-2 rounded font-semibold ${
+                                                        pkg.is_chargeable_cancellation
+                                                            ? 'bg-orange-900/40 text-orange-300'
+                                                            : 'bg-slate-700/60 text-slate-400'
+                                                    }`}>
+                                                        {pkg.is_chargeable_cancellation ? '💰 ÜCRETLİ İPTAL' : '🚫 İPTAL'}
                                                     </span>
                                                 )}
                                             </div>
@@ -661,11 +669,19 @@ export function HistoryTab({
                                         <td className="py-3 px-4">
                                             <span className={`px-2 py-1 rounded text-xs font-semibold ${pkg.status === 'delivered'
                                                 ? 'bg-green-950/60 text-green-400 border border-green-900/30'
-                                                : pkg.status === 'cancelled'
-                                                    ? 'bg-red-950/60 text-red-400 border border-red-900/30'
-                                                    : 'bg-slate-800 text-slate-300'
+                                                : pkg.status === 'cancelled' && pkg.is_chargeable_cancellation
+                                                    ? 'bg-orange-950/60 text-orange-400 border border-orange-900/30'
+                                                    : pkg.status === 'cancelled'
+                                                        ? 'bg-slate-700/60 text-slate-400 border border-slate-600/30'
+                                                        : 'bg-slate-800 text-slate-300'
                                                 }`}>
-                                                {pkg.status === 'delivered' ? '✅ Teslim Edildi' : pkg.status === 'cancelled' ? '🚫 İptal Edildi' : pkg.status}
+                                                {pkg.status === 'delivered'
+                                                    ? '✅ Teslim Edildi'
+                                                    : pkg.status === 'cancelled' && pkg.is_chargeable_cancellation
+                                                        ? '💰 Ücretli İptal'
+                                                        : pkg.status === 'cancelled'
+                                                            ? '🚫 Ücretsiz İptal'
+                                                            : pkg.status}
                                             </span>
                                         </td>
                                         <td className="py-3 px-4">

@@ -1,23 +1,55 @@
 /**
  * @file src/app/kurye/hooks/useCourierLocation.ts
- * @description Kurye GPS Konum Takibi Hook'u (Foreground + Background)
+ * @description Kurye GPS Konum Takibi Hook'u (Foreground + Background + Broadcast)
  * 
- * ÖNEMLİ: Bu dosyadaki tüm mantık kurye/page.tsx'ten birebir taşınmıştır.
- * HİÇBİR MANTIK DEĞİŞİKLİĞİ YAPILMAMIŞTIR.
+ * KONUM AKIŞI:
+ * 1. GPS'ten konum al → Filtreleri uygula
+ * 2. Veritabanına yaz (couriers.last_location) — yedek/fallback
+ * 3. Supabase Broadcast ile anlık olarak admin haritasına gönder (sıfır gecikme)
  */
 
 import { useRef, useEffect } from 'react'
 import { supabase } from '@/app/lib/supabase'
 import { applyAllFilters } from '../utils/locationFilters'
 
+const BROADCAST_CHANNEL = 'courier-live-locations'
+const BROADCAST_EVENT = 'location_update'
+
 interface UseCourierLocationProps {
   courierId: string | null
   isLoggedIn: boolean
+  courierName?: string
 }
 
-export function useCourierLocation({ courierId, isLoggedIn }: UseCourierLocationProps) {
-  // Son geçerli konum (sıçrama filtresi için) - ORİJİNAL MANTIK
+export function useCourierLocation({ courierId, isLoggedIn, courierName }: UseCourierLocationProps) {
+  // Son geçerli konum (sıçrama filtresi için)
   const lastValidLocationRef = useRef<{ latitude: number, longitude: number, timestamp: number } | null>(null)
+  const broadcastChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
+
+  // 📡 Broadcast ile konumu admin haritasına anlık gönder (DB'ye YAZMAZ)
+  const broadcastLocation = (latitude: number, longitude: number, accuracy: number | null, speed: number | null, heading: number | null, timestamp: number) => {
+    const channel = broadcastChannelRef.current
+    if (!channel || !courierId) return
+
+    channel.send({
+      type: 'broadcast',
+      event: BROADCAST_EVENT,
+      payload: {
+        courierId,
+        courierName: courierName || 'Kurye',
+        latitude,
+        longitude,
+        accuracy: accuracy || null,
+        speed: speed || null,
+        heading: heading || null,
+        timestamp: new Date(timestamp).toISOString()
+      }
+    }).then(() => {
+      console.log('📡 Broadcast gönderildi:', { lat: latitude.toFixed(5), lng: longitude.toFixed(5) })
+    }).catch((err: any) => {
+      console.error('❌ Broadcast gönderilemedi:', err)
+    })
+  }
 
   // Konum güncellemesi fonksiyonu - ULTRA GÜÇLENDİRİLMİŞ FİLTRELEME - ORİJİNAL MANTIK
   const updateCourierLocation = async (courierIdParam: string) => {
@@ -109,8 +141,10 @@ export function useCourierLocation({ courierId, isLoggedIn }: UseCourierLocation
         console.error('❌ Konum güncellenemedi:', error)
       } else {
         console.log('✅ Konum veritabanına kaydedildi')
-        console.log('📊 Veri:', locationData)
       }
+
+      // 📡 Broadcast ile anlık gönder (DB'den bağımsız)
+      broadcastLocation(latitude, longitude, accuracy, speed, heading, timestamp)
     } catch (error: any) {
       console.error('❌ Konum alınamadı:', error)
       console.error('❌ Hata mesajı:', error.message)
@@ -147,6 +181,9 @@ export function useCourierLocation({ courierId, isLoggedIn }: UseCourierLocation
             }
             
             try {
+              // 📡 Broadcast ile anlık gönder
+              broadcastLocation(latitude, longitude, accuracy, null, null, timestamp)
+
               await supabase
                 .from('couriers')
                 .update({
@@ -254,6 +291,9 @@ export function useCourierLocation({ courierId, isLoggedIn }: UseCourierLocation
               } catch (err) {
                 console.error('❌ Arka plan konum kaydetme hatası:', err)
               }
+
+              // 📡 Broadcast ile anlık gönder
+              broadcastLocation(latitude, longitude, accuracy, speed, bearing, timestamp)
             }
           )
 
@@ -297,7 +337,30 @@ export function useCourierLocation({ courierId, isLoggedIn }: UseCourierLocation
     }
   }
 
-  // Konum takibini başlat - ORİJİNAL MANTIK
+  // 📡 Broadcast kanalını kur (subscribe)
+  useEffect(() => {
+    if (!isLoggedIn || !courierId) return
+
+    const channel = supabase.channel(BROADCAST_CHANNEL, {
+      config: { broadcast: { self: false } }
+    })
+
+    channel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        console.log('📡 Kurye broadcast kanalına bağlandı:', BROADCAST_CHANNEL)
+      }
+    })
+
+    broadcastChannelRef.current = channel
+
+    return () => {
+      supabase.removeChannel(channel)
+      broadcastChannelRef.current = null
+      console.log('📡 Kurye broadcast kanalından ayrıldı')
+    }
+  }, [isLoggedIn, courierId])
+
+  // Konum takibini başlat
   useEffect(() => {
     if (!isLoggedIn || !courierId) return
 
@@ -317,10 +380,10 @@ export function useCourierLocation({ courierId, isLoggedIn }: UseCourierLocation
       backgroundWatcherId = watcherId
     })
 
-    // Her 20 saniyede bir konum güncelle (daha sık)
+    // Her 10 saniyede bir konum güncelle
     const locationInterval = setInterval(() => {
       updateCourierLocation(courierId)
-    }, 20000) // 20 saniye
+    }, 10000) // 10 saniye
 
     return () => {
       clearInterval(locationInterval)
