@@ -131,10 +131,12 @@ export function LiveMapComponent({
       try {
         const { data, error } = await supabase
           .from('couriers')
-          .select('id, username, full_name, is_active, phone, last_location')
+          .select('*')
           .eq('is_active', true)
         if (error) {
-          console.error('Supabase active couriers query error:', error)
+          console.error('SUPABASE HATASI DETAYI:', JSON.stringify(error, null, 2))
+          console.error('Tablo İsmi Kontrolü:', 'couriers')
+          return
         } else if (data) {
           setCouriers(data)
         }
@@ -491,10 +493,9 @@ export function LiveMapComponent({
           >
             <MapUpdater center={mapCenter} />
             
-            <TileLayer 
-              url="https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}.png"
-              attribution='&copy; Stadia Maps'
-              className="map-tiles"
+            <TileLayer
+              url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
             />
 
             {/* Restoran Markerları */}
