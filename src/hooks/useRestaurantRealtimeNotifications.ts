@@ -1,45 +1,72 @@
 /**
  * @file src/hooks/useRestaurantRealtimeNotifications.ts
  * @description Restoran Paneli - Realtime Bildirim Hook
- * 
+ *
  * SENARYO:
  * - Supabase Realtime ile packages tablosunu dinle (INSERT)
- * - Şart: restaurant_id === mevcut restoran ID && müşteri panelinden geldi
- * - Aksiyon: Toast + Audio
+ * - Şart: restaurant_id === mevcut restoran ID && platform === 'web'
+ * - Aksiyon: Toast + Looping Audio (alert.mp3)
  * - Initial load koruması (useRef)
  */
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/app/lib/supabase'
+
+// Global ses nesnesi — bileşen dışında, döngüsel alarm
+let alertAudio: HTMLAudioElement | null = null
+
+if (typeof window !== 'undefined' && !alertAudio) {
+  alertAudio = new Audio('/alert.mp3')
+  alertAudio.loop = true
+  alertAudio.volume = 0.8
+}
+
+/** Sipariş kartına / Hazırla'ya tıklanınca alarmı sustur */
+export function stopRestaurantAlert() {
+  if (alertAudio) {
+    alertAudio.pause()
+    alertAudio.currentTime = 0
+  }
+}
+
+/** Yeni web siparişinde döngüsel alarmı başlat */
+export function playRestaurantAlert() {
+  if (alertAudio) {
+    alertAudio.currentTime = 0
+    alertAudio
+      .play()
+      .then(() => console.log('✅ Web sipariş alarmı çalıyor (loop)'))
+      .catch((e) => console.log('Otomatik oynatma engellendi', e))
+  }
+}
 
 export function useRestaurantRealtimeNotifications(
   restaurantId: number | null,
   isLoggedIn: boolean
 ) {
   const isInitialMount = useRef(true)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [audioUnlocked, setAudioUnlocked] = useState(false)
 
-  // Audio'yu hazırla
+  // İlk etkileşimde tarayıcı autoplay kilidini aç
   useEffect(() => {
     if (typeof window === 'undefined') return
 
-    // Audio oluştur
-    audioRef.current = new Audio(`/notification.mp3?v=${Date.now()}`)
-    audioRef.current.volume = 0.8
-
-    // Audio unlock için kullanıcı etkileşimi bekle
     const unlockAudio = () => {
-      if (audioRef.current) {
-        audioRef.current.volume = 0
-        audioRef.current.play()
+      if (alertAudio) {
+        alertAudio.volume = 0
+        alertAudio
+          .play()
           .then(() => {
-            audioRef.current!.pause()
-            audioRef.current!.currentTime = 0
-            audioRef.current!.volume = 0.8
+            alertAudio!.pause()
+            alertAudio!.currentTime = 0
+            alertAudio!.volume = 0.8
+            setAudioUnlocked(true)
             console.log('✅ Restoran audio unlocked')
           })
-          .catch(() => {})
+          .catch(() => {
+            alertAudio!.volume = 0.8
+          })
       }
       document.removeEventListener('click', unlockAudio)
       document.removeEventListener('touchstart', unlockAudio)
@@ -49,10 +76,6 @@ export function useRestaurantRealtimeNotifications(
     document.addEventListener('touchstart', unlockAudio, { once: true })
 
     return () => {
-      if (audioRef.current) {
-        audioRef.current.pause()
-        audioRef.current = null
-      }
       document.removeEventListener('click', unlockAudio)
       document.removeEventListener('touchstart', unlockAudio)
     }
@@ -80,36 +103,31 @@ export function useRestaurantRealtimeNotifications(
         (payload) => {
           console.log('📦 Restoran Realtime INSERT event:', payload)
 
-          // İLK RENDER KORUMASI
           if (isInitialMount.current) {
             console.log('⏭️ İlk render - bildirim atlandı')
             return
           }
 
-          const newOrder = payload.new as any
+          const newOrder = payload.new as Record<string, unknown>
 
-          // Sadece 'new_order' statusundaki siparişler
-          if (newOrder && newOrder.status === 'new_order') {
-            console.log('🔔 YENİ SİPARİŞ GELDİ (Restoran):', newOrder)
+          const isNewWebOrder =
+            newOrder?.status === 'new_order' &&
+            newOrder?.platform === 'web'
 
-            // 1. SES ÇAL
-            if (audioRef.current) {
-              audioRef.current.currentTime = 0
-              audioRef.current.play()
-                .then(() => console.log('✅ Restoran bildirimi sesi çalıyor'))
-                .catch(err => console.error('❌ Ses çalma hatası:', err))
-            }
+          if (!isNewWebOrder) return
 
-            // 2. TOAST GÖSTER
-            showToast('🎉 Yeni Sipariş Geldi!', `Sipariş #${newOrder.id} - ${newOrder.customer_name}`)
-          }
+          console.log('🔔 YENİ WEB SİPARİŞİ (Restoran):', newOrder)
+
+          showToast(
+            '🌐 Yeni Web Siparişi!',
+            `Sipariş #${newOrder.order_number || newOrder.id} - ${newOrder.customer_name}`
+          )
         }
       )
       .subscribe((status) => {
         console.log('📡 Restoran Realtime status:', status)
 
         if (status === 'SUBSCRIBED') {
-          // 2 saniye sonra initial load korumasını kaldır
           setTimeout(() => {
             isInitialMount.current = false
             console.log('🔓 Restoran initial load koruması kaldırıldı')
@@ -120,12 +138,14 @@ export function useRestaurantRealtimeNotifications(
     return () => {
       console.log('🔌 Restoran bildirimleri kapatılıyor')
       isInitialMount.current = true
+      stopRestaurantAlert()
       supabase.removeChannel(channel)
     }
   }, [restaurantId, isLoggedIn])
+
+  return { audioUnlocked }
 }
 
-// Toast gösterme fonksiyonu
 function showToast(title: string, body: string) {
   if (typeof window === 'undefined') return
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/app/lib/supabase'
 import KanbanBoard from './KanbanBoard'
 import NewOrderModal from './NewOrderModal'
@@ -9,6 +9,7 @@ import { Package, Courier } from '@/types'
 import { formatTurkishTime, formatShortDateTime } from '@/utils/dateHelpers'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
 import { useRestaurantReminder } from '@/hooks/useRestaurantReminder'
+import { playRestaurantAlert } from '@/hooks/useRestaurantRealtimeNotifications'
 import { useRestoran } from '../RestoranProvider'
 
 interface Restaurant {
@@ -47,6 +48,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
   const [startDate, setStartDate] = useState(getTodayString)
   const [endDate, setEndDate] = useState(getTodayString)
   const [cancelledPackages, setCancelledPackages] = useState<Package[]>([])
+  const printReceiptRef = useRef<(orderData: Package) => void>(() => {})
   
   // 🎯 Manuel Filtreleme için Temporary State
   const [tempStartDate, setTempStartDate] = useState(getTodayString)
@@ -97,10 +99,53 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
               table: 'packages',
               filter: `restaurant_id=eq.${restaurantId}`
             },
-            () => {
-              // Sessiz güncelleme - ekran titremiyor
-              fetchPackages()
-              fetchTodayStats()
+            (payload) => {
+              const { eventType, new: newRow, old: oldRow } = payload
+
+              if (eventType === 'INSERT' && newRow) {
+                const newOrder = newRow as Package
+                const activeStatuses = ['new_order', 'getting_ready', 'ready', 'assigned', 'picking_up', 'on_the_way']
+
+                // 1) Önce state güncelle — React listeyi çizsin
+                if (activeStatuses.includes(newOrder.status)) {
+                  setPackages(prev => {
+                    if (prev.some(p => p.id === newOrder.id)) return prev
+                    return [newOrder, ...prev]
+                  })
+                }
+
+                // 2) Web siparişi: ses hemen, yazdırma 1.5 sn gecikmeli
+                const isWebOrder =
+                  newOrder.platform === 'web' &&
+                  (newOrder.status === 'new_order' || newOrder.status === 'new')
+
+                if (isWebOrder) {
+                  playRestaurantAlert()
+                  setTimeout(() => {
+                    printReceiptRef.current(newOrder)
+                  }, 1500)
+                }
+
+                fetchTodayStats()
+                return
+              }
+
+              if (eventType === 'UPDATE' && newRow) {
+                const updated = newRow as Package
+                setPackages(prev => prev.map(p => p.id === updated.id ? { ...p, ...updated } : p))
+                setDeliveredPackages(prev => prev.map(p => p.id === updated.id ? { ...p, ...updated } : p))
+                setCancelledPackages(prev => prev.map(p => p.id === updated.id ? { ...p, ...updated } : p))
+                fetchTodayStats()
+                return
+              }
+
+              if (eventType === 'DELETE' && oldRow) {
+                const removedId = (oldRow as Package).id
+                setPackages(prev => prev.filter(p => p.id !== removedId))
+                setDeliveredPackages(prev => prev.filter(p => p.id !== removedId))
+                setCancelledPackages(prev => prev.filter(p => p.id !== removedId))
+                fetchTodayStats()
+              }
             }
           )
 
@@ -551,38 +596,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
     }, 250)
   }, [restaurant])
 
-  useEffect(() => {
-    if (!restaurantId) return
-
-    console.log('📡 Otonom Termal Yazdırma Realtime dinleyicisi kuruluyor...')
-
-    const channel = supabase
-      .channel(`restaurant-silent-printing-${restaurantId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'packages',
-          filter: `restaurant_id=eq.${restaurantId}`
-        },
-        (payload) => {
-          const newOrder = payload.new as any
-          if (newOrder && (newOrder.status === 'new' || newOrder.status === 'new_order')) {
-            console.log('🎉 Yeni sipariş Realtime ile yakalandı! Yazdırılıyor...', newOrder)
-            printReceipt(newOrder)
-          }
-        }
-      )
-      .subscribe((status) => {
-        console.log(`📡 Yazdırma Realtime Kanallı Dinleme Durumu: ${status}`)
-      })
-
-    return () => {
-      console.log('🔌 Otonom Termal Yazdırma Realtime dinleyicisi kaldırılıyor.')
-      supabase.removeChannel(channel)
-    }
-  }, [restaurantId, printReceipt])
+  printReceiptRef.current = printReceipt
 
   return (
     <>

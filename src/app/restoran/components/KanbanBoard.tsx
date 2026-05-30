@@ -8,6 +8,7 @@ import { formatTurkishTime } from '@/utils/dateHelpers'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
 import UpdateAmountModal from './UpdateAmountModal'
 import CancelOrderModal from './CancelOrderModal'
+import { stopRestaurantAlert } from '@/hooks/useRestaurantRealtimeNotifications'
 
 interface KanbanBoardProps {
   packages: Package[]
@@ -39,6 +40,7 @@ export default function KanbanBoard({
   const ready = packages.filter(p => ['ready', 'assigned', 'picking_up', 'on_the_way'].includes(p.status))
 
   const handleStatusChange = useCallback(async (packageId: number, newStatus: 'getting_ready' | 'ready') => {
+    stopRestaurantAlert()
     setLoading(packageId)
     
     try {
@@ -112,12 +114,11 @@ export default function KanbanBoard({
     }
   }
 
-  const OrderCard = ({ pkg, showButton, buttonText, buttonAction, isClickable }: { 
+  const OrderCard = ({ pkg, showButton, buttonText, buttonAction }: { 
     pkg: Package
     showButton?: boolean
     buttonText?: string
     buttonAction?: () => void
-    isClickable?: boolean
   }) => {
     // İptal edilebilir mi kontrolü
     const canCancel = ['new_order', 'getting_ready', 'ready', 'assigned', 'picking_up'].includes(pkg.status)
@@ -125,19 +126,27 @@ export default function KanbanBoard({
     // 🔔 Gecikmiş sipariş kontrolü
     const isDelayed = isPackageDelayed(pkg.id)
     const delayedMinutes = isDelayed ? getDelayedMinutes(pkg) : 0
+    const isWebOrder = pkg.platform === 'web'
     
     return (
     <div 
-      onClick={isClickable ? () => setSelectedPackage(pkg) : undefined}
-      className={`p-4 rounded-lg border ${
+      onClick={() => {
+        stopRestaurantAlert()
+        setSelectedPackage(pkg)
+      }}
+      className={`relative p-4 rounded-lg border cursor-pointer ${
         isDelayed
           ? darkMode
             ? 'bg-red-900/30 border-red-700 animate-pulse'
             : 'bg-red-50 border-red-300 animate-pulse'
+          : isWebOrder
+          ? darkMode
+            ? 'bg-amber-900/20 border-yellow-500/30'
+            : 'bg-yellow-500/10 border-yellow-500/30'
           : darkMode 
           ? 'bg-slate-800 border-slate-700' 
           : 'bg-white border-gray-200'
-      } shadow-sm hover:shadow-md transition-shadow ${isClickable ? 'cursor-pointer' : ''} ${
+      } shadow-sm hover:shadow-md transition-shadow ${
         isDelayed ? 'ring-2 ring-red-500/50' : ''
       }`}
     >
@@ -155,8 +164,8 @@ export default function KanbanBoard({
         </div>
       )}
       {/* Header */}
-      <div className="flex items-start justify-between mb-3">
-        <div>
+      <div className="flex items-start justify-between mb-3 gap-2">
+        <div className="min-w-0">
           <h4 className={`font-bold text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>
             {pkg.customer_name}
           </h4>
@@ -164,9 +173,16 @@ export default function KanbanBoard({
             {pkg.customer_phone}
           </p>
         </div>
-        <span className={`text-xs px-2 py-1 rounded ${getStatusBadgeClassDynamic(pkg.status)}`}>
-          {getStatusText(pkg.status)}
-        </span>
+        <div className="flex items-center gap-2 justify-end shrink-0">
+          <span className={`text-xs px-2 py-1 rounded ${getStatusBadgeClassDynamic(pkg.status)}`}>
+            {getStatusText(pkg.status)}
+          </span>
+          {isWebOrder && (
+            <span className="px-2 py-0.5 text-xs font-bold bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 rounded-md">
+              WEB
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Content */}
@@ -186,10 +202,13 @@ export default function KanbanBoard({
           </p>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
           {showButton && buttonAction && (
             <button
-              onClick={buttonAction}
+              onClick={(e) => {
+                e.stopPropagation()
+                buttonAction()
+              }}
               disabled={loading === pkg.id}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                 darkMode
@@ -245,7 +264,6 @@ export default function KanbanBoard({
     showButton, 
     buttonText, 
     buttonAction,
-    isClickable
   }: {
     title: string
     count: number
@@ -255,7 +273,6 @@ export default function KanbanBoard({
     showButton?: boolean
     buttonText?: string
     buttonAction?: (pkg: Package) => void
-    isClickable?: boolean
   }) => (
     <div className={`rounded-xl border ${
       darkMode 
@@ -292,7 +309,6 @@ export default function KanbanBoard({
               showButton={showButton}
               buttonText={buttonText}
               buttonAction={buttonAction ? () => buttonAction(pkg) : undefined}
-              isClickable={isClickable}
             />
           ))
         )}
@@ -544,7 +560,6 @@ export default function KanbanBoard({
         color={darkMode ? 'bg-teal-900/50 text-teal-300' : 'bg-teal-100 text-teal-700'}
         orders={ready}
         showButton={false}
-        isClickable={true}
       />
     </div>
     </>

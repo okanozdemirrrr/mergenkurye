@@ -445,15 +445,26 @@ export function LiveTrackingTab({
                             ) : unassignedPackages.length === 0 ? (
                                 <div className="col-span-full text-center py-8 text-slate-500">Kurye bekleyen sipariş bulunmuyor.</div>
                             ) : (
-                                unassignedPackages.map(pkg => (
+                                unassignedPackages.map(pkg => {
+                                    const isWebOrder = pkg.platform === 'web'
+                                    return (
                                     <div 
                                         key={pkg.id} 
-                                        className={`relative bg-slate-800 p-3 rounded-lg border-l-4 shadow-sm cursor-pointer hover:bg-slate-700 transition-colors ${pkg.status === 'waiting' ? 'border-l-yellow-500' :
+                                        className={`relative p-3 rounded-lg border-l-4 shadow-sm cursor-pointer transition-colors ${
+                                        isWebOrder
+                                            ? 'bg-amber-900/20 hover:bg-amber-900/30 border-yellow-500/30'
+                                            : 'bg-slate-800 hover:bg-slate-700 border-slate-700'
+                                        } ${pkg.status === 'waiting' ? 'border-l-yellow-500' :
                                         pkg.status === 'assigned' ? 'border-l-orange-500' :
                                             pkg.status === 'picking_up' ? 'border-l-orange-500' :
                                                 'border-l-red-500'
-                                        } border-r border-t border-b border-slate-700`}
+                                        } border-r border-t border-b`}
                                     >
+                                        {isWebOrder && (
+                                            <span className="absolute top-2 right-2 px-2 py-0.5 text-xs font-bold bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 rounded-md z-20">
+                                                WEB
+                                            </span>
+                                        )}
                                         {/* Tıklanabilir Alan - Üstte */}
                                         <div onClick={() => setSelectedPackage(pkg)} className="absolute inset-0 z-0"></div>
 
@@ -479,7 +490,7 @@ export function LiveTrackingTab({
                                                     }`}>
                                                     {pkg.order_number || '......'}
                                                 </span>
-                                                {pkg.platform && (
+                                                {pkg.platform && pkg.platform !== 'web' && (
                                                     <span className={`text-xs py-0.5 px-2 rounded ${getPlatformBadgeClass(pkg.platform)}`}>
                                                         {getPlatformDisplayName(pkg.platform)}
                                                     </span>
@@ -603,7 +614,8 @@ export function LiveTrackingTab({
                                             </div>
                                         )}
                                     </div>
-                                ))
+                                    )
+                                })
                             )}
                         </div>
                     </div>

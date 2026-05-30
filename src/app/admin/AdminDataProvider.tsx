@@ -59,7 +59,7 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
       // ⚡ EGRESS OPTİMİZASYONU: Sadece gerekli kolonlar + limit
       const { data, error } = await supabase
         .from('packages')
-        .select('id, order_number, status, amount, payment_method, customer_name, customer_phone, delivery_address, content, created_at, getting_ready_at, ready_at, assigned_at, picked_up_at, delivered_at, courier_id, restaurant_id, restaurants(id, name, phone)')
+        .select('id, order_number, status, amount, payment_method, customer_name, customer_phone, delivery_address, content, platform, created_at, getting_ready_at, ready_at, assigned_at, picked_up_at, delivered_at, courier_id, restaurant_id, restaurants(id, name, phone)')
         .in('status', ['new_order', 'getting_ready', 'ready', 'assigned', 'picking_up', 'on_the_way'])
         .order('created_at', { ascending: false })
         .limit(500) // ⚡ Maksimum 500 aktif sipariş

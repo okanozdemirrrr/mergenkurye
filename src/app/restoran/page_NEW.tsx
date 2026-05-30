@@ -24,12 +24,28 @@ export default function RestoranPage() {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([])
   const [darkMode, setDarkMode] = useState(true)
   const [loginError, setLoginError] = useState('')
+  const [isAudioUnlocked, setIsAudioUnlocked] = useState(false)
 
   // Realtime bildirimler (INSERT event'leri için)
   useRestaurantRealtimeNotifications(
     selectedRestaurantId ? parseInt(selectedRestaurantId) : null,
     isLoggedIn
   )
+
+  useEffect(() => {
+    if (!isLoggedIn) return
+
+    const handleUnlock = () => {
+      setIsAudioUnlocked(true)
+      window.removeEventListener('click', handleUnlock)
+    }
+
+    window.addEventListener('click', handleUnlock)
+
+    return () => {
+      window.removeEventListener('click', handleUnlock)
+    }
+  }, [isLoggedIn])
 
   useEffect(() => {
     setIsMounted(true)
@@ -147,6 +163,12 @@ export default function RestoranPage() {
 
   return (
     <>
+      {!isAudioUnlocked && isLoggedIn && (
+        <div className="fixed top-0 left-0 right-0 z-[99999] bg-amber-500 text-black text-center text-sm font-semibold py-2 px-4 shadow-lg animate-pulse pointer-events-none">
+          🔊 Sesi Aktifleştirmek İçin Ekrana Tıklayın
+        </div>
+      )}
+
       {/* Changelog Modal */}
       <ChangelogModal userType="restaurant" userId={selectedRestaurantId} />
       

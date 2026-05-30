@@ -46,10 +46,8 @@ export function EndOfDayModalNew({
   const [cashTotal, setCashTotal] = useState(0)
   const [cardTotal, setCardTotal] = useState(0)
   const [ibanTotal, setIbanTotal] = useState(0)
-  const [totalDeliveries, setTotalDeliveries] = useState(0)
   const [deliveryCount, setDeliveryCount] = useState(0)
   const [previousSettlements, setPreviousSettlements] = useState(0)
-  const [remainingDebt, setRemainingDebt] = useState(0)
   const [amountReceived, setAmountReceived] = useState('')
   const [loading, setLoading] = useState(true)
   const [processing, setProcessing] = useState(false)
@@ -115,36 +113,18 @@ export function EndOfDayModalNew({
       setCardTotal(card)
       setIbanTotal(iban)
 
-      // 2. CARİ BORÇ — TÜM ZAMANLAR (Nakit + Kart + IBAN)
-      // 🔥 KURYE TÜM TAHSİLATI TESLİM ETMEK ZORUNDA!
-      const { data: allPackages, error: allPackagesError } = await supabase
-        .from('packages')
-        .select('amount, payment_method')
-        .eq('delivered_by_courier_id', courier.id)  // ✅ Teslimatı yapan kurye
-        .eq('status', 'delivered')
-        .lte('delivered_at', endIso) // endDate'e kadar TÜM paketler
-
-      if (allPackagesError) throw allPackagesError
-
-      // 🔥 NAKİT + KART + IBAN = TOPLAM TAHSİLAT
-      const totalCollectionDebt = (allPackages || []).reduce((sum, p) => sum + (p.amount || 0), 0)
-      setTotalDeliveries(totalCollectionDebt)
-
-      // 3. TÜM ZAMANLAR yapılan ödemeler
+      // 2. Seçili tarih aralığındaki ödemeler
       const { data: settlements, error: settlementsError } = await supabase
         .from('courier_settlements')
         .select('amount_paid')
         .eq('courier_id', courier.id)
-        .lte('created_at', endIso) // endDate'e kadar TÜM ödemeler
+        .gte('created_at', startIso)
+        .lte('created_at', endIso)
 
       if (settlementsError) throw settlementsError
 
       const totalPaid = (settlements || []).reduce((sum, s) => sum + (s.amount_paid || 0), 0)
       setPreviousSettlements(totalPaid)
-
-      // 4. TOPLAM KALAN BORÇ = Tüm tahsilat (nakit+kart+iban) - Tüm ödemeler
-      const debt = Math.max(0, totalCollectionDebt - totalPaid)
-      setRemainingDebt(debt)
     } catch (error) {
       console.error('❌ Hesaplama hatası:', error)
     } finally {
@@ -181,8 +161,6 @@ export function EndOfDayModalNew({
 
       const newTotalPaid = previousSettlements + received
       setPreviousSettlements(newTotalPaid)
-      const newRemainingDebt = Math.max(0, totalDeliveries - newTotalPaid)
-      setRemainingDebt(newRemainingDebt)
       setAmountReceived('')
       setNotes('')
 
@@ -198,12 +176,20 @@ export function EndOfDayModalNew({
 
   if (!show) return null
 
-  // 🔥 KUTSAL TOPLAM: Nakit + Kart + IBAN
-  const totalCollection = cashTotal + cardTotal + ibanTotal
+  // 🔥 KUTSAL TOPLAM: Nakit + Kart + IBAN (anlık derived — state bug'ını önler)
+  const totalCollection = Number(cashTotal || 0) + Number(cardTotal || 0) + Number(ibanTotal || 0)
+  const totalDebt = Math.max(
+    0,
+    totalCollection - Number(previousSettlements || 0)
+  )
   const received = parseFloat(amountReceived) || 0
-  const difference = received - remainingDebt
+  const difference = received - totalDebt
   const courierEarnings = (courier.package_rate || 0) * deliveryCount
   const mustHandOver = totalCollection
+  const hesaplananBorc = Math.max(
+    0,
+    Number(cashTotal || 0) + Number(cardTotal || 0) + Number(ibanTotal || 0) - Number(parseFloat(amountReceived) || 0)
+  )
 
   return (
     <div
@@ -323,7 +309,7 @@ export function EndOfDayModalNew({
               <div className="bg-rose-900/20 border border-rose-800/40 rounded-lg p-4 mb-5">
                 <div className="text-[10px] text-rose-400 tracking-tight uppercase mb-2 font-medium">Toplam Kalan Borç</div>
                 <div className="text-3xl font-black text-rose-400 tracking-tight mb-1">
-                  {remainingDebt.toFixed(2)}₺
+                  {hesaplananBorc.toFixed(2)}₺
                 </div>
                 <div className="text-[10px] text-rose-500/60 tracking-tight">
                   Nakit + Kart + IBAN - Ödemeler
@@ -340,7 +326,7 @@ export function EndOfDayModalNew({
                   step="0.01"
                   value={amountReceived}
                   onChange={(e) => setAmountReceived(e.target.value)}
-                  placeholder={`${remainingDebt.toFixed(2)}`}
+                  placeholder={`${totalDebt.toFixed(2)}`}
                   autoFocus
                   className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded text-lg font-bold text-slate-100 placeholder-slate-600 outline-none focus:border-emerald-500 transition-colors tracking-tight"
                 />
