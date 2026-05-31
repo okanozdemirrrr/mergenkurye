@@ -1,0 +1,8 @@
+-- Gün sonu mutabakat detay kolonları (EndOfDayModalNew)
+ALTER TABLE courier_settlements
+ADD COLUMN IF NOT EXISTS total_cash DECIMAL(10, 2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS total_card DECIMAL(10, 2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS total_iban DECIMAL(10, 2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS total_earned DECIMAL(10, 2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS received_amount DECIMAL(10, 2),
+ADD COLUMN IF NOT EXISTS remaining_debt DECIMAL(10, 2) DEFAULT 0;

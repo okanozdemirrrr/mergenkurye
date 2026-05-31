@@ -20,6 +20,28 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/app/lib/supabase'
 
+function toFilterIso(value: string, boundary: 'start' | 'end'): string {
+  const d = new Date(value)
+  if (isNaN(d.getTime())) return value
+  if (!value.includes('T')) {
+    if (boundary === 'start') d.setHours(0, 0, 0, 0)
+    else d.setHours(23, 59, 59, 999)
+  }
+  return d.toISOString()
+}
+
+function toDateOnly(value: string): string {
+  if (!value) return value
+  return value.includes('T') ? value.split('T')[0] : value
+}
+
+function settlementPaidAmount(row: {
+  amount_paid?: number | null
+  received_amount?: number | null
+}): number {
+  return Number(row.received_amount ?? row.amount_paid ?? 0)
+}
+
 interface Courier {
   id: string
   full_name?: string
@@ -66,23 +88,18 @@ export function EndOfDayModalNew({
       let endIso = ''
 
       if (startDate) {
-        const start = new Date(startDate)
-        if (!isNaN(start.getTime())) {
-          start.setHours(0, 0, 0, 0)
-          startIso = start.toISOString()
-        }
+        startIso = toFilterIso(startDate, 'start')
       }
 
       if (endDate) {
-        const end = new Date(endDate)
-        if (!isNaN(end.getTime())) {
-          end.setHours(23, 59, 59, 999)
-          endIso = end.toISOString()
-        }
+        endIso = toFilterIso(endDate, 'end')
       }
 
       if (!startIso) startIso = startDate
       if (!endIso) endIso = endDate
+
+      const rangeStart = toDateOnly(startDate)
+      const rangeEnd = toDateOnly(endDate)
 
       // 1. GÖRSEL DEĞERLER — Tarih aralığına göre, sadece parası kuryeye ödenmemiş olanlar
       const { data: packages, error: packagesError } = await supabase
@@ -113,17 +130,33 @@ export function EndOfDayModalNew({
       setCardTotal(card)
       setIbanTotal(iban)
 
-      // 2. Seçili tarih aralığındaki ödemeler
-      const { data: settlements, error: settlementsError } = await supabase
+      // 2. Seçili tarih aralığındaki mutabakat ödemeleri (dönem çakışması)
+      let settlements: { amount_paid?: number | null; received_amount?: number | null }[] | null = null
+
+      const settlementsQuery = await supabase
         .from('courier_settlements')
-        .select('amount_paid')
+        .select('amount_paid, received_amount')
         .eq('courier_id', courier.id)
-        .gte('created_at', startIso)
-        .lte('created_at', endIso)
+        .lte('start_date', rangeEnd)
+        .gte('end_date', rangeStart)
 
-      if (settlementsError) throw settlementsError
+      if (settlementsQuery.error) {
+        const fallback = await supabase
+          .from('courier_settlements')
+          .select('amount_paid')
+          .eq('courier_id', courier.id)
+          .lte('start_date', rangeEnd)
+          .gte('end_date', rangeStart)
+        if (fallback.error) throw fallback.error
+        settlements = fallback.data
+      } else {
+        settlements = settlementsQuery.data
+      }
 
-      const totalPaid = (settlements || []).reduce((sum, s) => sum + (s.amount_paid || 0), 0)
+      const totalPaid = (settlements || []).reduce(
+        (sum, s) => sum + settlementPaidAmount(s),
+        0
+      )
       setPreviousSettlements(totalPaid)
     } catch (error) {
       console.error('❌ Hesaplama hatası:', error)
@@ -133,42 +166,85 @@ export function EndOfDayModalNew({
   }
 
   useEffect(() => {
-    if (show) calculateTotals()
+    if (show) {
+      setAmountReceived('')
+      setNotes('')
+      calculateTotals()
+    }
   }, [show, courier.id, startDate, endDate])
 
-  // ═══ KAYDET (MANTIK DEĞİŞMEDİ) ═══
   const handleSubmit = async () => {
     try {
       setProcessing(true)
-      const received = parseFloat(amountReceived)
-      if (isNaN(received) || received <= 0) {
+
+      if (!courier?.id) {
+        alert('Kaydetme Başarısız: Kurye ID bulunamadı')
+        return
+      }
+
+      const receivedAmount = Number(parseFloat(amountReceived))
+      if (!Number.isFinite(receivedAmount) || receivedAmount <= 0) {
         alert('Geçerli bir tutar girin')
         return
       }
 
-      const { error } = await supabase
+      const totalCash = Number(cashTotal || 0)
+      const totalCard = Number(cardTotal || 0)
+      const totalIban = Number(ibanTotal || 0)
+      const totalEarned = Number((courier.package_rate || 0) * deliveryCount)
+      const debtBeforePayment = Math.max(
+        0,
+        totalCash + totalCard + totalIban - Number(previousSettlements || 0)
+      )
+      const remainingDebt = Math.max(0, debtBeforePayment - receivedAmount)
+
+      const payload = {
+        courier_id: courier.id,
+        start_date: toDateOnly(startDate),
+        end_date: toDateOnly(endDate),
+        amount_paid: receivedAmount,
+        notes: notes || null,
+        created_by: 'admin',
+      }
+
+      const detailFields = {
+        total_cash: totalCash,
+        total_card: totalCard,
+        total_iban: totalIban,
+        total_earned: totalEarned,
+        received_amount: receivedAmount,
+        remaining_debt: remainingDebt,
+      }
+
+      let { error } = await supabase
         .from('courier_settlements')
-        .insert({
-          courier_id: courier.id,
-          start_date: startDate,
-          end_date: endDate,
-          amount_paid: received,
-          notes: notes || null,
-          created_by: 'admin'
-        })
+        .insert([{ ...payload, ...detailFields }])
 
-      if (error) throw error
+      if (error) {
+        ;({ error } = await supabase.from('courier_settlements').insert([payload]))
+      }
 
-      const newTotalPaid = previousSettlements + received
-      setPreviousSettlements(newTotalPaid)
+      if (error) {
+        console.error(error)
+        alert('Kaydetme Başarısız: ' + (error.message || JSON.stringify(error)))
+        return
+      }
+
+      alert('Mutabakat kaydedildi')
       setAmountReceived('')
       setNotes('')
-
+      setPreviousSettlements((prev) => Number(prev || 0) + receivedAmount)
       onSuccess()
-      setTimeout(() => onClose(), 500)
-    } catch (error: any) {
-      console.error('❌ Kayıt hatası:', error)
-      alert('Hata: ' + error.message)
+      onClose()
+    } catch (error: unknown) {
+      console.error(error)
+      const message =
+        error instanceof Error
+          ? error.message
+          : typeof error === 'object' && error !== null && 'message' in error
+            ? String((error as { message: unknown }).message)
+            : String(error)
+      alert('Kaydetme Başarısız: ' + message)
     } finally {
       setProcessing(false)
     }
@@ -185,11 +261,8 @@ export function EndOfDayModalNew({
   const received = parseFloat(amountReceived) || 0
   const difference = received - totalDebt
   const courierEarnings = (courier.package_rate || 0) * deliveryCount
-  const mustHandOver = totalCollection
-  const hesaplananBorc = Math.max(
-    0,
-    Number(cashTotal || 0) + Number(cardTotal || 0) + Number(ibanTotal || 0) - Number(parseFloat(amountReceived) || 0)
-  )
+  const hesaplananBorc = Math.max(0, totalDebt - received)
+  const isFullySettled = totalCollection > 0 && totalDebt <= 0
 
   return (
     <div
@@ -234,7 +307,7 @@ export function EndOfDayModalNew({
               <div className="bg-amber-900/20 border border-amber-800/40 rounded-lg p-5 text-center">
                 <span className="text-2xl block mb-2">ℹ️</span>
                 <p className="text-sm font-bold text-amber-400 tracking-tight">Ödenecek bakiye bulunamadı</p>
-                <p className="text-xs text-slate-400 mt-1">Bu tarih aralığındaki tüm teslimatlar zaten kuryeye ödenmiş veya teslim edilmemiş.</p>
+                <p className="text-xs text-slate-400 mt-1">Bu tarih aralığında teslim edilmiş ödenmemiş paket yok.</p>
               </div>
               <div className="flex gap-2">
                 <button
@@ -249,6 +322,30 @@ export function EndOfDayModalNew({
                   Kapat
                 </button>
               </div>
+            </div>
+          ) : isFullySettled ? (
+            <div className="space-y-5 py-6">
+              <div className="bg-emerald-900/20 border border-emerald-800/40 rounded-lg p-5 text-center">
+                <span className="text-2xl block mb-2">✅</span>
+                <p className="text-sm font-bold text-emerald-400 tracking-tight">Mutabakat tamamlandı</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  Bu tarih aralığı için kalan borç: <span className="text-emerald-300 font-bold">0.00₺</span>
+                </p>
+                <p className="text-[10px] text-slate-500 mt-2">
+                  Toplam tahsilat: {totalCollection.toFixed(2)}₺ · Ödenen: {Number(previousSettlements || 0).toFixed(2)}₺
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  onClose()
+                }}
+                className="w-full px-3 py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-400 rounded text-xs font-medium border border-slate-800 transition-colors tracking-tight"
+              >
+                Kapat
+              </button>
             </div>
           ) : (
             <>
