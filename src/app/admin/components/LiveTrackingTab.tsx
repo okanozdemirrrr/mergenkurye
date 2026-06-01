@@ -400,7 +400,7 @@ export function LiveTrackingTab({
                                         </div>
 
                                         {courierPackages.length > 0 && (
-                                            <div className="mt-2 space-y-1.5">
+                                            <div className="mt-1.5 space-y-1">
                                                 {courierPackages.map(pkg => {
                                                     const restoranAdi =
                                                         pkg.restaurant?.name ??
@@ -415,33 +415,35 @@ export function LiveTrackingTab({
                                                         <div
                                                             key={pkg.id}
                                                             onClick={() => setSelectedPackage(pkg)}
-                                                            className="flex items-center gap-1.5 text-[11px] w-full overflow-hidden cursor-pointer hover:bg-slate-700 p-1.5 rounded transition-colors"
+                                                            className="w-full overflow-hidden cursor-pointer hover:bg-slate-700/80 py-1 px-1.5 rounded transition-colors"
                                                         >
-                                                            <span
-                                                                className={`shrink-0 px-2 py-0.5 rounded-full font-semibold text-[10px] ${
-                                                                    pkg.status === 'waiting'
-                                                                        ? 'bg-yellow-900/50 text-yellow-300'
-                                                                        : pkg.status === 'assigned'
-                                                                          ? 'bg-orange-900/50 text-orange-300'
-                                                                          : pkg.status === 'picking_up'
-                                                                            ? 'bg-orange-900/50 text-orange-300'
-                                                                            : 'bg-red-900/50 text-red-300'
-                                                                }`}
-                                                            >
-                                                                {pkg.status === 'waiting'
-                                                                    ? '⏳ Bekliyor'
-                                                                    : pkg.status === 'assigned'
-                                                                      ? '👤 Atandı'
-                                                                      : pkg.status === 'picking_up'
-                                                                        ? '🏃 Alıyor'
-                                                                        : '🚗 Yolda'}
-                                                            </span>
-                                                            <div className="flex-1 truncate min-w-0">
-                                                                <span className="font-semibold text-orange-400">
-                                                                    {restoranAdi}
-                                                                </span>
-                                                                <span className="text-gray-300 ml-1">
-                                                                    - {adres}
+                                                            <div className="flex flex-col gap-0.5 min-w-0">
+                                                                <div className="flex items-center gap-1.5 min-w-0">
+                                                                    <span
+                                                                        className={`shrink-0 px-1.5 py-0.5 rounded-full font-semibold text-[10px] ${
+                                                                            pkg.status === 'waiting'
+                                                                                ? 'bg-yellow-900/50 text-yellow-300'
+                                                                                : pkg.status === 'assigned'
+                                                                                  ? 'bg-orange-900/50 text-orange-300'
+                                                                                  : pkg.status === 'picking_up'
+                                                                                    ? 'bg-orange-900/50 text-orange-300'
+                                                                                    : 'bg-red-900/50 text-red-300'
+                                                                        }`}
+                                                                    >
+                                                                        {pkg.status === 'waiting'
+                                                                            ? '⏳ Bekliyor'
+                                                                            : pkg.status === 'assigned'
+                                                                              ? '👤 Atandı'
+                                                                              : pkg.status === 'picking_up'
+                                                                                ? '🏃 Alıyor'
+                                                                                : '🚗 Yolda'}
+                                                                    </span>
+                                                                    <span className="font-semibold text-orange-400 text-[11px] truncate min-w-0">
+                                                                        {restoranAdi}
+                                                                    </span>
+                                                                </div>
+                                                                <span className="text-gray-400 text-[11px] truncate block pl-0">
+                                                                    {adres}
                                                                 </span>
                                                             </div>
                                                         </div>
