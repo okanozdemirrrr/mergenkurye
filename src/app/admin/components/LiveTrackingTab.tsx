@@ -401,26 +401,52 @@ export function LiveTrackingTab({
 
                                         {courierPackages.length > 0 && (
                                             <div className="mt-2 space-y-1.5">
-                                                {courierPackages.map(pkg => (
-                                                    <div 
-                                                        key={pkg.id} 
-                                                        onClick={() => setSelectedPackage(pkg)}
-                                                        className="text-xs flex items-center gap-1.5 cursor-pointer hover:bg-slate-700 p-1.5 rounded transition-colors"
-                                                    >
-                                                        <span className={`px-2 py-0.5 rounded-full font-semibold ${pkg.status === 'waiting' ? 'bg-yellow-900/50 text-yellow-300' :
-                                                            pkg.status === 'assigned' ? 'bg-orange-900/50 text-orange-300' :
-                                                                pkg.status === 'picking_up' ? 'bg-orange-900/50 text-orange-300' :
-                                                                    'bg-red-900/50 text-red-300'
-                                                            }`}>
-                                                            {pkg.status === 'waiting' ? '⏳ Bekliyor' :
-                                                                pkg.status === 'assigned' ? '👤 Atandı' :
-                                                                    pkg.status === 'picking_up' ? '🏃 Alıyor' : '🚗 Yolda'}
-                                                        </span>
-                                                        <span className="text-slate-300 truncate">
-                                                            {pkg.delivery_address}
-                                                        </span>
-                                                    </div>
-                                                ))}
+                                                {courierPackages.map(pkg => {
+                                                    const restoranAdi =
+                                                        pkg.restaurant?.name ??
+                                                        restaurants.find(
+                                                            (r: { id?: number | string }) =>
+                                                                String(r.id) === String(pkg.restaurant_id)
+                                                        )?.name ??
+                                                        'Restoran'
+                                                    const adres = pkg.delivery_address || '—'
+
+                                                    return (
+                                                        <div
+                                                            key={pkg.id}
+                                                            onClick={() => setSelectedPackage(pkg)}
+                                                            className="flex items-center gap-1.5 text-[11px] w-full overflow-hidden cursor-pointer hover:bg-slate-700 p-1.5 rounded transition-colors"
+                                                        >
+                                                            <span
+                                                                className={`shrink-0 px-2 py-0.5 rounded-full font-semibold text-[10px] ${
+                                                                    pkg.status === 'waiting'
+                                                                        ? 'bg-yellow-900/50 text-yellow-300'
+                                                                        : pkg.status === 'assigned'
+                                                                          ? 'bg-orange-900/50 text-orange-300'
+                                                                          : pkg.status === 'picking_up'
+                                                                            ? 'bg-orange-900/50 text-orange-300'
+                                                                            : 'bg-red-900/50 text-red-300'
+                                                                }`}
+                                                            >
+                                                                {pkg.status === 'waiting'
+                                                                    ? '⏳ Bekliyor'
+                                                                    : pkg.status === 'assigned'
+                                                                      ? '👤 Atandı'
+                                                                      : pkg.status === 'picking_up'
+                                                                        ? '🏃 Alıyor'
+                                                                        : '🚗 Yolda'}
+                                                            </span>
+                                                            <div className="flex-1 truncate min-w-0">
+                                                                <span className="font-semibold text-orange-400">
+                                                                    {restoranAdi}
+                                                                </span>
+                                                                <span className="text-gray-300 ml-1">
+                                                                    - {adres}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                })}
                                             </div>
                                         )}
                                     </div>
