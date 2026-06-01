@@ -20,10 +20,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/app/lib/supabase'
 import {
-  fetchCourierPeriodSettlements,
-  fetchCourierUnsettledPackages,
-  settlementPaidAmount,
-  sumCollectionByPaymentMethod,
+  fetchCourierPeriodAccount,
+  markCourierCollectionSettled,
   toDateOnly,
 } from '@/utils/courierAccount'
 
@@ -69,36 +67,17 @@ export function EndOfDayModalNew({
       }
       setLoading(true)
 
-      const { data: packages, error: packagesError } = await fetchCourierUnsettledPackages(
-        supabase,
-        courier.id,
-        startDate,
-        endDate,
-        'amount, payment_method'
-      )
-      if (packagesError) throw packagesError
-
-      const totals = sumCollectionByPaymentMethod(
-        (packages || []) as { amount?: number | null; payment_method?: string | null }[]
-      )
-      setDeliveryCount(totals.count)
-      setCashTotal(totals.cash)
-      setCardTotal(totals.card)
-      setIbanTotal(totals.iban)
-
-      const { data: settlements, error: settlementsError } = await fetchCourierPeriodSettlements(
+      const account = await fetchCourierPeriodAccount(
         supabase,
         courier.id,
         startDate,
         endDate
       )
-      if (settlementsError) throw settlementsError
-
-      const totalPaid = (settlements || []).reduce(
-        (sum, s) => sum + settlementPaidAmount(s),
-        0
-      )
-      setPreviousSettlements(totalPaid)
+      setDeliveryCount(account.count)
+      setCashTotal(account.cash)
+      setCardTotal(account.card)
+      setIbanTotal(account.iban)
+      setPreviousSettlements(account.settlementsPaid)
     } catch (error) {
       console.error('❌ Hesaplama hatası:', error)
     } finally {
@@ -169,6 +148,16 @@ export function EndOfDayModalNew({
         console.error(error)
         alert('Kaydetme Başarısız: ' + (error.message || JSON.stringify(error)))
         return
+      }
+
+      const { error: settleError } = await markCourierCollectionSettled(
+        supabase,
+        courier.id,
+        startDate,
+        endDate
+      )
+      if (settleError) {
+        console.error('Paket settled_at güncellenemedi:', settleError)
       }
 
       alert('Mutabakat kaydedildi')

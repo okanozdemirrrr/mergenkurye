@@ -20,13 +20,10 @@ import { useCourierLocationBroadcast } from '@/hooks/useCourierLocationBroadcast
 import PullToRefresh from '@/components/PullToRefresh'
 import ChangelogModal from '@/components/ChangelogModal'
 import {
-  computePeriodPayableDebt,
   fetchCourierDeliveredPackages,
   fetchCourierLifetimeDebt,
-  fetchCourierPeriodSettlements,
-  fetchCourierUnsettledPackages,
-  settlementPaidAmount,
-  sumCollectionByPaymentMethod,
+  fetchCourierPeriodAccount,
+  getBusinessDayDateTimeLocal,
   type PaymentTotals,
 } from '@/utils/courierAccount'
 
@@ -353,32 +350,7 @@ export default function KuryePage() {
   const [passwordUpdating, setPasswordUpdating] = useState(false)
   const [passwordError, setPasswordError] = useState('')
 
-  // BUSINESS DAY LOGIC: İş günü 05:00 - 04:59 (ertesi gün)
-  const getBusinessDayDefaults = () => {
-    const now = new Date()
-    const currentHour = now.getHours()
-    
-    // Eğer saat 00:00 - 04:59 arasındaysa, dün sabah 05:00'dan başla
-    // Eğer saat 05:00 - 23:59 arasındaysa, bugün sabah 05:00'dan başla
-    const startDate = new Date(now)
-    if (currentHour < 5) {
-      // Gece yarısından sonra, dün sabah 05:00
-      startDate.setDate(startDate.getDate() - 1)
-    }
-    startDate.setHours(5, 0, 0, 0)
-    
-    // Bitiş: Başlangıcın ertesi günü 04:59:59
-    const endDate = new Date(startDate)
-    endDate.setDate(endDate.getDate() + 1)
-    endDate.setHours(4, 59, 59, 999)
-    
-    return {
-      start: startDate.toISOString().slice(0, 16), // YYYY-MM-DDTHH:mm formatı
-      end: endDate.toISOString().slice(0, 16)
-    }
-  }
-
-  const businessDayDefaults = getBusinessDayDefaults()
+  const businessDayDefaults = getBusinessDayDateTimeLocal()
   
   const [startDate, setStartDate] = useState(businessDayDefaults.start)
   const [endDate, setEndDate] = useState(businessDayDefaults.end)
@@ -1460,39 +1432,28 @@ export default function KuryePage() {
     if (!courierId) return
 
     try {
-      const [listResult, unsettledResult, settlementsResult] = await Promise.all([
+      const [listResult, account] = await Promise.all([
         fetchCourierDeliveredPackages(supabase, courierId, start, end),
-        fetchCourierUnsettledPackages(
-          supabase,
-          courierId,
-          start,
-          end,
-          'amount, payment_method'
-        ),
-        fetchCourierPeriodSettlements(supabase, courierId, start, end),
+        fetchCourierPeriodAccount(supabase, courierId, start, end),
       ])
 
       if (listResult.error) throw listResult.error
-      if (unsettledResult.error) throw unsettledResult.error
-      if (settlementsResult.error) throw settlementsResult.error
 
       const transformed = (listResult.data || []).map((pkg: any) => ({
         ...pkg,
         restaurant: pkg.restaurants,
       }))
 
-      const totals = sumCollectionByPaymentMethod(unsettledResult.data || [])
-      const settlementsPaid = (settlementsResult.data || []).reduce(
-        (sum, s) => sum + settlementPaidAmount(s),
-        0
-      )
-
       setFilteredPackages(transformed)
       setTotalPages(Math.ceil((listResult.count || 0) / ITEMS_PER_PAGE))
       setCurrentPage(1)
       setPeriodAccount({
-        ...totals,
-        payableDebt: computePeriodPayableDebt(totals, settlementsPaid),
+        cash: account.cash,
+        card: account.card,
+        iban: account.iban,
+        count: account.count,
+        total: account.total,
+        payableDebt: account.payableDebt,
       })
     } catch (error: any) {
       console.error('❌ Paket filtreleme hatası:', error)
@@ -1544,12 +1505,13 @@ export default function KuryePage() {
     }
   }, [filteredPackages, todayDeliveredPackages, activeTab])
 
-  // İlk yüklemede bugünün paketlerini filtrele
+  // Geçmiş sekmesi: iş günü tarihleriyle mutabakat özetini yükle
   useEffect(() => {
-    if (todayDeliveredPackages.length > 0) {
-      filterPackagesByDateRange(startDate, endDate)
+    if (!isLoggedIn) return
+    if (activeTab === 'history') {
+      filterPackagesByDateRange(historyStartDate, historyEndDate)
     }
-  }, [todayDeliveredPackages])
+  }, [activeTab, isLoggedIn, historyStartDate, historyEndDate])
 
   const handleAcceptPackage = async (packageId: number) => {
     setIsUpdating(prev => new Set(prev).add(packageId))
@@ -3147,7 +3109,7 @@ export default function KuryePage() {
             {filteredPackages.length > 0 && (
               <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
                 <p className="text-[10px] text-slate-500 mb-2 text-center">
-                  Mutabakat özeti (admin ile aynı) · Liste: tüm teslimler ({filteredPackages.length})
+                  Mutabakat (settled_at boş) · Liste: tüm teslimler ({filteredPackages.length})
                 </p>
                 <div className="grid grid-cols-3 gap-2">
                   <div className="bg-slate-800/50 px-2 py-2 rounded-lg">

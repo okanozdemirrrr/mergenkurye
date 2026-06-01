@@ -10,7 +10,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/app/lib/supabase'
 import { Package, CourierDebt } from '@/types'
 import { handleEndOfDay as handleEndOfDayService, handlePayDebt as handlePayDebtService } from '@/services/courierService'
-import { toFilterIso } from '@/utils/courierAccount'
+import { getBusinessDayDateTimeLocal, toFilterIso } from '@/utils/courierAccount'
 
 interface UseAdminCourierModalProps {
   courierId: string | null
@@ -27,29 +27,7 @@ export function useAdminCourierModal({
   setErrorMessage,
   fetchCouriers
 }: UseAdminCourierModalProps) {
-  // State Management - Varsayılan olarak bugünün tarihi (Business Day mantığı)
-  const getBusinessDayDates = () => {
-    const now = new Date()
-    const currentHour = now.getHours()
-    
-    // Business Day: 05:00 - 04:59 (ertesi gün)
-    const startDate = new Date(now)
-    if (currentHour < 5) {
-      startDate.setDate(startDate.getDate() - 1)
-    }
-    startDate.setHours(5, 0, 0, 0)
-    
-    const endDate = new Date(startDate)
-    endDate.setDate(endDate.getDate() + 1)
-    endDate.setHours(4, 59, 59, 999)
-    
-    return {
-      start: startDate.toISOString().split('T')[0],
-      end: endDate.toISOString().split('T')[0]
-    }
-  }
-  
-  const businessDates = getBusinessDayDates()
+  const businessDates = getBusinessDayDateTimeLocal()
   const [selectedCourierOrders, setSelectedCourierOrders] = useState<Package[]>([])
   const [courierDebts, setCourierDebts] = useState<CourierDebt[]>([])
   const [courierStartDate, setCourierStartDate] = useState(businessDates.start)

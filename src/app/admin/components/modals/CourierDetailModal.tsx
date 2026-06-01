@@ -14,7 +14,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Package, Courier, CourierDebt } from '@/types'
 import { formatTurkishTime, calculateDeliveryDuration } from '@/utils/dateHelpers'
-import { toFilterIso } from '@/utils/courierAccount'
+import {
+  fetchCourierPeriodAccount,
+  getBusinessDayDateTimeLocal,
+  toDateTimeLocalValue,
+  toFilterIso,
+  type PeriodAccount,
+} from '@/utils/courierAccount'
 import { CourierPaymentSettingsModal } from './CourierPaymentSettingsModal'
 import { supabase } from '@/app/lib/supabase'
 
@@ -63,6 +69,8 @@ export function CourierDetailModal({
     const [unpaidPackages, setUnpaidPackages] = useState<Package[]>([])
     const [loadingUnpaid, setLoadingUnpaid] = useState(false)
     const [payingCourier, setPayingCourier] = useState(false)
+    const [periodAccount, setPeriodAccount] = useState<PeriodAccount | null>(null)
+    const [loadingPeriodAccount, setLoadingPeriodAccount] = useState(false)
 
     // Ödenmemiş paketleri çek
     const fetchUnpaidPackages = useCallback(async () => {
@@ -93,10 +101,33 @@ export function CourierDetailModal({
         }
     }, [selectedCourierId, courierStartDate, courierEndDate])
 
-    // Kazanç moduna geçince fetch et
+    const loadPeriodAccount = useCallback(async () => {
+        if (!selectedCourierId || !courierStartDate || !courierEndDate) return
+        setLoadingPeriodAccount(true)
+        try {
+            const data = await fetchCourierPeriodAccount(
+                supabase,
+                selectedCourierId,
+                courierStartDate,
+                courierEndDate
+            )
+            setPeriodAccount(data)
+        } catch (err) {
+            console.error('Mutabakat özeti yüklenemedi:', err)
+            setPeriodAccount(null)
+        } finally {
+            setLoadingPeriodAccount(false)
+        }
+    }, [selectedCourierId, courierStartDate, courierEndDate])
+
     useEffect(() => {
         if (earningsMode && selectedCourierId) fetchUnpaidPackages()
-    }, [earningsMode, fetchUnpaidPackages, selectedCourierId])
+        else if (selectedCourierId && show) loadPeriodAccount()
+    }, [earningsMode, fetchUnpaidPackages, selectedCourierId, show, loadPeriodAccount])
+
+    useEffect(() => {
+        if (!earningsMode && selectedCourierId && show) loadPeriodAccount()
+    }, [courierStartDate, courierEndDate, earningsMode, selectedCourierId, show, loadPeriodAccount])
 
     // Toplu ödeme yap
     const handlePayAll = async () => {
@@ -124,8 +155,19 @@ export function CourierDetailModal({
     
     if (!show || !selectedCourierId || !courier) return null
 
-    const summary = calculateCashSummary(selectedCourierOrders)
-    const packageCount = selectedCourierOrders.length
+    const summary = periodAccount
+        ? {
+              cashTotal: periodAccount.cash,
+              cardTotal: periodAccount.card,
+              ibanTotal: periodAccount.iban,
+              grandTotal: periodAccount.payableDebt,
+              packageCount: periodAccount.count,
+          }
+        : {
+              ...calculateCashSummary(selectedCourierOrders),
+              packageCount: selectedCourierOrders.length,
+          }
+    const packageCount = summary.packageCount ?? selectedCourierOrders.length
     const packageRate = courier.package_rate || 0
     const courierEarnings = packageRate * packageCount
     const totalDebt = courierDebts.reduce((sum, d) => sum + (d.remaining_amount || 0), 0)
@@ -153,11 +195,9 @@ export function CourierDetailModal({
                             <button
                                 type="button"
                                 onClick={() => {
-                                    const now = new Date()
-                                    const turkeyDate = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Istanbul' }))
-                                    const today = turkeyDate.toISOString().split('T')[0]
-                                    setCourierStartDate(today)
-                                    setCourierEndDate(today)
+                                    const { start, end } = getBusinessDayDateTimeLocal()
+                                    setCourierStartDate(start)
+                                    setCourierEndDate(end)
                                 }}
                                 className="px-2.5 py-1 bg-slate-800 text-slate-300 rounded text-xs font-medium hover:bg-slate-700 border border-slate-700 transition-colors tracking-tight"
                             >
@@ -167,11 +207,16 @@ export function CourierDetailModal({
                                 type="button"
                                 onClick={() => {
                                     const now = new Date()
-                                    const turkeyDate = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Istanbul' }))
-                                    turkeyDate.setDate(turkeyDate.getDate() - 1)
-                                    const yesterday = turkeyDate.toISOString().split('T')[0]
-                                    setCourierStartDate(yesterday)
-                                    setCourierEndDate(yesterday)
+                                    const prev = new Date(now)
+                                    if (prev.getHours() < 5) prev.setDate(prev.getDate() - 2)
+                                    else prev.setDate(prev.getDate() - 1)
+                                    const start = new Date(prev)
+                                    start.setHours(5, 0, 0, 0)
+                                    const end = new Date(start)
+                                    end.setDate(end.getDate() + 1)
+                                    end.setHours(4, 59, 0, 0)
+                                    setCourierStartDate(toDateTimeLocalValue(start))
+                                    setCourierEndDate(toDateTimeLocalValue(end))
                                 }}
                                 className="px-2.5 py-1 bg-slate-800 text-slate-300 rounded text-xs font-medium hover:bg-slate-700 border border-slate-700 transition-colors tracking-tight"
                             >
@@ -180,12 +225,13 @@ export function CourierDetailModal({
                             <button
                                 type="button"
                                 onClick={() => {
-                                    const now = new Date()
-                                    const turkeyToday = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Istanbul' }))
-                                    const turkeyWeekAgo = new Date(turkeyToday)
-                                    turkeyWeekAgo.setDate(turkeyToday.getDate() - 7)
-                                    setCourierStartDate(turkeyWeekAgo.toISOString().split('T')[0])
-                                    setCourierEndDate(turkeyToday.toISOString().split('T')[0])
+                                    const end = new Date()
+                                    const start = new Date()
+                                    start.setDate(start.getDate() - 7)
+                                    start.setHours(5, 0, 0, 0)
+                                    end.setHours(4, 59, 0, 0)
+                                    setCourierStartDate(toDateTimeLocalValue(start))
+                                    setCourierEndDate(toDateTimeLocalValue(end))
                                 }}
                                 className="px-2.5 py-1 bg-slate-800 text-slate-300 rounded text-xs font-medium hover:bg-slate-700 border border-slate-700 transition-colors tracking-tight"
                             >
@@ -588,13 +634,19 @@ export function CourierDetailModal({
                                     </div>
                                 </div>
                             )}
-                            {/* Genel Toplam */}
+                            {/* Bu dönem ödenecek (mutabakat) */}
                             <div className="bg-slate-800 border border-slate-700 p-3 rounded flex justify-between items-center">
-                                <div className="text-xs text-slate-400 font-medium tracking-tight">GENEL TOPLAM</div>
-                                <div className="text-xl font-bold text-slate-100 tracking-tight">
+                                <div className="text-xs text-slate-400 font-medium tracking-tight">
+                                    BU DÖNEM ÖDENECEK
+                                    {loadingPeriodAccount ? ' …' : ''}
+                                </div>
+                                <div className="text-xl font-bold text-orange-300 tracking-tight">
                                     {summary.grandTotal.toFixed(2)}₺
                                 </div>
                             </div>
+                            <p className="text-[10px] text-slate-500">
+                                settled_at boş paketler · admin gün sonu ile aynı
+                            </p>
                         </div>
                         <div className="px-5 pb-5">
                             <button

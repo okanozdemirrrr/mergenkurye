@@ -11,6 +11,33 @@ export function toFilterIso(value: string, boundary: 'start' | 'end'): string {
   return d.toISOString()
 }
 
+export function toDateTimeLocalValue(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  const h = String(d.getHours()).padStart(2, '0')
+  const min = String(d.getMinutes()).padStart(2, '0')
+  return `${y}-${m}-${day}T${h}:${min}`
+}
+
+/** İş günü: 05:00 — ertesi gün 04:59 (kurye paneli ile aynı) */
+export function getBusinessDayDateTimeLocal(now = new Date()) {
+  const startDate = new Date(now)
+  if (startDate.getHours() < 5) {
+    startDate.setDate(startDate.getDate() - 1)
+  }
+  startDate.setHours(5, 0, 0, 0)
+
+  const endDate = new Date(startDate)
+  endDate.setDate(endDate.getDate() + 1)
+  endDate.setHours(4, 59, 0, 0)
+
+  return {
+    start: toDateTimeLocalValue(startDate),
+    end: toDateTimeLocalValue(endDate),
+  }
+}
+
 export function toDateOnly(value: string): string {
   if (!value) return value
   return value.includes('T') ? value.split('T')[0] : value
@@ -31,6 +58,11 @@ export type PaymentTotals = {
   total: number
 }
 
+export type PeriodAccount = PaymentTotals & {
+  settlementsPaid: number
+  payableDebt: number
+}
+
 export function sumCollectionByPaymentMethod(
   packages: { amount?: number | null; payment_method?: string | null }[]
 ): PaymentTotals {
@@ -46,8 +78,26 @@ export function sumCollectionByPaymentMethod(
   return { cash, card, iban, count: packages.length, total: cash + card + iban }
 }
 
-/** Admin mutabakat ile aynı: teslim edilmiş, henüz kurye hesabı kapatılmamış paketler */
-export async function fetchCourierUnsettledPackages(
+export function computePeriodPayableDebt(
+  totals: PaymentTotals,
+  settlementsPaid: number
+): number {
+  return Math.max(0, totals.total - Number(settlementsPaid || 0))
+}
+
+/** Teslimatı bu kuryeye ait say (delivered_by öncelikli, eski kayıtlar courier_id) */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function applyCourierDeliveryFilter(query: any, courierId: string) {
+  return query.or(
+    `delivered_by_courier_id.eq.${courierId},and(courier_id.eq.${courierId},delivered_by_courier_id.is.null)`
+  )
+}
+
+/**
+ * Mutabakat tahsilatı: teslim edilmiş + settled_at boş (admin calculateCashSummary ile aynı).
+ * NOT: is_paid_to_courier = kurye HAKEDİŞ ödemesi, mutabakat değil!
+ */
+export async function fetchCourierCollectionPackages(
   supabase: SupabaseClient,
   courierId: string,
   startDate: string,
@@ -57,17 +107,22 @@ export async function fetchCourierUnsettledPackages(
   const startIso = toFilterIso(startDate, 'start')
   const endIso = toFilterIso(endDate, 'end')
 
-  return supabase
+  let query = supabase
     .from('packages')
     .select(select)
-    .eq('delivered_by_courier_id', courierId)
     .eq('status', 'delivered')
-    .eq('is_paid_to_courier', false)
+    .is('settled_at', null)
     .gte('delivered_at', startIso)
     .lte('delivered_at', endIso)
+
+  query = applyCourierDeliveryFilter(query, courierId)
+  return query
 }
 
-/** Geçmiş listesi: aynı dönemdeki tüm teslimler (okunabilirlik) */
+/** @deprecated fetchCourierCollectionPackages kullan */
+export const fetchCourierUnsettledPackages = fetchCourierCollectionPackages
+
+/** Geçmiş listesi: dönemdeki tüm teslimler */
 export async function fetchCourierDeliveredPackages(
   supabase: SupabaseClient,
   courierId: string,
@@ -78,14 +133,16 @@ export async function fetchCourierDeliveredPackages(
   const startIso = toFilterIso(startDate, 'start')
   const endIso = toFilterIso(endDate, 'end')
 
-  return supabase
+  let query = supabase
     .from('packages')
     .select(select, { count: 'exact' })
-    .eq('delivered_by_courier_id', courierId)
     .eq('status', 'delivered')
     .gte('delivered_at', startIso)
     .lte('delivered_at', endIso)
     .order('delivered_at', { ascending: false })
+
+  query = applyCourierDeliveryFilter(query, courierId)
+  return query
 }
 
 export async function fetchCourierPeriodSettlements(
@@ -114,25 +171,82 @@ export async function fetchCourierPeriodSettlements(
     .gte('end_date', rangeStart)
 }
 
-export function computePeriodPayableDebt(
-  totals: PaymentTotals,
-  settlementsPaid: number
-): number {
-  return Math.max(0, totals.total - Number(settlementsPaid || 0))
+/** Admin + kurye: aynı dönem mutabakat özeti */
+export async function fetchCourierPeriodAccount(
+  supabase: SupabaseClient,
+  courierId: string,
+  startDate: string,
+  endDate: string
+): Promise<PeriodAccount> {
+  const { data: packages, error: packagesError } = await fetchCourierCollectionPackages(
+    supabase,
+    courierId,
+    startDate,
+    endDate,
+    'amount, payment_method'
+  )
+  if (packagesError) throw packagesError
+
+  const totals = sumCollectionByPaymentMethod(
+    (packages || []) as { amount?: number | null; payment_method?: string | null }[]
+  )
+
+  const { data: settlements, error: settlementsError } = await fetchCourierPeriodSettlements(
+    supabase,
+    courierId,
+    startDate,
+    endDate
+  )
+  if (settlementsError) throw settlementsError
+
+  const settlementsPaid = (settlements || []).reduce(
+    (sum, s) => sum + settlementPaidAmount(s),
+    0
+  )
+
+  return {
+    ...totals,
+    settlementsPaid,
+    payableDebt: computePeriodPayableDebt(totals, settlementsPaid),
+  }
 }
 
-/** Tüm zamanlar cari borç (kurye ana ekranı vb.) */
+/** Mutabakat sonrası: dönemdeki açık tahsilat paketlerini kapat */
+export async function markCourierCollectionSettled(
+  supabase: SupabaseClient,
+  courierId: string,
+  startDate: string,
+  endDate: string
+) {
+  const startIso = toFilterIso(startDate, 'start')
+  const endIso = toFilterIso(endDate, 'end')
+  const settledAt = new Date().toISOString()
+
+  let query = supabase
+    .from('packages')
+    .update({ settled_at: settledAt })
+    .eq('status', 'delivered')
+    .is('settled_at', null)
+    .gte('delivered_at', startIso)
+    .lte('delivered_at', endIso)
+
+  query = applyCourierDeliveryFilter(query, courierId)
+  return query
+}
+
+/** Tüm zamanlar: kapatılmamış tahsilat − tüm mutabakat ödemeleri */
 export async function fetchCourierLifetimeDebt(
   supabase: SupabaseClient,
   courierId: string
 ): Promise<number> {
-  const { data: packages, error: packagesError } = await supabase
+  let pkgQuery = supabase
     .from('packages')
     .select('amount')
-    .eq('delivered_by_courier_id', courierId)
     .eq('status', 'delivered')
-    .eq('is_paid_to_courier', false)
+    .is('settled_at', null)
 
+  pkgQuery = applyCourierDeliveryFilter(pkgQuery, courierId)
+  const { data: packages, error: packagesError } = await pkgQuery
   if (packagesError) throw packagesError
 
   const totalOwed = (packages || []).reduce((sum, pkg) => sum + Number(pkg.amount || 0), 0)
