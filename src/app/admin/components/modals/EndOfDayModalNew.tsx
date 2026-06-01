@@ -19,28 +19,13 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/app/lib/supabase'
-
-function toFilterIso(value: string, boundary: 'start' | 'end'): string {
-  const d = new Date(value)
-  if (isNaN(d.getTime())) return value
-  if (!value.includes('T')) {
-    if (boundary === 'start') d.setHours(0, 0, 0, 0)
-    else d.setHours(23, 59, 59, 999)
-  }
-  return d.toISOString()
-}
-
-function toDateOnly(value: string): string {
-  if (!value) return value
-  return value.includes('T') ? value.split('T')[0] : value
-}
-
-function settlementPaidAmount(row: {
-  amount_paid?: number | null
-  received_amount?: number | null
-}): number {
-  return Number(row.received_amount ?? row.amount_paid ?? 0)
-}
+import {
+  fetchCourierPeriodSettlements,
+  fetchCourierUnsettledPackages,
+  settlementPaidAmount,
+  sumCollectionByPaymentMethod,
+  toDateOnly,
+} from '@/utils/courierAccount'
 
 interface Courier {
   id: string
@@ -84,74 +69,30 @@ export function EndOfDayModalNew({
       }
       setLoading(true)
 
-      let startIso = ''
-      let endIso = ''
-
-      if (startDate) {
-        startIso = toFilterIso(startDate, 'start')
-      }
-
-      if (endDate) {
-        endIso = toFilterIso(endDate, 'end')
-      }
-
-      if (!startIso) startIso = startDate
-      if (!endIso) endIso = endDate
-
-      const rangeStart = toDateOnly(startDate)
-      const rangeEnd = toDateOnly(endDate)
-
-      // 1. GÖRSEL DEĞERLER — Tarih aralığına göre, sadece parası kuryeye ödenmemiş olanlar
-      const { data: packages, error: packagesError } = await supabase
-        .from('packages')
-        .select('amount, payment_method')
-        .eq('delivered_by_courier_id', courier.id)  // ✅ Teslimatı yapan kurye
-        .eq('status', 'delivered')
-        .eq('is_paid_to_courier', false)           // ✅ Sadece ödenmemiş paketler
-        .gte('delivered_at', startIso)
-        .lte('delivered_at', endIso)
-
+      const { data: packages, error: packagesError } = await fetchCourierUnsettledPackages(
+        supabase,
+        courier.id,
+        startDate,
+        endDate,
+        'amount, payment_method'
+      )
       if (packagesError) throw packagesError
 
-      const pkgs = packages || []
-      setDeliveryCount(pkgs.length)
+      const totals = sumCollectionByPaymentMethod(
+        (packages || []) as { amount?: number | null; payment_method?: string | null }[]
+      )
+      setDeliveryCount(totals.count)
+      setCashTotal(totals.cash)
+      setCardTotal(totals.card)
+      setIbanTotal(totals.iban)
 
-      const cash = pkgs
-        .filter(p => p.payment_method === 'cash')
-        .reduce((sum, p) => sum + (p.amount || 0), 0)
-      const card = pkgs
-        .filter(p => p.payment_method === 'card')
-        .reduce((sum, p) => sum + (p.amount || 0), 0)
-      const iban = pkgs
-        .filter(p => p.payment_method === 'iban')
-        .reduce((sum, p) => sum + (p.amount || 0), 0)
-
-      setCashTotal(cash)
-      setCardTotal(card)
-      setIbanTotal(iban)
-
-      // 2. Seçili tarih aralığındaki mutabakat ödemeleri (dönem çakışması)
-      let settlements: { amount_paid?: number | null; received_amount?: number | null }[] | null = null
-
-      const settlementsQuery = await supabase
-        .from('courier_settlements')
-        .select('amount_paid, received_amount')
-        .eq('courier_id', courier.id)
-        .lte('start_date', rangeEnd)
-        .gte('end_date', rangeStart)
-
-      if (settlementsQuery.error) {
-        const fallback = await supabase
-          .from('courier_settlements')
-          .select('amount_paid')
-          .eq('courier_id', courier.id)
-          .lte('start_date', rangeEnd)
-          .gte('end_date', rangeStart)
-        if (fallback.error) throw fallback.error
-        settlements = fallback.data
-      } else {
-        settlements = settlementsQuery.data
-      }
+      const { data: settlements, error: settlementsError } = await fetchCourierPeriodSettlements(
+        supabase,
+        courier.id,
+        startDate,
+        endDate
+      )
+      if (settlementsError) throw settlementsError
 
       const totalPaid = (settlements || []).reduce(
         (sum, s) => sum + settlementPaidAmount(s),

@@ -14,6 +14,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Package, Courier, CourierDebt } from '@/types'
 import { formatTurkishTime, calculateDeliveryDuration } from '@/utils/dateHelpers'
+import { toFilterIso } from '@/utils/courierAccount'
 import { CourierPaymentSettingsModal } from './CourierPaymentSettingsModal'
 import { supabase } from '@/app/lib/supabase'
 
@@ -68,19 +69,14 @@ export function CourierDetailModal({
         if (!selectedCourierId) return
         setLoadingUnpaid(true)
         try {
-            const start = new Date(courierStartDate)
-            start.setHours(0, 0, 0, 0)
-            const end = new Date(courierEndDate)
-            end.setHours(23, 59, 59, 999)
-
             const { data, error } = await supabase
                 .from('packages')
                 .select('*, restaurants(*)')
                 .eq('delivered_by_courier_id', selectedCourierId)
                 .eq('status', 'delivered')
                 .eq('is_paid_to_courier', false)
-                .gte('delivered_at', start.toISOString())
-                .lte('delivered_at', end.toISOString())
+                .gte('delivered_at', toFilterIso(courierStartDate, 'start'))
+                .lte('delivered_at', toFilterIso(courierEndDate, 'end'))
                 .order('delivered_at', { ascending: false })
 
             if (error) throw error

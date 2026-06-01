@@ -10,6 +10,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/app/lib/supabase'
 import { Package, CourierDebt } from '@/types'
 import { handleEndOfDay as handleEndOfDayService, handlePayDebt as handlePayDebtService } from '@/services/courierService'
+import { toFilterIso } from '@/utils/courierAccount'
 
 interface UseAdminCourierModalProps {
   courierId: string | null
@@ -80,11 +81,9 @@ export function useAdminCourierModal({
         .order('delivered_at', { ascending: false })
 
       if (courierStartDate && courierEndDate) {
-        const start = new Date(courierStartDate)
-        start.setHours(0, 0, 0, 0)
-        const end = new Date(courierEndDate)
-        end.setHours(23, 59, 59, 999)
-        query = query.gte('delivered_at', start.toISOString()).lte('delivered_at', end.toISOString())
+        query = query
+          .gte('delivered_at', toFilterIso(courierStartDate, 'start'))
+          .lte('delivered_at', toFilterIso(courierEndDate, 'end'))
       }
 
       const { data, error } = await query

@@ -19,6 +19,16 @@ import { useCourierRealtimeNotifications } from '@/hooks/useCourierRealtimeNotif
 import { useCourierLocationBroadcast } from '@/hooks/useCourierLocationBroadcast'
 import PullToRefresh from '@/components/PullToRefresh'
 import ChangelogModal from '@/components/ChangelogModal'
+import {
+  computePeriodPayableDebt,
+  fetchCourierDeliveredPackages,
+  fetchCourierLifetimeDebt,
+  fetchCourierPeriodSettlements,
+  fetchCourierUnsettledPackages,
+  settlementPaidAmount,
+  sumCollectionByPaymentMethod,
+  type PaymentTotals,
+} from '@/utils/courierAccount'
 
 // ============================================
 // SAMSUN OPERASYON BÖLGESI TANIMLARI
@@ -312,7 +322,15 @@ export default function KuryePage() {
   const [filteredPackages, setFilteredPackages] = useState<Package[]>([]) // Filtrelenmiş paketler
   const [currentPage, setCurrentPage] = useState(1) // Mevcut sayfa
   const [totalPages, setTotalPages] = useState(1) // Toplam sayfa sayısı
-  const [unsettledAmount, setUnsettledAmount] = useState(0) // Verilecek hesap (admin'den)
+  const [unsettledAmount, setUnsettledAmount] = useState(0) // Tüm zamanlar cari borç
+  const [periodAccount, setPeriodAccount] = useState<PaymentTotals & { payableDebt: number }>({
+    cash: 0,
+    card: 0,
+    iban: 0,
+    count: 0,
+    total: 0,
+    payableDebt: 0,
+  })
   const ITEMS_PER_PAGE = 30 // Sayfa başına öğe sayısı
 
   // Realtime bildirimler + FCM Token kaydı (UPDATE event'leri + Push)
@@ -1442,37 +1460,40 @@ export default function KuryePage() {
     if (!courierId) return
 
     try {
-      // datetime-local formatından ISO timestamp'e çevir (saniyesine kadar hassas)
-      const startDateTime = new Date(start).toISOString()
-      const endDateTime = new Date(end).toISOString()
+      const [listResult, unsettledResult, settlementsResult] = await Promise.all([
+        fetchCourierDeliveredPackages(supabase, courierId, start, end),
+        fetchCourierUnsettledPackages(
+          supabase,
+          courierId,
+          start,
+          end,
+          'amount, payment_method'
+        ),
+        fetchCourierPeriodSettlements(supabase, courierId, start, end),
+      ])
 
-      console.log('📅 Tarih Aralığı Filtresi:', {
-        start: startDateTime,
-        end: endDateTime
-      })
+      if (listResult.error) throw listResult.error
+      if (unsettledResult.error) throw unsettledResult.error
+      if (settlementsResult.error) throw settlementsResult.error
 
-      // Tarih aralığındaki TÜM teslim edilmiş paketleri çek
-      const { data, error, count } = await supabase
-        .from('packages')
-        .select('*, restaurants(name, phone, address)', { count: 'exact' })
-        .eq('delivered_by_courier_id', courierId)  // courier_id yerine delivered_by_courier_id
-        .or('status.eq.delivered,and(status.eq.cancelled,is_chargeable_cancellation.eq.true)')
-        .gte('created_at', startDateTime)
-        .lte('created_at', endDateTime)
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-
-      const transformed = (data || []).map((pkg: any) => ({
+      const transformed = (listResult.data || []).map((pkg: any) => ({
         ...pkg,
-        restaurant: pkg.restaurants
+        restaurant: pkg.restaurants,
       }))
 
-      setFilteredPackages(transformed)
-      setTotalPages(Math.ceil((count || 0) / ITEMS_PER_PAGE))
-      setCurrentPage(1) // İlk sayfaya dön
+      const totals = sumCollectionByPaymentMethod(unsettledResult.data || [])
+      const settlementsPaid = (settlementsResult.data || []).reduce(
+        (sum, s) => sum + settlementPaidAmount(s),
+        0
+      )
 
-      console.log(`📊 ${transformed.length} paket bulundu, ${Math.ceil((count || 0) / ITEMS_PER_PAGE)} sayfa`)
+      setFilteredPackages(transformed)
+      setTotalPages(Math.ceil((listResult.count || 0) / ITEMS_PER_PAGE))
+      setCurrentPage(1)
+      setPeriodAccount({
+        ...totals,
+        payableDebt: computePeriodPayableDebt(totals, settlementsPaid),
+      })
     } catch (error: any) {
       console.error('❌ Paket filtreleme hatası:', error)
     }
@@ -1484,42 +1505,8 @@ export default function KuryePage() {
     if (!courierId) return
 
     try {
-      // 1. TÜM ZAMANLARIN teslimat toplamı (tarih filtresi YOK!)
-      const { data: allPackages, error: packagesError } = await supabase
-        .from('packages')
-        .select('amount, status')
-        .eq('delivered_by_courier_id', courierId)  // courier_id yerine delivered_by_courier_id
-        .or('status.eq.delivered,and(status.eq.cancelled,is_chargeable_cancellation.eq.true)')
-        // ⚠️ TARİH FİLTRESİ YOK - Tüm geçmiş dahil!
-
-      if (packagesError) throw packagesError
-
-      const totalOwed = (allPackages || []).reduce((sum, pkg) => {
-        const amt = pkg.status === 'cancelled' ? 0 : (pkg.amount || 0)
-        return sum + amt
-      }, 0)
-
-      // 2. TÜM ZAMANLARIN ödeme toplamı (courier_settlements tablosundan)
-      const { data: allSettlements, error: settlementsError } = await supabase
-        .from('courier_settlements')
-        .select('amount_paid')
-        .eq('courier_id', courierId)
-        // ⚠️ TARİH FİLTRESİ YOK - Tüm geçmiş dahil!
-
-      if (settlementsError) throw settlementsError
-
-      const totalPaid = (allSettlements || []).reduce((sum, s) => sum + (s.amount_paid || 0), 0)
-
-      // 3. CARİ HESAP FORMÜLÜ: Kalan Borç = Toplam Teslimat - Toplam Ödeme
-      // Negatif olamaz (fazla ödeme = bahşiş, borç 0 olur)
-      const remainingDebt = Math.max(0, totalOwed - totalPaid)
+      const remainingDebt = await fetchCourierLifetimeDebt(supabase, courierId)
       setUnsettledAmount(remainingDebt)
-
-      console.log('💰 CARİ HESAP HESAPLAMASI (Kurye Paneli):', {
-        totalOwed: totalOwed.toFixed(2),
-        totalPaid: totalPaid.toFixed(2),
-        remainingDebt: remainingDebt.toFixed(2)
-      })
     } catch (error: any) {
       console.error('❌ Kalan borç hesaplanamadı:', error)
     }
@@ -3159,45 +3146,33 @@ export default function KuryePage() {
             {/* Özet Bilgiler - Kompakt Grid */}
             {filteredPackages.length > 0 && (
               <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
+                <p className="text-[10px] text-slate-500 mb-2 text-center">
+                  Mutabakat özeti (admin ile aynı) · Liste: tüm teslimler ({filteredPackages.length})
+                </p>
                 <div className="grid grid-cols-3 gap-2">
-                  {/* Toplam Paket */}
                   <div className="bg-slate-800/50 px-2 py-2 rounded-lg">
-                    <p className="text-[10px] text-slate-400 mb-1">Paket</p>
-                    <p className="text-base font-bold text-blue-400">{filteredPackages.length}</p>
+                    <p className="text-[10px] text-slate-400 mb-1">📦 Mutabakat</p>
+                    <p className="text-base font-bold text-blue-400">{periodAccount.count}</p>
                   </div>
-
-                  {/* Nakit */}
                   <div className="bg-slate-800/50 px-2 py-2 rounded-lg">
                     <p className="text-[10px] text-slate-400 mb-1">💵 Nakit</p>
-                    <p className="text-base font-bold text-green-400">
-                      {filteredPackages.filter(p => p.payment_method === 'cash').reduce((sum, pkg) => sum + (pkg.amount || 0), 0).toFixed(0)}₺
-                    </p>
+                    <p className="text-base font-bold text-green-400">{periodAccount.cash.toFixed(0)}₺</p>
                   </div>
-
-                  {/* Kart */}
                   <div className="bg-slate-800/50 px-2 py-2 rounded-lg">
                     <p className="text-[10px] text-slate-400 mb-1">💳 Kart</p>
-                    <p className="text-base font-bold text-blue-400">
-                      {filteredPackages.filter(p => p.payment_method === 'card').reduce((sum, pkg) => sum + (pkg.amount || 0), 0).toFixed(0)}₺
-                    </p>
+                    <p className="text-base font-bold text-blue-400">{periodAccount.card.toFixed(0)}₺</p>
                   </div>
-
-                  {/* IBAN */}
                   <div className="bg-slate-800/50 px-2 py-2 rounded-lg">
                     <p className="text-[10px] text-slate-400 mb-1">🏦 IBAN</p>
-                    <p className="text-base font-bold text-orange-400">
-                      {filteredPackages.filter(p => p.payment_method === 'iban').reduce((sum, pkg) => sum + (pkg.amount || 0), 0).toFixed(0)}₺
-                    </p>
+                    <p className="text-base font-bold text-orange-400">{periodAccount.iban.toFixed(0)}₺</p>
                   </div>
-
-                  {/* Kalan Borç - Tüm zamanların net borcu (tarih filtresinden BAĞIMSIZ) */}
                   <div className="bg-gradient-to-br from-orange-900/50 to-red-900/50 border-2 border-orange-500/50 px-3 py-2 rounded-lg col-span-2 shadow-lg">
-                    <p className="text-[10px] font-bold text-orange-200 mb-1">💰 Kalan Borç / Ödenecek Tutar</p>
+                    <p className="text-[10px] font-bold text-orange-200 mb-1">💰 Bu dönem ödenecek</p>
                     <p className="text-lg font-black text-orange-100">
-                      {unsettledAmount.toFixed(2)}₺
+                      {periodAccount.payableDebt.toFixed(2)}₺
                     </p>
                     <p className="text-[8px] text-orange-300 mt-0.5">
-                      Yöneticiye ödemeniz gereken güncel net borç
+                      Nakit + Kart + IBAN − dönem mutabakatları (admin gün sonu ile aynı)
                     </p>
                   </div>
                 </div>
