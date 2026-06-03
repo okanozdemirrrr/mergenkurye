@@ -1,29 +1,16 @@
 /**
  * @file src/app/admin/components/modals/EndOfDayModalNew.tsx
- * @description Kurye Gün Sonu Mutabakatı — BUSINESS DARK THEME
- * 
- * KURALLAR (DEĞİŞMEDİ):
- * 1. Orijinal paket fiyatları ve statusları DEĞİŞMEZ
- * 2. Admin'in girdiği tutar courier_settlements tablosuna kaydedilir
- * 3. Eksik ödeme = Kalan borç devam eder
- * 4. Fazla ödeme = Bahşiş (kalan borç 0 olur)
- * 5. Tam ödeme = Kalan borç 0 olur
- * 
- * UI REFACTOR:
- * - bg-slate-950/900 Business Dark palette
- * - Wall Street finansal estetik
- * - Event bubbling proof X butonu
- * - NET HESAP kartı (emerald zafer rengi)
+ * @description Kurye Gün Sonu Mutabakatı — Ledger (courier_settlement_id)
  */
 'use client'
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/app/lib/supabase'
+import { toDateOnly } from '@/utils/calculations'
 import {
-  fetchCourierPeriodAccount,
-  markCourierCollectionSettled,
-  toDateOnly,
-} from '@/utils/courierAccount'
+  fetchCourierLedgerPeriodAccount,
+  saveCourierSettlementLedger,
+} from '@/utils/courierLedger'
 
 interface Courier {
   id: string
@@ -46,135 +33,107 @@ export function EndOfDayModalNew({
   courier,
   startDate,
   endDate,
-  onSuccess
+  onSuccess,
 }: EndOfDayModalNewProps) {
   const [cashTotal, setCashTotal] = useState(0)
   const [cardTotal, setCardTotal] = useState(0)
   const [ibanTotal, setIbanTotal] = useState(0)
   const [deliveryCount, setDeliveryCount] = useState(0)
-  const [previousSettlements, setPreviousSettlements] = useState(0)
   const [amountReceived, setAmountReceived] = useState('')
   const [loading, setLoading] = useState(true)
   const [processing, setProcessing] = useState(false)
   const [notes, setNotes] = useState('')
 
-  // ═══ VERİ ÇEKME (MANTIK DEĞİŞMEDİ) ═══
-  const calculateTotals = async () => {
-    try {
-      if (!courier?.id) {
-        console.error('❌ Kurye ID bulunamadı')
-        return
-      }
-      setLoading(true)
-
-      const account = await fetchCourierPeriodAccount(
-        supabase,
-        courier.id,
-        startDate,
-        endDate
-      )
-      setDeliveryCount(account.count)
-      setCashTotal(account.cash)
-      setCardTotal(account.card)
-      setIbanTotal(account.iban)
-      setPreviousSettlements(account.settlementsPaid)
-    } catch (error) {
-      console.error('❌ Hesaplama hatası:', error)
-    } finally {
-      setLoading(false)
+  const loadLedger = async () => {
+    if (!courier?.id) {
+      throw new Error('Kurye ID bulunamadı')
     }
+    setLoading(true)
+    if (!startDate?.trim() || !endDate?.trim()) {
+      throw new Error('Mutabakat için tarih aralığı seçin')
+    }
+
+    const account = await fetchCourierLedgerPeriodAccount(
+      supabase,
+      courier.id,
+      startDate,
+      endDate,
+      courier.package_rate ?? 0
+    )
+    setDeliveryCount(account.count)
+    setCashTotal(account.cash)
+    setCardTotal(account.card)
+    setIbanTotal(account.iban)
+    const total = account.payableDebt
+    setAmountReceived(total > 0 ? total.toFixed(2) : '')
+    setLoading(false)
   }
 
   useEffect(() => {
-    if (show) {
-      setAmountReceived('')
-      setNotes('')
-      calculateTotals()
-    }
-  }, [show, courier.id, startDate, endDate])
+    if (!show) return
+    setAmountReceived('')
+    setNotes('')
+    loadLedger().catch((err) => {
+      console.error(err)
+      alert(err instanceof Error ? err.message : String(err))
+      setLoading(false)
+    })
+  }, [show, courier.id, courier.package_rate, startDate, endDate])
 
   const handleSubmit = async () => {
+    setProcessing(true)
     try {
-      setProcessing(true)
-
       if (!courier?.id) {
-        alert('Kaydetme Başarısız: Kurye ID bulunamadı')
-        return
+        throw new Error('Kaydetme Başarısız: Kurye ID bulunamadı')
       }
 
       const receivedAmount = Number(parseFloat(amountReceived))
       if (!Number.isFinite(receivedAmount) || receivedAmount <= 0) {
-        alert('Geçerli bir tutar girin')
-        return
+        throw new Error('Geçerli bir tutar girin')
       }
 
-      const totalCash = Number(cashTotal || 0)
-      const totalCard = Number(cardTotal || 0)
-      const totalIban = Number(ibanTotal || 0)
-      const totalEarned = Number((courier.package_rate || 0) * deliveryCount)
-      const debtBeforePayment = Math.max(
-        0,
-        totalCash + totalCard + totalIban - Number(previousSettlements || 0)
-      )
-      const remainingDebt = Math.max(0, debtBeforePayment - receivedAmount)
+      const totalCash = cashTotal
+      const totalCard = cardTotal
+      const totalIban = ibanTotal
+      const totalCollection = totalCash + totalCard + totalIban
 
-      const payload = {
-        courier_id: courier.id,
-        start_date: toDateOnly(startDate),
-        end_date: toDateOnly(endDate),
-        amount_paid: receivedAmount,
-        notes: notes || null,
-        created_by: 'admin',
+      if (!Number.isFinite(totalCollection)) {
+        throw new Error('Tahsilat toplamı hesaplanamadı (NaN)')
       }
 
-      const detailFields = {
-        total_cash: totalCash,
-        total_card: totalCard,
-        total_iban: totalIban,
-        total_earned: totalEarned,
-        received_amount: receivedAmount,
-        remaining_debt: remainingDebt,
-      }
+      const totalEarned = Number((courier.package_rate ?? 0) * deliveryCount)
+      const remainingDebt = Math.max(0, totalCollection - receivedAmount)
 
-      let { error } = await supabase
-        .from('courier_settlements')
-        .insert([{ ...payload, ...detailFields }])
-
-      if (error) {
-        ;({ error } = await supabase.from('courier_settlements').insert([payload]))
-      }
-
-      if (error) {
-        console.error(error)
-        alert('Kaydetme Başarısız: ' + (error.message || JSON.stringify(error)))
-        return
-      }
-
-      const { error: settleError } = await markCourierCollectionSettled(
+      const { settlementId, packagesMarked } = await saveCourierSettlementLedger(
         supabase,
         courier.id,
-        startDate,
-        endDate
+        {
+          courier_id: courier.id,
+          amount_paid: receivedAmount,
+          received_amount: receivedAmount,
+          total_cash: totalCash,
+          total_card: totalCard,
+          total_iban: totalIban,
+          total_earned: totalEarned,
+          remaining_debt: remainingDebt,
+          notes: notes || null,
+          created_by: 'admin',
+          start_date: toDateOnly(startDate),
+          end_date: toDateOnly(endDate),
+        },
+        { startDate, endDate }
       )
-      if (settleError) {
-        console.error('Paket settled_at güncellenemedi:', settleError)
-      }
 
-      alert('Mutabakat kaydedildi')
-      setAmountReceived('')
-      setNotes('')
-      setPreviousSettlements((prev) => Number(prev || 0) + receivedAmount)
+      alert(
+        `Mutabakat kaydedildi.\nMakbuz: ${settlementId}\nİşaretlenen paket: ${packagesMarked}`
+      )
       onSuccess()
       onClose()
     } catch (error: unknown) {
       console.error(error)
       const message =
-        error instanceof Error
-          ? error.message
-          : typeof error === 'object' && error !== null && 'message' in error
-            ? String((error as { message: unknown }).message)
-            : String(error)
-      alert('Kaydetme Başarısız: ' + message)
+        error instanceof Error ? error.message : String(error)
+      alert(message)
     } finally {
       setProcessing(false)
     }
@@ -182,26 +141,22 @@ export function EndOfDayModalNew({
 
   if (!show) return null
 
-  // 🔥 KUTSAL TOPLAM: Nakit + Kart + IBAN (anlık derived — state bug'ını önler)
-  const totalCollection = Number(cashTotal || 0) + Number(cardTotal || 0) + Number(ibanTotal || 0)
-  const totalDebt = Math.max(
-    0,
-    totalCollection - Number(previousSettlements || 0)
-  )
+  const totalCollection = cashTotal + cardTotal + ibanTotal
   const received = parseFloat(amountReceived) || 0
+  const totalDebt = totalCollection
   const difference = received - totalDebt
   const courierEarnings = (courier.package_rate || 0) * deliveryCount
   const hesaplananBorc = Math.max(0, totalDebt - received)
-  const isFullySettled = totalCollection > 0 && totalDebt <= 0
+  const isFullySettled = deliveryCount === 0
 
   return (
     <div
       className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
     >
       <div className="bg-slate-950 border border-slate-800 rounded-lg max-w-xl w-full max-h-[92vh] overflow-hidden">
-        
-        {/* ═══ HEADER ═══ */}
         <div className="flex justify-between items-center px-6 py-4 border-b border-slate-800">
           <div>
             <h2 className="text-lg font-bold text-slate-100 tracking-tight">
@@ -211,7 +166,6 @@ export function EndOfDayModalNew({
               {courier.full_name} · {startDate} — {endDate}
             </p>
           </div>
-          {/* X Butonu — Event Bubbling Proof */}
           <button
             type="button"
             onClick={(e) => {
@@ -225,63 +179,35 @@ export function EndOfDayModalNew({
           </button>
         </div>
 
-        {/* ═══ CONTENT ═══ */}
         <div className="p-6 overflow-y-auto max-h-[calc(92vh-72px)] bg-slate-950">
           {loading ? (
             <div className="text-center py-12">
               <div className="w-8 h-8 border-2 border-slate-600 border-t-slate-300 rounded-full animate-spin mx-auto mb-3"></div>
               <p className="text-sm text-slate-600 tracking-tight">Hesaplanıyor...</p>
             </div>
-          ) : deliveryCount === 0 ? (
-            <div className="space-y-5 py-6">
-              <div className="bg-amber-900/20 border border-amber-800/40 rounded-lg p-5 text-center">
-                <span className="text-2xl block mb-2">ℹ️</span>
-                <p className="text-sm font-bold text-amber-400 tracking-tight">Ödenecek bakiye bulunamadı</p>
-                <p className="text-xs text-slate-400 mt-1">Bu tarih aralığında teslim edilmiş ödenmemiş paket yok.</p>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    onClose()
-                  }}
-                  className="w-full px-3 py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-400 rounded text-xs font-medium border border-slate-800 transition-colors tracking-tight"
-                >
-                  Kapat
-                </button>
-              </div>
-            </div>
           ) : isFullySettled ? (
             <div className="space-y-5 py-6">
               <div className="bg-emerald-900/20 border border-emerald-800/40 rounded-lg p-5 text-center">
                 <span className="text-2xl block mb-2">✅</span>
-                <p className="text-sm font-bold text-emerald-400 tracking-tight">Mutabakat tamamlandı</p>
-                <p className="text-xs text-slate-400 mt-1">
-                  Bu tarih aralığı için kalan borç: <span className="text-emerald-300 font-bold">0.00₺</span>
+                <p className="text-sm font-bold text-emerald-400 tracking-tight">
+                  Açık cari yok
                 </p>
-                <p className="text-[10px] text-slate-500 mt-2">
-                  Toplam tahsilat: {totalCollection.toFixed(2)}₺ · Ödenen: {Number(previousSettlements || 0).toFixed(2)}₺
+                <p className="text-xs text-slate-400 mt-1">
+                  Tüm teslimler mutabakata bağlanmış.
                 </p>
               </div>
               <button
                 type="button"
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  onClose()
-                }}
-                className="w-full px-3 py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-400 rounded text-xs font-medium border border-slate-800 transition-colors tracking-tight"
+                onClick={onClose}
+                className="w-full px-3 py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-400 rounded text-xs font-medium border border-slate-800"
               >
                 Kapat
               </button>
             </div>
           ) : (
             <>
-              {/* ─── BÖLÜM 1: TAHSİLAT BİLGİLERİ ─── */}
               <div className="mb-5">
-                <div className="text-[10px] text-slate-600 tracking-tight uppercase mb-2 font-medium">Tahsilat Bilgileri</div>
+                <div className="text-[10px] text-slate-600 tracking-tight uppercase mb-2 font-medium">Tahsilat Bilgileri (seçili dönem, mutabakat bekleyen)</div>
                 <div className="space-y-1.5">
                   <div className="bg-slate-900 border border-slate-800 rounded p-3 flex justify-between items-center">
                     <span className="text-xs text-slate-500 tracking-tight">Nakit Toplam</span>
@@ -298,7 +224,6 @@ export function EndOfDayModalNew({
                 </div>
               </div>
 
-              {/* ─── BÖLÜM 2: KURYE PERFORMANSI ─── */}
               <div className="mb-5">
                 <div className="text-[10px] text-slate-600 tracking-tight uppercase mb-2 font-medium">Kurye Performansı</div>
                 <div className="bg-slate-900 border border-slate-800 rounded p-4">
@@ -312,38 +237,30 @@ export function EndOfDayModalNew({
                       <div className="text-[10px] text-slate-600 mt-0.5">
                         {courier.package_rate
                           ? `${deliveryCount} × ${courier.package_rate}₺`
-                          : 'Paket ücreti belirlenmedi'
-                        }
+                          : 'Paket ücreti belirlenmedi'}
                       </div>
                     </div>
                     <span className="text-xl font-bold text-emerald-500 tracking-tight">{courierEarnings.toFixed(0)}₺</span>
                   </div>
                 </div>
-                {/* Bilgi notu */}
-                <div className="mt-2 px-3 py-1.5 bg-slate-800/50 border border-slate-700/50 rounded">
-                  <p className="text-[10px] text-slate-500 tracking-tight">Hakediş toplamdan düşülmez, ayrıca ödenir</p>
-                </div>
               </div>
 
-              {/* ─── UYARI ─── */}
               <div className="bg-amber-900/20 border border-amber-700/40 rounded p-3 mb-5">
                 <p className="text-xs font-bold text-amber-400 tracking-tight text-center">
                   ⚠️ NAKİT + KART + IBAN = TOPLAM TAHSİLAT, HAKEDİŞ AYRICA ÖDENİR
                 </p>
               </div>
 
-              {/* ─── CARİ BORÇ (TOPLAM) ─── */}
               <div className="bg-rose-900/20 border border-rose-800/40 rounded-lg p-4 mb-5">
                 <div className="text-[10px] text-rose-400 tracking-tight uppercase mb-2 font-medium">Toplam Kalan Borç</div>
                 <div className="text-3xl font-black text-rose-400 tracking-tight mb-1">
                   {hesaplananBorc.toFixed(2)}₺
                 </div>
                 <div className="text-[10px] text-rose-500/60 tracking-tight">
-                  Nakit + Kart + IBAN - Ödemeler
+                  Seçili dönemdeki açık paketlerin tahsilat toplamı
                 </div>
               </div>
 
-              {/* ─── INPUT: ALINAN TUTAR ─── */}
               <div className="mb-4">
                 <label className="block text-xs text-slate-400 tracking-tight mb-1.5 font-medium uppercase">
                   Kuryeden Alınan Tutar
@@ -359,7 +276,6 @@ export function EndOfDayModalNew({
                 />
               </div>
 
-              {/* ─── INPUT: NOT ─── */}
               <div className="mb-5">
                 <label className="block text-xs text-slate-400 tracking-tight mb-1.5 font-medium uppercase">
                   Not (Opsiyonel)
@@ -367,55 +283,38 @@ export function EndOfDayModalNew({
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Eksik ödeme, sonraki güne devredildi..."
+                  placeholder="Eksik ödeme notu..."
                   rows={2}
                   className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded text-sm text-slate-300 placeholder-slate-600 outline-none focus:border-emerald-500 transition-colors tracking-tight resize-none"
                 />
               </div>
 
-              {/* ─── FARK HESAPLAMA ─── */}
               {amountReceived && !isNaN(parseFloat(amountReceived)) && (
                 <div className="mb-5">
                   {difference < 0 ? (
                     <div className="bg-rose-900/20 border border-rose-800/40 rounded p-3 flex justify-between items-center">
-                      <div>
-                        <div className="text-xs text-rose-400 font-medium tracking-tight">EKSİK ÖDEME</div>
-                        <div className="text-[10px] text-rose-500/60 mt-0.5">Borç olarak devam edecek</div>
-                      </div>
-                      <div className="text-xl font-black text-rose-500 tracking-tight">
-                        {Math.abs(difference).toFixed(2)}₺
-                      </div>
+                      <span className="text-xs text-rose-400 font-medium">EKSİK ÖDEME</span>
+                      <span className="text-xl font-black text-rose-500">{Math.abs(difference).toFixed(2)}₺</span>
                     </div>
                   ) : difference > 0 ? (
                     <div className="bg-emerald-900/20 border border-emerald-800/40 rounded p-3 flex justify-between items-center">
-                      <div>
-                        <div className="text-xs text-emerald-400 font-medium tracking-tight">FAZLA ÖDEME</div>
-                        <div className="text-[10px] text-emerald-500/60 mt-0.5">Borç sıfırlanacak</div>
-                      </div>
-                      <div className="text-xl font-black text-emerald-500 tracking-tight">
-                        +{difference.toFixed(2)}₺
-                      </div>
+                      <span className="text-xs text-emerald-400 font-medium">FAZLA ÖDEME</span>
+                      <span className="text-xl font-black text-emerald-500">+{difference.toFixed(2)}₺</span>
                     </div>
                   ) : (
-                    <div className="bg-emerald-900/20 border border-emerald-800/40 rounded p-3 text-center">
-                      <div className="text-sm font-bold text-emerald-400 tracking-tight">TAM ÖDEME</div>
-                      <div className="text-[10px] text-emerald-500/60 mt-0.5">Hesap tam kapanacak</div>
+                    <div className="bg-emerald-900/20 border border-emerald-800/40 rounded p-3 text-center text-sm font-bold text-emerald-400">
+                      TAM ÖDEME
                     </div>
                   )}
                 </div>
               )}
 
-              {/* ─── BUTONLAR ─── */}
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    onClose()
-                  }}
+                  onClick={onClose}
                   disabled={processing}
-                  className="flex-1 px-3 py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-400 rounded text-xs font-medium border border-slate-800 transition-colors tracking-tight disabled:opacity-50"
+                  className="flex-1 px-3 py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-400 rounded text-xs font-medium border border-slate-800 disabled:opacity-50"
                 >
                   İptal
                 </button>
@@ -423,16 +322,9 @@ export function EndOfDayModalNew({
                   type="button"
                   onClick={handleSubmit}
                   disabled={processing || !amountReceived}
-                  className="flex-1 px-3 py-2.5 bg-emerald-900/60 hover:bg-emerald-900/80 text-emerald-300 rounded text-xs font-medium border border-emerald-800/50 transition-colors tracking-tight disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-3 py-2.5 bg-emerald-900/60 hover:bg-emerald-900/80 text-emerald-300 rounded text-xs font-medium border border-emerald-800/50 disabled:opacity-50"
                 >
-                  {processing ? (
-                    <span className="flex items-center justify-center gap-1.5">
-                      <div className="w-3 h-3 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin"></div>
-                      Kaydediliyor...
-                    </span>
-                  ) : (
-                    'Mutabakatı Kaydet'
-                  )}
+                  {processing ? 'Kaydediliyor...' : 'Mutabakatı Kaydet'}
                 </button>
               </div>
             </>

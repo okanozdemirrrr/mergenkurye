@@ -6,15 +6,21 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/app/lib/supabase'
-import { fetchCourierPeriodAccount } from '@/utils/courierAccount'
+import { fetchCourierLedgerPeriodAccount } from '@/utils/courierLedger'
 
 interface CourierEarningsStatsProps {
   courierId: string
   startDate: string
   endDate: string
+  packageRate?: number
 }
 
-export function CourierEarningsStats({ courierId, startDate, endDate }: CourierEarningsStatsProps) {
+export function CourierEarningsStats({
+  courierId,
+  startDate,
+  endDate,
+  packageRate = 0,
+}: CourierEarningsStatsProps) {
   const [account, setAccount] = useState({
     cash: 0,
     card: 0,
@@ -28,7 +34,13 @@ export function CourierEarningsStats({ courierId, startDate, endDate }: CourierE
     if (!courierId || !startDate || !endDate) return
     setLoading(true)
     try {
-      const data = await fetchCourierPeriodAccount(supabase, courierId, startDate, endDate)
+      const data = await fetchCourierLedgerPeriodAccount(
+        supabase,
+        courierId,
+        startDate,
+        endDate,
+        packageRate
+      )
       setAccount({
         cash: data.cash,
         card: data.card,
@@ -41,7 +53,7 @@ export function CourierEarningsStats({ courierId, startDate, endDate }: CourierE
     } finally {
       setLoading(false)
     }
-  }, [courierId, startDate, endDate])
+  }, [courierId, startDate, endDate, packageRate])
 
   useEffect(() => {
     refresh()
@@ -80,7 +92,7 @@ export function CourierEarningsStats({ courierId, startDate, endDate }: CourierE
   return (
     <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
       <p className="text-[10px] text-slate-500 mb-2 text-center">
-        Admin mutabakatı ile aynı · henüz kapatılmamış tahsilat (settled_at boş)
+        Admin ile aynı · seçili dönemde mutabakat bekleyen paketler
       </p>
       <div className="grid grid-cols-3 gap-2">
         <div className="bg-slate-800/50 px-2 py-2 rounded-lg">
@@ -108,7 +120,7 @@ export function CourierEarningsStats({ courierId, startDate, endDate }: CourierE
           </div>
           <p className="text-2xl font-black text-orange-100">{account.payableDebt.toFixed(2)}₺</p>
           <p className="text-[9px] text-orange-300 mt-1">
-            Nakit + Kart + IBAN − bu dönemdeki mutabakat ödemeleri
+            Nakit + Kart + IBAN (mutabakat bekleyen paketler)
           </p>
         </div>
       </div>

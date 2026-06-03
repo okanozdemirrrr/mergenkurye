@@ -32,6 +32,10 @@ const Tooltip = dynamic(
   () => import('react-leaflet').then((mod) => mod.Tooltip),
   { ssr: false }
 )
+const MapUpdater = dynamic(
+  () => import('./MapUpdater').then((mod) => ({ default: mod.MapUpdater })),
+  { ssr: false }
+)
 
 // Safely require Leaflet on the client side
 let L: any
@@ -65,23 +69,6 @@ interface LiveMapComponentProps {
   restaurants: Restaurant[]
   onRefresh?: () => void
   onLiveCouriersChange?: (count: number) => void
-}
-
-// Harita merkezini güncelleme komponenti
-function MapUpdater({ center }: { center: [number, number] }) {
-  try {
-    // @ts-ignore - Leaflet dinamik import
-    const { useMap } = require('react-leaflet')
-    const map = useMap()
-    useEffect(() => {
-      if (map) {
-        map.setView(center, map.getZoom())
-      }
-    }, [center, map])
-  } catch (e) {
-    // Leaflet yüklenmemişse hata yok
-  }
-  return null
 }
 
 export function LiveMapComponent({ 
@@ -436,8 +423,8 @@ export function LiveMapComponent({
 
   return (
     <>
-      <div className={`${isFullscreen ? 'fixed inset-0 z-50 bg-slate-950 p-4' : 'relative h-full'}`}>
-        <div className="relative h-full rounded-xl overflow-hidden border border-slate-700">
+      <div className={`${isFullscreen ? 'fixed inset-0 z-50 bg-slate-950 p-4' : 'relative w-full h-full'}`}>
+        <div className="relative w-full h-full rounded-xl overflow-hidden border border-slate-700">
 
           {/* Büyüt/Küçült Butonu */}
           <button
@@ -488,7 +475,7 @@ export function LiveMapComponent({
           <MapContainer
             center={mapCenter}
             zoom={15}
-            style={{ height: '100%', width: '100%', minHeight: '400px' }}
+            style={{ height: '100%', width: '100%' }}
             zoomControl={true}
           >
             <MapUpdater center={mapCenter} />

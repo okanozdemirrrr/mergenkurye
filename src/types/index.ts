@@ -61,6 +61,7 @@ export interface Package {
     longitude?: number | null
     delivered_by_courier_id?: string | null
     is_paid_to_courier?: boolean
+    courier_settlement_id?: string | null
     is_paid_to_restaurant?: boolean
     is_chargeable_cancellation?: boolean
 }

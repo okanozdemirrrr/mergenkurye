@@ -16,6 +16,7 @@ import { OrderDrawer } from './OrderDrawer'
 import { CourierTransferModal } from './CourierTransferModal'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
 import { formatTurkishTime } from '@/utils/dateHelpers'
+import { CourierDailyRoutes } from './CourierDailyRoutes'
 
 // Harita bileşenini dinamik olarak yükle (SSR devre dışı)
 const LiveMapComponent = dynamic(
@@ -306,10 +307,10 @@ export function LiveTrackingTab({
             
             <div className="space-y-2">
             {/* CANLI HARİTA + KURYE DURUMLARI - YAN YANA (Desktop) / DİKEY (Mobile) */}
-            <div className="flex flex-col lg:grid lg:grid-cols-4 gap-2">
-                {/* Harita - Mobilde İlk Sırada */}
-                <div className="lg:col-span-3 order-1 lg:order-1">
-                    <div className="bg-slate-900 shadow-xl rounded-2xl p-2 border border-slate-800" style={{ position: 'relative', zIndex: 1 }}>
+            <div className="flex flex-row w-full gap-4 items-start">
+                {/* Sol kolon — Harita + Canlı Sipariş Takibi */}
+                <div className="flex-1 flex flex-col gap-4 min-w-[500px] w-full">
+                    <div className="bg-slate-900 shadow-xl rounded-2xl p-2 border border-slate-800 w-full" style={{ position: 'relative', zIndex: 1 }}>
                         {/* Başlık ve İstatistikler - Yatay */}
                         <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
                             <h2 className="text-lg font-bold flex items-center gap-2 text-white">
@@ -353,7 +354,7 @@ export function LiveTrackingTab({
                                 </div>
                             </div>
                         </div>
-                        <div className="h-[40vh] lg:h-[500px] w-full rounded-xl overflow-hidden">
+                        <div className="w-full h-[500px] rounded-xl overflow-hidden">
                             <LiveMapComponent 
                                 packages={packages} 
                                 couriers={couriers} 
@@ -362,11 +363,176 @@ export function LiveTrackingTab({
                             />
                         </div>
                     </div>
+
+                    {/* Canlı Sipariş Takibi */}
+                    <div className="bg-slate-900 shadow-xl rounded-2xl p-3 border border-slate-800 w-full">
+                        <h2 className="text-xl font-bold mb-3 text-white">📦 Canlı Sipariş Takibi</h2>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 w-full">
+                            {isLoading ? (
+                                <div className="col-span-full text-center py-8 text-slate-500">Siparişler yükleniyor...</div>
+                            ) : unassignedPackages.length === 0 ? (
+                                <div className="col-span-full text-center py-8 text-slate-500">Kurye bekleyen sipariş bulunmuyor.</div>
+                            ) : (
+                                unassignedPackages.map(pkg => {
+                                    const isWebOrder = pkg.platform === 'web'
+                                    return (
+                                    <div 
+                                        key={pkg.id} 
+                                        className={`relative p-3 rounded-lg border-l-4 shadow-sm cursor-pointer transition-colors ${
+                                        isWebOrder
+                                            ? 'bg-amber-900/20 hover:bg-amber-900/30 border-yellow-500/30'
+                                            : 'bg-slate-800 hover:bg-slate-700 border-slate-700'
+                                        } ${pkg.status === 'waiting' ? 'border-l-yellow-500' :
+                                        pkg.status === 'assigned' ? 'border-l-orange-500' :
+                                            pkg.status === 'picking_up' ? 'border-l-orange-500' :
+                                                'border-l-red-500'
+                                        } border-r border-t border-b`}
+                                    >
+                                        {isWebOrder && (
+                                            <span className="absolute top-2 right-2 px-2 py-0.5 text-xs font-bold bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 rounded-md z-20">
+                                                WEB
+                                            </span>
+                                        )}
+                                        <div onClick={() => setSelectedPackage(pkg)} className="absolute inset-0 z-0"></div>
+                                        <div onClick={() => setSelectedPackage(pkg)} className="absolute inset-0 z-0"></div>
+                                        <div className="absolute top-2 left-2 z-20" onClick={(e) => e.stopPropagation()}>
+                                            <OrderActionMenu
+                                                package={pkg}
+                                                isOpen={openDropdownId === pkg.id}
+                                                onToggle={() => setOpenDropdownId(openDropdownId === pkg.id ? null : pkg.id)}
+                                                onCancel={handleCancelOrder}
+                                            />
+                                        </div>
+                                        <div className="flex justify-between items-center mb-2 ml-8 relative z-10">
+                                            <div className="flex items-center gap-2">
+                                                <span className={`text-xs font-bold px-2 py-1 rounded ${pkg.order_number
+                                                    ? 'text-orange-600 bg-orange-900/50'
+                                                    : 'text-slate-400 bg-slate-100 animate-pulse'
+                                                    }`}>
+                                                    {pkg.order_number || '......'}
+                                                </span>
+                                                {pkg.platform && pkg.platform !== 'web' && (
+                                                    <span className={`text-xs py-0.5 px-2 rounded ${getPlatformBadgeClass(pkg.platform)}`}>
+                                                        {getPlatformDisplayName(pkg.platform)}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <span className="text-xs text-white flex items-center gap-1">
+                                                🕐 {formatTurkishTime(pkg.created_at)}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between items-start mb-2 ml-8 relative z-10">
+                                            <span className="bg-orange-900/50 text-orange-300 px-2 py-1 rounded text-sm font-bold">
+                                                🍽️ {pkg.restaurant?.name || 'Bilinmeyen'}
+                                            </span>
+                                            <span className="text-lg font-bold text-green-400">
+                                                {pkg.amount}₺
+                                            </span>
+                                        </div>
+                                        <div className="mb-2 ml-8 relative z-10">
+                                            <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                                pkg.status === 'cancelled' ? 'bg-red-900/50 text-red-300' :
+                                                pkg.status === 'new_order' ? 'bg-blue-900/50 text-blue-300' :
+                                                pkg.status === 'getting_ready' ? 'bg-cyan-900/50 text-cyan-300' :
+                                                pkg.status === 'ready' ? 'bg-teal-900/50 text-teal-300 animate-pulse' :
+                                                pkg.status === 'assigned' ? 'bg-purple-900/50 text-purple-300' :
+                                                pkg.status === 'picking_up' ? 'bg-orange-900/50 text-orange-300' :
+                                                pkg.status === 'on_the_way' ? 'bg-yellow-900/50 text-yellow-300' :
+                                                'bg-green-900/50 text-green-300'
+                                            }`}>
+                                                {getStatusIcon(pkg.status)} {getStatusText(pkg.status).toUpperCase()}
+                                            </span>
+                                        </div>
+                                        <div className="space-y-2 mb-3 ml-8 relative z-10">
+                                            <h3 className="font-semibold text-sm text-white">
+                                                👤 {pkg.customer_name}
+                                            </h3>
+                                            {pkg.customer_phone && (
+                                                <p className="text-xs text-white">
+                                                    📞 {pkg.customer_phone}
+                                                </p>
+                                            )}
+                                            {pkg.content && (
+                                                <div>
+                                                    <p className="text-xs text-white">Paket İçeriği:</p>
+                                                    <p className="text-xs text-orange-200 bg-orange-900/30 p-1.5 rounded border border-orange-700">
+                                                        📝 {pkg.content}
+                                                    </p>
+                                                </div>
+                                            )}
+                                            <div>
+                                                <p className="text-xs text-white">Adres:</p>
+                                                <p className="text-xs text-slate-100 overflow-hidden" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                                                    📍 {pkg.delivery_address}
+                                                </p>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className={`px-2 py-1 rounded text-xs font-medium ${pkg.payment_method === 'cash'
+                                                    ? 'bg-green-900/50 text-green-300'
+                                                    : pkg.payment_method === 'iban'
+                                                    ? 'bg-purple-900/50 text-purple-300'
+                                                    : 'bg-orange-900/50 text-orange-300'
+                                                    }`}>
+                                                    {pkg.payment_method === 'cash' ? '💵 Nakit' : pkg.payment_method === 'iban' ? '🏦 IBAN' : '💳 Kart'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        {!pkg.courier_id && pkg.status === 'ready' && (
+                                            <div className="border-t border-slate-700 pt-2 space-y-2 relative z-20" onClick={(e) => e.stopPropagation()}>
+                                                <select
+                                                    value={selectedCouriers[pkg.id] || ''}
+                                                    onChange={(e) => handleCourierChange(pkg.id, e.target.value)}
+                                                    className="w-full bg-slate-700 text-white border border-slate-600 rounded px-2 py-2 min-h-[44px] text-xs focus:ring-1 focus:ring-orange-500 focus:border-transparent"
+                                                    disabled={assigningIds.has(pkg.id)}
+                                                >
+                                                    <option value="">Kurye Seçin</option>
+                                                    {couriers.filter(c => c.is_active).length === 0 ? (
+                                                        <option disabled>⚠️ Aktif Kurye Bulunmuyor</option>
+                                                    ) : (
+                                                        <>
+                                                            <option disabled>Kurye Seçin (Aktif: {couriers.filter(c => c.is_active).length})</option>
+                                                            {couriers
+                                                                .filter(c => c.is_active)
+                                                                .map(c => (
+                                                                    <option key={c.id} value={c.id}>
+                                                                        {c.full_name} ({c.todayDeliveryCount || 0} bugün, {c.activePackageCount || 0} aktif)
+                                                                    </option>
+                                                                ))
+                                                            }
+                                                        </>
+                                                    )}
+                                                </select>
+                                                <button
+                                                    onClick={() => handleAssignCourier(pkg.id)}
+                                                    disabled={!selectedCouriers[pkg.id] || assigningIds.has(pkg.id)}
+                                                    className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white px-3 py-2 min-h-[44px] rounded text-xs font-semibold transition-all"
+                                                >
+                                                    {assigningIds.has(pkg.id) ? '⏳ Atanıyor...' : '✅ Kurye Ata'}
+                                                </button>
+                                            </div>
+                                        )}
+                                        {pkg.courier_id && (pkg.status === 'assigned' || pkg.status === 'picking_up' || pkg.status === 'on_the_way') && (
+                                            <div className="border-t border-slate-700 pt-2 relative z-10">
+                                                <div className="flex items-center justify-center">
+                                                    <span className="bg-orange-900/50 text-orange-300 px-2 py-1 rounded text-xs font-medium">
+                                                        🚴 {couriers.find(c => c.id === pkg.courier_id)?.full_name || 'Bilinmeyen'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    )
+                                })
+                            )}
+                        </div>
+                    </div>
                 </div>
 
-                {/* Kurye Durumları - Mobilde İkinci Sırada */}
-                <div className="lg:col-span-1 order-2 lg:order-2">
-                    <div className="bg-slate-900 shadow-xl rounded-2xl p-2 lg:sticky lg:top-4 border border-slate-800">
+                {/* Sağ blok — Durumlar + Rota yapışık */}
+                <div className="flex flex-row gap-4 shrink-0">
+                <div className="w-[320px] shrink-0">
+                    <div className="bg-slate-900 shadow-xl rounded-2xl p-2 sticky top-4 border border-slate-800 w-[320px] shrink-0">
                         <div className="flex justify-between items-center mb-2">
                             <h2 className="text-sm font-bold text-white">🚴 Kurye Durumları</h2>
                             <span className="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-sm font-semibold">
@@ -457,196 +623,10 @@ export function LiveTrackingTab({
                         </div>
                     </div>
                 </div>
-            </div>
 
-            {/* SİPARİŞLER - Mobilde Üçüncü Sırada */}
-            <div className="flex flex-col lg:grid lg:grid-cols-4 gap-2">
-                <div className="lg:col-span-3 space-y-2 order-3 lg:order-1">
-                    {/* SİPARİŞ KARTLARI */}
-                    <div className="bg-slate-900 shadow-xl rounded-2xl p-3 border border-slate-800">
-                        <h2 className="text-xl font-bold mb-3 text-white">📦 Canlı Sipariş Takibi</h2>
-
-                        {/* Sipariş Kartları */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {isLoading ? (
-                                <div className="col-span-full text-center py-8 text-slate-500">Siparişler yükleniyor...</div>
-                            ) : unassignedPackages.length === 0 ? (
-                                <div className="col-span-full text-center py-8 text-slate-500">Kurye bekleyen sipariş bulunmuyor.</div>
-                            ) : (
-                                unassignedPackages.map(pkg => {
-                                    const isWebOrder = pkg.platform === 'web'
-                                    return (
-                                    <div 
-                                        key={pkg.id} 
-                                        className={`relative p-3 rounded-lg border-l-4 shadow-sm cursor-pointer transition-colors ${
-                                        isWebOrder
-                                            ? 'bg-amber-900/20 hover:bg-amber-900/30 border-yellow-500/30'
-                                            : 'bg-slate-800 hover:bg-slate-700 border-slate-700'
-                                        } ${pkg.status === 'waiting' ? 'border-l-yellow-500' :
-                                        pkg.status === 'assigned' ? 'border-l-orange-500' :
-                                            pkg.status === 'picking_up' ? 'border-l-orange-500' :
-                                                'border-l-red-500'
-                                        } border-r border-t border-b`}
-                                    >
-                                        {isWebOrder && (
-                                            <span className="absolute top-2 right-2 px-2 py-0.5 text-xs font-bold bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 rounded-md z-20">
-                                                WEB
-                                            </span>
-                                        )}
-                                        {/* Tıklanabilir Alan - Üstte */}
-                                        <div onClick={() => setSelectedPackage(pkg)} className="absolute inset-0 z-0"></div>
-
-                                        {/* Tıklanabilir Alan - Üstte */}
-                                        <div onClick={() => setSelectedPackage(pkg)} className="absolute inset-0 z-0"></div>
-
-                                        {/* 3 Nokta Menüsü */}
-                                        <div className="absolute top-2 left-2 z-20" onClick={(e) => e.stopPropagation()}>
-                                            <OrderActionMenu
-                                                package={pkg}
-                                                isOpen={openDropdownId === pkg.id}
-                                                onToggle={() => setOpenDropdownId(openDropdownId === pkg.id ? null : pkg.id)}
-                                                onCancel={handleCancelOrder}
-                                            />
-                                        </div>
-
-                                        {/* Sipariş Bilgileri */}
-                                        <div className="flex justify-between items-center mb-2 ml-8 relative z-10">
-                                            <div className="flex items-center gap-2">
-                                                <span className={`text-xs font-bold px-2 py-1 rounded ${pkg.order_number
-                                                    ? 'text-orange-600 bg-orange-900/50'
-                                                    : 'text-slate-400 bg-slate-100 animate-pulse'
-                                                    }`}>
-                                                    {pkg.order_number || '......'}
-                                                </span>
-                                                {pkg.platform && pkg.platform !== 'web' && (
-                                                    <span className={`text-xs py-0.5 px-2 rounded ${getPlatformBadgeClass(pkg.platform)}`}>
-                                                        {getPlatformDisplayName(pkg.platform)}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <span className="text-xs text-white flex items-center gap-1">
-                                                🕐 {formatTurkishTime(pkg.created_at)}
-                                            </span>
-                                        </div>
-
-                                        {/* Restoran ve Tutar */}
-                                        <div className="flex justify-between items-start mb-2 ml-8 relative z-10">
-                                            <span className="bg-orange-900/50 text-orange-300 px-2 py-1 rounded text-sm font-bold">
-                                                🍽️ {pkg.restaurant?.name || 'Bilinmeyen'}
-                                            </span>
-                                            <span className="text-lg font-bold text-green-400">
-                                                {pkg.amount}₺
-                                            </span>
-                                        </div>
-
-                                        {/* Durum */}
-                                        <div className="mb-2 ml-8 relative z-10">
-                                            <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                                                pkg.status === 'cancelled' ? 'bg-red-900/50 text-red-300' :
-                                                pkg.status === 'new_order' ? 'bg-blue-900/50 text-blue-300' :
-                                                pkg.status === 'getting_ready' ? 'bg-cyan-900/50 text-cyan-300' :
-                                                pkg.status === 'ready' ? 'bg-teal-900/50 text-teal-300 animate-pulse' :
-                                                pkg.status === 'assigned' ? 'bg-purple-900/50 text-purple-300' :
-                                                pkg.status === 'picking_up' ? 'bg-orange-900/50 text-orange-300' :
-                                                pkg.status === 'on_the_way' ? 'bg-yellow-900/50 text-yellow-300' :
-                                                'bg-green-900/50 text-green-300'
-                                            }`}>
-                                                {getStatusIcon(pkg.status)} {getStatusText(pkg.status).toUpperCase()}
-                                            </span>
-                                        </div>
-
-                                        {/* Müşteri Bilgileri */}
-                                        <div className="space-y-2 mb-3 ml-8 relative z-10">
-                                            <h3 className="font-semibold text-sm text-white">
-                                                👤 {pkg.customer_name}
-                                            </h3>
-
-                                            {pkg.customer_phone && (
-                                                <p className="text-xs text-white">
-                                                    📞 {pkg.customer_phone}
-                                                </p>
-                                            )}
-
-                                            {pkg.content && (
-                                                <div>
-                                                    <p className="text-xs text-white">Paket İçeriği:</p>
-                                                    <p className="text-xs text-orange-200 bg-orange-900/30 p-1.5 rounded border border-orange-700">
-                                                        📝 {pkg.content}
-                                                    </p>
-                                                </div>
-                                            )}
-
-                                            <div>
-                                                <p className="text-xs text-white">Adres:</p>
-                                                <p className="text-xs text-slate-100 overflow-hidden" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                                                    📍 {pkg.delivery_address}
-                                                </p>
-                                            </div>
-
-                                            <div className="flex justify-between items-center">
-                                                <span className={`px-2 py-1 rounded text-xs font-medium ${pkg.payment_method === 'cash'
-                                                    ? 'bg-green-900/50 text-green-300'
-                                                    : pkg.payment_method === 'iban'
-                                                    ? 'bg-purple-900/50 text-purple-300'
-                                                    : 'bg-orange-900/50 text-orange-300'
-                                                    }`}>
-                                                    {pkg.payment_method === 'cash' ? '💵 Nakit' : pkg.payment_method === 'iban' ? '🏦 IBAN' : '💳 Kart'}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        {/* Kurye Atama - Sadece 'ready' durumunda göster */}
-                                        {!pkg.courier_id && pkg.status === 'ready' && (
-                                            <div className="border-t border-slate-700 pt-2 space-y-2 relative z-20" onClick={(e) => e.stopPropagation()}>
-                                                <select
-                                                    value={selectedCouriers[pkg.id] || ''}
-                                                    onChange={(e) => handleCourierChange(pkg.id, e.target.value)}
-                                                    className="w-full bg-slate-700 text-white border border-slate-600 rounded px-2 py-2 min-h-[44px] text-xs focus:ring-1 focus:ring-orange-500 focus:border-transparent"
-                                                    disabled={assigningIds.has(pkg.id)}
-                                                >
-                                                    <option value="">Kurye Seçin</option>
-                                                    {couriers.filter(c => c.is_active).length === 0 ? (
-                                                        <option disabled>⚠️ Aktif Kurye Bulunmuyor</option>
-                                                    ) : (
-                                                        <>
-                                                            <option disabled>Kurye Seçin (Aktif: {couriers.filter(c => c.is_active).length})</option>
-                                                            {couriers
-                                                                .filter(c => c.is_active)
-                                                                .map(c => (
-                                                                    <option key={c.id} value={c.id}>
-                                                                        {c.full_name} ({c.todayDeliveryCount || 0} bugün, {c.activePackageCount || 0} aktif)
-                                                                    </option>
-                                                                ))
-                                                            }
-                                                        </>
-                                                    )}
-                                                </select>
-                                                <button
-                                                    onClick={() => handleAssignCourier(pkg.id)}
-                                                    disabled={!selectedCouriers[pkg.id] || assigningIds.has(pkg.id)}
-                                                    className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white px-3 py-2 min-h-[44px] rounded text-xs font-semibold transition-all"
-                                                >
-                                                    {assigningIds.has(pkg.id) ? '⏳ Atanıyor...' : '✅ Kurye Ata'}
-                                                </button>
-                                            </div>
-                                        )}
-
-                                        {/* Atanmış Kurye */}
-                                        {pkg.courier_id && (pkg.status === 'assigned' || pkg.status === 'picking_up' || pkg.status === 'on_the_way') && (
-                                            <div className="border-t border-slate-700 pt-2 relative z-10">
-                                                <div className="flex items-center justify-center">
-                                                    <span className="bg-orange-900/50 text-orange-300 px-2 py-1 rounded text-xs font-medium">
-                                                        🚴 {couriers.find(c => c.id === pkg.courier_id)?.full_name || 'Bilinmeyen'}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                    )
-                                })
-                            )}
-                        </div>
-                    </div>
+                <div className="w-[350px] shrink-0">
+                    <CourierDailyRoutes couriers={couriers} />
+                </div>
                 </div>
             </div>
         </div>

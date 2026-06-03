@@ -143,3 +143,80 @@ BEGIN
     RETURN v_result;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
+-- 3. process_restaurant_payment — ciro: sadece delivered, adet: delivered + ücretli iptal
+DROP FUNCTION IF EXISTS process_restaurant_payment(UUID, TIMESTAMP WITH TIME ZONE, TEXT);
+
+CREATE OR REPLACE FUNCTION process_restaurant_payment(
+    p_restaurant_id UUID,
+    p_end_date      TIMESTAMP WITH TIME ZONE,
+    p_notes         TEXT DEFAULT NULL
+)
+RETURNS JSON AS $$
+DECLARE
+    v_package_fee   NUMERIC(10,2);
+    v_affected_ids  INTEGER[];
+    v_total_revenue NUMERIC(10,2);
+    v_package_count INTEGER;
+    v_total_cost    NUMERIC(10,2);
+    v_net_amount    NUMERIC(10,2);
+    v_oldest_date   DATE;
+BEGIN
+    SELECT COALESCE(package_fee, 100) INTO v_package_fee
+    FROM restaurants WHERE id = p_restaurant_id;
+
+    SELECT
+        array_agg(id),
+        COALESCE(SUM(CASE WHEN status = 'delivered' THEN amount ELSE 0 END), 0),
+        COUNT(*),
+        MIN(COALESCE(delivered_at, created_at))::DATE
+    INTO v_affected_ids, v_total_revenue, v_package_count, v_oldest_date
+    FROM packages
+    WHERE restaurant_id = p_restaurant_id
+      AND is_paid_to_restaurant = false
+      AND (
+        (status = 'delivered' AND delivered_at <= p_end_date)
+        OR
+        (status = 'cancelled' AND is_chargeable_cancellation = true
+         AND created_at <= p_end_date)
+      );
+
+    IF v_package_count = 0 OR v_affected_ids IS NULL THEN
+        RETURN json_build_object(
+            'success', false,
+            'error',   'Bu tarihe kadar ödenmemiş paket bulunamadı.'
+        );
+    END IF;
+
+    v_total_cost := v_package_count * v_package_fee;
+    v_net_amount := v_total_revenue - v_total_cost;
+
+    UPDATE packages
+    SET is_paid_to_restaurant = true, settled_at = NOW()
+    WHERE id = ANY(v_affected_ids);
+
+    INSERT INTO restaurant_payment_transactions (
+        restaurant_id, transaction_date,
+        brut_ciro, toplam_masraf, net_hakedis, amount_paid,
+        package_count, order_ids, notes,
+        period_start, period_end
+    ) VALUES (
+        p_restaurant_id, CURRENT_DATE,
+        v_total_revenue, v_total_cost,
+        GREATEST(v_net_amount, 0), GREATEST(v_net_amount, 0),
+        v_package_count, v_affected_ids,
+        COALESCE(p_notes, 'Geçmiş Tüm Bakiye Kapatıldı — ' || to_char(NOW(), 'DD.MM.YYYY HH24:MI')),
+        v_oldest_date, p_end_date::DATE
+    );
+
+    RETURN json_build_object(
+        'success', true,
+        'message', v_package_count || ' paket ödendi olarak işaretlendi.',
+        'package_count', v_package_count,
+        'revenue', v_total_revenue,
+        'cost', v_total_cost,
+        'net_paid', v_net_amount
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

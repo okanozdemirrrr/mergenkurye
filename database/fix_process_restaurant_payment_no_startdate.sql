@@ -30,7 +30,7 @@ BEGIN
     -- (is_paid_to_restaurant = false ve tarih <= p_end_date)
     SELECT
         array_agg(id),
-        COALESCE(SUM(amount), 0),
+        COALESCE(SUM(CASE WHEN status = 'delivered' THEN amount ELSE 0 END), 0),
         COUNT(*),
         MIN(COALESCE(delivered_at, created_at))::DATE
     INTO v_affected_ids, v_total_revenue, v_package_count, v_oldest_date

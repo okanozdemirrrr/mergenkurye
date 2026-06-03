@@ -32,6 +32,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     if (pathname?.startsWith('/admin/market') || pathname?.startsWith('/admin/musteriler')) {
       setShowCustomerSubmenu(true)
     }
+    if (pathname?.startsWith('/admin/kuryeler')) {
+      setShowCourierSubmenu(true)
+    }
   }, [pathname])
 
   useEffect(() => {
@@ -285,6 +288,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       👤 Kurye Hesapları
                     </Link>
                     <Link
+                      href="/admin/kuryeler/mutabakatlar"
+                      onClick={() => setShowMenu(false)}
+                      className={`block w-full text-left px-4 py-2 rounded-lg text-sm transition-all ${
+                        isActive('/admin/kuryeler/mutabakatlar') ? 'bg-orange-500 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                      }`}
+                    >
+                      🧾 Kurye Mutabakatları
+                    </Link>
+                    <Link
                       href="/admin/kuryeler/performans"
                       onClick={() => setShowMenu(false)}
                       className={`block w-full text-left px-4 py-2 rounded-lg text-sm transition-all ${
@@ -406,7 +418,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Main Content */}
       <div className="py-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
+        <div className="w-full">
           <NotificationProvider>
             <AdminDataProvider>
               <AdminMessages />

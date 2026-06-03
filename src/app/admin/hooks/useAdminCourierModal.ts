@@ -10,6 +10,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/app/lib/supabase'
 import { Package, CourierDebt } from '@/types'
 import { handleEndOfDay as handleEndOfDayService, handlePayDebt as handlePayDebtService } from '@/services/courierService'
+import { usePersistedDateRange } from '@/hooks/usePersistedDateRange'
 import { getBusinessDayDateTimeLocal, toFilterIso } from '@/utils/courierAccount'
 
 interface UseAdminCourierModalProps {
@@ -27,11 +28,18 @@ export function useAdminCourierModal({
   setErrorMessage,
   fetchCouriers
 }: UseAdminCourierModalProps) {
-  const businessDates = getBusinessDayDateTimeLocal()
   const [selectedCourierOrders, setSelectedCourierOrders] = useState<Package[]>([])
   const [courierDebts, setCourierDebts] = useState<CourierDebt[]>([])
-  const [courierStartDate, setCourierStartDate] = useState(businessDates.start)
-  const [courierEndDate, setCourierEndDate] = useState(businessDates.end)
+  const dateStorageKey = courierId
+    ? `admin-courier-range-${courierId}`
+    : 'admin-courier-range'
+  const {
+    startDate: courierStartDate,
+    endDate: courierEndDate,
+    setStartDate: setCourierStartDate,
+    setEndDate: setCourierEndDate,
+    applyPreset: applyCourierDatePreset,
+  } = usePersistedDateRange(dateStorageKey)
   const [loadingDebts, setLoadingDebts] = useState(false)
   const [showEndOfDayModal, setShowEndOfDayModal] = useState(false)
   const [endOfDayAmount, setEndOfDayAmount] = useState('')

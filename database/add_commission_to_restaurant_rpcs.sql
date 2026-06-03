@@ -30,9 +30,9 @@ BEGIN
     SELECT COALESCE(package_fee, 100) INTO v_package_fee
     FROM restaurants WHERE id = p_restaurant_id;
 
-    -- Ödenmemiş paketler (filtrelenen tarih aralığı)
+    -- Ciro: sadece delivered | Adet: delivered + ücretli iptal (masraf için)
     SELECT
-        COALESCE(SUM(amount), 0),
+        COALESCE(SUM(CASE WHEN status = 'delivered' THEN amount ELSE 0 END), 0),
         COUNT(*),
         COALESCE(SUM(CASE WHEN status = 'delivered' THEN COALESCE(commission_amount, 0) ELSE 0 END), 0)
     INTO v_unpaid_rev, v_unpaid_count, v_unpaid_commission
@@ -48,7 +48,9 @@ BEGIN
       );
 
     -- Ödenmiş paketler (bilgi amaçlı)
-    SELECT COALESCE(SUM(amount), 0), COUNT(*)
+    SELECT
+        COALESCE(SUM(CASE WHEN status = 'delivered' THEN amount ELSE 0 END), 0),
+        COUNT(*)
     INTO v_paid_rev, v_paid_count
     FROM packages
     WHERE restaurant_id = p_restaurant_id
@@ -98,7 +100,7 @@ BEGIN
     WITH unpaid AS (
         SELECT
             p.restaurant_id,
-            COALESCE(SUM(p.amount), 0)                                                        AS unpaid_rev,
+            COALESCE(SUM(CASE WHEN p.status = 'delivered' THEN p.amount ELSE 0 END), 0)     AS unpaid_rev,
             COUNT(*)                                                                           AS unpaid_count,
             COALESCE(SUM(CASE WHEN p.status = 'delivered'
                               THEN COALESCE(p.commission_amount, 0)

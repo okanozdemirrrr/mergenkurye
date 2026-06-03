@@ -90,7 +90,7 @@ export function AdminModals() {
   return (
     <>
       {/* Courier Detail Modal */}
-      {modalType === 'courier' && courierId && (
+      {modalType === 'courier' && courierId && courier && (
         <CourierDetailModal
           key={`${courierId}-${courierModal.courierStartDate}-${courierModal.courierEndDate}`}
           show={true}

@@ -78,122 +78,87 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
       await fetchRestaurant()
       await fetchTodayStats()
     }
-    
+
     loadData()
     fetchPackages()
     fetchCouriers()
+  }, [restaurantId])
 
-    // 🔥 REALTIME - SESSIZ ARKA PLAN GÜNCELLEMESİ
-    let subscription: any = null
-    let reconnectTimer: NodeJS.Timeout | null = null
+  useEffect(() => {
+    if (!restaurantId) return
 
-    const setupRealtimeWithRetry = async (retryCount = 0) => {
-      try {
-        const channel = supabase
-          .channel('restaurant-packages')
-          .on(
-            'postgres_changes',
-            {
-              event: '*',
-              schema: 'public',
-              table: 'packages',
-              filter: `restaurant_id=eq.${restaurantId}`
-            },
-            (payload) => {
-              const { eventType, new: newRow, old: oldRow } = payload
+    const channel = supabase
+      .channel('public:packages')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'packages',
+          filter: `restaurant_id=eq.${restaurantId}`,
+        },
+        (payload) => {
+          const newOrder = payload.new as Package
 
-              if (eventType === 'INSERT' && newRow) {
-                const newOrder = newRow as Package
-                const activeStatuses = ['new_order', 'getting_ready', 'ready', 'assigned', 'picking_up', 'on_the_way']
-
-                // 1) Önce state güncelle — React listeyi çizsin
-                if (activeStatuses.includes(newOrder.status)) {
-                  setPackages(prev => {
-                    if (prev.some(p => p.id === newOrder.id)) return prev
-                    return [newOrder, ...prev]
-                  })
-                }
-
-                // 2) Web siparişi: ses hemen, yazdırma 1.5 sn gecikmeli
-                const isWebOrder =
-                  newOrder.platform === 'web' &&
-                  (newOrder.status === 'new_order' || newOrder.status === 'new')
-
-                if (isWebOrder) {
-                  playRestaurantAlert()
-                  setTimeout(() => {
-                    printReceiptRef.current(newOrder)
-                  }, 1500)
-                }
-
-                fetchTodayStats()
-                return
-              }
-
-              if (eventType === 'UPDATE' && newRow) {
-                const updated = newRow as Package
-                setPackages(prev => prev.map(p => p.id === updated.id ? { ...p, ...updated } : p))
-                setDeliveredPackages(prev => prev.map(p => p.id === updated.id ? { ...p, ...updated } : p))
-                setCancelledPackages(prev => prev.map(p => p.id === updated.id ? { ...p, ...updated } : p))
-                fetchTodayStats()
-                return
-              }
-
-              if (eventType === 'DELETE' && oldRow) {
-                const removedId = (oldRow as Package).id
-                setPackages(prev => prev.filter(p => p.id !== removedId))
-                setDeliveredPackages(prev => prev.filter(p => p.id !== removedId))
-                setCancelledPackages(prev => prev.filter(p => p.id !== removedId))
-                fetchTodayStats()
-              }
-            }
-          )
-
-        const status = await new Promise<string>((resolve) => {
-          channel.subscribe((status) => {
-            resolve(status)
+          setPackages((prev) => {
+            if (prev.some((p) => p.id === newOrder.id)) return prev
+            return [newOrder, ...prev]
           })
-        })
 
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ Restoran Realtime bağlandı')
-          subscription = channel
-          
-          if (reconnectTimer) {
-            clearTimeout(reconnectTimer)
-            reconnectTimer = null
+          if (
+            newOrder.platform === 'web' &&
+            (newOrder.status === 'new_order' || newOrder.status === 'new')
+          ) {
+            playRestaurantAlert()
           }
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-          console.warn(`⚠️ Restoran Realtime bağlantı hatası: ${status}`)
-          
-          reconnectTimer = setTimeout(() => {
-            console.log('🔄 Restoran Realtime yeniden bağlanılıyor...')
-            setupRealtimeWithRetry(retryCount + 1)
-          }, 3000)
-        }
-      } catch (error) {
-        console.error('❌ Restoran Realtime subscription hatası:', error)
-        
-        if (retryCount < 10) {
-          reconnectTimer = setTimeout(() => {
-            console.log(`🔄 Hata sonrası yeniden bağlanılıyor (Deneme: ${retryCount + 1})`)
-            setupRealtimeWithRetry(retryCount + 1)
-          }, 3000)
-        } else {
-          console.error('❌ Maksimum yeniden bağlanma denemesi aşıldı')
-        }
-      }
-    }
 
-    setupRealtimeWithRetry()
+          fetchTodayStats()
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'packages',
+          filter: `restaurant_id=eq.${restaurantId}`,
+        },
+        (payload) => {
+          const updated = payload.new as Package
+          setPackages((prev) =>
+            prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p))
+          )
+          setDeliveredPackages((prev) =>
+            prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p))
+          )
+          setCancelledPackages((prev) =>
+            prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p))
+          )
+          fetchTodayStats()
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'packages',
+          filter: `restaurant_id=eq.${restaurantId}`,
+        },
+        (payload) => {
+          const removedId = (payload.old as Package).id
+          setPackages((prev) => prev.filter((p) => p.id !== removedId))
+          setDeliveredPackages((prev) => prev.filter((p) => p.id !== removedId))
+          setCancelledPackages((prev) => prev.filter((p) => p.id !== removedId))
+          fetchTodayStats()
+        }
+      )
+      .subscribe((status) => {
+        console.log('📡 Restoran Realtime status:', status)
+      })
 
     return () => {
-      if (reconnectTimer) {
-        clearTimeout(reconnectTimer)
-      }
-      if (subscription) {
-        supabase.removeChannel(subscription)
-      }
+      supabase.removeChannel(channel)
     }
   }, [restaurantId])
 

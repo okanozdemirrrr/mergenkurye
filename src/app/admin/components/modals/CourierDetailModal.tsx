@@ -15,12 +15,12 @@ import { useState, useEffect, useCallback } from 'react'
 import { Package, Courier, CourierDebt } from '@/types'
 import { formatTurkishTime, calculateDeliveryDuration } from '@/utils/dateHelpers'
 import {
-  fetchCourierPeriodAccount,
   getBusinessDayDateTimeLocal,
   toDateTimeLocalValue,
   toFilterIso,
   type PeriodAccount,
 } from '@/utils/courierAccount'
+import { fetchCourierLedgerPeriodAccount } from '@/utils/courierLedger'
 import { CourierPaymentSettingsModal } from './CourierPaymentSettingsModal'
 import { supabase } from '@/app/lib/supabase'
 
@@ -102,14 +102,15 @@ export function CourierDetailModal({
     }, [selectedCourierId, courierStartDate, courierEndDate])
 
     const loadPeriodAccount = useCallback(async () => {
-        if (!selectedCourierId || !courierStartDate || !courierEndDate) return
+        if (!selectedCourierId || !courierStartDate || !courierEndDate || !courier) return
         setLoadingPeriodAccount(true)
         try {
-            const data = await fetchCourierPeriodAccount(
+            const data = await fetchCourierLedgerPeriodAccount(
                 supabase,
                 selectedCourierId,
                 courierStartDate,
-                courierEndDate
+                courierEndDate,
+                courier.package_rate ?? 0
             )
             setPeriodAccount(data)
         } catch (err) {
@@ -118,16 +119,17 @@ export function CourierDetailModal({
         } finally {
             setLoadingPeriodAccount(false)
         }
-    }, [selectedCourierId, courierStartDate, courierEndDate])
+    }, [selectedCourierId, courierStartDate, courierEndDate, courier])
 
     useEffect(() => {
+        if (!courier || !show) return
         if (earningsMode && selectedCourierId) fetchUnpaidPackages()
-        else if (selectedCourierId && show) loadPeriodAccount()
-    }, [earningsMode, fetchUnpaidPackages, selectedCourierId, show, loadPeriodAccount])
+        else if (selectedCourierId) loadPeriodAccount()
+    }, [earningsMode, fetchUnpaidPackages, selectedCourierId, show, loadPeriodAccount, courier])
 
     useEffect(() => {
-        if (!earningsMode && selectedCourierId && show) loadPeriodAccount()
-    }, [courierStartDate, courierEndDate, earningsMode, selectedCourierId, show, loadPeriodAccount])
+        if (!earningsMode && selectedCourierId && show && courier) loadPeriodAccount()
+    }, [courierStartDate, courierEndDate, earningsMode, selectedCourierId, show, loadPeriodAccount, courier])
 
     // Toplu ödeme yap
     const handlePayAll = async () => {
@@ -155,6 +157,10 @@ export function CourierDetailModal({
     
     if (!show || !selectedCourierId || !courier) return null
 
+    const openSettlementOrders = selectedCourierOrders.filter(
+        (o) => o.courier_settlement_id == null
+    )
+
     const summary = periodAccount
         ? {
               cashTotal: periodAccount.cash,
@@ -164,13 +170,22 @@ export function CourierDetailModal({
               packageCount: periodAccount.count,
           }
         : {
-              ...calculateCashSummary(selectedCourierOrders),
-              packageCount: selectedCourierOrders.length,
+              ...calculateCashSummary(
+                  openSettlementOrders.length > 0
+                      ? openSettlementOrders
+                      : selectedCourierOrders
+              ),
+              packageCount: openSettlementOrders.length || selectedCourierOrders.length,
           }
-    const packageCount = summary.packageCount ?? selectedCourierOrders.length
+
+    const packageCount = selectedCourierOrders.length
     const packageRate = courier.package_rate || 0
     const courierEarnings = packageRate * packageCount
-    const totalDebt = courierDebts.reduce((sum, d) => sum + (d.remaining_amount || 0), 0)
+    const tahsilatDebt = Number(summary.grandTotal) || 0
+    const personalDebt = courierDebts.reduce(
+        (sum, d) => sum + (d.remaining_amount || 0),
+        0
+    )
 
     return (
         <div
@@ -198,6 +213,7 @@ export function CourierDetailModal({
                                     const { start, end } = getBusinessDayDateTimeLocal()
                                     setCourierStartDate(start)
                                     setCourierEndDate(end)
+                                    void loadPeriodAccount()
                                 }}
                                 className="px-2.5 py-1 bg-slate-800 text-slate-300 rounded text-xs font-medium hover:bg-slate-700 border border-slate-700 transition-colors tracking-tight"
                             >
@@ -436,17 +452,21 @@ export function CourierDetailModal({
                             </div>
                         </div>
 
-                        {/* KART 3: Toplam Borç */}
+                        {/* KART 3: Kasaya tahsilat borcu (mutabakat bekleyen) */}
                         <div className="bg-slate-900 border border-slate-800 rounded-lg p-4">
-                            <div className="text-xs text-slate-500 tracking-tight mb-2">BORÇ / BAKİYE</div>
-                            <div className={`text-2xl font-bold tracking-tight ${totalDebt > 0 ? 'text-rose-500' : 'text-slate-500'}`}>
-                                {totalDebt.toFixed(2)}₺
+                            <div className="text-xs text-slate-500 tracking-tight mb-2">KASAYA BORÇ (TAHSİLAT)</div>
+                            <div className={`text-2xl font-bold tracking-tight ${tahsilatDebt > 0 ? 'text-orange-500' : 'text-slate-500'}`}>
+                                {loadingPeriodAccount
+                                    ? '…'
+                                    : `${tahsilatDebt.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}₺`}
                             </div>
                             <div className="text-xs text-slate-600 mt-1 tracking-tight">
-                                {totalDebt > 0
-                                    ? `${courierDebts.length} bekleyen borç kaydı`
-                                    : 'Borç yok'
-                                }
+                                {tahsilatDebt > 0
+                                    ? `${summary.packageCount} paket · mutabakat bekliyor`
+                                    : 'Bu dönemde açık tahsilat yok'}
+                                {personalDebt > 0
+                                    ? ` · Kişisel borç: ${personalDebt.toFixed(2)}₺`
+                                    : ''}
                             </div>
                         </div>
                     </div>
@@ -645,7 +665,7 @@ export function CourierDetailModal({
                                 </div>
                             </div>
                             <p className="text-[10px] text-slate-500">
-                                settled_at boş paketler · admin gün sonu ile aynı
+                                courier_settlement_id boş paketler · seçili tarih aralığı
                             </p>
                         </div>
                         <div className="px-5 pb-5">

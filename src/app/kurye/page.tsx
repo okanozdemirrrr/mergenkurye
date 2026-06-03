@@ -19,13 +19,13 @@ import { useCourierRealtimeNotifications } from '@/hooks/useCourierRealtimeNotif
 import { useCourierLocationBroadcast } from '@/hooks/useCourierLocationBroadcast'
 import PullToRefresh from '@/components/PullToRefresh'
 import ChangelogModal from '@/components/ChangelogModal'
+import { usePersistedDateRange } from '@/hooks/usePersistedDateRange'
 import {
   fetchCourierDeliveredPackages,
   fetchCourierLifetimeDebt,
-  fetchCourierPeriodAccount,
-  getBusinessDayDateTimeLocal,
   type PaymentTotals,
 } from '@/utils/courierAccount'
+import { fetchCourierLedgerPeriodAccount } from '@/utils/courierLedger'
 
 // ============================================
 // SAMSUN OPERASYON BÖLGESI TANIMLARI
@@ -350,13 +350,16 @@ export default function KuryePage() {
   const [passwordUpdating, setPasswordUpdating] = useState(false)
   const [passwordError, setPasswordError] = useState('')
 
-  const businessDayDefaults = getBusinessDayDateTimeLocal()
-  
-  const [startDate, setStartDate] = useState(businessDayDefaults.start)
-  const [endDate, setEndDate] = useState(businessDayDefaults.end)
-  const [historyStartDate, setHistoryStartDate] = useState(businessDayDefaults.start)
-  const [historyEndDate, setHistoryEndDate] = useState(businessDayDefaults.end)
-
+  const earningsRange = usePersistedDateRange('kurye-earnings-range')
+  const historyRange = usePersistedDateRange('kurye-history-range')
+  const startDate = earningsRange.startDate
+  const endDate = earningsRange.endDate
+  const setStartDate = earningsRange.setStartDate
+  const setEndDate = earningsRange.setEndDate
+  const historyStartDate = historyRange.startDate
+  const historyEndDate = historyRange.endDate
+  const setHistoryStartDate = historyRange.setStartDate
+  const setHistoryEndDate = historyRange.setEndDate
   // SESLİ KOMUT STATE'LERİ
   const [isListening, setIsListening] = useState(false)
   const [voiceCommand, setVoiceCommand] = useState('')
@@ -1434,7 +1437,13 @@ export default function KuryePage() {
     try {
       const [listResult, account] = await Promise.all([
         fetchCourierDeliveredPackages(supabase, courierId, start, end),
-        fetchCourierPeriodAccount(supabase, courierId, start, end),
+        fetchCourierLedgerPeriodAccount(
+          supabase,
+          courierId,
+          start,
+          end,
+          courierPackageRate
+        ),
       ])
 
       if (listResult.error) throw listResult.error
@@ -1505,13 +1514,18 @@ export default function KuryePage() {
     }
   }, [filteredPackages, todayDeliveredPackages, activeTab])
 
-  // Geçmiş sekmesi: iş günü tarihleriyle mutabakat özetini yükle
+  // Geçmiş sekmesi: sekme ilk açılışında yükle (tarih "bugün"e ezilmesin)
+  const historyLoadedRef = useRef(false)
   useEffect(() => {
-    if (!isLoggedIn) return
-    if (activeTab === 'history') {
-      filterPackagesByDateRange(historyStartDate, historyEndDate)
+    if (!isLoggedIn || activeTab !== 'history') {
+      historyLoadedRef.current = false
+      return
     }
-  }, [activeTab, isLoggedIn, historyStartDate, historyEndDate])
+    if (historyLoadedRef.current) return
+    historyLoadedRef.current = true
+    const { start, end } = historyRange.getRange()
+    filterPackagesByDateRange(start, end)
+  }, [activeTab, isLoggedIn])
 
   const handleAcceptPackage = async (packageId: number) => {
     setIsUpdating(prev => new Set(prev).add(packageId))
@@ -2311,8 +2325,10 @@ export default function KuryePage() {
               },
               async (payload) => {
                 console.log('💰 Realtime: Gün sonu mutabakatı güncellendi:', payload)
-                // Kalan borcu yeniden hesapla
                 await fetchUnsettledAmount()
+                if (historyStartDate && historyEndDate) {
+                  await filterPackagesByDateRange(historyStartDate, historyEndDate)
+                }
               }
             )
 
@@ -3109,7 +3125,7 @@ export default function KuryePage() {
             {filteredPackages.length > 0 && (
               <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
                 <p className="text-[10px] text-slate-500 mb-2 text-center">
-                  Mutabakat (settled_at boş) · Liste: tüm teslimler ({filteredPackages.length})
+                  Özet: mutabakat bekleyen · Liste: dönemdeki tüm teslimler ({filteredPackages.length})
                 </p>
                 <div className="grid grid-cols-3 gap-2">
                   <div className="bg-slate-800/50 px-2 py-2 rounded-lg">
@@ -3134,7 +3150,7 @@ export default function KuryePage() {
                       {periodAccount.payableDebt.toFixed(2)}₺
                     </p>
                     <p className="text-[8px] text-orange-300 mt-0.5">
-                      Nakit + Kart + IBAN − dönem mutabakatları (admin gün sonu ile aynı)
+                      Seçili dönemde courier_settlement_id boş paketler (admin ile aynı)
                     </p>
                   </div>
                 </div>
@@ -3300,6 +3316,7 @@ export default function KuryePage() {
                 courierId={selectedCourierId}
                 startDate={startDate}
                 endDate={endDate}
+                packageRate={courierPackageRate}
               />
             )}
 
