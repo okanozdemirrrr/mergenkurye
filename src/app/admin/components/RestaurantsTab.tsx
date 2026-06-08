@@ -325,16 +325,17 @@ export function RestaurantsTab({
                                     : 'bg-slate-100 border-slate-300 opacity-60'
                                     }`}
                             >
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <div className="text-2xl font-bold text-slate-400">
+                                <div className="flex items-center justify-between gap-4 min-w-0">
+                                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                                        <div className="text-2xl font-bold text-slate-400 shrink-0">
                                             #{index + 1}
                                         </div>
-                                        <div>
-                                            <h4 className="font-bold text-lg text-slate-900 flex items-center gap-2">
-                                                🏪 {restaurant.name}
+                                        <div className="flex-1 min-w-0">
+                                            <h4 className="font-bold text-lg text-slate-900 flex items-center gap-2 min-w-0">
+                                                <span className="shrink-0">🏪</span>
+                                                <span className="truncate">{restaurant.name}</span>
                                             </h4>
-                                            <p className="text-sm text-slate-500">
+                                            <p className="text-sm text-slate-500 whitespace-nowrap shrink-0">
                                                 {restaurant.deliveredCount} paket × {restaurant.packageFee}₺
                                             </p>
                                             {restaurant.phone && (
@@ -344,8 +345,8 @@ export function RestaurantsTab({
                                             )}
                                         </div>
                                     </div>
-                                    <div className="text-right flex flex-col items-end gap-2">
-                                        <div className="text-3xl font-black text-red-600">
+                                    <div className="text-right flex flex-col items-end gap-2 shrink-0">
+                                        <div className="text-3xl font-black text-red-600 whitespace-nowrap shrink-0">
                                             {restaurant.debt.toFixed(2)} ₺
                                         </div>
                                         <button
@@ -603,37 +604,37 @@ export function RestaurantsTab({
                                     key={r.id}
                                     className="px-6 py-4 hover:bg-slate-800/50 transition-colors"
                                 >
-                                    <div className="flex items-center justify-between">
+                                    <div className="flex items-center justify-between gap-4 min-w-0">
                                         {/* Sol: Restoran Bilgileri */}
-                                        <div className="flex-1">
+                                        <div className="flex-1 min-w-0">
                                             <button
                                                 onClick={() => onRestaurantClick(r.id)}
-                                                className="text-base font-bold text-slate-200 hover:text-slate-100 transition-colors text-left tracking-tight"
+                                                className="text-base font-bold text-slate-200 hover:text-slate-100 transition-colors text-left tracking-tight truncate block w-full"
                                             >
                                                 {r.name}
                                             </button>
-                                            <p className="text-xs text-slate-600 mt-1 tracking-tight">
+                                            <p className="text-xs text-slate-600 mt-1 tracking-tight whitespace-nowrap shrink-0">
                                                 {r.unpaid_package_count || 0} ödenmemiş paket × {r.package_fee || 0}₺
                                             </p>
                                         </div>
 
                                         {/* Orta: Finansal Metrikler */}
-                                        <div className="flex items-center gap-6 mr-8">
-                                            <div className="text-right">
+                                        <div className="flex items-center gap-6 mr-8 shrink-0">
+                                            <div className="text-right shrink-0">
                                                 <p className="text-xs text-slate-600 tracking-tight">Ödenmemiş Ciro</p>
-                                                <p className="text-sm font-bold text-slate-300 tracking-tight">
+                                                <p className="text-sm font-bold text-slate-300 tracking-tight whitespace-nowrap shrink-0">
                                                     {(r.unpaid_revenue || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
                                                 </p>
                                             </div>
-                                            <div className="text-right">
+                                            <div className="text-right shrink-0">
                                                 <p className="text-xs text-slate-600 tracking-tight">Masraf</p>
-                                                <p className="text-sm font-bold text-rose-400/70 tracking-tight">
+                                                <p className="text-sm font-bold text-rose-400/70 tracking-tight whitespace-nowrap shrink-0">
                                                     {(r.unpaid_cost || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
                                                 </p>
                                             </div>
-                                            <div className="text-right">
+                                            <div className="text-right shrink-0">
                                                 <p className="text-xs text-slate-600 tracking-tight">Özet Bakiye</p>
-                                                <p className={`text-sm font-bold tracking-tight ${
+                                                <p className={`text-sm font-bold tracking-tight whitespace-nowrap shrink-0 ${
                                                     (r.current_balance || 0) === 0 
                                                         ? 'text-emerald-500' 
                                                         : (r.current_balance || 0) > 0 
@@ -784,10 +785,10 @@ export function RestaurantsTab({
                         ) : (
                             restaurants.map(r => (
                                 <div key={r.id} className="bg-slate-50 p-4 rounded-xl border hover:shadow-lg transition-all">
-                                    <div className="flex justify-between items-start mb-3">
+                                    <div className="flex justify-between items-start mb-3 gap-2 min-w-0">
                                         <button
                                             onClick={() => onRestaurantClick(r.id)}
-                                            className="font-bold text-lg text-orange-600 hover:text-orange-800 transition-colors cursor-pointer text-left"
+                                            className="font-bold text-lg text-orange-600 hover:text-orange-800 transition-colors cursor-pointer text-left flex-1 min-w-0 truncate"
                                         >
                                             🏪 {r.name}
                                         </button>
@@ -807,9 +808,9 @@ export function RestaurantsTab({
 
                                         {/* Paket Başı Ücret */}
                                         <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 mt-2">
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-xs text-slate-600">💰 Paket Başı Ücret:</span>
-                                                <span className="font-bold text-orange-600">{r.package_fee || 100}₺</span>
+                                            <div className="flex justify-between items-center gap-2 min-w-0">
+                                                <span className="text-xs text-slate-600 shrink-0">💰 Paket Başı Ücret:</span>
+                                                <span className="font-bold text-orange-600 shrink-0 whitespace-nowrap">{r.package_fee || 100}₺</span>
                                             </div>
                                         </div>
 

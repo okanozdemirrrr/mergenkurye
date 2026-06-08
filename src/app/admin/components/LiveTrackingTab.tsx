@@ -309,7 +309,7 @@ export function LiveTrackingTab({
             {/* CANLI HARİTA + KURYE DURUMLARI - YAN YANA (Desktop) / DİKEY (Mobile) */}
             <div className="flex flex-row w-full gap-4 items-start">
                 {/* Sol kolon — Harita + Canlı Sipariş Takibi */}
-                <div className="flex-1 flex flex-col gap-4 min-w-[500px] w-full">
+                <div className="flex-[1_1_48%] flex flex-col gap-4 min-w-[420px] w-full max-w-[calc(100%-770px)]">
                     <div className="bg-slate-900 shadow-xl rounded-2xl p-2 border border-slate-800 w-full" style={{ position: 'relative', zIndex: 1 }}>
                         {/* Başlık ve İstatistikler - Yatay */}
                         <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
@@ -531,42 +531,42 @@ export function LiveTrackingTab({
 
                 {/* Sağ blok — Durumlar + Rota yapışık */}
                 <div className="flex flex-row gap-4 shrink-0">
-                <div className="w-[320px] shrink-0">
-                    <div className="bg-slate-900 shadow-xl rounded-2xl p-2 sticky top-4 border border-slate-800 w-[320px] shrink-0">
-                        <div className="flex justify-between items-center mb-2">
-                            <h2 className="text-sm font-bold text-white">🚴 Kurye Durumları</h2>
+                <div className="w-[420px] shrink-0">
+                    <div className="bg-slate-900 shadow-xl rounded-2xl p-4 sticky top-4 border border-slate-800 w-[420px] shrink-0">
+                        <div className="flex justify-between items-center mb-3">
+                            <h2 className="text-base font-bold text-white">🚴 Kurye Durumları</h2>
                             <span className="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-sm font-semibold">
                                 ✅ {todayDeliveredCount} bugün
                             </span>
                         </div>
-                        <div className="space-y-2 max-h-[500px] overflow-y-auto overflow-x-auto">
+                        <div className="space-y-3 max-h-[500px] overflow-y-auto overflow-x-auto">
                             {couriers.filter(c => c.is_active).map(c => {
                                 const courierPackages = assignedPackages.filter(pkg => pkg.courier_id === c.id)
 
                                 return (
                                     <div
                                         key={c.id}
-                                        className="p-2 bg-slate-800 rounded-lg border border-slate-700"
+                                        className="p-4 bg-slate-800 rounded-lg border border-slate-700"
                                     >
-                                        <div className="flex justify-between items-center mb-1.5">
-                                            <span className="font-bold text-xs text-white">{c.full_name}</span>
-                                            <div className="text-right">
-                                                <span className="text-[10px] text-green-400 block font-semibold">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <span className="font-bold text-base text-white">{c.full_name}</span>
+                                            <div className="text-right shrink-0">
+                                                <span className="text-sm text-green-400 block font-semibold leading-relaxed">
                                                     📦 {c.todayDeliveryCount || 0} bugün
                                                 </span>
-                                                <span className="text-[10px] text-orange-400 block font-semibold">
+                                                <span className="text-sm text-orange-400 block font-semibold leading-relaxed">
                                                     🚚 {c.activePackageCount || 0} üzerinde
                                                 </span>
                                             </div>
                                         </div>
 
-                                        <div className="mb-1.5">
-                                            {!c.is_active && <span className="text-[9px] bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded font-bold">⚫ AKTİF DEĞİL</span>}
-                                            {c.is_active && <span className="text-[9px] bg-green-900/50 text-green-300 px-1.5 py-0.5 rounded font-bold">🟢 AKTİF</span>}
+                                        <div className="mb-2">
+                                            {!c.is_active && <span className="text-sm bg-slate-700 text-slate-300 px-2 py-0.5 rounded font-bold">⚫ AKTİF DEĞİL</span>}
+                                            {c.is_active && <span className="text-sm bg-green-900/50 text-green-300 px-2 py-0.5 rounded font-bold">🟢 AKTİF</span>}
                                         </div>
 
                                         {courierPackages.length > 0 && (
-                                            <div className="mt-1.5 space-y-1">
+                                            <div className="mt-2 space-y-2">
                                                 {courierPackages.map(pkg => {
                                                     const restoranAdi =
                                                         pkg.restaurant?.name ??
@@ -581,12 +581,12 @@ export function LiveTrackingTab({
                                                         <div
                                                             key={pkg.id}
                                                             onClick={() => setSelectedPackage(pkg)}
-                                                            className="w-full overflow-hidden cursor-pointer hover:bg-slate-700/80 py-1 px-1.5 rounded transition-colors"
+                                                            className="w-full overflow-hidden cursor-pointer hover:bg-slate-700/80 py-2 px-2 rounded transition-colors"
                                                         >
-                                                            <div className="flex flex-col gap-0.5 min-w-0">
-                                                                <div className="flex items-center gap-1.5 min-w-0">
+                                                            <div className="flex flex-col gap-2 min-w-0">
+                                                                <div className="flex items-center gap-2 min-w-0">
                                                                     <span
-                                                                        className={`shrink-0 px-1.5 py-0.5 rounded-full font-semibold text-[10px] ${
+                                                                        className={`shrink-0 px-2 py-0.5 rounded-full font-semibold text-sm ${
                                                                             pkg.status === 'waiting'
                                                                                 ? 'bg-yellow-900/50 text-yellow-300'
                                                                                 : pkg.status === 'assigned'
@@ -604,11 +604,11 @@ export function LiveTrackingTab({
                                                                                 ? '🏃 Alıyor'
                                                                                 : '🚗 Yolda'}
                                                                     </span>
-                                                                    <span className="font-semibold text-orange-400 text-[11px] truncate min-w-0">
+                                                                    <span className="font-semibold text-orange-400 text-sm truncate min-w-0">
                                                                         {restoranAdi}
                                                                     </span>
                                                                 </div>
-                                                                <span className="text-gray-400 text-[11px] truncate block pl-0">
+                                                                <span className="text-gray-400 text-sm leading-relaxed truncate block">
                                                                     {adres}
                                                                 </span>
                                                             </div>
