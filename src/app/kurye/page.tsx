@@ -320,6 +320,7 @@ export default function KuryePage() {
   const [currentPage, setCurrentPage] = useState(1) // Mevcut sayfa
   const [totalPages, setTotalPages] = useState(1) // Toplam sayfa sayısı
   const [unsettledAmount, setUnsettledAmount] = useState(0) // Tüm zamanlar cari borç
+  const [unpaidEarningsAmount, setUnpaidEarningsAmount] = useState(0) // is_courier_earned_paid=false bazlı rozet
   const [periodAccount, setPeriodAccount] = useState<PaymentTotals & { payableDebt: number }>({
     cash: 0,
     card: 0,
@@ -350,12 +351,7 @@ export default function KuryePage() {
   const [passwordUpdating, setPasswordUpdating] = useState(false)
   const [passwordError, setPasswordError] = useState('')
 
-  const earningsRange = usePersistedDateRange('kurye-earnings-range')
   const historyRange = usePersistedDateRange('kurye-history-range')
-  const startDate = earningsRange.startDate
-  const endDate = earningsRange.endDate
-  const setStartDate = earningsRange.setStartDate
-  const setEndDate = earningsRange.setEndDate
   const historyStartDate = historyRange.startDate
   const historyEndDate = historyRange.endDate
   const setHistoryStartDate = historyRange.setStartDate
@@ -383,7 +379,9 @@ export default function KuryePage() {
     await Promise.all([
       fetchPackages(false),
       fetchDeliveredCount(),
-      fetchTodayDeliveredPackages()
+      fetchTodayDeliveredPackages(),
+      fetchUnpaidEarningsBadge(),
+      fetchAccountOpenPackages(),
     ])
   }
 
@@ -665,20 +663,18 @@ export default function KuryePage() {
         .from('packages')
         .select('amount, payment_method, status')
         .eq('delivered_by_courier_id', courierId)  // courier_id yerine delivered_by_courier_id
-        .or('status.eq.delivered,and(status.eq.cancelled,is_chargeable_cancellation.eq.true)')
-        .gte('created_at', todayStart.toISOString())
+        .eq('status', 'delivered')
+        .gte('delivered_at', todayStart.toISOString())
 
       if (error) throw error
 
       if (data) {
         setDeliveredCount(data.length)
         setCashTotal(data.filter(p => p.payment_method === 'cash').reduce((sum, p) => {
-          const amt = p.status === 'cancelled' ? 0 : (p.amount || 0)
-          return sum + amt
+          return sum + (p.amount || 0)
         }, 0))
         setCardTotal(data.filter(p => p.payment_method === 'card').reduce((sum, p) => {
-          const amt = p.status === 'cancelled' ? 0 : (p.amount || 0)
-          return sum + amt
+          return sum + (p.amount || 0)
         }, 0))
       }
     } catch (error: any) {
@@ -697,6 +693,28 @@ export default function KuryePage() {
 
       console.error('❌ İstatistik yüklenemedi:', error)
       setErrorMessage('İstatistikler yüklenemedi: ' + error.message)
+    }
+  }
+
+  // Üst bar "Kazanç" rozeti: is_courier_earned_paid = false paket sayısı * package_rate
+  const fetchUnpaidEarningsBadge = async () => {
+    const courierId = localStorage.getItem(STORAGE_KEYS.COURIER_ID)
+    if (!courierId) return
+
+    try {
+      const { count, error } = await supabase
+        .from('packages')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'delivered')
+        .eq('delivered_by_courier_id', courierId)
+        .or('is_courier_earned_paid.is.null,is_courier_earned_paid.eq.false')
+
+      if (error) throw error
+
+      const pkgCount = count || 0
+      setUnpaidEarningsAmount(pkgCount * (courierPackageRate || 0))
+    } catch (error: any) {
+      console.error('❌ Kazanç rozeti hesaplanamadı:', error)
     }
   }
 
@@ -1469,6 +1487,53 @@ export default function KuryePage() {
     }
   }
 
+  // Hesap sekmesi (tarih filtresiz): açık mutabakat paketleri
+  const fetchAccountOpenPackages = async () => {
+    const courierId = localStorage.getItem(STORAGE_KEYS.COURIER_ID)
+    if (!courierId) return
+
+    try {
+      const { data, error } = await supabase
+        .from('packages')
+        .select('*, restaurants(*)')
+        .eq('status', 'delivered')
+        .eq('delivered_by_courier_id', courierId)
+        .or('is_courier_settled.is.null,is_courier_settled.eq.false')
+        .order('delivered_at', { ascending: false })
+
+      if (error) throw error
+
+      const list = (data || []).map((pkg: any) => ({
+        ...pkg,
+        restaurant: pkg.restaurants,
+      }))
+
+      const cash = list
+        .filter((p: any) => p.payment_method === 'cash')
+        .reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0)
+      const card = list
+        .filter((p: any) => p.payment_method === 'card')
+        .reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0)
+      const iban = list
+        .filter((p: any) => p.payment_method === 'iban')
+        .reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0)
+
+      setFilteredPackages(list)
+      setTotalPages(Math.max(1, Math.ceil(list.length / ITEMS_PER_PAGE)))
+      setCurrentPage(1)
+      setPeriodAccount({
+        cash,
+        card,
+        iban,
+        count: list.length,
+        total: cash + card + iban,
+        payableDebt: cash + card + iban,
+      })
+    } catch (error: any) {
+      console.error('❌ Hesap sekmesi verileri alınamadı:', error)
+    }
+  }
+
   // CARİ HESAP MANTIĞI - Kalan Borç Hesaplama (Admin Paneli ile Aynı)
   const fetchUnsettledAmount = async () => {
     const courierId = localStorage.getItem(STORAGE_KEYS.COURIER_ID)
@@ -1526,6 +1591,16 @@ export default function KuryePage() {
     const { start, end } = historyRange.getRange()
     filterPackagesByDateRange(start, end)
   }, [activeTab, isLoggedIn])
+
+  useEffect(() => {
+    if (!isLoggedIn || activeTab !== 'earnings') return
+    fetchAccountOpenPackages()
+  }, [activeTab, isLoggedIn, courierPackageRate])
+
+  useEffect(() => {
+    if (!isLoggedIn || !selectedCourierId) return
+    fetchUnpaidEarningsBadge()
+  }, [courierPackageRate, isLoggedIn, selectedCourierId])
 
   const handleAcceptPackage = async (packageId: number) => {
     setIsUpdating(prev => new Set(prev).add(packageId))
@@ -1588,7 +1663,9 @@ export default function KuryePage() {
       // İş Mantığı (YENİ KURAL):
       // ✅ Ücretli İptal  → SADECE status = 'on_the_way' (Paket Yolda)
       // 🆓 Ücretsiz İptal → new_order, getting_ready, ready, assigned, picking_up (kim iptal ederse etsin)
-      const isChargeable = cancellingPackage.status === 'on_the_way'
+      const isChargeable = Boolean(
+        cancellingPackage.courier_id || cancellingPackage.assigned_at
+      )
 
       const { error } = await supabase
         .from('packages')
@@ -2078,12 +2155,14 @@ export default function KuryePage() {
       Promise.all([
         fetchPackages(true),
         fetchDailyStats(),
-        fetchCourierStatus()
+        fetchCourierStatus(),
+        fetchUnpaidEarningsBadge(),
       ]).then(() => {
         // İkincil yüklemeler - daha az kritik
         fetchTodayDeliveredPackages()
         fetchLeaderboard()
         fetchUnsettledAmount()
+        fetchAccountOpenPackages()
       })
 
       // İlk konum güncellemesi - HEMEN yap
@@ -2124,7 +2203,9 @@ export default function KuryePage() {
           // ⚡ OPTİMİZE: Sadece gerekli fonksiyonları çağır
           Promise.all([
             fetchDailyStats(),
-            fetchLeaderboard()
+            fetchLeaderboard(),
+            fetchUnpaidEarningsBadge(),
+            fetchAccountOpenPackages(),
           ])
           return
         }
@@ -2174,7 +2255,9 @@ export default function KuryePage() {
         // State'i güncelle - ⚡ OPTİMİZE: Sadece gerekli fonksiyonları çağır
         Promise.all([
           fetchPackages(false),
-          fetchDailyStats()
+          fetchDailyStats(),
+          fetchUnpaidEarningsBadge(),
+          fetchAccountOpenPackages(),
         ]).then(() => {
           // İkincil güncellemeler
           if (isNewAssignment) {
@@ -2633,10 +2716,7 @@ export default function KuryePage() {
                 <div className="bg-gradient-to-r from-green-900 to-emerald-900 px-2 py-1 rounded border border-green-700 flex-shrink-0">
                   <p className="text-[10px] text-green-300">💰 Kazanç</p>
                   <p className="text-sm font-bold text-green-100">
-                    {courierPaymentType === 'saatlik' 
-                      ? `${(courierPackageRate || 0) * deliveredCount}₺`
-                      : `${(courierPackageRate || 0) * deliveredCount}₺`
-                    }
+                    {unpaidEarningsAmount.toFixed(0)}₺
                   </p>
                 </div>
               </div>
@@ -3279,43 +3359,10 @@ export default function KuryePage() {
         {/* VERİLECEK HESAP SEKMESİ */}
         {activeTab === 'earnings' && (
           <div className="space-y-2 sm:space-y-3">
-            {/* Tarih Seçici - Merkeze Hizalı */}
-            <div className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-800">
-              <h3 className="text-sm font-bold text-white mb-3 text-center">Tarih Aralığı Seçin (İş Günü: 05:00 - 04:59)</h3>
-              <div className="flex gap-2 items-end">
-                <div className="flex-1">
-                  <label className="text-xs text-slate-400 mb-1 block">Başlangıç</label>
-                  <input
-                    type="datetime-local"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-xs text-white focus:border-blue-500 outline-none"
-                  />
-                </div>
-                <div className="flex-1">
-                  <label className="text-xs text-slate-400 mb-1 block">Bitiş</label>
-                  <input
-                    type="datetime-local"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-xs text-white focus:border-blue-500 outline-none"
-                  />
-                </div>
-                <button
-                  onClick={() => filterPackagesByDateRange(startDate, endDate)}
-                  className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors"
-                >
-                  Göster
-                </button>
-              </div>
-            </div>
-
             {/* Özet Bilgiler - Realtime Kalan Borç ile */}
             {selectedCourierId && (
               <CourierEarningsStats
                 courierId={selectedCourierId}
-                startDate={startDate}
-                endDate={endDate}
                 packageRate={courierPackageRate}
               />
             )}

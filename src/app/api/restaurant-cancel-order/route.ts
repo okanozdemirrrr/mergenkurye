@@ -219,18 +219,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // ADIM 5: Ücretli mi Ücretsiz mi İptal? (İş Mantığı Kontrolü)
-    // KURAL (YENİ): Sadece paketin durumu 'on_the_way' (Yolda) ise Ücretli İptal.
-    // 'picking_up' (Alınıyor) dahil diğer tüm durumlar ücretsiz.
-    const isChargeableCancellation = pkg.status === 'on_the_way'
+    // ADIM 5: Ücretli mi Ücretsiz mi İptal? (Tek kural)
+    // Kurye atandıysa (courier_id veya assigned_at) ücretli iptal.
+    const isChargeableCancellation = Boolean(pkg.courier_id || pkg.assigned_at)
 
     console.log('🔍 İptal Analizi (API Route):', {
       packageId: pkg.id,
       currentStatus: pkg.status,
       isChargeableCancellation,
       reason: isChargeableCancellation
-        ? '💰 Ücretli İptal (Kurye yolda)'
-        : '🆓 Ücretsiz İptal (Kurye henüz yola çıkmadı)'
+        ? '💰 Ücretli İptal (Kurye atanmış)'
+        : '🆓 Ücretsiz İptal (Kurye atanmamış)'
     })
 
     // ADIM 6: Paketi iptal et

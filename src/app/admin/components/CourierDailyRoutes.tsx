@@ -17,6 +17,7 @@ export type DailyRoutePackage = {
   order_number: string | null
   delivery_address: string
   delivered_by_courier_id: string | null
+  delivered_at: string | null
   content: string | null
 }
 
@@ -43,7 +44,7 @@ export function CourierDailyRoutes({ couriers }: CourierDailyRoutesProps) {
       const { data, error } = await supabase
         .from('packages')
         .select(
-          'id, order_number, delivery_address, delivered_by_courier_id, content'
+          'id, order_number, delivery_address, delivered_by_courier_id, delivered_at, content'
         )
         .eq('status', 'delivered')
         .gte('delivered_at', startIso)
@@ -227,16 +228,24 @@ export function CourierDailyRoutes({ couriers }: CourierDailyRoutesProps) {
                       open ? 'bg-slate-800/40' : ''
                     }`}
                   >
-                    <div className="flex items-start gap-2">
+                    <div className="flex flex-row items-start gap-2 w-full">
                       <span
-                        className={`shrink-0 text-xs font-bold ${
+                        className={`text-orange-500 font-medium shrink-0 ${
                           open ? 'text-orange-400' : 'text-orange-500'
                         }`}
                       >
                         {code}
                       </span>
-                      <span className="text-xs text-slate-300 leading-snug flex-1 line-clamp-2">
+                      <span className="text-sm text-gray-300 flex-1 line-clamp-2">
                         {pkg.delivery_address || '—'}
+                      </span>
+                      <span className="text-xs text-slate-500 shrink-0 mt-0.5">
+                        {pkg.delivered_at
+                          ? new Date(pkg.delivered_at).toLocaleTimeString('tr-TR', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                          : '--:--'}
                       </span>
                       <span className="text-slate-600 text-[10px] shrink-0">
                         {open ? '▲' : '▼'}

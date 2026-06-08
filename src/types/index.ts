@@ -52,6 +52,7 @@ export interface Package {
     picked_up_at?: string
     delivered_at?: string
     settled_at?: string | null
+    courier_settled_at?: string | null
     restaurant_settled_at?: string | null
     courier_name?: string
     cancelled_at?: string | null
@@ -62,6 +63,9 @@ export interface Package {
     delivered_by_courier_id?: string | null
     is_paid_to_courier?: boolean
     courier_settlement_id?: string | null
+    courier_tahsilat_archived_at?: string | null
+    is_courier_settled?: boolean
+    is_courier_earned_paid?: boolean
     is_paid_to_restaurant?: boolean
     is_chargeable_cancellation?: boolean
 }

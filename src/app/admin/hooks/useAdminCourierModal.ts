@@ -9,7 +9,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/app/lib/supabase'
 import { Package, CourierDebt } from '@/types'
-import { handleEndOfDay as handleEndOfDayService, handlePayDebt as handlePayDebtService } from '@/services/courierService'
 import { usePersistedDateRange } from '@/hooks/usePersistedDateRange'
 import { getBusinessDayDateTimeLocal, toFilterIso } from '@/utils/courierAccount'
 
@@ -91,15 +90,8 @@ export function useAdminCourierModal({
   const fetchCourierDebts = async (id: string) => {
     setLoadingDebts(true)
     try {
-      const { data, error } = await supabase
-        .from('courier_debts')
-        .select('*')
-        .eq('courier_id', id)
-        .eq('status', 'pending')
-        .order('debt_date', { ascending: true })
-
-      if (error) throw error
-      setCourierDebts(data || [])
+      console.warn('[ledger] courier_debts devre dışı. Kurye borcu courier_settlements üzerinden takip edilir.')
+      setCourierDebts([])
     } catch (error: any) {
       console.error('Borçlar yüklenemedi:', error)
       setCourierDebts([])
@@ -110,50 +102,18 @@ export function useAdminCourierModal({
 
   // Handle End of Day - ORİJİNAL MANTIK
   const handleEndOfDay = async (calculateCashSummary: (orders: Package[]) => { cashTotal: number; cardTotal: number; grandTotal: number }) => {
-    if (!courierId) return
-    const amount = parseFloat(endOfDayAmount)
-    if (isNaN(amount)) return
-
-    setEndOfDayProcessing(true)
-    const summary = calculateCashSummary(selectedCourierOrders)
-
-    const result = await handleEndOfDayService(courierId, {
-      dailyCashTotal: summary.cashTotal,
-      amountReceived: amount,
-      oldDebts: courierDebts
-    })
-
-    if (result.success) {
-      setSuccessMessage('Gün sonu başarıyla alındı')
-      setShowEndOfDayModal(false)
-      setEndOfDayAmount('')
-      fetchCouriers()
-      fetchCourierDebts(courierId)
-      fetchCourierOrders(courierId)
-    } else {
-      setErrorMessage('Gün sonu alınırken hata oluştu')
-    }
-    setEndOfDayProcessing(false)
+    void calculateCashSummary
+    setErrorMessage('Legacy gün sonu (courier_debts) devre dışı. Yeni akış: Ledger mutabakatı.')
+    setTimeout(() => setErrorMessage(''), 4000)
   }
 
   // Handle Pay Debt - ORİJİNAL MANTIK
   const handlePayDebt = async () => {
     if (!courierId) return
-    const amount = parseFloat(payDebtAmount)
-    if (isNaN(amount)) return
-
+    void payDebtAmount
     setPayDebtProcessing(true)
-    const result = await handlePayDebtService(courierId, amount, courierDebts)
-
-    if (result.success) {
-      setSuccessMessage('Borç ödemesi başarıyla kaydedildi')
-      setShowPayDebtModal(false)
-      setPayDebtAmount('')
-      fetchCouriers()
-      fetchCourierDebts(courierId)
-    } else {
-      setErrorMessage('Borç ödenirken hata oluştu')
-    }
+    setErrorMessage('Legacy borç ödeme (courier_debts) devre dışı. Kurye borcu yalnızca ledger üzerinden takip edilir.')
+    setTimeout(() => setErrorMessage(''), 4000)
     setPayDebtProcessing(false)
   }
 

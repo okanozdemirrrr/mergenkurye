@@ -62,7 +62,7 @@ BEGIN
     UPDATE packages
     SET
         is_paid_to_restaurant = true,
-        settled_at            = NOW()
+        restaurant_settled_at = NOW()
     WHERE id = ANY(v_affected_ids);
 
     -- Ödeme makbuzu kaydet (audit log)

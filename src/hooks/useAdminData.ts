@@ -341,21 +341,8 @@ export function useAdminData(isLoggedIn: boolean): UseAdminDataReturn {
 
   const fetchCourierDebtsTotal = useCallback(async (courierIds: string[]) => {
     try {
-      const { data, error } = await supabase
-        .from('courier_debts')
-        .select('courier_id, remaining_amount')
-        .eq('status', 'pending')
-        .in('courier_id', courierIds)
-
-      if (error) throw error
-
+      void courierIds
       const debts: Record<string, number> = {}
-      data?.forEach((debt) => { 
-        if (debt.courier_id) {
-          debts[debt.courier_id] = (debts[debt.courier_id] || 0) + debt.remaining_amount
-        }
-      })
-
       setCouriers(prev => prev.map(c => ({ 
         ...c, 
         totalDebt: debts[c.id] || 0 

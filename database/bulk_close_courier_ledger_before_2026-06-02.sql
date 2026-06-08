@@ -68,7 +68,7 @@ ins AS (
 UPDATE packages p
 SET
   courier_settlement_id = ins.id,
-  settled_at = TIMESTAMPTZ '2026-06-02 05:00:00+03'
+  courier_settled_at = TIMESTAMPTZ '2026-06-02 05:00:00+03'
 FROM ins
 WHERE p.delivered_by_courier_id = ins.courier_id
   AND p.status = 'delivered'

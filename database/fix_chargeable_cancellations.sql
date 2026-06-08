@@ -3,20 +3,22 @@
 -- ============================================
 
 -- 1. Mevcut iptal edilmiş siparişleri güncelle
--- Eğer kurye paketi almışsa (picked_up_at veya courier_id var) → ücretli iptal
+-- Tek kural: Kurye atandıysa (assigned_at veya courier_id var) → ücretli iptal
 UPDATE packages
 SET is_chargeable_cancellation = true
 WHERE status = 'cancelled'
   AND is_chargeable_cancellation = false  -- Sadece false olanları güncelle
-  AND (picked_up_at IS NOT NULL OR courier_id IS NOT NULL);  -- Kurye paketi almış
+  AND (assigned_at IS NOT NULL OR courier_id IS NOT NULL);  -- Kurye atandı
 
 -- 2. Trigger fonksiyonu oluştur
 CREATE OR REPLACE FUNCTION set_chargeable_cancellation()
 RETURNS TRIGGER AS $$
 BEGIN
-    -- Eğer sipariş iptal ediliyorsa ve kurye paketi almışsa
-    IF NEW.status = 'cancelled' AND (NEW.picked_up_at IS NOT NULL OR NEW.courier_id IS NOT NULL) THEN
-        NEW.is_chargeable_cancellation := true;
+    -- Eğer sipariş iptal ediliyorsa ve kurye atanmışsa ücretli say
+    IF NEW.status = 'cancelled' THEN
+        NEW.is_chargeable_cancellation :=
+            (COALESCE(OLD.courier_id, NEW.courier_id) IS NOT NULL)
+            OR (COALESCE(OLD.assigned_at, NEW.assigned_at) IS NOT NULL);
     END IF;
     
     RETURN NEW;

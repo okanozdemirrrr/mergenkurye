@@ -6,19 +6,14 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/app/lib/supabase'
-import { fetchCourierLedgerPeriodAccount } from '@/utils/courierLedger'
 
 interface CourierEarningsStatsProps {
   courierId: string
-  startDate: string
-  endDate: string
   packageRate?: number
 }
 
 export function CourierEarningsStats({
   courierId,
-  startDate,
-  endDate,
   packageRate = 0,
 }: CourierEarningsStatsProps) {
   const [account, setAccount] = useState({
@@ -31,29 +26,43 @@ export function CourierEarningsStats({
   const [loading, setLoading] = useState(true)
 
   const refresh = useCallback(async () => {
-    if (!courierId || !startDate || !endDate) return
+    if (!courierId) return
     setLoading(true)
     try {
-      const data = await fetchCourierLedgerPeriodAccount(
-        supabase,
-        courierId,
-        startDate,
-        endDate,
-        packageRate
-      )
+      const { data, error } = await supabase
+        .from('packages')
+        .select('amount, payment_method')
+        .eq('status', 'delivered')
+        .eq('delivered_by_courier_id', courierId)
+        .or('is_courier_settled.is.null,is_courier_settled.eq.false')
+
+      if (error) throw error
+
+      const list = data || []
+      const cash = list
+        .filter((p) => p.payment_method === 'cash')
+        .reduce((sum, p) => sum + Number(p.amount || 0), 0)
+      const card = list
+        .filter((p) => p.payment_method === 'card')
+        .reduce((sum, p) => sum + Number(p.amount || 0), 0)
+      const iban = list
+        .filter((p) => p.payment_method === 'iban')
+        .reduce((sum, p) => sum + Number(p.amount || 0), 0)
+      const payableDebt = cash + card + iban
+
       setAccount({
-        cash: data.cash,
-        card: data.card,
-        iban: data.iban,
-        count: data.count,
-        payableDebt: data.payableDebt,
+        cash,
+        card,
+        iban,
+        count: list.length,
+        payableDebt,
       })
     } catch (error) {
       console.error('❌ Dönem özeti hesaplanamadı:', error)
     } finally {
       setLoading(false)
     }
-  }, [courierId, startDate, endDate, packageRate])
+  }, [courierId, packageRate])
 
   useEffect(() => {
     refresh()

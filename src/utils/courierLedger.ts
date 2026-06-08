@@ -47,7 +47,7 @@ export function fetchCourierOpenLedgerPackages(
     .select(select)
     .eq('status', 'delivered')
     .eq('delivered_by_courier_id', courierId)
-    .is('courier_settlement_id', null)
+    .or('is_courier_settled.is.null,is_courier_settled.eq.false')
     .order('delivered_at', { ascending: false })
 }
 
@@ -62,16 +62,30 @@ export function fetchCourierOpenLedgerPackagesInRange(
   if (!courierId) {
     throw new Error('[courierLedger] courierId eksik')
   }
-  const { startIso, endIso } = resolveFilterUtcRange(startDate, endDate)
+  return supabase
+    .from('packages')
+    .select(select)
+    .eq('status', 'delivered')
+    .eq('delivered_by_courier_id', courierId)
+    .or('is_courier_settled.is.null,is_courier_settled.eq.false')
+    .order('delivered_at', { ascending: false })
+}
+
+export function fetchCourierUnpaidEarningsPackages(
+  supabase: SupabaseClient,
+  courierId: string,
+  select = 'id, amount, payment_method, status, is_chargeable_cancellation, delivered_at, order_number'
+) {
+  if (!courierId) {
+    throw new Error('[courierLedger] courierId eksik')
+  }
 
   return supabase
     .from('packages')
     .select(select)
     .eq('status', 'delivered')
     .eq('delivered_by_courier_id', courierId)
-    .is('courier_settlement_id', null)
-    .gte('delivered_at', startIso)
-    .lte('delivered_at', endIso)
+    .or('is_courier_earned_paid.is.null,is_courier_earned_paid.eq.false')
     .order('delivered_at', { ascending: false })
 }
 
@@ -112,11 +126,12 @@ export async function fetchCourierLedgerPeriodAccount(
   endDate: string,
   packageRate: number
 ): Promise<LedgerAccount> {
-  const { data: packages, error } = await fetchCourierOpenLedgerPackagesInRange(
+  void startDate
+  void endDate
+
+  const { data: packages, error } = await fetchCourierOpenLedgerPackages(
     supabase,
     courierId,
-    startDate,
-    endDate,
     'amount, payment_method, status, is_chargeable_cancellation'
   )
 
@@ -130,8 +145,26 @@ export async function fetchCourierLedgerPeriodAccount(
     throw new Error('[courierLedger] packages yanıtı dizi değil')
   }
 
+  const { data: earningsPackages, error: earningsError } =
+    await fetchCourierUnpaidEarningsPackages(
+      supabase,
+      courierId,
+      'amount, payment_method, status, is_chargeable_cancellation'
+    )
+  if (earningsError) {
+    throw new Error(
+      `[courierLedger] Hakediş paketleri okunamadı: ${earningsError.message}`
+    )
+  }
+  if (!Array.isArray(earningsPackages)) {
+    throw new Error('[courierLedger] earningsPackages yanıtı dizi değil')
+  }
+
   const collection = calculateCourierCollectionTotals(packages as PackageLike[])
-  const earnings = calculateCourierEarnings(packages as PackageLike[], packageRate)
+  const earnings = calculateCourierEarnings(
+    earningsPackages as PackageLike[],
+    packageRate
+  )
 
   return {
     ...collection,
@@ -169,115 +202,45 @@ export async function saveCourierSettlementLedger(
   const usePeriod =
     Boolean(scope?.startDate?.trim()) && Boolean(scope?.endDate?.trim())
 
-  const openQuery = usePeriod
-    ? await fetchCourierOpenLedgerPackagesInRange(
-        supabase,
-        courierId,
-        scope!.startDate!,
-        scope!.endDate!,
-        'id'
-      )
-    : await fetchCourierOpenLedgerPackages(supabase, courierId, 'id')
+  const periodRange = usePeriod
+    ? resolveFilterUtcRange(scope!.startDate!, scope!.endDate!)
+    : null
 
-  if (openQuery.error) {
-    throw new Error(
-      `[courierLedger] Açık paket sayısı alınamadı: ${openQuery.error.message}`
-    )
-  }
-  const openCount = openQuery.data?.length ?? 0
-  if (openCount === 0) {
-    throw new Error(
-      usePeriod
-        ? '[courierLedger] Seçili dönemde mutabakat için açık paket yok'
-        : '[courierLedger] Mutabakat için açık paket yok'
-    )
-  }
-
-  const insertBody = {
-    courier_id: courierId,
-    amount_paid: received,
-    received_amount: received,
-    total_cash: payload.total_cash,
-    total_card: payload.total_card,
-    total_iban: payload.total_iban,
-    total_earned: payload.total_earned,
-    remaining_debt: payload.remaining_debt,
-    notes: payload.notes ?? null,
-    created_by: payload.created_by ?? 'admin',
-    start_date: payload.start_date ?? new Date().toISOString().split('T')[0],
-    end_date: payload.end_date ?? new Date().toISOString().split('T')[0],
-  }
-
-  let settlementId: string | null = null
-
-  const fullInsert = await supabase
-    .from('courier_settlements')
-    .insert([insertBody])
-    .select('id')
-    .single()
-
-  if (fullInsert.error) {
-    const minimal = await supabase
-      .from('courier_settlements')
-      .insert([
-        {
-          courier_id: courierId,
-          amount_paid: received,
-          start_date: insertBody.start_date,
-          end_date: insertBody.end_date,
-          notes: insertBody.notes,
-          created_by: insertBody.created_by,
-        },
-      ])
-      .select('id')
-      .single()
-
-    if (minimal.error) {
-      throw new Error(
-        `[courierLedger] Mutabakat kaydı oluşturulamadı: ${minimal.error.message}`
-      )
+  const { data, error } = await supabase.rpc(
+    'save_courier_settlement_transactional',
+    {
+      p_courier_id: courierId,
+      p_received_amount: received,
+      p_total_cash: payload.total_cash,
+      p_total_card: payload.total_card,
+      p_total_iban: payload.total_iban,
+      p_total_earned: payload.total_earned,
+      p_remaining_debt: payload.remaining_debt,
+      p_notes: payload.notes ?? null,
+      p_created_by: payload.created_by ?? 'admin',
+      p_start_date:
+        payload.start_date ?? new Date().toISOString().split('T')[0],
+      p_end_date: payload.end_date ?? new Date().toISOString().split('T')[0],
+      p_scope_start: periodRange?.startIso ?? null,
+      p_scope_end: periodRange?.endIso ?? null,
     }
-    if (!minimal.data?.id) {
-      throw new Error('[courierLedger] Mutabakat id dönmedi (minimal insert)')
-    }
-    settlementId = minimal.data.id
-  } else {
-    if (!fullInsert.data?.id) {
-      throw new Error('[courierLedger] Mutabakat id dönmedi')
-    }
-    settlementId = fullInsert.data.id
-  }
+  )
 
-  let updateQuery = supabase
-    .from('packages')
-    .update({ courier_settlement_id: settlementId })
-    .eq('status', 'delivered')
-    .eq('delivered_by_courier_id', courierId)
-    .is('courier_settlement_id', null)
-
-  if (usePeriod) {
-    const { startIso, endIso } = resolveFilterUtcRange(
-      scope!.startDate!,
-      scope!.endDate!
-    )
-    updateQuery = updateQuery
-      .gte('delivered_at', startIso)
-      .lte('delivered_at', endIso)
-  }
-
-  const { data: marked, error: updateError } = await updateQuery.select('id')
-
-  if (updateError) {
+  if (error) {
     throw new Error(
-      `Makbuz oluşturuldu (id: ${settlementId}) ama paketler işaretlenemedi! ${updateError.message}`
+      `[courierLedger] Mutabakat transaction RPC başarısız: ${error.message}`
     )
   }
 
-  const packagesMarked = marked?.length ?? 0
-  if (packagesMarked === 0) {
-    throw new Error(
-      `Makbuz oluşturuldu (id: ${settlementId}) ama hiçbir paket işaretlenemedi! Açık paket vardı: ${openCount}`
-    )
+  const row = Array.isArray(data) ? data[0] : data
+  const settlementId = row?.settlement_id as string | undefined
+  const packagesMarked = Number(row?.packages_marked ?? 0)
+
+  if (!settlementId) {
+    throw new Error('[courierLedger] RPC settlement_id dönmedi')
+  }
+  if (!Number.isFinite(packagesMarked) || packagesMarked <= 0) {
+    throw new Error('[courierLedger] RPC paket işaretleme sonucu geçersiz')
   }
 
   return { settlementId, packagesMarked }

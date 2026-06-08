@@ -182,14 +182,8 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
       // Her kurye için borç ve teslimat bilgilerini çek
       const couriersWithData = await Promise.all(
         (data || []).map(async (courier) => {
-          // Bekleyen borçları çek
-          const { data: debts } = await supabase
-            .from('courier_debts')
-            .select('remaining_amount')
-            .eq('courier_id', courier.id)
-            .eq('status', 'pending')
-
-          const totalDebt = (debts || []).reduce((sum, debt) => sum + (debt.remaining_amount || 0), 0)
+          // Legacy courier_debts devre dışı. Tek kaynak ledger.
+          const totalDebt = 0
 
           // Bugün teslim edilen paketleri çek (delivered + ücretli iptaller)
           const { data: todayDeliveries } = await supabase
@@ -309,7 +303,6 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     // 🔥 ÇELİK GİBİ REALTIME BAĞLANTI - SESSIZ YENİDEN BAĞLANMA
     let packagesChannel: any = null
     let couriersChannel: any = null
-    let courierDebtsChannel: any = null
     let reconnectTimers: NodeJS.Timeout[] = []
 
     const setupRealtimeWithRetry = async (
@@ -448,14 +441,6 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
       }
     }).then(channel => { couriersChannel = channel })
 
-    // ⚡ REALTIME OPTİMİZASYONU: Borç değişikliklerinde sadece ilgili kurye güncelle
-    setupRealtimeWithRetry('courier-debts-changes', 'courier_debts', (payload: any) => {
-      console.log('💰 Realtime debt event:', payload.eventType)
-      // Borç değişikliğinde sadece ilgili kuryenin debt bilgisini güncelle
-      // Full refetch yerine targeted update yapılabilir ama şimdilik hafif
-      fetchCouriers()
-    }).then(channel => { courierDebtsChannel = channel })
-
     // ⚡ POLLING OPTİMİZASYONU: 30 saniye yerine 60 saniye
     const refreshInterval = setInterval(() => {
       fetchPackages()
@@ -472,8 +457,6 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
       // Kanalları temizle
       if (packagesChannel) supabase.removeChannel(packagesChannel)
       if (couriersChannel) supabase.removeChannel(couriersChannel)
-      if (courierDebtsChannel) supabase.removeChannel(courierDebtsChannel)
-      
       clearInterval(refreshInterval)
     }
   }, [])

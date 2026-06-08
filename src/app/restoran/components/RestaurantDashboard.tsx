@@ -299,66 +299,38 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
   }, [])
 
   const fetchTodayStats = useCallback(async () => {
-    // 📌 VERİTABANI STATÜ AYARLARI (Gerektiğinde buradan manuel güncelleyebilirsiniz)
-    const CHARGED_CANCEL_STATUS = 'cancelled' // Ücretli iptal için status değeri
-    const IS_CHARGEABLE_COLUMN = 'is_chargeable_cancellation' // Ücretli olduğunu belirten boolean kolon
-
     try {
       const todayStart = new Date()
       todayStart.setHours(0, 0, 0, 0)
-      const todayStr = todayStart.toISOString()
+      const todayEnd = new Date()
+      todayEnd.setHours(23, 59, 59, 999)
 
-      // Restoran bilgisini al (fallback için)
-      const { data: restaurantData, error: restaurantError } = await supabase
-        .from('restaurants')
-        .select('package_fee')
-        .eq('id', restaurantId)
-        .single()
-
-      if (restaurantError) throw restaurantError
-
-      // Hem teslim edilen (bugün teslim edilenler) hem de ücretli iptal edilen (bugün oluşturulanlar) paketleri çek
-      const { data, error } = await supabase
-        .from('packages')
-        .select(`amount, applied_price, status, ${IS_CHARGEABLE_COLUMN}`)
-        .eq('restaurant_id', restaurantId)
-        .or(`and(status.eq.delivered,delivered_at.gte.${todayStr}),and(status.eq.${CHARGED_CANCEL_STATUS},${IS_CHARGEABLE_COLUMN}.eq.true,created_at.gte.${todayStr})`)
+      const { data: rpcData, error } = await supabase.rpc(
+        'get_restaurant_period_financials',
+        {
+          p_restaurant_id: restaurantId,
+          p_start_date: todayStart.toISOString(),
+          p_end_date: todayEnd.toISOString(),
+        }
+      )
 
       if (error) throw error
 
-      // 🎯 DÜZELTME: "Teslim Edildi" VEYA "Ücretli İptal" olan paketlerin TOPLAM sayısı
-      const packageCount = data?.length || 0
-      
-      // Toplam Ciro: Her iki statünün de toplam amount değeri
-      const totalRevenue = data?.reduce((sum, pkg) => sum + (pkg.amount || 0), 0) || 0
-      
-      // Toplam ücretlendirilen paket sayısı (Yukarıdakiyle aynı)
-      const chargeableCount = packageCount
-      
-      // Toplam Masraf (Paket Masrafı): Hem teslim edilenler hem de ücretlendirilen iptaller
-      const fallbackPrice = restaurantData?.package_fee || PACKAGE_FEE
-      const calculatedTotalCost = data?.reduce((sum, pkg) => {
-        const price = pkg.applied_price ?? fallbackPrice
-        return sum + price
-      }, 0) || 0
+      const stats = rpcData as {
+        unpaid_package_count?: number
+        unpaid_cost?: number
+        unpaid_revenue?: number
+        net_payable?: number
+      } | null
 
-      console.log('📊 fetchTodayStats DEBUG:', {
-        restaurantId,
-        todayStart: todayStr,
-        packageCount,
-        chargeableCount,
-        totalRevenue,
-        fallbackPrice,
-        calculatedTotalCost,
-        packages: data,
-        restaurantPackageFee: restaurantData?.package_fee
-      })
-      
-      const netRevenue = totalRevenue - calculatedTotalCost
+      const packageCount = Number(stats?.unpaid_package_count ?? 0)
+      const totalRevenue = Number(stats?.unpaid_revenue ?? 0)
+      const calculatedTotalCost = Number(stats?.unpaid_cost ?? 0)
+      const netRevenue = Number(stats?.net_payable ?? 0)
 
       setTodayStats({
         packageCount,
-        chargeableCount,
+        chargeableCount: packageCount,
         packageFee: calculatedTotalCost,
         totalRevenue,
         netRevenue,

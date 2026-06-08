@@ -193,7 +193,9 @@ BEGIN
     v_net_amount := v_total_revenue - v_total_cost;
 
     UPDATE packages
-    SET is_paid_to_restaurant = true, settled_at = NOW()
+    SET
+      is_paid_to_restaurant = true,
+      restaurant_settled_at = NOW()
     WHERE id = ANY(v_affected_ids);
 
     INSERT INTO restaurant_payment_transactions (

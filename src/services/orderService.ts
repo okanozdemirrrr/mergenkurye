@@ -30,16 +30,17 @@ export async function cancelOrder(packageId: number, details: string = 'Sipariş
         // 1. Mevcut sipariş durumunu kontrol et
         const { data: packageData, error: fetchError } = await supabase
             .from('packages')
-            .select('status, picked_up_at, courier_id')
+            .select('status, assigned_at, picked_up_at, courier_id')
             .eq('id', packageId)
             .single()
 
         if (fetchError) throw fetchError
 
-        // 2. Ücretli iptal mi kontrol et
-        // KURAL (YENİ): Sadece paketin durumu 'on_the_way' (Yolda) ise Ücretli İptal.
-        // 'picking_up' (Alınıyor) dahil diğer tüm durumlar ücretsiz.
-        const isChargeableCancellation = packageData.status === 'on_the_way'
+        // 2. Ücretli iptal tek kural:
+        // Kurye pakete atanmışsa (courier_id veya assigned_at) ücretli iptal.
+        const isChargeableCancellation = Boolean(
+            packageData.courier_id || packageData.assigned_at
+        )
 
         console.log('🔍 İptal Analizi:', {
             packageId,
@@ -47,9 +48,9 @@ export async function cancelOrder(packageId: number, details: string = 'Sipariş
             courierId: packageData.courier_id,
             pickedUpAt: packageData.picked_up_at,
             isChargeableCancellation,
-            reason: isChargeableCancellation 
-                ? '💰 Ücretli İptal (Kurye paketi aldı/yola çıktı)' 
-                : '🆓 Ücretsiz İptal (Kurye paketi almadı veya atanmadı)'
+            reason: isChargeableCancellation
+                ? '💰 Ücretli İptal (Kurye atanmış)'
+                : '🆓 Ücretsiz İptal (Kurye atanmamış)'
         })
 
         // 3. İptal işlemini gerçekleştir

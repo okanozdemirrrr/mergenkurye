@@ -6,10 +6,8 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/app/lib/supabase'
-import { toDateOnly } from '@/utils/calculations'
 import {
   fetchCourierLedgerPeriodAccount,
-  saveCourierSettlementLedger,
 } from '@/utils/courierLedger'
 
 interface Courier {
@@ -87,45 +85,42 @@ export function EndOfDayModalNew({
         throw new Error('Kaydetme Başarısız: Kurye ID bulunamadı')
       }
 
-      const receivedAmount = Number(parseFloat(amountReceived))
-      if (!Number.isFinite(receivedAmount) || receivedAmount <= 0) {
-        throw new Error('Geçerli bir tutar girin')
-      }
+      const confirmed = window.confirm('Tahsilatı onaylıyor musunuz?')
+      if (!confirmed) return
 
-      const totalCash = cashTotal
-      const totalCard = cardTotal
-      const totalIban = ibanTotal
-      const totalCollection = totalCash + totalCard + totalIban
-
-      if (!Number.isFinite(totalCollection)) {
-        throw new Error('Tahsilat toplamı hesaplanamadı (NaN)')
-      }
-
-      const totalEarned = Number((courier.package_rate ?? 0) * deliveryCount)
-      const remainingDebt = Math.max(0, totalCollection - receivedAmount)
-
-      const { settlementId, packagesMarked } = await saveCourierSettlementLedger(
-        supabase,
-        courier.id,
+      const { data, error } = await supabase.rpc(
+        'process_courier_settlement_flags',
         {
-          courier_id: courier.id,
-          amount_paid: receivedAmount,
-          received_amount: receivedAmount,
-          total_cash: totalCash,
-          total_card: totalCard,
-          total_iban: totalIban,
-          total_earned: totalEarned,
-          remaining_debt: remainingDebt,
-          notes: notes || null,
-          created_by: 'admin',
-          start_date: toDateOnly(startDate),
-          end_date: toDateOnly(endDate),
-        },
-        { startDate, endDate }
+          p_courier_id: courier.id,
+          p_created_by: 'admin',
+          p_notes: notes || null,
+        }
       )
 
+      if (error) {
+        throw new Error(`Mutabakat RPC hatası: ${error.message}`)
+      }
+
+      const result = data as
+        | {
+            success?: boolean
+            settlement_id?: string
+            package_count?: number
+            total_amount?: number
+            error?: string
+          }
+        | null
+
+      if (!result?.success) {
+        throw new Error(result?.error || 'Mutabakat işlemi başarısız')
+      }
+
+      const settlementId = result.settlement_id || '—'
+      const packagesMarked = Number(result.package_count || 0)
+      const totalAmount = Number(result.total_amount || 0)
+
       alert(
-        `Mutabakat kaydedildi.\nMakbuz: ${settlementId}\nİşaretlenen paket: ${packagesMarked}`
+        `Mutabakat kaydedildi.\nMakbuz: ${settlementId}\nİşaretlenen paket: ${packagesMarked}\nTahsil edilen: ${totalAmount.toFixed(2)} ₺`
       )
       onSuccess()
       onClose()

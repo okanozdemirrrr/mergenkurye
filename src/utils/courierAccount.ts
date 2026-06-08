@@ -52,7 +52,8 @@ export async function fetchCourierCollectionPackages(
     .from('packages')
     .select(select)
     .eq('status', 'delivered')
-    .is('settled_at', null)
+    .is('courier_settlement_id', null)
+    .is('courier_settled_at', null)
     .gte('delivered_at', startIso)
     .lte('delivered_at', endIso)
 
@@ -150,9 +151,9 @@ export async function markCourierCollectionSettled(
 
   let query = supabase
     .from('packages')
-    .update({ settled_at: settledAt })
+    .update({ courier_settled_at: settledAt })
     .eq('status', 'delivered')
-    .is('settled_at', null)
+    .is('courier_settled_at', null)
     .gte('delivered_at', startIso)
     .lte('delivered_at', endIso)
 

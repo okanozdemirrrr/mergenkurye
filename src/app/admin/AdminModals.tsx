@@ -18,7 +18,6 @@ import { EndOfDayModalNew } from './components/modals/EndOfDayModalNew'
 import { PayDebtModal } from './components/modals/PayDebtModal'
 import { RestaurantPaymentModal } from './components/modals/RestaurantPaymentModal'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '../lib/platformUtils'
-import { calculateCashSummary, calculateRestaurantSummary } from '@/utils/adminCalculations'
 import { useAdminCourierModal } from './hooks/useAdminCourierModal'
 import { useAdminRestaurantModal } from './hooks/useAdminRestaurantModal'
 
@@ -92,21 +91,11 @@ export function AdminModals() {
       {/* Courier Detail Modal */}
       {modalType === 'courier' && courierId && courier && (
         <CourierDetailModal
-          key={`${courierId}-${courierModal.courierStartDate}-${courierModal.courierEndDate}`}
           show={true}
           onClose={closeModal}
           courier={courier}
           selectedCourierId={courierId}
-          courierStartDate={courierModal.courierStartDate}
-          setCourierStartDate={courierModal.setCourierStartDate}
-          courierEndDate={courierModal.courierEndDate}
-          setCourierEndDate={courierModal.setCourierEndDate}
-          onEndOfDayClick={() => courierModal.setShowEndOfDayModal(true)}
-          onPayDebtClick={() => courierModal.setShowPayDebtModal(true)}
-          selectedCourierOrders={courierModal.selectedCourierOrders}
           courierDebts={courierModal.courierDebts}
-          calculateCashSummary={calculateCashSummary}
-          calculateRestaurantSummary={calculateRestaurantSummary}
           getPlatformBadgeClass={getPlatformBadgeClass}
           getPlatformDisplayName={getPlatformDisplayName}
         />
