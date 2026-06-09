@@ -127,7 +127,7 @@ export function CourierDailyRoutes({ couriers }: CourierDailyRoutesProps) {
   }
 
   return (
-    <div className="bg-slate-900 shadow-xl rounded-2xl p-2 border border-slate-800 h-full flex flex-col lg:sticky lg:top-4">
+    <div className="bg-slate-900 shadow-xl rounded-2xl p-2 border border-slate-800 w-full h-full flex flex-col lg:sticky lg:top-4">
       <div className="flex items-center justify-between mb-2 px-1">
         <h2 className="text-sm font-bold text-white tracking-tight">
           📍 Kurye Günlük Rota ve Performans
