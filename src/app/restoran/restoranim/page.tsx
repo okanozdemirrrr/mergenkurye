@@ -5,11 +5,12 @@
  */
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/app/lib/supabase'
 import { Upload, Save, Image as ImageIcon, Star, MessageSquare, Eye, EyeOff, Trash2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import ProductOptionsManager, { OptionGroup } from '../components/ProductOptionsManager'
+import { loadProductOptions, parseProductOptions, saveProductOptions, sanitizeOptionGroups } from '../utils/productOptionsDb'
 
 interface Restaurant {
   id: string
@@ -1123,7 +1124,7 @@ function ProductAddModal({
         : 0
 
       // Yeni ürün ekle
-      const { error: insertError } = await supabase
+      const { data: newProduct, error: insertError } = await supabase
         .from('products')
         .insert({
           restaurant_id: restaurantId,
@@ -1134,10 +1135,16 @@ function ProductAddModal({
           image_url: imageUrl,
           is_available: true,
           display_order: nextDisplayOrder,
-          options: optionGroups
         })
+        .select('id')
+        .single()
 
       if (insertError) throw insertError
+
+      const savedOptions = await saveProductOptions(newProduct.id, optionGroups)
+      if (optionGroups.length > 0 && savedOptions.length === 0) {
+        throw new Error('Opsiyonlar kaydedilemedi. Lütfen Supabase migration dosyasını çalıştırın.')
+      }
 
       onSuccess()
     } catch (error: any) {
@@ -1343,13 +1350,39 @@ function ProductEditModal({ product, onClose, onSuccess }: { product: Product; o
     description: product.description || '',
     price: product.price.toString()
   })
-  const [optionGroups, setOptionGroups] = useState<OptionGroup[]>(
-    product.options ? (typeof product.options === 'string' ? JSON.parse(product.options) : product.options) : []
-  )
+  const [optionGroups, setOptionGroups] = useState<OptionGroup[]>(() => parseProductOptions(product.options))
+  const optionsTouchedRef = useRef(false)
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(product.image_url || null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  const handleOptionGroupsChange = (groups: OptionGroup[]) => {
+    optionsTouchedRef.current = true
+    setOptionGroups(groups)
+  }
+
+  useEffect(() => {
+    let cancelled = false
+    optionsTouchedRef.current = false
+
+    const fetchOptions = async () => {
+      try {
+        const loaded = await loadProductOptions(product.id)
+        if (!cancelled && !optionsTouchedRef.current) {
+          setOptionGroups(loaded)
+        }
+      } catch (loadError) {
+        console.error('Ürün opsiyonları yüklenemedi:', loadError)
+        if (!cancelled && !optionsTouchedRef.current) {
+          setOptionGroups(parseProductOptions(product.options))
+        }
+      }
+    }
+
+    fetchOptions()
+    return () => { cancelled = true }
+  }, [product.id])
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -1408,19 +1441,39 @@ function ProductEditModal({ product, onClose, onSuccess }: { product: Product; o
         if (url) imageUrl = url
       }
 
-      // Güncelle
-      const { error: updateError } = await supabase
+      const cleanedOptions = sanitizeOptionGroups(optionGroups)
+
+      // Güncelle (opsiyonlar dahil tek seferde)
+      const { data: updatedProduct, error: updateError } = await supabase
         .from('products')
         .update({
           name: formData.name.trim(),
           description: formData.description.trim() || null,
           price: price,
           image_url: imageUrl,
-          options: optionGroups
+          options: cleanedOptions,
         })
         .eq('id', product.id)
+        .select('id, options')
+        .single()
 
-      if (updateError) throw updateError
+      if (updateError) {
+        if (updateError.message?.includes('options')) {
+          throw new Error(
+            'Veritabanında products.options kolonu yok. Supabase SQL Editor\'de database/add_product_options.sql dosyasını çalıştırın.'
+          )
+        }
+        throw updateError
+      }
+
+      if (!updatedProduct) {
+        throw new Error('Ürün güncellenemedi: kayıt bulunamadı veya yetki yok.')
+      }
+
+      const savedOptions = await saveProductOptions(product.id, optionGroups)
+      if (optionGroups.length > 0 && savedOptions.length === 0) {
+        throw new Error('Opsiyonlar kaydedilemedi. Lütfen Supabase migration dosyasını çalıştırın.')
+      }
 
       onSuccess()
     } catch (error: any) {
@@ -1533,7 +1586,7 @@ function ProductEditModal({ product, onClose, onSuccess }: { product: Product; o
           <div className="border-t border-slate-800 pt-4">
             <ProductOptionsManager
               options={optionGroups}
-              onChange={setOptionGroups}
+              onChange={handleOptionGroupsChange}
               darkMode={true}
             />
           </div>

@@ -35,3 +35,19 @@ CREATE POLICY "Allow all actions for authenticated users on options"
     TO authenticated
     USING (true)
     WITH CHECK (true);
+
+-- Restoran paneli anon key ile çalıştığı için anon erişimi de aç
+DROP POLICY IF EXISTS "Allow all actions for anon on groups" ON public.product_option_groups;
+DROP POLICY IF EXISTS "Allow all actions for anon on options" ON public.product_options;
+
+CREATE POLICY "Allow all actions for anon on groups"
+    ON public.product_option_groups FOR ALL
+    TO anon
+    USING (true)
+    WITH CHECK (true);
+
+CREATE POLICY "Allow all actions for anon on options"
+    ON public.product_options FOR ALL
+    TO anon
+    USING (true)
+    WITH CHECK (true);
