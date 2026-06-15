@@ -45,8 +45,8 @@ export function fetchCourierOpenLedgerPackages(
   return supabase
     .from('packages')
     .select(select)
-    .eq('status', 'delivered')
     .eq('delivered_by_courier_id', courierId)
+    .or('status.eq.delivered,and(status.eq.cancelled,is_chargeable_cancellation.eq.true)')
     .or('is_courier_settled.is.null,is_courier_settled.eq.false')
     .order('delivered_at', { ascending: false })
 }
@@ -65,8 +65,8 @@ export function fetchCourierOpenLedgerPackagesInRange(
   return supabase
     .from('packages')
     .select(select)
-    .eq('status', 'delivered')
     .eq('delivered_by_courier_id', courierId)
+    .or('status.eq.delivered,and(status.eq.cancelled,is_chargeable_cancellation.eq.true)')
     .or('is_courier_settled.is.null,is_courier_settled.eq.false')
     .order('delivered_at', { ascending: false })
 }
@@ -83,8 +83,8 @@ export function fetchCourierUnpaidEarningsPackages(
   return supabase
     .from('packages')
     .select(select)
-    .eq('status', 'delivered')
     .eq('delivered_by_courier_id', courierId)
+    .or('status.eq.delivered,and(status.eq.cancelled,is_chargeable_cancellation.eq.true)')
     .or('is_courier_earned_paid.is.null,is_courier_earned_paid.eq.false')
     .order('delivered_at', { ascending: false })
 }

@@ -52,6 +52,10 @@ export function HistoryTab({
     const [currentPage, setCurrentPage] = useState(1)
     const [isLoading, setIsLoading] = useState(true)
     const [refreshKey, setRefreshKey] = useState(0)
+    const [amountModalPackage, setAmountModalPackage] = useState<Package | null>(null)
+    const [newAmount, setNewAmount] = useState('')
+    const [isUpdatingAmount, setIsUpdatingAmount] = useState(false)
+    const [amountUpdateError, setAmountUpdateError] = useState('')
 
     // İstatistik state'i (Nakit, kart, genel toplam)
     const [stats, setStats] = useState({
@@ -235,6 +239,52 @@ export function HistoryTab({
     const handleCancelWrapper = async (id: number, reason: string) => {
         await handleCancelOrder(id, reason)
         setRefreshKey(prev => prev + 1)
+    }
+
+    const openAmountModal = (pkg: Package) => {
+        setAmountModalPackage(pkg)
+        setNewAmount(String(pkg.amount))
+        setAmountUpdateError('')
+    }
+
+    const closeAmountModal = () => {
+        setAmountModalPackage(null)
+        setNewAmount('')
+        setAmountUpdateError('')
+    }
+
+    const handleUpdateAmount = async () => {
+        if (!amountModalPackage) return
+
+        const parsedAmount = parseFloat(newAmount)
+        if (isNaN(parsedAmount) || parsedAmount < 0) {
+            setAmountUpdateError('Lütfen geçerli bir tutar girin.')
+            return
+        }
+
+        setIsUpdatingAmount(true)
+        setAmountUpdateError('')
+
+        try {
+            const { error } = await supabase
+                .from('packages')
+                .update({ amount: parsedAmount })
+                .eq('id', amountModalPackage.id)
+
+            if (error) throw error
+
+            setPackagesList(prev =>
+                prev.map(p => (p.id === amountModalPackage.id ? { ...p, amount: parsedAmount } : p))
+            )
+            setSelectedPackage(prev =>
+                prev?.id === amountModalPackage.id ? { ...prev, amount: parsedAmount } : prev
+            )
+            closeAmountModal()
+        } catch (error: any) {
+            setAmountUpdateError(error.message || 'Tutar güncellenemedi.')
+        } finally {
+            setIsUpdatingAmount(false)
+        }
     }
 
     const getStatusText = (status: string) => {
@@ -561,7 +611,7 @@ export function HistoryTab({
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="border-b border-slate-750 text-slate-400">
-                                <th className="text-left py-3 px-4 w-8"></th>
+                                <th className="text-left py-3 px-4 w-10"></th>
                                 <th className="text-left py-3 px-4">Sipariş No</th>
                                 <th className="text-left py-3 px-4">Tarih/Saat</th>
                                 <th className="text-left py-3 px-4">Müşteri</th>
@@ -605,12 +655,13 @@ export function HistoryTab({
                                         : ''
                                         }`}
                                     >
-                                        <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                                        <td className="py-3 px-4 w-10" onClick={(e) => e.stopPropagation()}>
                                             <div className="relative">
                                                 <OrderActionMenu
                                                     package={pkg}
                                                     isOpen={openDropdownId === pkg.id}
                                                     onToggle={() => setOpenDropdownId(openDropdownId === pkg.id ? null : pkg.id)}
+                                                    onUpdateAmount={openAmountModal}
                                                     onCancel={handleCancelWrapper}
                                                 />
                                             </div>
@@ -778,6 +829,71 @@ export function HistoryTab({
                     </div>
                 )}
             </div>
+
+            {amountModalPackage && (
+                <div
+                    className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4"
+                    onClick={closeAmountModal}
+                >
+                    <div
+                        className="bg-slate-900 border border-slate-700 rounded-xl p-6 max-w-md w-full shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <h3 className="text-xl font-bold text-white mb-4">Sipariş Tutarı Değiştir</h3>
+
+                        <div className="mb-4 p-3 rounded-lg bg-slate-800">
+                            <p className="text-sm text-slate-400">Sipariş / Müşteri</p>
+                            <p className="font-bold text-orange-400">
+                                {amountModalPackage.order_number || `#${amountModalPackage.id}`}
+                            </p>
+                            <p className="text-white mt-1">{amountModalPackage.customer_name}</p>
+                        </div>
+
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-slate-300 mb-2">Mevcut Tutar</label>
+                            <div className="p-3 rounded-lg bg-slate-800">
+                                <p className="text-2xl font-bold text-green-400">{amountModalPackage.amount}₺</p>
+                            </div>
+                        </div>
+
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-slate-300 mb-2">Yeni Tutar</label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={newAmount}
+                                onChange={(e) => setNewAmount(e.target.value)}
+                                className="w-full px-4 py-3 rounded-lg border bg-slate-800 border-slate-700 text-white text-lg font-bold outline-none focus:border-orange-500 transition-colors"
+                                placeholder="Yeni tutarı girin"
+                                autoFocus
+                            />
+                        </div>
+
+                        {amountUpdateError && (
+                            <div className="mb-4 p-3 bg-red-900/30 border border-red-700/50 rounded-lg">
+                                <p className="text-red-300 text-sm">{amountUpdateError}</p>
+                            </div>
+                        )}
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={closeAmountModal}
+                                className="flex-1 px-4 py-3 rounded-lg font-semibold bg-slate-700 hover:bg-slate-600 text-white transition-colors"
+                            >
+                                İptal
+                            </button>
+                            <button
+                                onClick={handleUpdateAmount}
+                                disabled={isUpdatingAmount}
+                                className="flex-1 px-4 py-3 rounded-lg font-semibold bg-orange-600 hover:bg-orange-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                {isUpdatingAmount ? 'Güncelleniyor...' : 'Güncelle'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     )
 }

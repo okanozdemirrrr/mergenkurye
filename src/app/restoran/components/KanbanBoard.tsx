@@ -1,14 +1,22 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Package, Courier } from '@/types'
+import type { OrderItem } from '@/types/order'
 import { getStatusBadgeClass, getStatusLabel } from '@/utils/statusHelpers'
 import { supabase } from '@/app/lib/supabase'
+import { normalizeOrderItems } from '@/app/lib/orderItems'
+import { parseDeliveryAddress } from '@/app/lib/formatDeliveryAddress'
 import { formatTurkishTime } from '@/utils/dateHelpers'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
 import UpdateAmountModal from './UpdateAmountModal'
 import CancelOrderModal from './CancelOrderModal'
 import { stopRestaurantAlert } from '@/hooks/useRestaurantRealtimeNotifications'
+
+const PACKAGE_DETAIL_SELECT =
+  'id, order_number, status, created_at, amount, subtotal, delivery_fee, customer_name, customer_phone, delivery_address, payment_method, items, platform, content, courier_id, getting_ready_at, ready_at, assigned_at, picked_up_at, delivered_at'
+
+const formatPrice = (value: number) => `${value.toFixed(2)}₺`
 
 interface KanbanBoardProps {
   packages: Package[]
@@ -16,6 +24,7 @@ interface KanbanBoardProps {
   darkMode: boolean
   couriers?: Courier[]
   restaurantId?: string
+  restaurantName?: string
   isPackageDelayed?: (packageId: number) => boolean
   getDelayedMinutes?: (pkg: Package) => number
 }
@@ -26,13 +35,47 @@ export default function KanbanBoard({
   darkMode, 
   couriers = [], 
   restaurantId,
+  restaurantName,
   isPackageDelayed = () => false,
   getDelayedMinutes = () => 0
 }: KanbanBoardProps) {
   const [loading, setLoading] = useState<number | null>(null)
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null)
+  const [detailPackage, setDetailPackage] = useState<Package | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
   const [updateAmountPackage, setUpdateAmountPackage] = useState<Package | null>(null)
   const [cancelPackage, setCancelPackage] = useState<Package | null>(null)
+
+  useEffect(() => {
+    if (!selectedPackage) {
+      setDetailPackage(null)
+      setDetailLoading(false)
+      return
+    }
+
+    let cancelled = false
+    setDetailLoading(true)
+
+    supabase
+      .from('packages')
+      .select(PACKAGE_DETAIL_SELECT)
+      .eq('id', selectedPackage.id)
+      .single()
+      .then(({ data, error }) => {
+        if (cancelled) return
+        if (error) {
+          console.error('Sipariş detayı yüklenemedi:', error)
+          setDetailPackage(selectedPackage)
+        } else {
+          setDetailPackage({ ...selectedPackage, ...(data as Package) })
+        }
+        setDetailLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [selectedPackage])
 
   // Siparişleri duruma göre filtrele
   const newOrders = packages.filter(p => p.status === 'new_order')
@@ -188,7 +231,7 @@ export default function KanbanBoard({
       {/* Content */}
       <div className={`text-xs mb-2 ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
         <p className="font-medium mb-1">📦 {pkg.content}</p>
-        <p className="text-xs opacity-75">📍 {pkg.delivery_address?.substring(0, 50)}...</p>
+        <p className="text-xs opacity-75">📍 {parseDeliveryAddress(pkg.delivery_address).address?.substring(0, 50)}...</p>
       </div>
 
       {/* Footer */}
@@ -349,7 +392,12 @@ export default function KanbanBoard({
       )}
 
       {/* DETAY MODAL */}
-      {selectedPackage && (
+      {selectedPackage && (() => {
+        const pkg = detailPackage || selectedPackage
+        const orderItems: OrderItem[] = normalizeOrderItems(pkg.items)
+        const { address: displayAddress, tarif: addressTarif } = parseDeliveryAddress(pkg.delivery_address)
+
+        return (
         <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4" onClick={() => setSelectedPackage(null)}>
           <div className={`rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto border shadow-2xl ${
             darkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'
@@ -371,15 +419,22 @@ export default function KanbanBoard({
 
             {/* İçerik */}
             <div className="space-y-4 pt-2">
-              {/* Sipariş No ve Platform */}
-              <div className="flex items-center gap-3">
-                <span className={`text-lg font-bold ${darkMode ? 'text-orange-400' : 'text-orange-600'}`}>
-                  {selectedPackage.order_number || '......'}
-                </span>
-                {selectedPackage.platform && (
-                  <span className={`text-sm py-1 px-3 rounded ${getPlatformBadgeClass(selectedPackage.platform)}`}>
-                    {getPlatformDisplayName(selectedPackage.platform)}
+              {/* Sipariş No, Restoran ve Platform */}
+              <div className="space-y-1">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className={`text-lg font-bold ${darkMode ? 'text-orange-400' : 'text-orange-600'}`}>
+                    {pkg.order_number || '......'}
                   </span>
+                  {pkg.platform && (
+                    <span className={`text-sm py-1 px-3 rounded ${getPlatformBadgeClass(pkg.platform)}`}>
+                      {getPlatformDisplayName(pkg.platform)}
+                    </span>
+                  )}
+                </div>
+                {restaurantName && (
+                  <p className={`text-sm ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                    🏪 {restaurantName}
+                  </p>
                 )}
               </div>
 
@@ -388,29 +443,119 @@ export default function KanbanBoard({
                 <div className="flex items-center justify-between">
                   <span className={`text-sm ${darkMode ? 'text-slate-400' : 'text-gray-600'}`}>Durum:</span>
                   <span className={`px-3 py-1.5 rounded-full text-sm font-semibold ${
-                    selectedPackage.status === 'cancelled' ? 'bg-red-900/50 text-red-300' :
-                    selectedPackage.status === 'new_order' ? 'bg-blue-900/50 text-blue-300' :
-                    selectedPackage.status === 'getting_ready' ? 'bg-cyan-900/50 text-cyan-300' :
-                    selectedPackage.status === 'ready' ? 'bg-teal-900/50 text-teal-300' :
-                    selectedPackage.status === 'assigned' ? 'bg-purple-900/50 text-purple-300' :
-                    selectedPackage.status === 'picking_up' ? 'bg-orange-900/50 text-orange-300' :
-                    selectedPackage.status === 'on_the_way' ? 'bg-yellow-900/50 text-yellow-300' :
+                    pkg.status === 'cancelled' ? 'bg-red-900/50 text-red-300' :
+                    pkg.status === 'new_order' ? 'bg-blue-900/50 text-blue-300' :
+                    pkg.status === 'getting_ready' ? 'bg-cyan-900/50 text-cyan-300' :
+                    pkg.status === 'ready' ? 'bg-teal-900/50 text-teal-300' :
+                    pkg.status === 'assigned' ? 'bg-purple-900/50 text-purple-300' :
+                    pkg.status === 'picking_up' ? 'bg-orange-900/50 text-orange-300' :
+                    pkg.status === 'on_the_way' ? 'bg-yellow-900/50 text-yellow-300' :
                     'bg-green-900/50 text-green-300'
                   }`}>
-                    {getStatusText(selectedPackage.status)}
+                    {getStatusText(pkg.status)}
                   </span>
+                </div>
+              </div>
+
+              {/* Sipariş İçeriği */}
+              <div className={`p-4 rounded-lg border ${
+                darkMode ? 'bg-[#0f172a] border-[#475569]' : 'bg-gray-800 border-gray-700'
+              }`}>
+                <h4 className={`font-semibold mb-3 flex items-center gap-2 ${darkMode ? 'text-orange-400' : 'text-orange-500'}`}>
+                  🛒 Sipariş İçeriği
+                </h4>
+                {detailLoading ? (
+                  <div className={`text-sm py-4 text-center ${darkMode ? 'text-slate-400' : 'text-gray-400'}`}>
+                    Ürünler yükleniyor...
+                  </div>
+                ) : orderItems.length === 0 ? (
+                  <p className={`text-sm italic ${darkMode ? 'text-slate-400' : 'text-gray-400'}`}>
+                    Ürün bilgisi bulunamadı
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    {orderItems.map((item, index) => {
+                      const lineTotal = item.quantity * item.price
+                      return (
+                        <div
+                          key={`${item.product_name}-${index}`}
+                          className={`pb-4 ${index < orderItems.length - 1 ? `border-b ${darkMode ? 'border-slate-700' : 'border-gray-600'}` : ''}`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <p className={`font-bold ${darkMode ? 'text-white' : 'text-gray-100'}`}>
+                                {item.product_name}
+                              </p>
+                              <p className={`text-xs mt-0.5 ${darkMode ? 'text-slate-400' : 'text-gray-400'}`}>
+                                {item.quantity} adet × {formatPrice(item.price)}
+                              </p>
+                            </div>
+                            <p className={`font-bold shrink-0 ${darkMode ? 'text-orange-400' : 'text-orange-500'}`}>
+                              {formatPrice(lineTotal)}
+                            </p>
+                          </div>
+                          {item.selected_options.length > 0 && (
+                            <ul className={`mt-2 space-y-0.5 text-xs ${darkMode ? 'text-gray-400' : 'text-gray-400'}`}>
+                              {item.selected_options.map((opt, optIndex) => {
+                                const priceDiff = Number(opt.price_diff ?? 0)
+                                const priceSuffix = priceDiff !== 0
+                                  ? ` (${priceDiff > 0 ? '+' : ''}${formatPrice(priceDiff)})`
+                                  : ''
+                                return (
+                                  <li key={`${opt.option_id || opt.option_name}-${optIndex}`}>
+                                    – {opt.group_name || 'Opsiyon'}: {opt.option_name}{priceSuffix}
+                                  </li>
+                                )
+                              })}
+                            </ul>
+                          )}
+                          {item.item_note && (
+                            <p className={`mt-2 text-xs italic ${darkMode ? 'text-slate-300' : 'text-gray-300'}`}>
+                              📝 {item.item_note}
+                            </p>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Müşteri Bilgileri */}
+              <div className={`p-4 rounded-lg space-y-3 ${darkMode ? 'bg-slate-800' : 'bg-gray-50'}`}>
+                <h4 className={`font-semibold mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Müşteri Bilgileri</h4>
+                <div>
+                  <p className={`text-xs mb-1 ${darkMode ? 'text-slate-400' : 'text-gray-600'}`}>Ad Soyad</p>
+                  <p className={darkMode ? 'text-white' : 'text-gray-900'}>👤 {pkg.customer_name}</p>
+                </div>
+                {pkg.customer_phone && (
+                  <div>
+                    <p className={`text-xs mb-1 ${darkMode ? 'text-slate-400' : 'text-gray-600'}`}>Telefon</p>
+                    <p className={darkMode ? 'text-white' : 'text-gray-900'}>📞 {pkg.customer_phone}</p>
+                  </div>
+                )}
+                <div>
+                  <p className={`text-xs mb-1 ${darkMode ? 'text-slate-400' : 'text-gray-600'}`}>Teslimat Adresi</p>
+                  <p className={darkMode ? 'text-white' : 'text-gray-900'}>📍 {displayAddress}</p>
+                </div>
+                <div>
+                  <p className={`text-xs mb-1 ${darkMode ? 'text-slate-400' : 'text-gray-600'}`}>Adres Tarifi</p>
+                  {addressTarif ? (
+                    <p className={`italic ${darkMode ? 'text-orange-300' : 'text-orange-700'}`}>🧭 {addressTarif}</p>
+                  ) : (
+                    <p className={`text-sm italic ${darkMode ? 'text-slate-500' : 'text-gray-400'}`}>Tarif girilmemiş</p>
+                  )}
                 </div>
               </div>
 
               {/* Tutar */}
               <div className={`p-4 rounded-lg ${darkMode ? 'bg-slate-800' : 'bg-gray-50'}`}>
-                <div className="flex items-center justify-between mb-2">
-                  <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-gray-600'}`}>Tutar</p>
-                  {/* Tutarı Güncelle Butonu - Sadece izin verilen durumlarda */}
-                  {!['on_the_way', 'delivered', 'cancelled'].includes(selectedPackage.status) && (
+                <div className="flex items-center justify-between mb-3">
+                  <p className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Tutar</p>
+                  {!['on_the_way', 'delivered', 'cancelled'].includes(pkg.status) && (
                     <button
                       onClick={() => {
-                        setUpdateAmountPackage(selectedPackage)
+                        setUpdateAmountPackage(pkg)
                         setSelectedPackage(null)
                       }}
                       className={`text-xs px-3 py-1 rounded-lg font-semibold transition-colors ${
@@ -423,38 +568,38 @@ export default function KanbanBoard({
                     </button>
                   )}
                 </div>
-                <p className={`font-bold text-xl ${darkMode ? 'text-green-400' : 'text-green-600'}`}>{selectedPackage.amount}₺</p>
-                {['on_the_way', 'delivered', 'cancelled'].includes(selectedPackage.status) && (
-                  <p className={`text-xs mt-1 ${darkMode ? 'text-slate-500' : 'text-gray-500'}`}>
+                <div className="space-y-2 text-sm">
+                  {pkg.subtotal != null && (
+                    <div className="flex justify-between">
+                      <span className={darkMode ? 'text-slate-400' : 'text-gray-600'}>Ara Toplam</span>
+                      <span className={darkMode ? 'text-white' : 'text-gray-900'}>{formatPrice(Number(pkg.subtotal))}</span>
+                    </div>
+                  )}
+                  {pkg.delivery_fee != null && Number(pkg.delivery_fee) > 0 && (
+                    <div className="flex justify-between">
+                      <span className={darkMode ? 'text-slate-400' : 'text-gray-600'}>Teslimat</span>
+                      <span className={darkMode ? 'text-white' : 'text-gray-900'}>{formatPrice(Number(pkg.delivery_fee))}</span>
+                    </div>
+                  )}
+                  <div className={`flex justify-between pt-2 border-t ${darkMode ? 'border-slate-700' : 'border-gray-200'}`}>
+                    <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Genel Toplam</span>
+                    <span className={`font-bold text-xl ${darkMode ? 'text-orange-400' : 'text-orange-600'}`}>
+                      {formatPrice(Number(pkg.amount))}
+                    </span>
+                  </div>
+                </div>
+                {['on_the_way', 'delivered', 'cancelled'].includes(pkg.status) && (
+                  <p className={`text-xs mt-2 ${darkMode ? 'text-slate-500' : 'text-gray-500'}`}>
                     ⚠️ Tutar artık değiştirilemez
                   </p>
                 )}
               </div>
 
-              {/* Müşteri Bilgileri */}
-              <div className={`p-4 rounded-lg space-y-3 ${darkMode ? 'bg-slate-800' : 'bg-gray-50'}`}>
-                <h4 className={`font-semibold mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Müşteri Bilgileri</h4>
-                <div>
-                  <p className={`text-xs mb-1 ${darkMode ? 'text-slate-400' : 'text-gray-600'}`}>Ad Soyad</p>
-                  <p className={darkMode ? 'text-white' : 'text-gray-900'}>👤 {selectedPackage.customer_name}</p>
-                </div>
-                {selectedPackage.customer_phone && (
-                  <div>
-                    <p className={`text-xs mb-1 ${darkMode ? 'text-slate-400' : 'text-gray-600'}`}>Telefon</p>
-                    <p className={darkMode ? 'text-white' : 'text-gray-900'}>📞 {selectedPackage.customer_phone}</p>
-                  </div>
-                )}
-                <div>
-                  <p className={`text-xs mb-1 ${darkMode ? 'text-slate-400' : 'text-gray-600'}`}>Teslimat Adresi</p>
-                  <p className={darkMode ? 'text-white' : 'text-gray-900'}>📍 {selectedPackage.delivery_address}</p>
-                </div>
-              </div>
-
               {/* Paket İçeriği */}
-              {selectedPackage.content && (
+              {pkg.content && (
                 <div className={`p-4 rounded-lg ${darkMode ? 'bg-slate-800' : 'bg-gray-50'}`}>
                   <p className={`text-xs mb-1 ${darkMode ? 'text-slate-400' : 'text-gray-600'}`}>Paket İçeriği</p>
-                  <p className={darkMode ? 'text-orange-200' : 'text-orange-700'}>📝 {selectedPackage.content}</p>
+                  <p className={darkMode ? 'text-orange-200' : 'text-orange-700'}>📝 {pkg.content}</p>
                 </div>
               )}
 
@@ -463,22 +608,22 @@ export default function KanbanBoard({
                 <div className="flex items-center justify-between">
                   <span className={`text-sm ${darkMode ? 'text-slate-400' : 'text-gray-600'}`}>Ödeme Yöntemi:</span>
                   <span className={`px-3 py-1 rounded text-sm font-medium ${
-                    selectedPackage.payment_method === 'cash'
+                    pkg.payment_method === 'cash'
                       ? 'bg-green-900/50 text-green-300'
-                      : selectedPackage.payment_method === 'iban'
+                      : pkg.payment_method === 'iban'
                       ? 'bg-purple-900/50 text-purple-300'
                       : 'bg-orange-900/50 text-orange-300'
                   }`}>
-                    {selectedPackage.payment_method === 'cash' ? '💵 Nakit' : selectedPackage.payment_method === 'iban' ? '🏦 IBAN' : '💳 Kart'}
+                    {pkg.payment_method === 'cash' ? '💵 Nakit' : pkg.payment_method === 'iban' ? '🏦 IBAN' : '💳 Kart'}
                   </span>
                 </div>
               </div>
 
               {/* Kurye Bilgisi */}
-              {selectedPackage.courier_id && (
+              {pkg.courier_id && (
                 <div className={`p-4 rounded-lg ${darkMode ? 'bg-slate-800' : 'bg-gray-50'}`}>
                   <p className={`text-xs mb-1 ${darkMode ? 'text-slate-400' : 'text-gray-600'}`}>Atanan Kurye</p>
-                  <p className={darkMode ? 'text-white' : 'text-gray-900'}>🚴 {couriers.find(c => c.id === selectedPackage.courier_id)?.full_name || 'Bilinmeyen'}</p>
+                  <p className={darkMode ? 'text-white' : 'text-gray-900'}>🚴 {couriers.find(c => c.id === pkg.courier_id)?.full_name || 'Bilinmeyen'}</p>
                 </div>
               )}
 
@@ -487,45 +632,46 @@ export default function KanbanBoard({
                 <h4 className={`font-semibold mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Zaman Bilgileri</h4>
                 <div className="flex justify-between text-sm">
                   <span className={darkMode ? 'text-slate-400' : 'text-gray-600'}>Oluşturulma:</span>
-                  <span className={darkMode ? 'text-white' : 'text-gray-900'}>🕐 {formatTurkishTime(selectedPackage.created_at)}</span>
+                  <span className={darkMode ? 'text-white' : 'text-gray-900'}>🕐 {formatTurkishTime(pkg.created_at)}</span>
                 </div>
-                {selectedPackage.getting_ready_at && (
+                {pkg.getting_ready_at && (
                   <div className="flex justify-between text-sm">
                     <span className={darkMode ? 'text-slate-400' : 'text-gray-600'}>Hazırlanmaya Başlandı:</span>
                     <span className={darkMode ? 'text-white' : 'text-gray-900'}>
-                      🕐 {formatTurkishTime(selectedPackage.getting_ready_at)}
+                      🕐 {formatTurkishTime(pkg.getting_ready_at)}
                     </span>
                   </div>
                 )}
-                {selectedPackage.ready_at && (
+                {pkg.ready_at && (
                   <div className="flex justify-between text-sm">
                     <span className={darkMode ? 'text-slate-400' : 'text-gray-600'}>Hazır Oldu:</span>
-                    <span className={darkMode ? 'text-white' : 'text-gray-900'}>🕐 {formatTurkishTime(selectedPackage.ready_at)}</span>
+                    <span className={darkMode ? 'text-white' : 'text-gray-900'}>🕐 {formatTurkishTime(pkg.ready_at)}</span>
                   </div>
                 )}
-                {selectedPackage.assigned_at && (
+                {pkg.assigned_at && (
                   <div className="flex justify-between text-sm">
                     <span className={darkMode ? 'text-slate-400' : 'text-gray-600'}>Kuryeye Atandı:</span>
-                    <span className={darkMode ? 'text-white' : 'text-gray-900'}>🕐 {formatTurkishTime(selectedPackage.assigned_at)}</span>
+                    <span className={darkMode ? 'text-white' : 'text-gray-900'}>🕐 {formatTurkishTime(pkg.assigned_at)}</span>
                   </div>
                 )}
-                {selectedPackage.picked_up_at && (
+                {pkg.picked_up_at && (
                   <div className="flex justify-between text-sm">
                     <span className={darkMode ? 'text-slate-400' : 'text-gray-600'}>Alındı:</span>
-                    <span className={darkMode ? 'text-white' : 'text-gray-900'}>🕐 {formatTurkishTime(selectedPackage.picked_up_at)}</span>
+                    <span className={darkMode ? 'text-white' : 'text-gray-900'}>🕐 {formatTurkishTime(pkg.picked_up_at)}</span>
                   </div>
                 )}
-                {selectedPackage.delivered_at && (
+                {pkg.delivered_at && (
                   <div className="flex justify-between text-sm">
                     <span className={darkMode ? 'text-slate-400' : 'text-gray-600'}>Teslim Edildi:</span>
-                    <span className={darkMode ? 'text-white' : 'text-gray-900'}>🕐 {formatTurkishTime(selectedPackage.delivered_at)}</span>
+                    <span className={darkMode ? 'text-white' : 'text-gray-900'}>🕐 {formatTurkishTime(pkg.delivered_at)}</span>
                   </div>
                 )}
               </div>
             </div>
           </div>
         </div>
-      )}
+        )
+      })()}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
       {/* Yeni Siparişler */}

@@ -5,11 +5,13 @@
  */
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { Upload, Save, Image as ImageIcon, Star, MessageSquare, Eye, EyeOff, Trash2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import ProductOptionsManager, { OptionGroup } from '../components/ProductOptionsManager'
+import SortableCategoryList from '../components/SortableCategoryList'
 import { loadProductOptions, parseProductOptions, saveProductOptions, sanitizeOptionGroups } from '../utils/productOptionsDb'
 
 interface Restaurant {
@@ -20,12 +22,14 @@ interface Restaurant {
   cover_image_url?: string
   logo_url?: string
   minimum_order_value?: number
+  delivery_fee?: number
 }
 
 interface Category {
   id: string
   name: string
   restaurant_id: string
+  sort_order: number
   display_order: number
 }
 
@@ -58,8 +62,28 @@ interface Review {
   }
 }
 
+type RestoranimTab = 'kimlik' | 'menu' | 'yorumlar'
+
+function resolveTab(tab: string | null): RestoranimTab {
+  if (tab === 'menu' || tab === 'yorumlar') return tab
+  return 'kimlik'
+}
+
 export default function RestoranımPage() {
-  const [activeTab, setActiveTab] = useState<'branding' | 'menu' | 'reviews'>('branding')
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="text-white text-xl">Yükleniyor...</div>
+      </div>
+    }>
+      <RestoranimPageContent />
+    </Suspense>
+  )
+}
+
+function RestoranimPageContent() {
+  const searchParams = useSearchParams()
+  const activeTab = resolveTab(searchParams.get('tab'))
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
   const [products, setProducts] = useState<Product[]>([])
@@ -73,7 +97,8 @@ export default function RestoranımPage() {
     name: '',
     description: '',
     working_hours: '',
-    minimum_order_value: '0'
+    minimum_order_value: '0',
+    delivery_fee: '0',
   })
   const [coverImageFile, setCoverImageFile] = useState<File | null>(null)
   const [logoFile, setLogoFile] = useState<File | null>(null)
@@ -116,7 +141,8 @@ export default function RestoranımPage() {
         name: restaurantData.name || '',
         description: restaurantData.description || '',
         working_hours: restaurantData.working_hours || '',
-        minimum_order_value: restaurantData.minimum_order_value?.toString() || '0'
+        minimum_order_value: restaurantData.minimum_order_value?.toString() || '0',
+        delivery_fee: String(restaurantData.delivery_fee ?? 0),
       })
       setCoverPreview(restaurantData.cover_image_url || null)
       setLogoPreview(restaurantData.logo_url || null)
@@ -126,7 +152,7 @@ export default function RestoranımPage() {
         .from('categories')
         .select('*')
         .eq('restaurant_id', restaurantId)
-        .order('display_order', { ascending: true })
+        .order('sort_order', { ascending: true })
 
       if (categoriesError) throw categoriesError
       setCategories(categoriesData || [])
@@ -235,6 +261,13 @@ export default function RestoranımPage() {
         return
       }
 
+      const deliveryFee = Number(brandingForm.delivery_fee)
+      if (isNaN(deliveryFee) || deliveryFee < 0) {
+        setErrorMessage('❌ Geçerli bir teslimat ücreti girin')
+        setLoading(false)
+        return
+      }
+
       // Güncelle
       console.log('Veritabanı güncelleniyor...')
       const { error } = await supabase
@@ -244,6 +277,7 @@ export default function RestoranımPage() {
           description: brandingForm.description,
           working_hours: brandingForm.working_hours,
           minimum_order_value: minimumOrderValue,
+          delivery_fee: deliveryFee,
           cover_image_url: coverUrl,
           logo_url: logoUrl
         })
@@ -363,43 +397,9 @@ export default function RestoranımPage() {
           <p className="text-slate-400">Dijital varlıklarınızı tek yerden yönetin</p>
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-2 mb-6 overflow-x-auto">
-          <button
-            onClick={() => setActiveTab('branding')}
-            className={`px-6 py-3 rounded-lg font-medium transition-all whitespace-nowrap ${
-              activeTab === 'branding'
-                ? 'bg-orange-600 text-white'
-                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-            }`}
-          >
-            🎨 Mağaza Kimliği
-          </button>
-          <button
-            onClick={() => setActiveTab('menu')}
-            className={`px-6 py-3 rounded-lg font-medium transition-all whitespace-nowrap ${
-              activeTab === 'menu'
-                ? 'bg-orange-600 text-white'
-                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-            }`}
-          >
-            🍽️ Menü & Stok
-          </button>
-          <button
-            onClick={() => setActiveTab('reviews')}
-            className={`px-6 py-3 rounded-lg font-medium transition-all whitespace-nowrap ${
-              activeTab === 'reviews'
-                ? 'bg-orange-600 text-white'
-                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-            }`}
-          >
-            ⭐ Yorumlar
-          </button>
-        </div>
-
         {/* Content */}
         <AnimatePresence mode="wait">
-          {activeTab === 'branding' && (
+          {activeTab === 'kimlik' && (
             <BrandingTab
               key="branding"
               brandingForm={brandingForm}
@@ -418,13 +418,13 @@ export default function RestoranımPage() {
             <MenuTab
               key="menu"
               categories={categories}
+              setCategories={setCategories}
               products={products}
               toggleProductAvailability={toggleProductAvailability}
               onProductUpdate={loadRestaurantData}
-              setActiveTab={setActiveTab}
             />
           )}
-          {activeTab === 'reviews' && (
+          {activeTab === 'yorumlar' && (
             <ReviewsTab
               key="reviews"
               reviews={reviews}
@@ -686,6 +686,22 @@ function BrandingTab({ brandingForm, setBrandingForm, coverPreview, logoPreview,
             Müşterinin sipariş verebilmesi için gereken minimum tutar
           </p>
         </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-300 mb-2">Teslimat Ücreti (₺)</label>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            value={brandingForm.delivery_fee ?? '0'}
+            onChange={(e) => setBrandingForm({ ...brandingForm, delivery_fee: e.target.value })}
+            className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:border-orange-500 outline-none"
+            placeholder="Örn: 25.00"
+          />
+          <p className="text-xs text-slate-500 mt-1">
+            Müşteriden sipariş başına alınacak sabit teslimat ücreti
+          </p>
+        </div>
       </div>
 
       {/* Save Button */}
@@ -702,7 +718,7 @@ function BrandingTab({ brandingForm, setBrandingForm, coverPreview, logoPreview,
 }
 
 // Menu Tab Component
-function MenuTab({ categories, products, toggleProductAvailability, onProductUpdate, setActiveTab }: any) {
+function MenuTab({ categories, setCategories, products, toggleProductAvailability, onProductUpdate }: any) {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
@@ -840,84 +856,75 @@ function MenuTab({ categories, products, toggleProductAvailability, onProductUpd
           <div id="category-section" className="space-y-4">
             {/* Kategori Ekleme Formu (Kategoriler varken de göster) */}
             <CategoryAddForm onSuccess={onProductUpdate} />
-            
-            {categories.map((category: Category) => (
-            <div key={category.id} className="bg-slate-900 rounded-xl p-6 border border-slate-800">
-              <h3 className="text-xl font-bold text-white mb-4">{category.name}</h3>
-              <div className="space-y-3">
-                {products
-                  .filter((p: Product) => p.category_id === category.id)
-                  .map((product: Product) => (
-                    <div
-                      key={product.id}
-                      onClick={() => openEditModal(product)}
-                      className="relative flex items-center gap-4 p-4 bg-slate-800 rounded-lg border border-slate-700 cursor-pointer hover:border-orange-500 hover:shadow-lg transition-all"
-                    >
-                      {/* Product Image */}
-                      {product.image_url ? (
-                        <img
-                          src={product.image_url}
-                          alt={product.name}
-                          className="w-16 h-16 rounded-lg object-cover"
-                        />
-                      ) : (
-                        <div className="w-16 h-16 rounded-lg bg-slate-700 flex items-center justify-center">
-                          <ImageIcon size={24} className="text-slate-500" />
+
+            <SortableCategoryList
+              categories={categories}
+              onCategoriesChange={setCategories}
+              renderCategoryContent={(category: Category) => (
+                <div className="space-y-3">
+                  {products
+                    .filter((p: Product) => p.category_id === category.id)
+                    .map((product: Product) => (
+                      <div
+                        key={product.id}
+                        onClick={() => openEditModal(product)}
+                        className="relative flex items-center gap-4 p-4 bg-slate-800 rounded-lg border border-slate-700 cursor-pointer hover:border-orange-500 hover:shadow-lg transition-all"
+                      >
+                        {product.image_url ? (
+                          <img
+                            src={product.image_url}
+                            alt={product.name}
+                            className="w-16 h-16 rounded-lg object-cover"
+                          />
+                        ) : (
+                          <div className="w-16 h-16 rounded-lg bg-slate-700 flex items-center justify-center">
+                            <ImageIcon size={24} className="text-slate-500" />
+                          </div>
+                        )}
+
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-white">{product.name}</h4>
+                          <p className="text-sm text-slate-400">{product.description || 'Açıklama yok'}</p>
+                          <p className="text-orange-500 font-bold mt-1">{product.price.toFixed(2)} ₺</p>
                         </div>
-                      )}
 
-                      {/* Product Info */}
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-white">{product.name}</h4>
-                        <p className="text-sm text-slate-400">{product.description || 'Açıklama yok'}</p>
-                        <p className="text-orange-500 font-bold mt-1">{product.price.toFixed(2)} ₺</p>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => openUpsellModal(product, e)}
+                            className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-all text-xs font-medium"
+                            title="Yan Ürünleri Yönet"
+                          >
+                            🔗 Yan Ürünler
+                          </button>
+
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              toggleProductAvailability(product.id, product.is_available)
+                            }}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-all ${
+                              product.is_available
+                                ? 'bg-green-600 hover:bg-green-700 text-white'
+                                : 'bg-red-600 hover:bg-red-700 text-white'
+                            }`}
+                            title={product.is_available ? 'Stokta' : 'Tükendi'}
+                          >
+                            {product.is_available ? <Eye size={18} /> : <EyeOff size={18} />}
+                          </button>
+
+                          <button
+                            onClick={(e) => openDeleteModal(product, e)}
+                            className="p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all"
+                            title="Ürünü Sil"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
                       </div>
-
-                      {/* Action Buttons */}
-                      <div className="flex items-center gap-2">
-                        {/* Upsell Button */}
-                        <button
-                          onClick={(e) => openUpsellModal(product, e)}
-                          className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-all text-xs font-medium"
-                          title="Yan Ürünleri Yönet"
-                        >
-                          🔗 Yan Ürünler
-                        </button>
-
-                        {/* Stock Toggle */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            toggleProductAvailability(product.id, product.is_available)
-                          }}
-                          className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-all ${
-                            product.is_available
-                              ? 'bg-green-600 hover:bg-green-700 text-white'
-                              : 'bg-red-600 hover:bg-red-700 text-white'
-                          }`}
-                          title={product.is_available ? 'Stokta' : 'Tükendi'}
-                        >
-                          {product.is_available ? (
-                            <Eye size={18} />
-                          ) : (
-                            <EyeOff size={18} />
-                          )}
-                        </button>
-
-                        {/* Delete Button */}
-                        <button
-                          onClick={(e) => openDeleteModal(product, e)}
-                          className="p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all"
-                          title="Ürünü Sil"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            </div>
-          ))}
+                    ))}
+                </div>
+              )}
+            />
           </div>
         )}
       </motion.div>
@@ -931,7 +938,6 @@ function MenuTab({ categories, products, toggleProductAvailability, onProductUpd
             setShowAddModal(false)
             await onProductUpdate()
           }}
-          setActiveTab={setActiveTab}
         />
       )}
 
@@ -1024,12 +1030,10 @@ function ProductAddModal({
   categories, 
   onClose, 
   onSuccess,
-  setActiveTab 
 }: { 
   categories: Category[]; 
   onClose: () => void; 
   onSuccess: () => void;
-  setActiveTab: (tab: 'branding' | 'menu' | 'reviews') => void;
 }) {
   const [formData, setFormData] = useState({
     name: '',
@@ -1932,25 +1936,24 @@ function CategoryAddForm({ onSuccess }: { onSuccess: () => void }) {
         return
       }
 
-      // En yüksek display_order'ı bul
       const { data: existingCategories } = await supabase
         .from('categories')
-        .select('display_order')
+        .select('sort_order')
         .eq('restaurant_id', restaurantId)
-        .order('display_order', { ascending: false })
+        .order('sort_order', { ascending: false })
         .limit(1)
 
-      const nextDisplayOrder = existingCategories && existingCategories.length > 0 
-        ? existingCategories[0].display_order + 1 
+      const nextSortOrder = existingCategories && existingCategories.length > 0
+        ? existingCategories[0].sort_order + 1
         : 0
 
-      // Kategori ekle
       const { error: insertError } = await supabase
         .from('categories')
         .insert({
           restaurant_id: restaurantId,
           name: categoryName.trim(),
-          display_order: nextDisplayOrder
+          sort_order: nextSortOrder,
+          display_order: nextSortOrder,
         })
 
       if (insertError) throw insertError

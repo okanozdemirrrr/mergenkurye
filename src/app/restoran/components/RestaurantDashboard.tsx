@@ -58,14 +58,13 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
   const [todayStats, setTodayStats] = useState({
     packageCount: 0,
     chargeableCount: 0, // Teslim Edilen + Ücretli İptal Sayısı
-    packageFee: 0,
+    unitPackageFee: 0,
+    totalPackageCost: 0,
     totalRevenue: 0,
+    totalCommission: 0,
     netRevenue: 0,
     isLoading: true
   })
-
-  // Paket başına ücret - Restorandan alınacak, yoksa varsayılan 100
-  const PACKAGE_FEE = restaurant?.package_fee || 100
 
   // 🔔 Akıllı Hatırlatıcı Sistemi
   const { isPackageDelayed, getDelayedMinutes, hasDelayedPackages } = useRestaurantReminder(packages, {
@@ -304,43 +303,73 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
       todayStart.setHours(0, 0, 0, 0)
       const todayEnd = new Date()
       todayEnd.setHours(23, 59, 59, 999)
+      const rangeStart = todayStart.getTime()
+      const rangeEnd = todayEnd.getTime()
+      const fallbackFee = restaurant?.package_fee ?? 0
 
-      const { data: rpcData, error } = await supabase.rpc(
-        'get_restaurant_period_financials',
-        {
-          p_restaurant_id: restaurantId,
-          p_start_date: todayStart.toISOString(),
-          p_end_date: todayEnd.toISOString(),
-        }
-      )
+      const { data: pkgs, error } = await supabase
+        .from('packages')
+        .select(
+          'amount, status, delivered_at, created_at, is_chargeable_cancellation, applied_price, commission_amount'
+        )
+        .eq('restaurant_id', restaurantId)
+        .eq('is_paid_to_restaurant', false)
+        .or('status.eq.delivered,and(status.eq.cancelled,is_chargeable_cancellation.eq.true)')
 
       if (error) throw error
 
-      const stats = rpcData as {
-        unpaid_package_count?: number
-        unpaid_cost?: number
-        unpaid_revenue?: number
-        net_payable?: number
-      } | null
+      let packageCount = 0
+      let totalRevenue = 0
+      let totalCommission = 0
+      let totalPackageCost = 0
 
-      const packageCount = Number(stats?.unpaid_package_count ?? 0)
-      const totalRevenue = Number(stats?.unpaid_revenue ?? 0)
-      const calculatedTotalCost = Number(stats?.unpaid_cost ?? 0)
-      const netRevenue = Number(stats?.net_payable ?? 0)
+      for (const pkg of pkgs || []) {
+        let inRange = false
+        if (pkg.status === 'delivered' && pkg.delivered_at) {
+          const t = new Date(pkg.delivered_at).getTime()
+          inRange = t >= rangeStart && t <= rangeEnd
+        } else if (
+          pkg.status === 'cancelled' &&
+          pkg.is_chargeable_cancellation &&
+          pkg.created_at
+        ) {
+          const t = new Date(pkg.created_at).getTime()
+          inRange = t >= rangeStart && t <= rangeEnd
+        }
+        if (!inRange) continue
+
+        packageCount++
+        totalPackageCost += Number(pkg.applied_price ?? fallbackFee)
+
+        if (pkg.status === 'delivered') {
+          totalRevenue += Number(pkg.amount ?? 0)
+          totalCommission += Number(pkg.commission_amount ?? 0)
+        }
+      }
+
+      const netRevenue = totalRevenue - totalPackageCost - totalCommission
 
       setTodayStats({
         packageCount,
         chargeableCount: packageCount,
-        packageFee: calculatedTotalCost,
+        unitPackageFee: 0,
+        totalPackageCost,
         totalRevenue,
+        totalCommission,
         netRevenue,
-        isLoading: false
+        isLoading: false,
       })
     } catch (error) {
       console.error('Günlük istatistikler alınamadı:', error)
-      setTodayStats(prev => ({ ...prev, isLoading: false }))
+      setTodayStats((prev) => ({ ...prev, isLoading: false }))
     }
-  }, [restaurantId, PACKAGE_FEE])
+  }, [restaurantId, restaurant?.package_fee])
+
+  // Restoran package_fee yüklendiğinde istatistikleri güncel birim ücretle yeniden hesapla
+  useEffect(() => {
+    if (!restaurantId || restaurant === null) return
+    fetchTodayStats()
+  }, [restaurant?.package_fee, restaurantId, fetchTodayStats])
 
   const handleNewOrderSuccess = useCallback(() => {
     setSuccessMessage('✅ Yeni sipariş başarıyla oluşturuldu!')
@@ -660,11 +689,11 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                     <div className="h-7 w-20 bg-slate-700 animate-pulse rounded"></div>
                   ) : (
                     <p className={`text-2xl font-black ${darkMode ? 'text-orange-400' : 'text-orange-600'}`}>
-                      {todayStats.packageFee.toFixed(0)}₺
+                      {todayStats.totalPackageCost.toFixed(0)}₺
                     </p>
                   )}
                   <p className={`text-xs mt-0.5 ${darkMode ? 'text-slate-500' : 'text-gray-500'}`}>
-                    {todayStats.chargeableCount} × {restaurant?.package_fee || PACKAGE_FEE}₺
+                    {todayStats.packageCount} paket · applied_price toplamı
                   </p>
                 </div>
                 <div className="text-3xl opacity-20">💸</div>
@@ -688,7 +717,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                     </p>
                   )}
                   <p className={`text-xs mt-0.5 ${darkMode ? 'text-green-500/70' : 'text-green-600/70'}`}>
-                    Ciro: {todayStats.totalRevenue.toFixed(0)}₺ - Masraf: {todayStats.packageFee.toFixed(0)}₺
+                    Ciro: {todayStats.totalRevenue.toFixed(0)}₺ - Masraf: {todayStats.totalPackageCost.toFixed(0)}₺
                   </p>
                 </div>
                 <div className="text-3xl opacity-30">💰</div>
@@ -712,6 +741,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                 darkMode={darkMode}
                 couriers={couriers}
                 restaurantId={restaurantId}
+                restaurantName={restaurant?.name}
                 isPackageDelayed={isPackageDelayed}
                 getDelayedMinutes={getDelayedMinutes}
               />

@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS public.product_option_groups (
     product_id UUID REFERENCES public.products(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     type TEXT NOT NULL CHECK (type IN ('radio', 'checkbox')),
+    necessity BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 

@@ -11,7 +11,8 @@ import { supabase } from '@/app/lib/supabase'
  * Sipariş iptal işlemi (Finansal Mantık ile)
  * 
  * İPTAL KATEGORİZASYONU:
- * - Ücretli İptal: Kurye paketi aldıktan sonra iptal (on_the_way -> cancelled)
+ * - Ücretli İptal: Kurye paketi fiziksel olarak teslim aldıktan sonra iptal
+ *   (picked_up_at dolu veya on_the_way -> cancelled)
  *   → is_chargeable_cancellation = true
  *   → Hesaplamalara dahil edilir (restoran borcu, kurye kazancı)
  * 
@@ -36,10 +37,9 @@ export async function cancelOrder(packageId: number, details: string = 'Sipariş
 
         if (fetchError) throw fetchError
 
-        // 2. Ücretli iptal tek kural:
-        // Kurye pakete atanmışsa (courier_id veya assigned_at) ücretli iptal.
+        // 2. Ücretli iptal: kurye paketi fiziksel olarak teslim almış olmalı
         const isChargeableCancellation = Boolean(
-            packageData.courier_id || packageData.assigned_at
+            packageData.picked_up_at || packageData.status === 'on_the_way'
         )
 
         console.log('🔍 İptal Analizi:', {
@@ -49,20 +49,24 @@ export async function cancelOrder(packageId: number, details: string = 'Sipariş
             pickedUpAt: packageData.picked_up_at,
             isChargeableCancellation,
             reason: isChargeableCancellation
-                ? '💰 Ücretli İptal (Kurye atanmış)'
-                : '🆓 Ücretsiz İptal (Kurye atanmamış)'
+                ? '💰 Ücretli İptal (Paket teslim alındı)'
+                : '🆓 Ücretsiz İptal (Paket teslim alınmadı)'
         })
 
         // 3. İptal işlemini gerçekleştir
+        const updatePayload: Record<string, unknown> = {
+            status: 'cancelled',
+            cancelled_at: new Date().toISOString(),
+            cancelled_by: 'admin',
+            is_chargeable_cancellation: isChargeableCancellation,
+        }
+        if (isChargeableCancellation && packageData.courier_id) {
+            updatePayload.delivered_by_courier_id = packageData.courier_id
+        }
+
         const { error } = await supabase
             .from('packages')
-            .update({
-                status: 'cancelled',
-                courier_id: null,  // Kurye bağlantısını kopar
-                cancelled_at: new Date().toISOString(),
-                cancelled_by: 'admin',
-                is_chargeable_cancellation: isChargeableCancellation
-            })
+            .update(updatePayload)
             .eq('id', packageId)
 
         if (error) throw error

@@ -11,6 +11,7 @@ export interface Option {
 export interface OptionGroup {
   name: string
   type: 'radio' | 'checkbox'
+  necessity: boolean
   options: Option[]
 }
 
@@ -33,6 +34,7 @@ export default function ProductOptionsManager({ options = [], onChange, darkMode
       {
         name: '',
         type: 'radio' as const,
+        necessity: false,
         options: [{ name: '', price_modifier: 0 }]
       }
     ]
@@ -160,7 +162,25 @@ export default function ProductOptionsManager({ options = [], onChange, darkMode
                   </select>
                 </div>
                 
-                <div className="flex items-center gap-3 ml-2">
+                <div className="flex items-center gap-2 ml-2 shrink-0" onClick={e => e.stopPropagation()}>
+                  <label className="flex items-center gap-1.5 cursor-pointer text-xs text-slate-300 whitespace-nowrap">
+                    <input
+                      type="checkbox"
+                      checked={group.necessity === true}
+                      onChange={() => handleGroupChange(groupIndex, 'necessity', true)}
+                      className="w-4 h-4 rounded border-slate-600 text-orange-600 focus:ring-orange-500"
+                    />
+                    Zorunlu
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer text-xs text-slate-300 whitespace-nowrap">
+                    <input
+                      type="checkbox"
+                      checked={group.necessity !== true}
+                      onChange={() => handleGroupChange(groupIndex, 'necessity', false)}
+                      className="w-4 h-4 rounded border-slate-600 text-orange-600 focus:ring-orange-500"
+                    />
+                    İsteğe bağlı
+                  </label>
                   <button
                     type="button"
                     onClick={(e) => {

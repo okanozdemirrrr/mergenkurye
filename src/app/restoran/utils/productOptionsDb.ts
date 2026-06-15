@@ -6,6 +6,7 @@ export function sanitizeOptionGroups(optionGroups: OptionGroup[]): OptionGroup[]
     .map((group) => ({
       name: group.name.trim(),
       type: group.type === 'checkbox' ? 'checkbox' as const : 'radio' as const,
+      necessity: group.necessity === true,
       options: (group.options || [])
         .map((option) => ({
           name: option.name.trim(),
@@ -49,6 +50,7 @@ export async function loadProductOptions(productId: string): Promise<OptionGroup
     .select(`
       name,
       type,
+      necessity,
       product_options (
         name,
         price_modifier
@@ -71,6 +73,7 @@ export async function loadProductOptions(productId: string): Promise<OptionGroup
     (groups || []).map((group: any) => ({
       name: group.name,
       type: group.type === 'checkbox' ? 'checkbox' : 'radio',
+      necessity: group.necessity === true,
       options: (group.product_options || []).map((option: any) => ({
         name: option.name,
         price_modifier: Number(option.price_modifier) || 0,
@@ -94,6 +97,7 @@ async function syncNormalizedProductOptions(productId: string, cleaned: OptionGr
         product_id: productId,
         name: group.name,
         type: group.type,
+        necessity: group.necessity === true,
       })
       .select('id')
       .single()

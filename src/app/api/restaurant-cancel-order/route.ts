@@ -220,28 +220,36 @@ export async function POST(request: NextRequest) {
     }
 
     // ADIM 5: Ücretli mi Ücretsiz mi İptal? (Tek kural)
-    // Kurye atandıysa (courier_id veya assigned_at) ücretli iptal.
-    const isChargeableCancellation = Boolean(pkg.courier_id || pkg.assigned_at)
+    // Kurye paketi fiziksel olarak teslim almış olmalı (picked_up_at veya on_the_way).
+    const isChargeableCancellation = Boolean(
+      pkg.picked_up_at || pkg.status === 'on_the_way'
+    )
 
     console.log('🔍 İptal Analizi (API Route):', {
       packageId: pkg.id,
       currentStatus: pkg.status,
+      pickedUpAt: pkg.picked_up_at,
       isChargeableCancellation,
       reason: isChargeableCancellation
-        ? '💰 Ücretli İptal (Kurye atanmış)'
-        : '🆓 Ücretsiz İptal (Kurye atanmamış)'
+        ? '💰 Ücretli İptal (Paket teslim alındı)'
+        : '🆓 Ücretsiz İptal (Paket teslim alınmadı)'
     })
 
     // ADIM 6: Paketi iptal et
+    const cancelUpdate: Record<string, unknown> = {
+      status: 'cancelled',
+      cancelled_at: new Date().toISOString(),
+      cancelled_by: 'restaurant',
+      cancellation_reason: cancellationReason,
+      is_chargeable_cancellation: isChargeableCancellation,
+    }
+    if (isChargeableCancellation && pkg.courier_id) {
+      cancelUpdate.delivered_by_courier_id = pkg.courier_id
+    }
+
     const { error: updateError } = await supabase
       .from('packages')
-      .update({
-        status: 'cancelled',
-        cancelled_at: new Date().toISOString(),
-        cancelled_by: 'restaurant',
-        cancellation_reason: cancellationReason,
-        is_chargeable_cancellation: isChargeableCancellation
-      })
+      .update(cancelUpdate)
       .eq('id', pkg.id) // pkg.id kullan, packageId değil (güvenlik)
 
     if (updateError) {

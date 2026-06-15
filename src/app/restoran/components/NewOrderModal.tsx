@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/app/lib/supabase'
 import { useRestoran } from '../RestoranProvider'
+import { formatDeliveryAddress } from '@/app/lib/formatDeliveryAddress'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface Customer {
@@ -28,8 +29,16 @@ interface NewOrderModalProps {
 // ─── Yardımcı: Adres Birleştir ────────────────────────────────────────────────
 function buildAddress(c: Customer): string {
   if (c.address) return c.address
-  const parts = [c.neighborhood, c.street_address, c.floor && `Kat:${c.floor}`, c.door_number && `No:${c.door_number}`, c.district].filter(Boolean)
-  return parts.join(', ')
+  if (c.district || c.neighborhood || c.street_address || c.floor || c.door_number) {
+    return formatDeliveryAddress({
+      district: c.district,
+      neighborhood: c.neighborhood,
+      street_address: c.street_address,
+      floor: c.floor,
+      door_number: c.door_number,
+    })
+  }
+  return ''
 }
 
 // ─── Yeni Müşteri Modal ──────────────────────────────────────────────────────

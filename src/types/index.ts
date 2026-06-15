@@ -38,6 +38,9 @@ export interface Package {
     customer_phone?: string
     delivery_address: string
     amount: number
+    subtotal?: number | null
+    delivery_fee?: number | null
+    items?: unknown
     status: PackageStatus
     content?: string
     courier_id?: string | null

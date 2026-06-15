@@ -705,8 +705,8 @@ export default function KuryePage() {
       const { count, error } = await supabase
         .from('packages')
         .select('id', { count: 'exact', head: true })
-        .eq('status', 'delivered')
         .eq('delivered_by_courier_id', courierId)
+        .or('status.eq.delivered,and(status.eq.cancelled,is_chargeable_cancellation.eq.true)')
         .or('is_courier_earned_paid.is.null,is_courier_earned_paid.eq.false')
 
       if (error) throw error
@@ -1496,8 +1496,8 @@ export default function KuryePage() {
       const { data, error } = await supabase
         .from('packages')
         .select('*, restaurants(*)')
-        .eq('status', 'delivered')
         .eq('delivered_by_courier_id', courierId)
+        .or('status.eq.delivered,and(status.eq.cancelled,is_chargeable_cancellation.eq.true)')
         .or('is_courier_settled.is.null,is_courier_settled.eq.false')
         .order('delivered_at', { ascending: false })
 
@@ -1660,23 +1660,25 @@ export default function KuryePage() {
 
     setCancelLoading(true)
     try {
-      // İş Mantığı (YENİ KURAL):
-      // ✅ Ücretli İptal  → SADECE status = 'on_the_way' (Paket Yolda)
-      // 🆓 Ücretsiz İptal → new_order, getting_ready, ready, assigned, picking_up (kim iptal ederse etsin)
+      // Ücretli iptal: paket fiziksel olarak teslim alınmış olmalı
       const isChargeable = Boolean(
-        cancellingPackage.courier_id || cancellingPackage.assigned_at
+        cancellingPackage.picked_up_at || cancellingPackage.status === 'on_the_way'
       )
+
+      const cancelUpdate: Record<string, unknown> = {
+        status: 'cancelled',
+        is_chargeable_cancellation: isChargeable,
+        cancelled_at: new Date().toISOString(),
+        cancelled_by: 'courier',
+      }
+      if (isChargeable) {
+        cancelUpdate.delivered_at = new Date().toISOString()
+        cancelUpdate.delivered_by_courier_id = courierId
+      }
 
       const { error } = await supabase
         .from('packages')
-        .update({
-          status: 'cancelled',
-          is_chargeable_cancellation: isChargeable,
-          cancelled_at: new Date().toISOString(),
-          delivered_at: new Date().toISOString(), // Raporlar ve cüzdan için tarih bilgisi
-          cancelled_by: 'courier',
-          delivered_by_courier_id: courierId // Bu iptali yapan kuryeyi belirlemek için
-        })
+        .update(cancelUpdate)
         .eq('id', cancellingPackage.id)
 
       if (error) throw error

@@ -51,7 +51,7 @@ export async function fetchCourierCollectionPackages(
   let query = supabase
     .from('packages')
     .select(select)
-    .eq('status', 'delivered')
+    .or('status.eq.delivered,and(status.eq.cancelled,is_chargeable_cancellation.eq.true)')
     .is('courier_settlement_id', null)
     .is('courier_settled_at', null)
     .gte('delivered_at', startIso)
@@ -75,7 +75,7 @@ export async function fetchCourierDeliveredPackages(
   let query = supabase
     .from('packages')
     .select(select, { count: 'exact' })
-    .eq('status', 'delivered')
+    .or('status.eq.delivered,and(status.eq.cancelled,is_chargeable_cancellation.eq.true)')
     .gte('delivered_at', startIso)
     .lte('delivered_at', endIso)
     .order('delivered_at', { ascending: false })

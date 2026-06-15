@@ -65,12 +65,16 @@ export async function login(credentials: LoginCredentials): Promise<AuthResponse
         .select('*')
         .eq('username', username)
         .eq('password', password)
-        .eq('is_active', true)
-        .single()
+        .maybeSingle()
 
       if (error || !user) {
         return { success: false, error: 'Kurye kullanıcı adı veya şifre hatalı' }
       }
+
+      await supabase
+        .from('couriers')
+        .update({ is_active: true, status: 'idle' })
+        .eq('id', user.id)
 
       const authUser: AuthUser = {
         id: user.id,

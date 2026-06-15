@@ -4,8 +4,8 @@
  */
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { App } from '@capacitor/app'
 import { supabase } from '../lib/supabase'
@@ -224,7 +224,9 @@ function RestoranContent({ children, pathname }: { children: React.ReactNode, pa
 
       <RestoranMessages />
       <CallerIdListener />
-      <MenuSidebar showMenu={showMenu} setShowMenu={setShowMenu} isActive={isActive} />
+      <Suspense fallback={null}>
+        <MenuSidebar showMenu={showMenu} setShowMenu={setShowMenu} isActive={isActive} />
+      </Suspense>
       {children}
     </>
   )
@@ -250,7 +252,19 @@ function RestoranMessages() {
 }
 
 function MenuSidebar({ showMenu, setShowMenu, isActive }: { showMenu: boolean, setShowMenu: (show: boolean) => void, isActive: (path: string) => boolean }) {
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const { restaurant, setErrorMessage } = useRestoran()
+  const [isRestoranimOpen, setIsRestoranimOpen] = useState(false)
+
+  const activeRestoranimTab = searchParams.get('tab') || 'kimlik'
+  const isOnRestoranim = pathname?.startsWith('/restoran/restoranim') ?? false
+
+  useEffect(() => {
+    if (isOnRestoranim) {
+      setIsRestoranimOpen(true)
+    }
+  }, [isOnRestoranim])
 
   const handleCustomerSatisfaction = () => {
     if (!restaurant?.maps_link) {
@@ -286,16 +300,66 @@ function MenuSidebar({ showMenu, setShowMenu, isActive }: { showMenu: boolean, s
             Siparişler
           </Link>
 
-          <Link
-            href="/restoran/restoranim"
-            onClick={() => setShowMenu(false)}
-            className={`block w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${
-              isActive('/restoran/restoranim') ? 'bg-orange-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-            }`}
-          >
-            <span className="mr-3">🏪</span>
-            Restoranım
-          </Link>
+          <div>
+            <button
+              type="button"
+              onClick={() => setIsRestoranimOpen((open) => !open)}
+              className={`flex w-full items-center justify-between px-4 py-3 rounded-lg font-medium transition-all ${
+                isOnRestoranim ? 'bg-orange-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+              }`}
+            >
+              <span>
+                <span className="mr-3">🏪</span>
+                Restoranım
+              </span>
+              <svg
+                className={`w-4 h-4 transition-transform ${isRestoranimOpen ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {isRestoranimOpen && (
+              <div className="mt-1 space-y-1 pl-4">
+                <Link
+                  href="/restoran/restoranim?tab=kimlik"
+                  onClick={() => setShowMenu(false)}
+                  className={`block w-full text-left pl-8 pr-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                    isOnRestoranim && activeRestoranimTab === 'kimlik'
+                      ? 'bg-orange-500 text-white'
+                      : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                  }`}
+                >
+                  Mağaza Kimliği
+                </Link>
+                <Link
+                  href="/restoran/restoranim?tab=menu"
+                  onClick={() => setShowMenu(false)}
+                  className={`block w-full text-left pl-8 pr-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                    isOnRestoranim && activeRestoranimTab === 'menu'
+                      ? 'bg-orange-500 text-white'
+                      : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                  }`}
+                >
+                  Menü & Stok
+                </Link>
+                <Link
+                  href="/restoran/restoranim?tab=yorumlar"
+                  onClick={() => setShowMenu(false)}
+                  className={`block w-full text-left pl-8 pr-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                    isOnRestoranim && activeRestoranimTab === 'yorumlar'
+                      ? 'bg-orange-500 text-white'
+                      : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                  }`}
+                >
+                  Yorumlar
+                </Link>
+              </div>
+            )}
+          </div>
 
           <Link
             href="/restoran/istatistikler"

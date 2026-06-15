@@ -128,15 +128,14 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ---------------------------------------------------------------------------
--- 3) Ücretli iptal kuralı: kurye atandıysa ücretli
+-- 3) Ücretli iptal kuralı: paket fiziksel olarak teslim alındıysa ücretli
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION set_chargeable_cancellation()
 RETURNS TRIGGER AS $$
 BEGIN
   IF NEW.status = 'cancelled' THEN
     NEW.is_chargeable_cancellation := (
-      COALESCE(OLD.courier_id, NEW.courier_id) IS NOT NULL
-      OR COALESCE(OLD.assigned_at, NEW.assigned_at) IS NOT NULL
+      COALESCE(OLD.picked_up_at, NEW.picked_up_at) IS NOT NULL
     );
   END IF;
   RETURN NEW;
