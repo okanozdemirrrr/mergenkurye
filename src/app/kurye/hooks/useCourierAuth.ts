@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/app/lib/supabase'
+import { authenticateCourier, getCourierAccountStatusError } from '@/services/courierLoginService'
 
 const LOGIN_STORAGE_KEY = 'kurye_logged_in'
 const LOGIN_COURIER_ID_KEY = 'kurye_logged_courier_id'
@@ -63,46 +63,42 @@ export function useCourierAuth() {
     if (typeof window === 'undefined') return
 
     try {
-      const { data, error } = await supabase
-        .from('couriers')
-        .select('id, full_name, username, password')
-        .eq('username', loginForm.username)
-        .eq('password', loginForm.password)
-        .maybeSingle()
+      const loginResult = await authenticateCourier(loginForm.username, loginForm.password)
 
-      if (error) {
-        console.error('Veritabanı hatası:', error)
-        setErrorMessage("Veritabanı hatası!")
+      if (!loginResult.ok) {
+        if (loginResult.reason === 'db_error') {
+          console.error('Veritabanı hatası:', loginResult.message)
+          setErrorMessage("Veritabanı hatası!")
+          return
+        }
+        setErrorMessage("Hatalı kullanıcı adı veya şifre!")
         return
       }
 
-      if (data) {
-        // Sadece kurye oturumunu başlat, diğerlerine dokunma
-        await supabase
-          .from('couriers')
-          .update({ is_active: true, status: 'idle' })
-          .eq('id', data.id)
-
-        // Kurye oturumunu başlat (eski sistem)
-        localStorage.setItem(LOGIN_STORAGE_KEY, 'true')
-        localStorage.setItem(LOGIN_COURIER_ID_KEY, data.id)
-
-        // Yeni auth sistemi için de kaydet (otomatik giriş için)
-        localStorage.setItem('auth_logged_in', 'true')
-        localStorage.setItem('auth_user_type', 'courier')
-        localStorage.setItem('auth_user', JSON.stringify({
-          id: data.id,
-          username: data.username,
-          fullName: data.full_name,
-          userType: 'courier'
-        }))
-
-        setIsLoggedIn(true)
-        setSelectedCourierId(data.id)
-        setCourierName(data.full_name || 'Kurye')
-      } else {
-        setErrorMessage("Hatalı kullanıcı adı veya şifre!")
+      const data = loginResult.courier
+      const accountError = getCourierAccountStatusError(data.account_status)
+      if (accountError) {
+        setErrorMessage(accountError)
+        return
       }
+
+      // Kurye oturumunu başlat (eski sistem)
+      localStorage.setItem(LOGIN_STORAGE_KEY, 'true')
+      localStorage.setItem(LOGIN_COURIER_ID_KEY, data.id)
+
+      // Yeni auth sistemi için de kaydet (otomatik giriş için)
+      localStorage.setItem('auth_logged_in', 'true')
+      localStorage.setItem('auth_user_type', 'courier')
+      localStorage.setItem('auth_user', JSON.stringify({
+        id: data.id,
+        username: data.username,
+        fullName: data.full_name,
+        userType: 'courier'
+      }))
+
+      setIsLoggedIn(true)
+      setSelectedCourierId(data.id)
+      setCourierName(data.full_name || 'Kurye')
     } catch (error: any) {
       console.error('Giriş hatası:', error)
       setErrorMessage("Giriş hatası: " + error.message)

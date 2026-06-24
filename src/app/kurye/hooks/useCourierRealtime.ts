@@ -15,7 +15,6 @@ interface UseCourierRealtimeProps {
   fetchPackages: (isInitialLoad: boolean) => Promise<void>
   fetchDailyStats: () => Promise<void>
   fetchTodayDeliveredPackages: () => Promise<void>
-  fetchLeaderboard: () => Promise<void>
   fetchUnsettledAmount: () => Promise<void>
   fetchCourierStatus: () => Promise<void>
 }
@@ -26,7 +25,6 @@ export function useCourierRealtime({
   fetchPackages,
   fetchDailyStats,
   fetchTodayDeliveredPackages,
-  fetchLeaderboard,
   fetchUnsettledAmount,
   fetchCourierStatus
 }: UseCourierRealtimeProps) {
@@ -86,7 +84,6 @@ export function useCourierRealtime({
       await fetchPackages(false)
       await fetchDailyStats()
       await fetchTodayDeliveredPackages()
-      await fetchLeaderboard()
       await fetchUnsettledAmount()
       console.log('✅ Kurye state güncellendi (packages)')
     }

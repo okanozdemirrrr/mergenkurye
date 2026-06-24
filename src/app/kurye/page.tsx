@@ -26,6 +26,7 @@ import {
   type PaymentTotals,
 } from '@/utils/courierAccount'
 import { fetchCourierLedgerPeriodAccount } from '@/utils/courierLedger'
+import { authenticateCourier, getCourierAccountStatusError } from '@/services/courierLoginService'
 
 // ============================================
 // SAMSUN OPERASYON BÖLGESI TANIMLARI
@@ -114,12 +115,6 @@ interface Package {
   cancelled_by?: 'admin' | 'restaurant' | null
   cancellation_reason?: string | null
   ready_at?: string | null
-}
-
-interface CourierLeaderboard {
-  id: string
-  full_name: string
-  todayDeliveryCount: number
 }
 
 // KALICI OTURUM YONETIMI - MULTIPLE STORAGE
@@ -303,9 +298,6 @@ export default function KuryePage() {
   const [is_active, setIs_active] = useState(false)
   const [statusUpdating, setStatusUpdating] = useState(false)
   const [darkMode, setDarkMode] = useState(true) // Varsayılan dark mode
-  const [leaderboard, setLeaderboard] = useState<CourierLeaderboard[]>([])
-  const [myRank, setMyRank] = useState<number | null>(null)
-  const [showLeaderboard, setShowLeaderboard] = useState(false) // Leaderboard modal
   const [activeTab, setActiveTab] = useState<'packages' | 'history' | 'earnings' | 'account'>('packages') // Aktif sekme
   // Google Play Uyumlu Belirgin İzin Beyanı Modalı State'leri
   const [showLocationDisclosure, setShowLocationDisclosure] = useState(false)
@@ -855,85 +847,6 @@ export default function KuryePage() {
       const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${address}`
       console.log('🗺️ Adres bazlı Maps URL:', mapsUrl)
       window.open(mapsUrl, '_blank')
-    }
-  }
-
-  // Günün En Hızlıları Leaderboard'unu çek
-  const fetchLeaderboard = async () => {
-    const courierId = localStorage.getItem(STORAGE_KEYS.COURIER_ID)
-    if (!courierId) return
-
-    try {
-      const todayStart = new Date()
-      todayStart.setHours(0, 0, 0, 0)
-
-      // ⚡ OPTİMİZE: Sadece aktif kuryeleri çek + LIMIT
-      const { data: couriersData, error: couriersError } = await supabase
-        .from('couriers')
-        .select('id, full_name')
-        .eq('is_active', true)
-        .limit(20) // ⚡ LIMIT ekle
-
-      if (couriersError) throw couriersError
-
-      if (!couriersData || couriersData.length === 0) {
-        setLeaderboard([])
-        setMyRank(null)
-        return
-      }
-
-      // ⚡ OPTİMİZE: Sadece ID'leri çek
-      const courierIds = couriersData.map(c => c.id)
-      const { data: packagesData, error: packagesError } = await supabase
-        .from('packages')
-        .select('delivered_by_courier_id')
-        .eq('status', 'delivered')
-        .in('delivered_by_courier_id', courierIds)
-        .gte('delivered_at', todayStart.toISOString())
-        .limit(500) // ⚡ LIMIT ekle
-
-      if (packagesError) throw packagesError
-
-      // Kurye bazlı paket sayılarını hesapla
-      const counts: { [key: string]: number } = {}
-      packagesData?.forEach((pkg: any) => {
-        if (pkg.delivered_by_courier_id) {
-          counts[pkg.delivered_by_courier_id] = (counts[pkg.delivered_by_courier_id] || 0) + 1
-        }
-      })
-
-      // Leaderboard oluştur - sadece bugün en az 1 paket teslim etmiş kuryeler
-      const leaderboardData = couriersData
-        .map(courier => ({
-          id: courier.id,
-          full_name: courier.full_name || 'İsimsiz Kurye',
-          todayDeliveryCount: counts[courier.id] || 0
-        }))
-        .filter(courier => courier.todayDeliveryCount > 0)
-        .sort((a, b) => b.todayDeliveryCount - a.todayDeliveryCount)
-        .slice(0, 10) // ⚡ Sadece ilk 10'u göster
-
-      setLeaderboard(leaderboardData)
-
-      // Kendi sıramı bul
-      const myIndex = leaderboardData.findIndex(c => c.id === courierId)
-      setMyRank(myIndex >= 0 ? myIndex + 1 : null)
-
-    } catch (error: any) {
-      // ⚡ Timeout hatası için özel mesaj
-      const errorMsg = error.message?.toLowerCase() || ''
-      if (errorMsg.includes('timeout') || errorMsg.includes('statement timeout')) {
-        console.warn('⏱️ Leaderboard timeout, atlanıyor')
-        return
-      }
-      
-      // İnternet hatalarını sessizce geç
-      if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
-        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
-        return
-      }
-
-      console.error('❌ Leaderboard yüklenemedi:', error)
     }
   }
 
@@ -1699,7 +1612,6 @@ export default function KuryePage() {
       // İstatistikleri ve verileri yenile
       fetchDailyStats()
       fetchTodayDeliveredPackages()
-      fetchLeaderboard()
     } catch (error: any) {
       console.error('İptal hatası:', error)
       setErrorMessage('❌ Hata: ' + error.message)
@@ -1771,7 +1683,6 @@ export default function KuryePage() {
 
       // Arka planda yenile
       fetchTodayDeliveredPackages()
-      fetchLeaderboard()
 
     } catch (error: any) {
       console.error('Teslim hatası:', error)
@@ -2162,7 +2073,6 @@ export default function KuryePage() {
       ]).then(() => {
         // İkincil yüklemeler - daha az kritik
         fetchTodayDeliveredPackages()
-        fetchLeaderboard()
         fetchUnsettledAmount()
         fetchAccountOpenPackages()
       })
@@ -2205,7 +2115,6 @@ export default function KuryePage() {
           // ⚡ OPTİMİZE: Sadece gerekli fonksiyonları çağır
           Promise.all([
             fetchDailyStats(),
-            fetchLeaderboard(),
             fetchUnpaidEarningsBadge(),
             fetchAccountOpenPackages(),
           ])
@@ -2260,12 +2169,7 @@ export default function KuryePage() {
           fetchDailyStats(),
           fetchUnpaidEarningsBadge(),
           fetchAccountOpenPackages(),
-        ]).then(() => {
-          // İkincil güncellemeler
-          if (isNewAssignment) {
-            fetchLeaderboard()
-          }
-        })
+        ])
         console.log('✅ Kurye state güncellendi (packages)')
       }
 
@@ -2526,7 +2430,6 @@ export default function KuryePage() {
         }
 
         fetchTodayDeliveredPackages()
-        fetchLeaderboard()
       } else {
         setPackages(prev => prev.map(pkg =>
           pkg.id === packageId
@@ -2724,24 +2627,6 @@ export default function KuryePage() {
               </div>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Sağ Üst Butonlar - Sadece Aktif Paketler sekmesinde göster */}
-      {isLoggedIn && activeTab === 'packages' && (
-        <div className="fixed top-20 right-2 sm:top-20 sm:right-4 z-[9999] flex items-center gap-1 sm:gap-2 pointer-events-auto">
-          {/* Hız Simgesi - Leaderboard */}
-          <button
-            onClick={() => setShowLeaderboard(true)}
-            className={`flex items-center gap-2 px-4 py-3 text-base rounded-lg shadow-lg transition-all active:scale-95 pointer-events-auto ${darkMode ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-purple-500 hover:bg-purple-600 text-white'
-              }`}
-            title="Günün En Hızlıları"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-            <span className="hidden xs:inline font-medium whitespace-nowrap">Sıralama</span>
-          </button>
         </div>
       )}
 
@@ -3575,26 +3460,6 @@ export default function KuryePage() {
               </div>
             </div>
 
-            {/* Sıralama */}
-            {myRank !== null && (
-              <div className="bg-gradient-to-br from-purple-900 to-indigo-900 p-4 rounded-xl border border-purple-700">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-purple-200 mb-1">Günün Sıralaması</p>
-                    <p className="text-3xl font-bold text-white">
-                      #{myRank} <span className="text-lg text-purple-300">/ {leaderboard.length}</span>
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setShowLeaderboard(true)}
-                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors"
-                  >
-                    Detay
-                  </button>
-                </div>
-              </div>
-            )}
-
             {/* Şifre Değiştir */}
             <button
               onClick={() => setShowPasswordModal(true)}
@@ -3657,114 +3522,6 @@ export default function KuryePage() {
                 <button
                   onClick={() => setShowSummary(false)}
                   className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-medium transition-colors"
-                >
-                  Kapat
-                </button>
-              </div>
-            </div>
-          </div>
-        )
-      }
-
-      {/* GÜNÜN EN HIZLILARI MODAL - Mobil Responsive */}
-      {
-        showLeaderboard && (
-          <div className="fixed inset-0 bg-black/80 z-50 p-2 sm:p-4 overflow-y-auto flex items-center justify-center">
-            <div className="max-w-md w-full bg-gradient-to-br from-purple-900 to-indigo-900 rounded-xl p-4 sm:p-6 border border-purple-700">
-              <div className="flex justify-between items-center mb-3 sm:mb-4">
-                <h2 className="text-lg sm:text-xl font-bold text-purple-100 flex items-center gap-2">
-                  🚀 <span className="hidden xs:inline">Günün En Hızlıları</span><span className="xs:hidden">Sıralama</span>
-                </h2>
-                <button
-                  onClick={() => setShowLeaderboard(false)}
-                  className="text-purple-300 hover:text-white text-2xl active:scale-90"
-                >
-                  ×
-                </button>
-              </div>
-
-              {/* Kendi Sıralaman - Mobil Responsive */}
-              {myRank !== null && (
-                <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-2 sm:p-3 mb-3 sm:mb-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-yellow-200">🏆 Güncel Sıralaman:</span>
-                    <span className="text-xl font-bold text-yellow-100">
-                      {myRank}. / {leaderboard.length} Kurye
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {/* Leaderboard Listesi */}
-              {leaderboard.length === 0 ? (
-                <div className="text-center py-8 text-purple-300">
-                  <div className="text-4xl mb-2">🏁</div>
-                  <p className="text-sm">Henüz bugün teslimat yapan kurye yok</p>
-                </div>
-              ) : (
-                <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {leaderboard.slice(0, 10).map((courier, index) => {
-                    const isMe = courier.id === selectedCourierId
-                    const rank = index + 1
-
-                    // Madalya veya sıra numarası
-                    let badge = ''
-                    let badgeColor = ''
-                    if (rank === 1) {
-                      badge = '🥇'
-                      badgeColor = 'from-yellow-600 to-yellow-500'
-                    } else if (rank === 2) {
-                      badge = '🥈'
-                      badgeColor = 'from-gray-400 to-gray-300'
-                    } else if (rank === 3) {
-                      badge = '🥉'
-                      badgeColor = 'from-orange-600 to-orange-500'
-                    } else {
-                      badge = `#${rank}`
-                      badgeColor = 'from-slate-700 to-slate-600'
-                    }
-
-                    return (
-                      <div
-                        key={courier.id}
-                        className={`flex items-center justify-between p-3 rounded-lg transition-all ${isMe
-                          ? 'bg-purple-500/30 border border-purple-400 scale-105'
-                          : rank <= 3
-                            ? `bg-gradient-to-r ${badgeColor} bg-opacity-20`
-                            : 'bg-purple-800/30'
-                          }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-base font-bold ${rank <= 3 ? 'text-white' : 'text-purple-300'
-                            }`}>
-                            {badge}
-                          </div>
-                          <div>
-                            <p className={`text-sm font-medium ${isMe ? 'text-purple-100 font-bold' : 'text-purple-200'
-                              }`}>
-                              {courier.full_name} {isMe && '(Sen)'}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xl font-bold text-purple-100">
-                            {courier.todayDeliveryCount}
-                          </p>
-                          <p className="text-xs text-purple-300">paket</p>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-
-              <div className="mt-4 pt-4 border-t border-purple-700">
-                <div className="text-xs text-purple-400 text-center mb-3">
-                  Son güncelleme: {new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
-                </div>
-                <button
-                  onClick={() => setShowLeaderboard(false)}
-                  className="w-full py-2.5 bg-purple-700 hover:bg-purple-600 text-white rounded-lg font-medium transition-colors"
                 >
                   Kapat
                 </button>
@@ -4089,54 +3846,40 @@ export default function KuryePage() {
     if (typeof window === 'undefined') return
 
     try {
-      const { data, error } = await supabase
-        .from('couriers')
-        .select('id, full_name, username, password, account_status')
-        .eq('username', loginForm.username)
-        .eq('password', loginForm.password)
-        .maybeSingle()
+      const loginResult = await authenticateCourier(loginForm.username, loginForm.password)
 
-      if (error) {
-        console.error('Veritabanı hatası:', error)
-        setErrorMessage("Veritabanı hatası!")
+      if (!loginResult.ok) {
+        if (loginResult.reason === 'db_error') {
+          console.error('Veritabanı hatası:', loginResult.message)
+          setErrorMessage("Veritabanı hatası!")
+          return
+        }
+        setErrorMessage("Hatalı kullanıcı adı veya şifre!")
         return
       }
 
-      if (data) {
-        // ⚠️ HESAP DURUMU KONTROLÜ (sadece admin değiştirebilir)
-        if (data.account_status === 'terminated') {
-          setErrorMessage("❌ Hesabınız kapatılmış! Yöneticinizle iletişime geçin.")
-          return
-        }
-        if (data.account_status === 'suspended') {
-          setErrorMessage("❌ Hesabınız askıya alınmış! Yöneticinizle iletişime geçin.")
-          return
-        }
-
-        // Giriş yapınca otomatik aktif yap
-        await supabase
-          .from('couriers')
-          .update({ is_active: true, status: 'idle' })
-          .eq('id', data.id)
-
-        // Kurye oturumunu başlat - KALICI STORAGE
-        await saveSession(data.id)
-
-        // Yeni auth sistemi için de kaydet (otomatik giriş için)
-        localStorage.setItem('auth_logged_in', 'true')
-        localStorage.setItem('auth_user_type', 'courier')
-        localStorage.setItem('auth_user', JSON.stringify({
-          id: data.id,
-          username: data.username,
-          fullName: data.full_name,
-          userType: 'courier'
-        }))
-
-        setIsLoggedIn(true)
-        setSelectedCourierId(data.id)
-      } else {
-        setErrorMessage("Hatalı kullanıcı adı veya şifre!")
+      const data = loginResult.courier
+      const accountError = getCourierAccountStatusError(data.account_status)
+      if (accountError) {
+        setErrorMessage(accountError)
+        return
       }
+
+      // Kurye oturumunu başlat - KALICI STORAGE
+      await saveSession(data.id)
+
+      // Yeni auth sistemi için de kaydet (otomatik giriş için)
+      localStorage.setItem('auth_logged_in', 'true')
+      localStorage.setItem('auth_user_type', 'courier')
+      localStorage.setItem('auth_user', JSON.stringify({
+        id: data.id,
+        username: data.username,
+        fullName: data.full_name,
+        userType: 'courier'
+      }))
+
+      setIsLoggedIn(true)
+      setSelectedCourierId(data.id)
     } catch (error: any) {
       console.error('Giriş hatası:', error)
       setErrorMessage("Giriş hatası: " + error.message)

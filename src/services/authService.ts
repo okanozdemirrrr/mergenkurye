@@ -1,4 +1,5 @@
 import { supabase } from '@/app/lib/supabase'
+import { authenticateCourier, getCourierAccountStatusError } from '@/services/courierLoginService'
 
 export interface LoginCredentials {
   companyCode: string
@@ -58,27 +59,26 @@ export async function login(credentials: LoginCredentials): Promise<AuthResponse
       return { success: false, error: 'Admin kullanıcı adı veya şifre hatalı' }
     }
 
-    // Kurye Girişi
+    // Kurye Girişi (pasif kuryeler de giriş yapabilir)
     if (userType === 'courier') {
-      const { data: user, error } = await supabase
-        .from('couriers')
-        .select('*')
-        .eq('username', username)
-        .eq('password', password)
-        .maybeSingle()
+      const loginResult = await authenticateCourier(username, password)
 
-      if (error || !user) {
+      if (!loginResult.ok) {
+        if (loginResult.reason === 'db_error') {
+          return { success: false, error: 'Giriş yapılırken bir hata oluştu' }
+        }
         return { success: false, error: 'Kurye kullanıcı adı veya şifre hatalı' }
       }
 
-      await supabase
-        .from('couriers')
-        .update({ is_active: true, status: 'idle' })
-        .eq('id', user.id)
+      const user = loginResult.courier
+      const accountError = getCourierAccountStatusError(user.account_status)
+      if (accountError) {
+        return { success: false, error: accountError }
+      }
 
       const authUser: AuthUser = {
         id: user.id,
-        companyId: user.company_id || '',
+        companyId: '',
         companyCode: '',
         companyName: 'Alda Gel Kurye',
         username: user.username,

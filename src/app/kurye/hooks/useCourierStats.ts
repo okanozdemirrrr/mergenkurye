@@ -1,6 +1,6 @@
 /**
  * @file src/app/kurye/hooks/useCourierStats.ts
- * @description Kurye İstatistikleri ve Leaderboard Hook'u
+ * @description Kurye İstatistikleri Hook'u
  * 
  * ÖNEMLİ: Bu dosyadaki tüm mantık kurye/page.tsx'ten birebir taşınmıştır.
  * HİÇBİR MANTIK DEĞİŞİKLİĞİ YAPILMAMIŞTIR.
@@ -8,12 +8,6 @@
 
 import { useState } from 'react'
 import { supabase } from '@/app/lib/supabase'
-
-interface CourierLeaderboard {
-  id: string
-  full_name: string
-  todayDeliveryCount: number
-}
 
 interface UseCourierStatsProps {
   courierId: string | null
@@ -29,9 +23,6 @@ export function useCourierStats({ courierId, setErrorMessage }: UseCourierStatsP
   const [courierStatus, setCourierStatus] = useState<'idle' | 'busy' | null>(null)
   const [is_active, setIs_active] = useState(false)
   const [statusUpdating, setStatusUpdating] = useState(false)
-  const [leaderboard, setLeaderboard] = useState<CourierLeaderboard[]>([])
-  const [myRank, setMyRank] = useState<number | null>(null)
-  const [showLeaderboard, setShowLeaderboard] = useState(false)
   const [courierName, setCourierName] = useState<string>('Kurye')
 
   // Fetch Daily Stats - ORİJİNAL MANTIK
@@ -98,76 +89,6 @@ export function useCourierStats({ courierId, setErrorMessage }: UseCourierStatsP
 
       console.error('❌ Kurye durumu alınamadı:', error)
       setErrorMessage('Kurye durumu alınamadı: ' + error.message)
-    }
-  }
-
-  // Fetch Leaderboard - ORİJİNAL MANTIK
-  const fetchLeaderboard = async () => {
-    const courierIdFromStorage = localStorage.getItem('kurye_logged_courier_id')
-    if (!courierIdFromStorage) return
-
-    try {
-      const todayStart = new Date()
-      todayStart.setHours(0, 0, 0, 0)
-
-      // Tüm aktif kuryeleri çek
-      const { data: couriersData, error: couriersError } = await supabase
-        .from('couriers')
-        .select('id, full_name, is_active')
-        .eq('is_active', true)
-
-      if (couriersError) throw couriersError
-
-      if (!couriersData || couriersData.length === 0) {
-        setLeaderboard([])
-        setMyRank(null)
-        return
-      }
-
-      // Her kurye için bugünkü teslimat sayısını çek
-      const courierIds = couriersData.map(c => c.id)
-      const { data: packagesData, error: packagesError } = await supabase
-        .from('packages')
-        .select('courier_id')
-        .eq('status', 'delivered')
-        .in('courier_id', courierIds)
-        .gte('delivered_at', todayStart.toISOString())
-
-      if (packagesError) throw packagesError
-
-      // Kurye bazlı paket sayılarını hesapla
-      const counts: { [key: string]: number } = {}
-      packagesData?.forEach((pkg) => {
-        if (pkg.courier_id) {
-          counts[pkg.courier_id] = (counts[pkg.courier_id] || 0) + 1
-        }
-      })
-
-      // Leaderboard oluştur - sadece bugün en az 1 paket teslim etmiş kuryeler
-      const leaderboardData = couriersData
-        .map(courier => ({
-          id: courier.id,
-          full_name: courier.full_name || 'İsimsiz Kurye',
-          todayDeliveryCount: counts[courier.id] || 0
-        }))
-        .filter(courier => courier.todayDeliveryCount > 0) // Sadece bugün teslimat yapanlar
-        .sort((a, b) => b.todayDeliveryCount - a.todayDeliveryCount) // Çoktan aza sırala
-
-      setLeaderboard(leaderboardData)
-
-      // Kendi sıramı bul
-      const myIndex = leaderboardData.findIndex(c => c.id === courierIdFromStorage)
-      setMyRank(myIndex >= 0 ? myIndex + 1 : null)
-
-    } catch (error: any) {
-      // İnternet hatalarını sessizce geç
-      const errorMsg = error.message?.toLowerCase() || ''
-      if (errorMsg.includes('failed to fetch') || errorMsg.includes('network')) {
-        console.warn('⚠️ Bağlantı hatası (sessiz):', error.message)
-        return
-      }
-
-      console.error('❌ Leaderboard yüklenemedi:', error)
     }
   }
 
@@ -262,16 +183,11 @@ export function useCourierStats({ courierId, setErrorMessage }: UseCourierStatsP
     courierStatus,
     is_active,
     statusUpdating,
-    leaderboard,
-    myRank,
-    showLeaderboard,
-    setShowLeaderboard,
     courierName,
     
     // Functions
     fetchDailyStats,
     fetchCourierStatus,
-    fetchLeaderboard,
     fetchUnsettledAmount,
     updateCourierStatus
   }

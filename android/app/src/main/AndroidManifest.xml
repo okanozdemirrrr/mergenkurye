@@ -72,4 +72,12 @@
 
     <!-- Explicitly remove READ_PHONE_STATE permission added by dependencies -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" tools:node="remove" />
+
+    <!-- Explicitly remove SMS permissions added by dependencies (Google Play policy) -->
+    <uses-permission android:name="android.permission.RECEIVE_SMS" tools:node="remove" />
+    <uses-permission android:name="android.permission.RECEIVE_WAP_PUSH" tools:node="remove" />
+    <uses-permission android:name="android.permission.RECEIVE_MMS" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_SMS" tools:node="remove" />
+    <uses-permission android:name="android.permission.WRITE_SMS" tools:node="remove" />
+    <uses-permission android:name="android.permission.SEND_SMS" tools:node="remove" />
 </manifest>
