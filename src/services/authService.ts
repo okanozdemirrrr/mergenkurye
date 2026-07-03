@@ -100,7 +100,6 @@ export async function login(credentials: LoginCredentials): Promise<AuthResponse
         .select('*')
         .eq('name', username)
         .eq('password', password)
-        .eq('is_active', true)
         .single()
 
       if (error || !user) {
