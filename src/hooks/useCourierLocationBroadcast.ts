@@ -5,7 +5,9 @@
  * MİMARİ:
  * - Bu hook, cihaz ekranı kilitliyken veya uygulama arka plandayken Android Doze Mode
  *   tarafından öldürülmeyen Foreground Service ve Background Geolocation yapısını kurar.
- * - Mesafe filtresi (distanceFilter) 15 metreye ayarlanmıştır.
+ * - Cihaz distanceFilter: 15 m (donanım ön filtresi).
+ * - Uygulama Haversine filtresi: 10 m (Realtime mesaj kotası + batarya koruması).
+ * - Event adı: `location` (LiveMapComponent ile eşleşir).
  * - Konum değiştiğinde Supabase Broadcast kanalı üzerinden anlık yayını gerçekleştirir (DB I/O harcamaz).
  */
 'use client'
@@ -14,7 +16,49 @@ import { useRef, useEffect } from 'react'
 import { supabase } from '@/app/lib/supabase'
 
 const BROADCAST_CHANNEL = 'courier-live-locations'
-const BROADCAST_EVENT = 'location_update'
+const BROADCAST_EVENT = 'location'
+const MIN_DISTANCE_TO_SEND_METERS = 10
+
+interface Coordinates {
+  latitude: number
+  longitude: number
+}
+
+function calculateDistanceInMeters(
+  fromLat: number,
+  fromLng: number,
+  toLat: number,
+  toLng: number
+) {
+  const toRadians = (degrees: number) => (degrees * Math.PI) / 180
+  const earthRadiusInMeters = 6371000
+  const deltaLat = toRadians(toLat - fromLat)
+  const deltaLng = toRadians(toLng - fromLng)
+  const fromLatRad = toRadians(fromLat)
+  const toLatRad = toRadians(toLat)
+
+  const haversine =
+    Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+    Math.cos(fromLatRad) * Math.cos(toLatRad) * Math.sin(deltaLng / 2) * Math.sin(deltaLng / 2)
+
+  const angularDistance = 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine))
+  return earthRadiusInMeters * angularDistance
+}
+
+function shouldSendLocation(
+  lastSent: Coordinates | null,
+  latitude: number,
+  longitude: number
+): boolean {
+  if (!lastSent) return true
+  const distance = calculateDistanceInMeters(
+    lastSent.latitude,
+    lastSent.longitude,
+    latitude,
+    longitude
+  )
+  return distance >= MIN_DISTANCE_TO_SEND_METERS
+}
 
 interface LocationBroadcastOptions {
   courierId: string
@@ -30,6 +74,7 @@ export function useCourierLocationBroadcast({
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
   const watcherIdRef = useRef<string | null>(null)
   const webWatcherRef = useRef<number | null>(null)
+  const lastSentLocationRef = useRef<Coordinates | null>(null)
 
   useEffect(() => {
     if (!isActive || !courierId) {
@@ -49,6 +94,49 @@ export function useCourierLocationBroadcast({
     })
 
     channelRef.current = channel
+
+    const broadcastLocation = (
+      latitude: number,
+      longitude: number,
+      extras: {
+        accuracy?: number | null
+        speed?: number | null
+        heading?: number | null
+        timestamp: number
+      },
+      source: 'background' | 'web'
+    ) => {
+      if (!shouldSendLocation(lastSentLocationRef.current, latitude, longitude)) return
+      if (!channelRef.current) return
+
+      channelRef.current
+        .send({
+          type: 'broadcast',
+          event: BROADCAST_EVENT,
+          payload: {
+            courierId,
+            courierName: courierName || 'Kurye',
+            latitude,
+            longitude,
+            accuracy: extras.accuracy ?? null,
+            speed: extras.speed ?? null,
+            heading: extras.heading ?? null,
+            timestamp: new Date(extras.timestamp).toISOString()
+          }
+        })
+        .then(() => {
+          lastSentLocationRef.current = { latitude, longitude }
+          const label = source === 'background' ? 'Background Geolocation' : 'Web Geolocation'
+          console.log(`📡 ${label} Broadcast gönderildi:`, {
+            lat: latitude.toFixed(5),
+            lng: longitude.toFixed(5),
+            acc: extras.accuracy != null ? `${extras.accuracy.toFixed(0)}m` : 'N/A'
+          })
+        })
+        .catch((err: unknown) => {
+          console.error('❌ Broadcast gönderilemedi:', err)
+        })
+    }
 
     // Arka plan konum takibini (Background Watcher) başlat
     const startTracking = async () => {
@@ -83,31 +171,12 @@ export function useCourierLocationBroadcast({
               if (!latitude || !longitude || latitude === 0 || longitude === 0) return
               if (accuracy && accuracy > 100) return
 
-              // Supabase Broadcast ile anlık gönder (DB'ye yazmaz)
-              if (channelRef.current) {
-                channelRef.current.send({
-                  type: 'broadcast',
-                  event: BROADCAST_EVENT,
-                  payload: {
-                    courierId,
-                    courierName: courierName || 'Kurye',
-                    latitude,
-                    longitude,
-                    accuracy: accuracy || null,
-                    speed: speed || null,
-                    heading: bearing || null,
-                    timestamp: new Date(timestamp).toISOString()
-                  }
-                }).then(() => {
-                  console.log('📡 Background Geolocation Broadcast gönderildi:', {
-                    lat: latitude.toFixed(5),
-                    lng: longitude.toFixed(5),
-                    acc: accuracy?.toFixed(0) + 'm'
-                  })
-                }).catch((err: any) => {
-                  console.error('❌ Broadcast gönderilemedi:', err)
-                })
-              }
+              broadcastLocation(latitude, longitude, {
+                accuracy: accuracy || null,
+                speed: speed || null,
+                heading: bearing || null,
+                timestamp
+              }, 'background')
             }
           )
 
@@ -134,24 +203,12 @@ export function useCourierLocationBroadcast({
             if (!latitude || !longitude || latitude === 0 || longitude === 0) return
             if (accuracy && accuracy > 100) return
 
-            if (channelRef.current) {
-              channelRef.current.send({
-                type: 'broadcast',
-                event: BROADCAST_EVENT,
-                payload: {
-                  courierId,
-                  courierName: courierName || 'Kurye',
-                  latitude,
-                  longitude,
-                  accuracy: accuracy || null,
-                  speed: speed || null,
-                  heading: heading || null,
-                  timestamp: new Date(timestamp).toISOString()
-                }
-              }).then(() => {
-                console.log('📡 Web Geolocation Broadcast gönderildi:', { lat: latitude.toFixed(5), lng: longitude.toFixed(5) })
-              }).catch(() => {})
-            }
+            broadcastLocation(latitude, longitude, {
+              accuracy: accuracy || null,
+              speed: speed || null,
+              heading: heading || null,
+              timestamp
+            }, 'web')
           },
           (err) => console.error('❌ Web Geolocation watchPosition hatası:', err.message),
           { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
@@ -191,6 +248,7 @@ export function useCourierLocationBroadcast({
           channelRef.current = null
           console.log('📡 Kurye broadcast kanalından ayrıldı')
         }
+        lastSentLocationRef.current = null
       }
 
       stopTracking()
