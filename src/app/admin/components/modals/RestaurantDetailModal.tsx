@@ -220,6 +220,9 @@ export function RestaurantDetailModal({
   const [drawerOrders, setDrawerOrders] = useState<Package[]>([])
   const [loadingDrawerOrders, setLoadingDrawerOrders] = useState(false)
 
+  // Dönem ekstresi satırından açılan sipariş detayı (finans modalı kapanmaz)
+  const [selectedOrder, setSelectedOrder] = useState<Package | null>(null)
+
   const fetchDrawerOrders = useCallback(async (payment: any) => {
     setLoadingDrawerOrders(true)
     try {
@@ -619,7 +622,15 @@ export function RestaurantDetailModal({
                             </thead>
                             <tbody className="divide-y divide-slate-800/50">
                               {filteredOrders.map((order) => (
-                                <tr key={order.id} className="hover:bg-slate-800/30 transition-colors">
+                                <tr
+                                  key={order.id}
+                                  onClick={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    setSelectedOrder(order)
+                                  }}
+                                  className="cursor-pointer hover:bg-gray-800/50 transition-colors"
+                                >
                                   <td className="px-6 py-4 font-medium text-slate-300">
                                     {order.order_number || '......'}
                                   </td>
@@ -808,6 +819,207 @@ export function RestaurantDetailModal({
           </>
         )}
       </div>
+
+      {/* Sipariş Detayı — Finans Yönetimi modalının ÜSTÜNDE açılır, onu kapatmaz */}
+      {selectedOrder && (
+        <div
+          className="fixed inset-0 bg-black/80 z-[80] flex items-center justify-center p-4"
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            setSelectedOrder(null)
+          }}
+        >
+          <div
+            className="bg-slate-900 rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-700 shadow-2xl"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+            }}
+          >
+            <div className="flex justify-between items-center mb-4 sticky top-0 bg-slate-900 pb-4 border-b border-slate-700 z-10">
+              <h3 className="text-xl font-bold text-white">📦 Sipariş Detayları</h3>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setSelectedOrder(null)
+                }}
+                className="text-slate-400 hover:text-white text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-800 transition-colors"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="space-y-4 pt-2">
+              <div className="flex items-center gap-3">
+                <span className="text-lg font-bold text-orange-400">
+                  {selectedOrder.order_number || '......'}
+                </span>
+                {selectedOrder.platform && (
+                  <span className={`text-sm py-1 px-3 rounded ${getPlatformBadgeClass(selectedOrder.platform)}`}>
+                    {getPlatformDisplayName(selectedOrder.platform)}
+                  </span>
+                )}
+              </div>
+
+              <div className="bg-slate-800 p-4 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400 text-sm">Durum:</span>
+                  <span
+                    className={`px-3 py-1.5 rounded-full text-sm font-semibold ${
+                      selectedOrder.status === 'cancelled'
+                        ? 'bg-rose-900/50 text-rose-300'
+                        : 'bg-green-900/50 text-green-300'
+                    }`}
+                  >
+                    {selectedOrder.status === 'cancelled' ? 'İptal (Ücretli)' : 'Teslim Edildi'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-slate-800 p-4 rounded-lg">
+                  <p className="text-slate-400 text-xs mb-1">Restoran</p>
+                  <p className="text-white font-semibold">🍽️ {restaurant.name}</p>
+                </div>
+                <div className="bg-slate-800 p-4 rounded-lg">
+                  <p className="text-slate-400 text-xs mb-1">Tutar</p>
+                  <p className="text-green-400 font-bold text-xl">{selectedOrder.amount}₺</p>
+                </div>
+              </div>
+
+              <div className="bg-slate-800 p-4 rounded-lg space-y-3">
+                <h4 className="text-white font-semibold mb-2">Müşteri Bilgileri</h4>
+                <div>
+                  <p className="text-slate-400 text-xs mb-1">Ad Soyad</p>
+                  <p className="text-white">👤 {selectedOrder.customer_name}</p>
+                </div>
+                {selectedOrder.customer_phone && (
+                  <div>
+                    <p className="text-slate-400 text-xs mb-1">Telefon</p>
+                    <p className="text-white">📞 {selectedOrder.customer_phone}</p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-slate-400 text-xs mb-1">Teslimat Adresi</p>
+                  <p className="text-white">📍 {selectedOrder.delivery_address}</p>
+                </div>
+              </div>
+
+              {selectedOrder.content && (
+                <div className="bg-slate-800 p-4 rounded-lg">
+                  <p className="text-slate-400 text-xs mb-1">Paket İçeriği</p>
+                  <p className="text-orange-200">📝 {selectedOrder.content}</p>
+                </div>
+              )}
+
+              <div className="bg-slate-800 p-4 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400 text-sm">Ödeme Yöntemi:</span>
+                  <span
+                    className={`px-3 py-1 rounded text-sm font-medium ${
+                      selectedOrder.payment_method === 'cash'
+                        ? 'bg-green-900/50 text-green-300'
+                        : selectedOrder.payment_method === 'iban'
+                          ? 'bg-purple-900/50 text-purple-300'
+                          : 'bg-orange-900/50 text-orange-300'
+                    }`}
+                  >
+                    {selectedOrder.payment_method === 'cash'
+                      ? '💵 Nakit'
+                      : selectedOrder.payment_method === 'iban'
+                        ? '🏦 IBAN'
+                        : '💳 Kart'}
+                  </span>
+                </div>
+              </div>
+
+              {(selectedOrder.courier_name || selectedOrder.courier_id) && (
+                <div className="bg-slate-800 p-4 rounded-lg">
+                  <p className="text-slate-400 text-xs mb-1">Atanan Kurye</p>
+                  <p className="text-white">
+                    🚴 {selectedOrder.courier_name || 'Bilinmeyen'}
+                  </p>
+                </div>
+              )}
+
+              <div className="bg-slate-800 p-4 rounded-lg space-y-2">
+                <h4 className="text-white font-semibold mb-2">⏱️ Zaman Çizelgesi</h4>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-400">📝 Oluşturulma:</span>
+                  <span className="text-white font-medium">
+                    {selectedOrder.created_at ? formatTurkishTime(selectedOrder.created_at) : '-'}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-400">👨‍🍳 Hazırlamaya Başlama:</span>
+                  <span className="text-white font-medium">
+                    {selectedOrder.getting_ready_at ? formatTurkishTime(selectedOrder.getting_ready_at) : '-'}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-400">✅ Hazır Olma:</span>
+                  <span className="text-white font-medium">
+                    {selectedOrder.ready_at ? formatTurkishTime(selectedOrder.ready_at) : '-'}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-400">✔️ Kurye Kabul Saati:</span>
+                  <span className="text-white font-medium">
+                    {selectedOrder.assigned_at ? formatTurkishTime(selectedOrder.assigned_at) : '-'}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-400">🏪 Esnaftan Alınma:</span>
+                  <span className="text-white font-medium">
+                    {selectedOrder.picked_up_at ? formatTurkishTime(selectedOrder.picked_up_at) : '-'}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-400">🎯 Teslim Edilme:</span>
+                  <span className="text-white font-medium">
+                    {selectedOrder.delivered_at ? formatTurkishTime(selectedOrder.delivered_at) : '-'}
+                  </span>
+                </div>
+                {selectedOrder.cancelled_at && (
+                  <div className="flex justify-between text-sm border-t border-slate-700 pt-2 mt-2">
+                    <span className="text-red-400">❌ İptal:</span>
+                    <span className="text-red-300 font-medium">
+                      {formatTurkishTime(selectedOrder.cancelled_at)}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {selectedOrder.status === 'cancelled' && (
+                <div className="bg-red-900/20 p-4 rounded-lg border border-red-700">
+                  <h4 className="text-red-300 font-semibold mb-2">İptal Bilgileri</h4>
+                  {selectedOrder.cancelled_by && (
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="text-red-400">İptal Eden:</span>
+                      <span className="text-red-300">
+                        {selectedOrder.cancelled_by === 'admin'
+                          ? 'Admin'
+                          : selectedOrder.cancelled_by === 'restaurant'
+                            ? 'Restoran'
+                            : 'Bilinmeyen'}
+                      </span>
+                    </div>
+                  )}
+                  {selectedOrder.cancellation_reason && (
+                    <div className="text-sm mt-2">
+                      <span className="text-red-400">Sebep:</span>
+                      <p className="text-red-300 mt-1">{selectedOrder.cancellation_reason}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
