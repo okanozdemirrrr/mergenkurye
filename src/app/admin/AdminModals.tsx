@@ -165,6 +165,8 @@ export function AdminModals() {
           setRestaurantPaymentAmount={restaurantModal.setRestaurantPaymentAmount}
           onConfirm={restaurantModal.handleRestaurantPayment}
           processing={restaurantModal.restaurantPaymentProcessing}
+          startDate={restaurantModal.restaurantStartDate || globalDates.start}
+          endDate={restaurantModal.restaurantEndDate || globalDates.end}
         />
       )}
     </>

@@ -1,6 +1,6 @@
 /**
- * @file src/app/admin/kuryeler/mutabakatlar/page.tsx
- * @description Kurye mutabakat geçmişi (courier_settlements)
+ * @file src/app/admin/restoranlar/mutabakatlar/page.tsx
+ * @description Restoran mutabakat geçmişi (restaurant_settlements)
  */
 'use client'
 
@@ -11,19 +11,21 @@ import { supabase } from '@/app/lib/supabase'
 type SettlementPackage = {
   order_number: string | null
   delivered_at: string | null
+  amount?: number | null
 }
 
 type SettlementRow = {
   id: string
   created_at: string
-  courier_id: string
-  total_cash: number | null
-  total_card: number | null
-  total_iban: number | null
-  total_earned: number | null
-  received_amount: number | null
-  amount_paid: number
-  couriers: { full_name: string } | { full_name: string }[] | null
+  restaurant_id: string
+  start_date: string
+  end_date: string
+  total_revenue: number | null
+  courier_cost: number | null
+  commission_amount: number | null
+  net_paid: number | null
+  package_count: number | null
+  restaurants: { name: string } | { name: string }[] | null
   packages?: SettlementPackage | SettlementPackage[] | null
 }
 
@@ -32,42 +34,45 @@ const COL_SPAN = 8
 const SETTLEMENT_SELECT_WITH_PACKAGES_FKEY = `
   id,
   created_at,
-  courier_id,
-  total_cash,
-  total_card,
-  total_iban,
-  total_earned,
-  received_amount,
-  amount_paid,
-  couriers ( full_name ),
-  packages!packages_courier_settlement_id_fkey ( order_number, delivered_at )
+  restaurant_id,
+  start_date,
+  end_date,
+  total_revenue,
+  courier_cost,
+  commission_amount,
+  net_paid,
+  package_count,
+  restaurants ( name ),
+  packages!packages_restaurant_settlement_id_fkey ( order_number, delivered_at, amount )
 `
 
 const SETTLEMENT_SELECT_WITH_PACKAGES = `
   id,
   created_at,
-  courier_id,
-  total_cash,
-  total_card,
-  total_iban,
-  total_earned,
-  received_amount,
-  amount_paid,
-  couriers ( full_name ),
-  packages ( order_number, delivered_at )
+  restaurant_id,
+  start_date,
+  end_date,
+  total_revenue,
+  courier_cost,
+  commission_amount,
+  net_paid,
+  package_count,
+  restaurants ( name ),
+  packages ( order_number, delivered_at, amount )
 `
 
 const SETTLEMENT_SELECT_BASE = `
   id,
   created_at,
-  courier_id,
-  total_cash,
-  total_card,
-  total_iban,
-  total_earned,
-  received_amount,
-  amount_paid,
-  couriers ( full_name )
+  restaurant_id,
+  start_date,
+  end_date,
+  total_revenue,
+  courier_cost,
+  commission_amount,
+  net_paid,
+  package_count,
+  restaurants ( name )
 `
 
 function formatMoney(value: number | null | undefined): string {
@@ -88,6 +93,17 @@ function formatDateTime(iso: string): string {
   })
 }
 
+function formatPeriodDate(iso: string | null | undefined): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString('tr-TR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
+}
+
 function formatDeliveredAt(iso: string | null | undefined): string {
   if (!iso) return '—'
   const d = new Date(iso)
@@ -100,15 +116,15 @@ function formatDeliveredAt(iso: string | null | undefined): string {
   })
 }
 
-function courierNameFromRow(row: SettlementRow, nameById: Map<string, string>): string {
-  const joined = row.couriers
-  if (joined && !Array.isArray(joined) && joined.full_name) {
-    return joined.full_name
+function restaurantNameFromRow(row: SettlementRow, nameById: Map<string, string>): string {
+  const joined = row.restaurants
+  if (joined && !Array.isArray(joined) && joined.name) {
+    return joined.name
   }
-  if (Array.isArray(joined) && joined[0]?.full_name) {
-    return joined[0].full_name
+  if (Array.isArray(joined) && joined[0]?.name) {
+    return joined[0].name
   }
-  return nameById.get(row.courier_id) ?? 'Bilinmeyen Kurye'
+  return nameById.get(row.restaurant_id) ?? 'Bilinmeyen Restoran'
 }
 
 function packagesFromRow(row: SettlementRow): SettlementPackage[] {
@@ -122,16 +138,9 @@ function packagesFromRow(row: SettlementRow): SettlementPackage[] {
   })
 }
 
-function netReceived(row: SettlementRow): number {
-  const received = Number(row.received_amount)
-  if (Number.isFinite(received) && received > 0) return received
-  const paid = Number(row.amount_paid)
-  return Number.isFinite(paid) ? paid : 0
-}
-
-export default function KuryeMutabakatlarPage() {
+export default function RestoranMutabakatlarPage() {
   const [rows, setRows] = useState<SettlementRow[]>([])
-  const [courierNames, setCourierNames] = useState<Map<string, string>>(new Map())
+  const [restaurantNames, setRestaurantNames] = useState<Map<string, string>>(new Map())
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [joinWarning, setJoinWarning] = useState<string | null>(null)
@@ -157,19 +166,19 @@ export default function KuryeMutabakatlarPage() {
     })
   }, [rows, startDate, endDate])
 
-  const loadCourierNames = useCallback(async (ids: string[]) => {
+  const loadRestaurantNames = useCallback(async (ids: string[]) => {
     const unique = [...new Set(ids.filter(Boolean))]
     if (unique.length === 0) return new Map<string, string>()
 
     const { data, error } = await supabase
-      .from('couriers')
-      .select('id, full_name')
+      .from('restaurants')
+      .select('id, name')
       .in('id', unique)
 
     if (error) throw error
     const map = new Map<string, string>()
-    for (const c of data || []) {
-      if (c.id && c.full_name) map.set(c.id, c.full_name)
+    for (const r of data || []) {
+      if (r.id && r.name) map.set(r.id, r.name)
     }
     return map
   }, [])
@@ -184,7 +193,7 @@ export default function KuryeMutabakatlarPage() {
 
     const trySelect = async (select: string) => {
       return supabase
-        .from('courier_settlements')
+        .from('restaurant_settlements')
         .select(select)
         .order('created_at', { ascending: false })
     }
@@ -212,18 +221,19 @@ export default function KuryeMutabakatlarPage() {
 
       if (result.error) {
         const fallback = await supabase
-          .from('courier_settlements')
+          .from('restaurant_settlements')
           .select(
             `
             id,
             created_at,
-            courier_id,
-            total_cash,
-            total_card,
-            total_iban,
-            total_earned,
-            received_amount,
-            amount_paid
+            restaurant_id,
+            start_date,
+            end_date,
+            total_revenue,
+            courier_cost,
+            commission_amount,
+            net_paid,
+            package_count
           `
           )
           .order('created_at', { ascending: false })
@@ -231,11 +241,11 @@ export default function KuryeMutabakatlarPage() {
         if (fallback.error) throw fallback.error
 
         warnings.push(
-          'Kurye adı join sorgusu başarısız; isimler couriers tablosundan ayrı yüklendi.'
+          'Restoran adı join sorgusu başarısız; isimler restaurants tablosundan ayrı yüklendi.'
         )
         const list = (fallback.data || []) as SettlementRow[]
-        const names = await loadCourierNames(list.map((r) => r.courier_id))
-        setCourierNames(names)
+        const names = await loadRestaurantNames(list.map((r) => r.restaurant_id))
+        setRestaurantNames(names)
         setRows(list)
         setJoinWarning(warnings.length ? warnings.join(' ') : null)
         return
@@ -243,20 +253,20 @@ export default function KuryeMutabakatlarPage() {
 
       const list = (result.data || []) as SettlementRow[]
       const missingJoin = list.some((r) => {
-        const j = r.couriers
+        const j = r.restaurants
         if (!j) return true
-        if (Array.isArray(j)) return !j[0]?.full_name
-        return !j.full_name
+        if (Array.isArray(j)) return !j[0]?.name
+        return !j.name
       })
 
       if (missingJoin && list.length > 0) {
-        const names = await loadCourierNames(list.map((r) => r.courier_id))
-        setCourierNames(names)
+        const names = await loadRestaurantNames(list.map((r) => r.restaurant_id))
+        setRestaurantNames(names)
         warnings.push(
-          'Bazı kayıtlarda join ile kurye adı gelmedi; couriers tablosundan tamamlandı.'
+          'Bazı kayıtlarda join ile restoran adı gelmedi; restaurants tablosundan tamamlandı.'
         )
       } else {
-        setCourierNames(new Map())
+        setRestaurantNames(new Map())
       }
 
       setRows(list)
@@ -268,7 +278,7 @@ export default function KuryeMutabakatlarPage() {
     } finally {
       setLoading(false)
     }
-  }, [loadCourierNames])
+  }, [loadRestaurantNames])
 
   useEffect(() => {
     fetchSettlements()
@@ -283,10 +293,10 @@ export default function KuryeMutabakatlarPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-            Mutabakat Geçmişi
+            Restoran Mutabakatları
           </h1>
           <p className="text-slate-400 text-sm mt-1">
-            Kurye gün sonu mutabakat fişleri — en yeni kayıtlar üstte
+            Hesap öde mutabakat fişleri — en yeni kayıtlar üstte
           </p>
         </div>
 
@@ -341,7 +351,7 @@ export default function KuryeMutabakatlarPage() {
         ) : rows.length === 0 && !fetchError ? (
           <div className="py-24 text-center">
             <p className="text-slate-500 text-base">
-              Henüz mutabakat kaydı bulunmuyor.
+              Henüz restoran mutabakat kaydı bulunmuyor.
             </p>
           </div>
         ) : filteredSettlements.length === 0 ? (
@@ -360,22 +370,22 @@ export default function KuryeMutabakatlarPage() {
                     Tarih/Saat
                   </th>
                   <th className="text-left py-3.5 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    Kurye Adı
+                    Restoran Adı
+                  </th>
+                  <th className="text-left py-3.5 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    Dönem Aralığı
                   </th>
                   <th className="text-right py-3.5 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    Nakit
+                    Toplam Ciro
                   </th>
                   <th className="text-right py-3.5 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    Kart
+                    Kurye Masrafı
                   </th>
                   <th className="text-right py-3.5 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    IBAN
-                  </th>
-                  <th className="text-right py-3.5 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    Kurye Hakedişi
+                    Kesinti
                   </th>
                   <th className="text-right py-3.5 px-4 text-xs font-semibold text-orange-400 uppercase tracking-wider">
-                    Kasaya Alınan Net Tutar
+                    Net Ödenen Tutar
                   </th>
                 </tr>
               </thead>
@@ -413,27 +423,32 @@ export default function KuryeMutabakatlarPage() {
                           {formatDateTime(row.created_at)}
                         </td>
                         <td className="py-3.5 px-4 text-white font-medium">
-                          {courierNameFromRow(row, courierNames)}
+                          {restaurantNameFromRow(row, restaurantNames)}
                           {pkgs.length > 0 && (
                             <span className="ml-2 text-xs font-normal text-slate-500">
                               ({pkgs.length} paket)
                             </span>
                           )}
+                          {!pkgs.length && (row.package_count ?? 0) > 0 && (
+                            <span className="ml-2 text-xs font-normal text-slate-500">
+                              ({row.package_count} paket)
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-400 whitespace-nowrap">
+                          {formatPeriodDate(row.start_date)} — {formatPeriodDate(row.end_date)}
                         </td>
                         <td className="py-3.5 px-4 text-right text-slate-300 tabular-nums">
-                          {formatMoney(row.total_cash)}
+                          {formatMoney(row.total_revenue)}
                         </td>
-                        <td className="py-3.5 px-4 text-right text-slate-300 tabular-nums">
-                          {formatMoney(row.total_card)}
+                        <td className="py-3.5 px-4 text-right text-rose-300/90 tabular-nums">
+                          {formatMoney(row.courier_cost)}
                         </td>
-                        <td className="py-3.5 px-4 text-right text-slate-300 tabular-nums">
-                          {formatMoney(row.total_iban)}
-                        </td>
-                        <td className="py-3.5 px-4 text-right text-slate-300 tabular-nums">
-                          {formatMoney(row.total_earned)}
+                        <td className="py-3.5 px-4 text-right text-rose-300/90 tabular-nums">
+                          {formatMoney(row.commission_amount)}
                         </td>
                         <td className="py-3.5 px-4 text-right text-orange-500 font-bold tabular-nums">
-                          {formatMoney(netReceived(row))}
+                          {formatMoney(row.net_paid)}
                         </td>
                       </tr>
                       {isExpanded && (
@@ -456,6 +471,11 @@ export default function KuryeMutabakatlarPage() {
                                     <span className="text-slate-400">
                                       {formatDeliveredAt(pkg.delivered_at)}
                                     </span>
+                                    {pkg.amount != null && (
+                                      <span className="text-emerald-400 font-medium">
+                                        {formatMoney(pkg.amount)}
+                                      </span>
+                                    )}
                                   </span>
                                 ))}
                               </div>

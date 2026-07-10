@@ -1,11 +1,9 @@
 /**
  * @file src/app/admin/hooks/useAdminRestaurantModal.ts
- * @description Restoran Modal Yönetimi — Paket Bazlı is_paid_to_restaurant Mimarisi
+ * @description Restoran Modal Yönetimi — Kalıcı restaurant_settlements mutabakatı
  *
- * YENİ SİSTEM:
- * - processRestaurantPayment RPC ile atomik ödeme
- * - Tarih aralığı zorunlu (filtrelenen dönem ödenir)
- * - Filtre dışı paketlere dokunulmaz
+ * - processRestaurantPayment → process_restaurant_settlement RPC
+ * - Seçili dönem fişi + paket işaretleme atomik transaction
  */
 
 import { useState, useEffect } from 'react'
@@ -52,24 +50,24 @@ export function useAdminRestaurantModal({
     }
   }, [parentStartDate, parentEndDate])
 
-  // ── ÖDEME İŞLEMİ (YENİ SİSTEM) ──────────────────────────────
+  // ── ÖDEME İŞLEMİ (Kalıcı Mutabakat) ──────────────────────────
   /**
-   * p_end_date'e kadar tüm ödenmemiş paketleri kapatır (geçmiş dahil).
-   * Atomik RPC: packages UPDATE + payment INSERT tek transaction.
+   * Seçili dönem için process_restaurant_settlement RPC çağırır.
+   * restaurant_settlements fişi + paket işaretleme tek transaction.
    */
   const handleRestaurantPayment = async () => {
-    // 1. Restoran ID kontrolü
     if (!restaurantId) {
       const errMsg = '❌ Restoran ID bulunamadı!'
       setErrorMessage(errMsg)
       setTimeout(() => setErrorMessage(''), 5000)
-      throw new Error(errMsg) // PaymentModal'ın catch bloğunu tetikle
+      throw new Error(errMsg)
     }
 
-    // 2. Bitiş tarihi kontrolü — boşsa parentEndDate'i fallback olarak kullan
+    const effectiveStartDate = restaurantStartDate || parentStartDate || ''
     const effectiveEndDate = restaurantEndDate || parentEndDate || ''
-    if (!effectiveEndDate) {
-      const errMsg = '❌ Bitiş tarihi seçilmeli! Lütfen ana ekrandan tarih filtresi seçin.'
+
+    if (!effectiveStartDate || !effectiveEndDate) {
+      const errMsg = '❌ Dönem tarihleri seçilmeli! Lütfen ana ekrandan tarih filtresi seçin.'
       setErrorMessage(errMsg)
       setTimeout(() => setErrorMessage(''), 5000)
       throw new Error(errMsg)
@@ -80,45 +78,38 @@ export function useAdminRestaurantModal({
     try {
       const result = await processRestaurantPayment(
         restaurantId,
-        restaurantStartDate || parentStartDate || '',
+        effectiveStartDate,
         effectiveEndDate,
-        `Bakiye Kapatıldı — ${effectiveEndDate} tarihine kadar`
+        `Dönem Mutabakatı — ${effectiveStartDate} / ${effectiveEndDate}`
       )
 
       if (result.success) {
-        const msg = result.message || '✅ Ödeme başarıyla kaydedildi'
+        const msg = result.message || '✅ Mutabakat başarıyla kaydedildi'
         const detail = result.data
           ? ` (${result.data.package_count} paket, ${result.data.net_paid?.toFixed(2)} ₺ net)`
           : ''
         setSuccessMessage(msg + detail)
         setTimeout(() => setSuccessMessage(''), 4000)
 
-        // UI anında güncelle
         setGuncelBakiye(0)
         setRestaurantPaymentAmount('')
 
-        // Listeleri yenile — anında refetch (timeout yok)
         fetchRestaurants()
         setRefetchTrigger((prev) => prev + 1)
-
-        // 🚪 Modal'ı kapatmayı PaymentModal'a bırak (konfeti sonrası)
-        // setShowRestaurantPaymentModal(false) — PaymentModal zaten onClose çağıracak
       } else {
-        // Başarısız sonuç → throw et ki PaymentModal hata gösterebilsin
-        const errMsg = result.error || 'Ödeme kaydedilemedi'
+        const errMsg = result.error || 'Mutabakat kaydedilemedi'
         setErrorMessage(`❌ ${errMsg}`)
         setTimeout(() => setErrorMessage(''), 8000)
         throw new Error(errMsg)
       }
     } catch (error: any) {
       console.error('❌ handleRestaurantPayment CATCH:', error)
-      // Eğer hata zaten setErrorMessage ile gösterilmemişse göster
-      if (!error.message?.includes('Ödeme kaydedilemedi') && !error.message?.includes('❌')) {
+      if (!error.message?.includes('Mutabakat kaydedilemedi') && !error.message?.includes('❌')) {
         const errMsg = `❌ Beklenmeyen hata: ${error.message || 'Bilinmeyen hata'}`
         setErrorMessage(errMsg)
         setTimeout(() => setErrorMessage(''), 8000)
       }
-      throw error // PaymentModal'ın catch bloğunu tetikle
+      throw error
     } finally {
       setRestaurantPaymentProcessing(false)
     }

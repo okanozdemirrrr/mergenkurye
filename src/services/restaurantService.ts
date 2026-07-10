@@ -6,7 +6,7 @@
  * - Kümülatif global bakiye YOK
  * - Her paket is_paid_to_restaurant flag'i taşır
  * - Hesaplama: filtrelenen tarih aralığındaki ödenmemiş paketler üzerinden
- * - Ödeme: Supabase RPC (process_restaurant_payment) ile atomik transaction
+ * - Ödeme: Supabase RPC (process_restaurant_settlement) ile atomik mutabakat
  */
 import { supabase } from '@/app/lib/supabase'
 
@@ -110,43 +110,63 @@ export async function getAllRestaurantsUnpaidBalances(
  * KURAL: p_end_date tarihine kadar is_paid_to_restaurant = false olan
  * TÜM paketler kapatılır. Dönem kör noktası (kara delik) oluşmaz.
  */
+/**
+ * Dönem mutabakatı: process_restaurant_settlement RPC
+ * - restaurant_settlements fişi açar
+ * - İlgili paketleri is_paid_to_restaurant=true + restaurant_settlement_id bağlar
+ */
 export async function processRestaurantPayment(
   restaurantId: string,
-  _startDate: string,   // Geriye uyumluluk için imzada tutuluyor
+  startDate: string,
   endDate: string,
   notes?: string
 ): Promise<{
   success: boolean
   message?: string
   error?: string
-  data?: { package_count: number; revenue: number; cost: number; net_paid: number }
+  data?: {
+    package_count: number
+    revenue: number
+    cost: number
+    commission?: number
+    net_paid: number
+    settlement_id?: string
+  }
 }> {
   try {
+    if (!startDate || !endDate) {
+      return { success: false, error: 'Başlangıç ve bitiş tarihi zorunludur' }
+    }
+
+    const start = new Date(startDate)
+    start.setHours(0, 0, 0, 0)
     const end = new Date(endDate)
     end.setHours(23, 59, 59, 999)
 
-    console.log('📤 Ödeme RPC çağrılıyor (tüm geçmiş kapatılıyor):', {
+    console.log('📤 Mutabakat RPC çağrılıyor:', {
       restaurant_id: restaurantId,
+      start: start.toISOString(),
       end: end.toISOString(),
     })
 
-    const { data, error } = await supabase.rpc('process_restaurant_payment', {
+    const { data, error } = await supabase.rpc('process_restaurant_settlement', {
       p_restaurant_id: restaurantId,
+      p_start_date: start.toISOString(),
       p_end_date: end.toISOString(),
       p_notes: notes || null,
     })
 
     if (error) {
-      console.error('❌ RPC Hatası (process_restaurant_payment):', JSON.stringify(error, null, 2))
+      console.error('❌ RPC Hatası (process_restaurant_settlement):', JSON.stringify(error, null, 2))
       return { success: false, error: error.message }
     }
 
     const result = data as any
     if (!result?.success) {
-      return { success: false, error: result?.error || 'Ödeme işlemi başarısız' }
+      return { success: false, error: result?.error || 'Mutabakat işlemi başarısız' }
     }
 
-    console.log('✅ Ödeme başarılı:', JSON.stringify(result, null, 2))
+    console.log('✅ Mutabakat başarılı:', JSON.stringify(result, null, 2))
     return {
       success: true,
       message: result.message,
@@ -154,7 +174,9 @@ export async function processRestaurantPayment(
         package_count: result.package_count,
         revenue: result.revenue,
         cost: result.cost,
+        commission: result.commission,
         net_paid: result.net_paid,
+        settlement_id: result.settlement_id,
       },
     }
   } catch (err: any) {

@@ -35,6 +35,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     if (pathname?.startsWith('/admin/kuryeler')) {
       setShowCourierSubmenu(true)
     }
+    if (pathname?.startsWith('/admin/restoranlar')) {
+      setShowRestaurantSubmenu(true)
+    }
   }, [pathname])
 
   useEffect(() => {
@@ -377,6 +380,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       }`}
                     >
                       💰 Restoranların Ödemesi
+                    </Link>
+                    <Link
+                      href="/admin/restoranlar/mutabakatlar"
+                      onClick={() => setShowMenu(false)}
+                      className={`block w-full text-left px-4 py-2 rounded-lg text-sm transition-all ${
+                        isActive('/admin/restoranlar/mutabakatlar') ? 'bg-orange-500 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                      }`}
+                    >
+                      🧾 Mutabakatlar
                     </Link>
                     <Link
                       href="/admin/restoranlar/basvurular"

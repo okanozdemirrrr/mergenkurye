@@ -1,0 +1,8 @@
+-- =============================================================================
+-- ESKİ TEK DOSYA — KULLANMAYIN
+-- Supabase SQL Editor, CREATE TABLE + $$ fonksiyonunu aynı script'te
+-- bozuyor (auto-RLS enjeksiyonu). Bunun yerine sırayla çalıştırın:
+--
+--   1) 010_restaurant_settlements_table.sql
+--   2) 011_process_restaurant_settlement_rpc.sql
+-- =============================================================================

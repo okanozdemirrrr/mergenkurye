@@ -83,7 +83,7 @@ export function RestaurantPaymentModal({
           <div className="text-center animate-bounce">
             <div className="text-8xl mb-4">🎉</div>
             <div className="text-4xl font-black text-emerald-400 mb-2">ÖDEME BAŞARILI!</div>
-            <div className="text-xl text-emerald-300">Paketler ödendi olarak işaretlendi</div>
+            <div className="text-xl text-emerald-300">Mutabakat fişi oluşturuldu</div>
           </div>
           <div className="absolute inset-0 overflow-hidden">
             {[...Array(20)].map((_, i) => (
@@ -111,7 +111,7 @@ export function RestaurantPaymentModal({
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b border-slate-800">
           <div>
-            <h3 className="text-2xl font-black text-white">💰 Dönem Ödemesi</h3>
+            <h3 className="text-2xl font-black text-white">💰 Dönem Mutabakatı</h3>
             <p className="text-sm text-slate-400 mt-1 font-medium">{restaurant.name}</p>
           </div>
           <button
@@ -168,7 +168,8 @@ export function RestaurantPaymentModal({
           <div className="bg-amber-950/30 p-4 rounded-xl border border-amber-700/30 mb-6">
             <p className="text-amber-400 text-sm font-bold mb-1">⚠️ Dikkat</p>
             <p className="text-amber-300/70 text-xs leading-relaxed">
-              Bu işlem, seçili dönemdeki tüm ödenmemiş paketleri <strong>"ödendi"</strong> olarak işaretleyecektir.
+              Bu işlem, seçili dönemdeki ödenmemiş paketler için kalıcı bir{' '}
+              <strong>mutabakat fişi</strong> oluşturur ve paketleri ödendi olarak işaretler.
               Filtre dışındaki paketlere dokunulmaz. Bu işlem geri alınamaz.
             </p>
           </div>
@@ -194,7 +195,7 @@ export function RestaurantPaymentModal({
                   İşleniyor...
                 </span>
               ) : (
-                '✓ Ödemeyi Onayla'
+                '✓ Mutabakatı Onayla'
               )}
             </button>
           </div>
