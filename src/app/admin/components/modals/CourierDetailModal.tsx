@@ -4,7 +4,9 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Package, Courier, CourierDebt } from '@/types'
 import { formatTurkishTime, calculateDeliveryDuration } from '@/utils/dateHelpers'
 import { CourierPaymentSettingsModal } from './CourierPaymentSettingsModal'
+import { NightShiftConfirmModal } from './NightShiftConfirmModal'
 import { supabase } from '@/app/lib/supabase'
+import { useAdminData } from '../../AdminDataProvider'
 
 interface CourierDetailModalProps {
   show: boolean
@@ -45,6 +47,8 @@ export function CourierDetailModal({
   const [loadingPackages, setLoadingPackages] = useState(false)
   const [processingSettlement, setProcessingSettlement] = useState(false)
   const [processingEarningsPayment, setProcessingEarningsPayment] = useState(false)
+  const [showNightShiftConfirm, setShowNightShiftConfirm] = useState(false)
+  const { fetchCouriers } = useAdminData()
 
   const fetchSettlementPackages = useCallback(async () => {
     if (!selectedCourierId) return
@@ -230,11 +234,27 @@ export function CourierDetailModal({
         <div className="flex justify-between items-center px-6 py-4 border-b border-slate-800 bg-slate-950">
           <div className="flex items-center gap-4 flex-1 flex-wrap">
             <div>
-              <h2 className="text-lg font-bold text-slate-100 tracking-tight">{courier.full_name}</h2>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-lg font-bold text-slate-100 tracking-tight">{courier.full_name}</h2>
+                {courier.is_night_shift && (
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-400/40 shadow-[0_0_12px_rgba(99,102,241,0.25)]">
+                    Gece Vardiyacısı
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-slate-500 tracking-tight">Detaylı Rapor</p>
             </div>
 
-            <div className="flex gap-2 ml-auto">
+            <div className="flex gap-2 ml-auto flex-wrap">
+              {!courier.is_night_shift && (
+                <button
+                  type="button"
+                  onClick={() => setShowNightShiftConfirm(true)}
+                  className="px-3 py-1.5 bg-indigo-950/60 hover:bg-indigo-900/70 text-indigo-300 rounded text-xs font-medium border border-indigo-700/50 transition-colors tracking-tight"
+                >
+                  Gece Vardiyacısı Yap
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setEarningsMode(!earningsMode)}
@@ -597,6 +617,16 @@ export function CourierDetailModal({
           onClose={() => setShowPaymentSettings(false)}
           onSuccess={() => {
             window.location.reload()
+          }}
+        />
+      )}
+
+      {showNightShiftConfirm && (
+        <NightShiftConfirmModal
+          courier={courier}
+          onClose={() => setShowNightShiftConfirm(false)}
+          onSuccess={() => {
+            void fetchCouriers()
           }}
         />
       )}

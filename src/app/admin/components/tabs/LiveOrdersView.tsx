@@ -5,6 +5,7 @@
  */
 
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
+import { NightShiftIndicator } from '../NightShiftIndicator'
 
 interface Restaurant {
   id: number | string
@@ -248,7 +249,10 @@ export function LiveOrdersView({
                     className="p-2 bg-slate-50 rounded-lg border"
                   >
                     <div className="flex justify-between items-center mb-1.5">
-                      <span className="font-bold text-xs">{c.full_name}</span>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <NightShiftIndicator isNightShift={c.is_night_shift} />
+                        <span className="font-bold text-xs truncate">{c.full_name}</span>
+                      </div>
                       <div className="text-right">
                         <span className="text-[10px] text-green-600 block font-semibold">
                           📦 {c.todayDeliveryCount || 0} bugün

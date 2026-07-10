@@ -11,7 +11,7 @@ interface Restaurant {
   name: string
   logo_url?: string
   delivery_fee?: number
-  min_order_amount?: number
+  minimum_order_value?: number
   delivery_time?: string
   rating?: number
   category?: string
@@ -57,7 +57,7 @@ export default function RestoranlarPage() {
         ...r,
         rating: r.rating || (4 + Math.random()).toFixed(1),
         delivery_time: r.delivery_time || '20-30 dk',
-        min_order_amount: r.min_order_amount || 150,
+        minimum_order_value: r.minimum_order_value ?? 0,
         category: r.category || ['burger', 'doner', 'pizza', 'kebap'][Math.floor(Math.random() * 4)]
       }))
 
@@ -236,7 +236,11 @@ export default function RestoranlarPage() {
                         </span>
                       </div>
                       <div className="mt-5 flex items-center justify-between pt-4 border-t border-slate-50">
-                        <span className="text-[11px] text-slate-400 font-black uppercase tracking-tighter">Min. {res.min_order_amount} ₺</span>
+                        <span className="text-[11px] text-slate-400 font-black uppercase tracking-tighter">
+                          {res.minimum_order_value && res.minimum_order_value > 0
+                            ? `Min. ${res.minimum_order_value} ₺`
+                            : 'Min. sipariş yok'}
+                        </span>
                         <Link 
                           href={`/restoran/${res.id}`} 
                           className="bg-slate-900 text-white px-5 py-2.5 rounded-2xl text-xs font-bold hover:bg-orange-600 shadow-lg shadow-slate-900/10 hover:shadow-orange-500/30 transition-all active:scale-95"

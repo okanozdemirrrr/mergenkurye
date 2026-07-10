@@ -100,6 +100,7 @@ export interface Courier {
     // YENİ: Ödeme sistemi alanları
     payment_type?: 'paket_basi' | 'saatlik'
     package_rate?: number
+    is_night_shift?: boolean
 }
 
 // ============================================

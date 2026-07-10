@@ -161,7 +161,7 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
       // ⚡ EGRESS OPTİMİZASYONU: Sadece gerekli courier kolonları (last_location dahil)
       const { data, error } = await supabase
         .from('couriers')
-        .select('id, username, full_name, is_active, package_rate, payment_type, account_status, last_location')
+        .select('id, username, full_name, is_active, is_night_shift, package_rate, payment_type, account_status, last_location')
         .order('full_name', { ascending: true })
 
       if (error) throw error
@@ -230,6 +230,7 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
             id: courier.id,
             full_name: courier.full_name || 'İsimsiz Kurye',
             is_active: Boolean(courier.is_active),
+            is_night_shift: Boolean(courier.is_night_shift),
             deliveryCount: weeklyDeliveryCount, // Geriye uyumluluk için
             weeklyDeliveryCount,
             todayDeliveryCount,

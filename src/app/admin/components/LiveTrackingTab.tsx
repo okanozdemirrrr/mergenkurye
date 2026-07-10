@@ -17,6 +17,7 @@ import { CourierTransferModal } from './CourierTransferModal'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
 import { formatTurkishTime } from '@/utils/dateHelpers'
 import { CourierDailyRoutes } from './CourierDailyRoutes'
+import { NightShiftIndicator } from './NightShiftIndicator'
 
 // Harita bileşenini dinamik olarak yükle (SSR devre dışı)
 const LiveMapComponent = dynamic(
@@ -549,7 +550,10 @@ export function LiveTrackingTab({
                                         className="p-2 bg-slate-800 rounded-lg border border-slate-700"
                                     >
                                         <div className="flex justify-between items-center mb-1.5">
-                                            <span className="font-bold text-xs text-white">{c.full_name}</span>
+                                            <div className="flex items-center gap-1.5 min-w-0">
+                                                <NightShiftIndicator isNightShift={c.is_night_shift} />
+                                                <span className="font-bold text-xs text-white truncate">{c.full_name}</span>
+                                            </div>
                                             <div className="text-right">
                                                 <span className="text-[10px] text-green-400 block font-semibold">
                                                     📦 {c.todayDeliveryCount || 0} bugün

@@ -12,6 +12,8 @@ import { Courier, Package } from '@/types'
 import { supabase } from '@/app/lib/supabase'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { CourierAccountStatusModal } from './modals/CourierAccountStatusModal'
+import { NightShiftConfirmModal } from './modals/NightShiftConfirmModal'
+import { useAdminData } from '../AdminDataProvider'
 
 interface CouriersTabProps {
     couriers: Courier[]
@@ -30,7 +32,9 @@ export function CouriersTab({
     courierEarningsFilter,
     setCourierEarningsFilter
 }: CouriersTabProps) {
+    const { fetchCouriers } = useAdminData()
     const [selectedCourierForStatus, setSelectedCourierForStatus] = useState<Courier | null>(null)
+    const [selectedCourierForNightShift, setSelectedCourierForNightShift] = useState<Courier | null>(null)
     const [refreshTrigger, setRefreshTrigger] = useState(0)
 
     // Kurye Hesapları — BUSINESS DARK THEME
@@ -65,9 +69,16 @@ export function CouriersTab({
                                 {/* Kurye Adı + Durum */}
                                 <div className="flex justify-between items-start mb-4">
                                     <div>
-                                        <h3 className="font-bold text-base text-slate-100 tracking-tight">
-                                            {courier.full_name}
-                                        </h3>
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <h3 className="font-bold text-base text-slate-100 tracking-tight">
+                                                {courier.full_name}
+                                            </h3>
+                                            {courier.is_night_shift && (
+                                                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-400/40 shadow-[0_0_12px_rgba(99,102,241,0.25)]">
+                                                    Gece Vardiyacısı
+                                                </span>
+                                            )}
+                                        </div>
                                         <div className="flex items-center gap-1.5 mt-1">
                                             <div className={`w-1.5 h-1.5 rounded-full ${courier.is_active ? 'bg-green-500' : 'bg-red-500'}`}></div>
                                             <span className={`text-xs font-medium tracking-tight ${courier.is_active ? 'text-green-500/80' : 'text-red-500/80'}`}>
@@ -135,6 +146,17 @@ export function CouriersTab({
                                         Hesap Yönet
                                     </button>
                                 </div>
+                                {!courier.is_night_shift && (
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            setSelectedCourierForNightShift(courier)
+                                        }}
+                                        className="w-full mt-2 px-3 py-2 bg-indigo-950/60 hover:bg-indigo-900/70 text-indigo-300 text-xs font-medium rounded border border-indigo-700/50 transition-colors tracking-tight"
+                                    >
+                                        Gece Vardiyacısı Yap
+                                    </button>
+                                )}
                             </div>
                         ))
                     )}
@@ -147,6 +169,17 @@ export function CouriersTab({
                         onSuccess={() => {
                             setRefreshTrigger(prev => prev + 1)
                             window.location.reload() // Sayfayı yenile
+                        }}
+                    />
+                )}
+
+                {selectedCourierForNightShift && (
+                    <NightShiftConfirmModal
+                        courier={selectedCourierForNightShift}
+                        onClose={() => setSelectedCourierForNightShift(null)}
+                        onSuccess={() => {
+                            setRefreshTrigger(prev => prev + 1)
+                            void fetchCouriers()
                         }}
                     />
                 )}

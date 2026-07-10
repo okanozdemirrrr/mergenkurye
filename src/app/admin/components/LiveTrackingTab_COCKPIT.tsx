@@ -19,6 +19,7 @@ import { OrderDrawer } from './OrderDrawer'
 import { CourierTransferModal } from './CourierTransferModal'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
 import { formatTurkishTime } from '@/utils/dateHelpers'
+import { NightShiftIndicator } from './NightShiftIndicator'
 import Image from 'next/image'
 
 // Minimap - Lazy load
@@ -291,7 +292,10 @@ export function LiveTrackingTab({
                                     return (
                                         <div key={c.id} className="bg-slate-800 rounded p-1.5 border border-slate-700">
                                             <div className="flex items-center justify-between mb-1">
-                                                <span className="text-[11px] font-bold text-white truncate">{c.full_name}</span>
+                                                <div className="flex items-center gap-1 min-w-0">
+                                                    <NightShiftIndicator isNightShift={c.is_night_shift} />
+                                                    <span className="text-[11px] font-bold text-white truncate">{c.full_name}</span>
+                                                </div>
                                                 <div className="flex items-center gap-1">
                                                     <span className="text-[9px] text-green-400">📦 {c.todayDeliveryCount || 0}</span>
                                                     <span className="text-[9px] text-orange-400">🚚 {c.activePackageCount || 0}</span>
