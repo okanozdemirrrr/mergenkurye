@@ -118,6 +118,23 @@ export default function LoginPage() {
         return
       }
 
+      if (selectedType === 'admin') {
+        const res = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        })
+        const data = await res.json().catch(() => ({}))
+
+        if (res.ok && data.success) {
+          localStorage.setItem(ADMIN_STORAGE_KEY, 'true')
+          router.push('/admin')
+        } else {
+          setErrorMessage(data.error || 'Admin kullanıcı adı veya şifre hatalı')
+        }
+        return
+      }
+
       const response = await login({
         companyCode: 'DEFAULT',
         username,

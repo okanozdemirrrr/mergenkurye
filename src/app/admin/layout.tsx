@@ -108,16 +108,33 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    const adminUser = process.env.NEXT_PUBLIC_ADMIN_USERNAME || 'admin'
-    const adminPass = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'admin123'
+    setErrorMessage('')
+    setSuccessMessage('')
 
-    if (loginForm.username === adminUser && loginForm.password === adminPass) {
-      localStorage.setItem('admin_logged_in', 'true')
-      setIsLoggedIn(true)
-      setSuccessMessage('Giriş başarılı!')
-      setTimeout(() => setSuccessMessage(''), 2000)
-    } else {
-      setErrorMessage('Kullanıcı adı veya şifre hatalı!')
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: loginForm.username,
+          password: loginForm.password
+        })
+      })
+
+      const data = await res.json().catch(() => ({}))
+
+      if (res.ok && data.success) {
+        localStorage.setItem('admin_logged_in', 'true')
+        setIsLoggedIn(true)
+        setSuccessMessage('Giriş başarılı!')
+        setTimeout(() => setSuccessMessage(''), 2000)
+      } else {
+        setErrorMessage(data.error || 'Kullanıcı adı veya şifre hatalı!')
+        setTimeout(() => setErrorMessage(''), 3000)
+      }
+    } catch (error) {
+      console.error('Admin giriş hatası:', error)
+      setErrorMessage('Giriş yapılırken bir hata oluştu!')
       setTimeout(() => setErrorMessage(''), 3000)
     }
   }

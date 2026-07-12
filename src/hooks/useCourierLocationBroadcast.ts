@@ -5,7 +5,7 @@
  * MİMARİ:
  * - Bu hook, cihaz ekranı kilitliyken veya uygulama arka plandayken Android Doze Mode
  *   tarafından öldürülmeyen Foreground Service ve Background Geolocation yapısını kurar.
- * - Cihaz distanceFilter: 15 m (donanım ön filtresi).
+ * - Cihaz distanceFilter: 10 m (donanım ön filtresi).
  * - Uygulama Haversine filtresi: 10 m (Realtime mesaj kotası + batarya koruması).
  * - Event adı: `location` (LiveMapComponent ile eşleşir).
  * - Konum değiştiğinde Supabase Broadcast kanalı üzerinden anlık yayını gerçekleştirir (DB I/O harcamaz).
@@ -154,7 +154,7 @@ export function useCourierLocationBroadcast({
               backgroundMessage: 'konum paylaşıyor',
               requestPermissions: true,
               stale: false,
-              distanceFilter: 15 // Mesafe filtresi 15 metre
+              distanceFilter: 10 // Mesafe filtresi 10 metre
             },
             async (location: any, error: any) => {
               if (error) {

@@ -1761,7 +1761,7 @@ export default function KuryePage() {
   }
 
   // Arka plan konum takibi başlat - Çift bildirim ve kaynak tüketimini önlemek için devre dışı bırakılmıştır.
-  // Bu işlev artık 15m filtreli ve Foreground Service destekli olarak useCourierLocationBroadcast hook'u tarafından yönetilmektedir.
+  // Bu işlev artık 10m filtreli ve Foreground Service destekli olarak useCourierLocationBroadcast hook'u tarafından yönetilmektedir.
   const startBackgroundLocationTracking = async (courierId: string) => {
     console.log('ℹ️ Arka plan konum takibi ve Broadcast işlemleri useCourierLocationBroadcast hook\'u tarafından yönetilmektedir.')
     return null
