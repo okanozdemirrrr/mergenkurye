@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '@/app/lib/supabase'
 import { useRestoran } from '../RestoranProvider'
 import { Customer } from '@/types'
+import { Loader2, Check } from 'lucide-react'
 
 /**
  * Telefon numarasını +90 505 059 16 29 formatında maskeler
@@ -144,7 +145,7 @@ export default function CallerIdListener() {
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden"
+            className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-md shadow-sm overflow-hidden"
           >
             {/* Header Animasyonu (Radar Efekti) */}
             <div className="bg-orange-600 p-8 text-center relative overflow-hidden">
@@ -154,7 +155,7 @@ export default function CallerIdListener() {
                 className="absolute inset-0 bg-white rounded-full scale-0"
               />
               <div className="relative z-10">
-                <div className="text-5xl mb-4">📞</div>
+                <div className="text-2xl mb-4">📞</div>
                 <h2 className="text-2xl font-black text-white tracking-tight uppercase">
                   {customerInfo ? 'Kayıtlı Müşteri Arıyor' : 'Bilinmeyen Numara Arıyor'}
                 </h2>
@@ -173,7 +174,7 @@ export default function CallerIdListener() {
               {/* Senaryo A: Kayıtlı Müşteri Detayları */}
               {customerInfo && (
                 <div className="space-y-6">
-                  <div className="bg-slate-800/50 rounded-2xl p-6 border border-slate-700">
+                  <div className="bg-slate-800/50 rounded-md p-6 border border-slate-700">
                     <div className="flex items-start gap-4">
                       <div className="text-2xl mt-1">👤</div>
                       <div>
@@ -195,13 +196,13 @@ export default function CallerIdListener() {
                   <div className="flex flex-col gap-3">
                     <button
                       onClick={() => handleCreateOrder(customerInfo)}
-                      className="w-full py-4 bg-orange-600 hover:bg-orange-700 text-white rounded-2xl font-black text-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-xl shadow-orange-600/20"
+                      className="w-full py-4 bg-orange-600 hover:bg-orange-700 text-white rounded-md font-black text-lg transition-all transform shadow-sm shadow-orange-600/20"
                     >
                       🛒 SİPARİŞİ OLUŞTUR
                     </button>
                     <button
                       onClick={closeIncomingModal}
-                      className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold transition-colors"
+                      className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md font-bold transition-colors"
                     >
                       Kapat
                     </button>
@@ -218,13 +219,13 @@ export default function CallerIdListener() {
                   <div className="flex flex-col gap-3">
                     <button
                       onClick={() => setShowSaveForm(true)}
-                      className="w-full py-4 bg-orange-600 hover:bg-orange-700 text-white rounded-2xl font-black text-lg transition-all"
+                      className="w-full py-4 bg-orange-600 hover:bg-orange-700 text-white rounded-md font-black text-lg transition-all"
                     >
                       ➕ MÜŞTERİYİ KAYDET
                     </button>
                     <button
                       onClick={() => handleCreateOrder()}
-                      className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-2xl font-bold"
+                      className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-md font-bold"
                     >
                       ⏩ KAYDETMEDEN DEVAM ET
                     </button>
@@ -250,7 +251,7 @@ export default function CallerIdListener() {
                         value={newCustomerForm.name}
                         onChange={e => setNewCustomerForm(p => ({ ...p, name: e.target.value }))}
                         placeholder="Örn: Ahmet Yılmaz"
-                        className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none focus:border-orange-500 transition-colors"
+                        className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-md text-white outline-none focus:border-orange-500 transition-colors"
                       />
                     </div>
                     <div>
@@ -260,7 +261,7 @@ export default function CallerIdListener() {
                         value={newCustomerForm.address}
                         onChange={e => setNewCustomerForm(p => ({ ...p, address: e.target.value }))}
                         placeholder="Mahalle, Sokak, No..."
-                        className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none focus:border-orange-500 transition-colors resize-none"
+                        className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-md text-white outline-none focus:border-orange-500 transition-colors resize-none"
                       />
                     </div>
                   </div>
@@ -268,16 +269,26 @@ export default function CallerIdListener() {
                   <div className="flex gap-3 pt-4">
                     <button
                       onClick={() => setShowSaveForm(false)}
-                      className="flex-1 py-4 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-2xl font-bold transition-colors"
+                      className="flex-1 py-4 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md font-bold transition-colors"
                     >
                       Geri
                     </button>
                     <button
                       onClick={handleSaveAndOrder}
                       disabled={isSaving || !newCustomerForm.name || !newCustomerForm.address}
-                      className="flex-[2] py-4 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-2xl font-black text-lg transition-all shadow-xl shadow-green-600/20"
+                      className="flex-[2] py-4 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-md font-black text-lg transition-all shadow-sm shadow-green-600/20"
                     >
-                      {isSaving ? '⏳ KAYDEDİLİYOR...' : '✅ KAYDET VE DEVAM'}
+                      {isSaving ? (
+                        <span className="inline-flex items-center gap-2">
+                          <Loader2 className="w-5 h-5 animate-spin" strokeWidth={1.5} />
+                          KAYDEDİLİYOR...
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-2">
+                          <Check className="w-5 h-5" strokeWidth={1.5} />
+                          KAYDET VE DEVAM
+                        </span>
+                      )}
                     </button>
                   </div>
                 </div>

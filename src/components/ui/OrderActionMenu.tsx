@@ -33,7 +33,7 @@ export function OrderActionMenu({
             </button>
 
             {isOpen && (
-                <div className="absolute left-0 top-8 bg-white dark:bg-slate-700 rounded-lg shadow-xl border border-slate-200 dark:border-slate-600 py-1 min-w-[180px] z-30 flex flex-col">
+                <div className="absolute left-0 top-8 bg-white dark:bg-slate-700 rounded-md shadow-sm border border-slate-200 dark:border-slate-600 py-1 min-w-[180px] z-30 flex flex-col">
                     {onUpdateAmount && (
                         <button
                             onClick={(e) => {

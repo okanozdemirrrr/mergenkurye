@@ -6,6 +6,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Bike } from 'lucide-react'
 import { createApplication } from '@/services/applicationService'
 import type { CourierApplicationData } from '@/types/application'
 
@@ -75,17 +76,19 @@ export default function RegisterKuryePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4 py-8">
-      <div className="bg-slate-900 p-6 md:p-8 rounded-2xl border border-slate-800 w-full max-w-2xl my-4">
+      <div className="bg-slate-900 p-6 md:p-8 rounded-md border border-white/5 shadow-sm w-full max-w-2xl my-4">
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="text-5xl mb-3">🏍️</div>
+          <div className="mb-3 flex justify-center">
+            <Bike className="w-8 h-8 text-blue-400" strokeWidth={1.5} />
+          </div>
           <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">Kurye Başvurusu</h1>
           <p className="text-slate-400 text-sm">Formu doldurun, admin onayı bekleyin</p>
         </div>
 
         {/* Success Message */}
         {successMessage && (
-          <div className="mb-4 p-3 bg-green-500/20 border border-green-500/50 rounded-lg">
+          <div className="mb-4 p-3 bg-green-500/20 border border-green-500/50 rounded-md">
             <p className="text-green-400 text-center font-medium text-sm">{successMessage}</p>
             <p className="text-green-300 text-xs text-center mt-1">Giriş sayfasına yönlendiriliyorsunuz...</p>
           </div>
@@ -93,7 +96,7 @@ export default function RegisterKuryePage() {
 
         {/* Error Message */}
         {errorMessage && (
-          <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg">
+          <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-md">
             <p className="text-red-400 text-center text-sm">{errorMessage}</p>
           </div>
         )}
@@ -107,7 +110,7 @@ export default function RegisterKuryePage() {
               value={form.firstName}
               onChange={handleChange}
               required
-              className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-blue-500 transition-colors"
+              className="w-full p-3 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500 outline-none focus:border-blue-500 transition-colors"
             />
             <input
               type="text"
@@ -116,7 +119,7 @@ export default function RegisterKuryePage() {
               value={form.lastName}
               onChange={handleChange}
               required
-              className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-blue-500 transition-colors"
+              className="w-full p-3 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500 outline-none focus:border-blue-500 transition-colors"
             />
           </div>
 
@@ -127,7 +130,7 @@ export default function RegisterKuryePage() {
             value={form.email}
             onChange={handleChange}
             required
-            className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-blue-500 transition-colors"
+            className="w-full p-3 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500 outline-none focus:border-blue-500 transition-colors"
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -140,7 +143,7 @@ export default function RegisterKuryePage() {
               required
               min="18"
               max="65"
-              className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-blue-500 transition-colors"
+              className="w-full p-3 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500 outline-none focus:border-blue-500 transition-colors"
             />
             <input
               type="text"
@@ -149,7 +152,7 @@ export default function RegisterKuryePage() {
               value={form.location}
               onChange={handleChange}
               required
-              className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-blue-500 transition-colors"
+              className="w-full p-3 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500 outline-none focus:border-blue-500 transition-colors"
             />
           </div>
 
@@ -161,7 +164,7 @@ export default function RegisterKuryePage() {
             onChange={handleChange}
             required
             pattern="[0-9]{10}"
-            className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-blue-500 transition-colors"
+            className="w-full p-3 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500 outline-none focus:border-blue-500 transition-colors"
           />
 
           <select
@@ -169,7 +172,7 @@ export default function RegisterKuryePage() {
             value={form.experience}
             onChange={handleChange}
             required
-            className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-white outline-none focus:border-blue-500 transition-colors"
+            className="w-full p-3 bg-slate-800 border border-slate-700 rounded-md text-white outline-none focus:border-blue-500 transition-colors"
           >
             <option value="Tecrübesizim">Tecrübesizim</option>
             <option value="0-2 Ay">0-2 Ay</option>
@@ -191,7 +194,7 @@ export default function RegisterKuryePage() {
               required
               minLength={3}
               autoComplete="new-username"
-              className="w-full p-3 mb-4 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-blue-500 transition-colors"
+              className="w-full p-3 mb-4 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500 outline-none focus:border-blue-500 transition-colors"
             />
             <input
               type="password"
@@ -202,14 +205,14 @@ export default function RegisterKuryePage() {
               required
               minLength={6}
               autoComplete="new-password"
-              className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-blue-500 transition-colors"
+              className="w-full p-3 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500 outline-none focus:border-blue-500 transition-colors"
             />
           </div>
 
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 text-white font-medium rounded-lg transition-colors disabled:cursor-not-allowed"
+            className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 text-white font-medium rounded-md transition-colors disabled:cursor-not-allowed"
           >
             {isSubmitting ? 'Gönderiliyor...' : 'Başvuru Gönder'}
           </button>

@@ -3,12 +3,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRestoran } from '../RestoranProvider'
 import { supabase } from '@/app/lib/supabase'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { BarChart3, Package, Wallet, Bike, Sparkles, Inbox, AlertTriangle } from 'lucide-react'
 
 export default function IstatistiklerPage() {
   const { restaurantId, restaurant } = useRestoran()
   
-  // Varsayılan tarihler: Bugün 00:00 - Bugün 23:59
   const getTodayStr = () => new Date().toISOString().split('T')[0]
   
   const [startDate, setStartDate] = useState(getTodayStr())
@@ -18,7 +18,6 @@ export default function IstatistiklerPage() {
   const [statisticsData, setStatisticsData] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   
-  // Özet İstatistikleri - 3'lü Finansal Sistem
   const [summary, setSummary] = useState({
     totalPackages: 0,
     totalRevenue: 0,
@@ -31,7 +30,6 @@ export default function IstatistiklerPage() {
     setIsLoading(true)
 
     try {
-      // Bitiş tarihini günün sonuna ayarla (23:59:59)
       const start = new Date(startDate)
       start.setHours(0, 0, 0, 0)
       
@@ -60,14 +58,12 @@ export default function IstatistiklerPage() {
         if (!pkg.delivered_at) return
 
         const date = new Date(pkg.delivered_at)
-        // Her zaman günlük grupla (Date Range için en mantıklısı)
         const key = date.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 
         if (!groupedData[key]) {
           groupedData[key] = { count: 0, revenue: 0 }
         }
 
-        // Ciro ve grafik paketi sadece başarılı teslimatları sayar
         if (pkg.status === 'delivered') {
           groupedData[key].count++
           groupedData[key].revenue += pkg.amount || 0
@@ -76,7 +72,6 @@ export default function IstatistiklerPage() {
           totalR += pkg.amount || 0
         }
         
-        // Kurye masrafı hem başarılı teslimatları hem de ücretli iptalleri kapsar
         const singleFee = pkg.applied_price ?? packageFee
         totalCourierCost += singleFee
       })
@@ -87,7 +82,6 @@ export default function IstatistiklerPage() {
         ciro: d.revenue
       }))
 
-      // Finansal Hesaplamalar
       const netProfit = totalR - totalCourierCost
 
       setStatisticsData(chartData)
@@ -102,7 +96,7 @@ export default function IstatistiklerPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [restaurantId, startDate, endDate])
+  }, [restaurantId, startDate, endDate, restaurant?.package_fee])
 
   useEffect(() => {
     fetchStatisticsData()
@@ -110,21 +104,21 @@ export default function IstatistiklerPage() {
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto min-h-screen">
-      <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800 shadow-xl">
+      <div className="saas-card bg-slate-900 p-6 border border-slate-800 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
           <h2 className="text-2xl font-black text-white flex items-center gap-2">
-            <span className="text-orange-500">📊</span> Paketlerim ve Cirom
+            <BarChart3 className="w-6 h-6 text-gray-400" strokeWidth={1.5} />
+            Paketlerim ve Cirom
           </h2>
 
-          {/* Tarih Filtreleri */}
-          <div className="flex flex-wrap items-center gap-3 bg-slate-800/50 p-3 rounded-xl border border-slate-700">
+          <div className="flex flex-wrap items-center gap-3 bg-slate-800/50 p-3 rounded-md border border-slate-700">
             <div className="flex flex-col">
               <label className="text-[10px] uppercase font-bold text-slate-500 mb-1 ml-1">Başlangıç</label>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 outline-none focus:border-orange-500 transition-colors"
+                className="bg-slate-900 border border-slate-700 text-white text-sm rounded-md px-3 py-2 outline-none focus:border-orange-500 transition-colors"
               />
             </div>
             <div className="flex flex-col">
@@ -133,89 +127,80 @@ export default function IstatistiklerPage() {
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 outline-none focus:border-orange-500 transition-colors"
+                className="bg-slate-900 border border-slate-700 text-white text-sm rounded-md px-3 py-2 outline-none focus:border-orange-500 transition-colors"
               />
             </div>
           </div>
         </div>
 
-        {/* Tab Buttons */}
-        <div className="flex gap-2 mb-8 bg-slate-800/30 p-1.5 rounded-xl w-fit">
+        <div className="flex gap-2 mb-8 bg-slate-800/30 p-1.5 rounded-md w-fit">
           <button
             onClick={() => setStatisticsTab('packages')}
-            className={`px-6 py-2.5 rounded-lg font-bold text-sm transition-all ${
+            className={`px-6 py-2.5 rounded-md font-bold text-sm transition-all flex items-center gap-2 ${
               statisticsTab === 'packages'
-                ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/20'
+                ? 'bg-orange-600 text-white shadow-sm shadow-orange-900/20'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800'
             }`}
           >
-            📦 Paket Sayısı
+            <Package className="w-4 h-4" strokeWidth={1.5} />
+            Paket Sayısı
           </button>
           <button
             onClick={() => setStatisticsTab('revenue')}
-            className={`px-6 py-2.5 rounded-lg font-bold text-sm transition-all ${
+            className={`px-6 py-2.5 rounded-md font-bold text-sm transition-all flex items-center gap-2 ${
               statisticsTab === 'revenue'
-                ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/20'
+                ? 'bg-orange-600 text-white shadow-sm shadow-orange-900/20'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800'
             }`}
           >
-            💰 Ciro (₺)
+            <Wallet className="w-4 h-4" strokeWidth={1.5} />
+            Ciro (₺)
           </button>
         </div>
 
-        {/* 3'lü Finansal Kart Sistemi */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          {/* KART 1: TOPLAM CİRO */}
-          <div className="bg-slate-900 p-4 md:p-6 rounded-2xl border border-slate-800 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-              <span className="text-6xl">💰</span>
-            </div>
+          <div className="saas-card bg-slate-900 p-4 md:p-6 border border-slate-800 relative overflow-hidden group">
+            <Wallet className="absolute top-4 right-4 w-8 h-8 text-gray-400 opacity-20" strokeWidth={1.5} />
             <div className="relative z-10">
-              <div className="text-3xl md:text-4xl font-black text-white mb-1">
+              <p className="saas-stat-value">
                 {isLoading ? '...' : summary.totalRevenue.toLocaleString('tr-TR')}₺
-              </div>
-              <div className="text-slate-400 text-xs font-bold uppercase tracking-wider">Toplam Ciro</div>
+              </p>
+              <p className="saas-stat-label">Toplam Ciro</p>
             </div>
           </div>
           
-          {/* KART 2: KURYE MASRAFI */}
-          <div className="bg-slate-900 p-4 md:p-6 rounded-2xl border border-slate-800 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-              <span className="text-6xl">🚴</span>
-            </div>
+          <div className="saas-card bg-slate-900 p-4 md:p-6 border border-slate-800 relative overflow-hidden group">
+            <Bike className="absolute top-4 right-4 w-8 h-8 text-gray-400 opacity-20" strokeWidth={1.5} />
             <div className="relative z-10">
-              <div className="text-3xl md:text-4xl font-black text-rose-500 mb-1">
+              <p className="saas-stat-value text-rose-500">
                 {isLoading ? '...' : summary.courierCost.toLocaleString('tr-TR')}₺
-              </div>
-              <div className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Kurye Masrafı</div>
+              </p>
+              <p className="saas-stat-label">Kurye Masrafı</p>
               {!isLoading && restaurant?.package_fee ? (
-                <div className="text-[10px] text-slate-500 font-medium">
+                <div className="text-[10px] text-slate-500 font-medium mt-1">
                   {summary.totalPackages} Paket × {restaurant.package_fee}₺
                 </div>
               ) : !isLoading && !restaurant?.package_fee ? (
-                <div className="text-[10px] text-amber-500 font-medium">
-                  ⚠️ Ücret Girilmemiş
+                <div className="text-[10px] text-amber-500 font-medium mt-1 flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3" strokeWidth={1.5} />
+                  Ücret Girilmemiş
                 </div>
               ) : null}
             </div>
           </div>
           
-          {/* KART 3: NET KÂR (Size Kalan) */}
-          <div className="bg-slate-900 p-4 md:p-6 rounded-2xl border border-emerald-500/30 relative overflow-hidden group shadow-lg shadow-emerald-900/10">
-            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-              <span className="text-6xl">✨</span>
-            </div>
+          <div className="saas-card bg-slate-900 p-4 md:p-6 border border-emerald-500/30 relative overflow-hidden group shadow-sm shadow-emerald-900/10">
+            <Sparkles className="absolute top-4 right-4 w-8 h-8 text-gray-400 opacity-20" strokeWidth={1.5} />
             <div className="relative z-10">
-              <div className="text-3xl md:text-4xl font-black text-emerald-500 mb-1">
+              <p className="saas-stat-value saas-stat-value-accent-green">
                 {isLoading ? '...' : summary.netProfit.toLocaleString('tr-TR')}₺
-              </div>
-              <div className="text-emerald-400 text-xs font-bold uppercase tracking-wider">Net Kâr (Size Kalan)</div>
+              </p>
+              <p className="saas-stat-label text-emerald-400">Net Kâr (Size Kalan)</p>
             </div>
           </div>
         </div>
 
-        {/* Chart */}
-        <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700">
+        <div className="bg-slate-800/50 p-6 rounded-md border border-slate-700">
           <div className="h-[400px] w-full">
             {isLoading ? (
               <div className="w-full h-full flex items-center justify-center text-slate-500 font-medium">
@@ -223,7 +208,7 @@ export default function IstatistiklerPage() {
               </div>
             ) : statisticsData.length === 0 ? (
               <div className="w-full h-full flex flex-col items-center justify-center text-slate-500">
-                <span className="text-5xl mb-4">📭</span>
+                <Inbox className="w-8 h-8 mb-4 text-gray-400" strokeWidth={1.5} />
                 <p>Bu tarih aralığında veri bulunamadı.</p>
               </div>
             ) : (
@@ -251,9 +236,9 @@ export default function IstatistiklerPage() {
                     contentStyle={{
                       backgroundColor: '#0f172a',
                       border: '1px solid #334155',
-                      borderRadius: '12px',
+                      borderRadius: '6px',
                       padding: '12px',
-                      boxShadow: '0 10px 15px -3px rgba(0,0,0,0.5)'
+                      boxShadow: '0 1px 2px 0 rgba(0,0,0,0.3)'
                     }}
                     itemStyle={{ fontWeight: 'bold' }}
                   />
@@ -262,7 +247,7 @@ export default function IstatistiklerPage() {
                       dataKey="paketSayisi" 
                       fill="#3b82f6" 
                       name="Paket Sayısı" 
-                      radius={[6, 6, 0, 0]}
+                      radius={[4, 4, 0, 0]}
                       barSize={40}
                     />
                   )}
@@ -271,7 +256,7 @@ export default function IstatistiklerPage() {
                       dataKey="ciro" 
                       fill="#10b981" 
                       name="Ciro (₺)" 
-                      radius={[6, 6, 0, 0]}
+                      radius={[4, 4, 0, 0]}
                       barSize={40}
                     />
                   )}

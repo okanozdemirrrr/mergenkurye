@@ -6,6 +6,7 @@
 
 import { useState } from 'react'
 import { Package } from '@/types'
+import { AlertTriangle, Loader2, XCircle } from 'lucide-react'
 
 interface CancelOrderModalProps {
   package: Package
@@ -88,10 +89,10 @@ export default function CancelOrderModal({
         // Sistem yapılandırma hatası (500 - API Key eksik)
         if (response.status === 500 && data.technicalDetails) {
           alert(
-            `🔧 ${data.error}\n\n` +
+            `${data.error}\n\n` +
             `${data.message}\n\n` +
-            `📋 Teknik Detay: ${data.technicalDetails}\n\n` +
-            `${data.debug?.hint ? '💡 Çözüm: ' + data.debug.hint : ''}`
+            `Teknik Detay: ${data.technicalDetails}\n\n` +
+            `${data.debug?.hint ? 'Çözüm: ' + data.debug.hint : ''}`
           )
           return
         }
@@ -99,14 +100,14 @@ export default function CancelOrderModal({
         // Paket bulunamadı (404)
         if (response.status === 404) {
           const debugInfo = data.debug ? 
-            `\n\n🔍 Debug:\n` +
+            `\n\nDebug:\n` +
             `- Package ID: ${data.debug.packageId} (${data.debug.packageIdType})\n` +
             `- Hata: ${data.debug.errorMessage || 'Bilinmiyor'}\n` +
             `- Kod: ${data.debug.errorCode || 'Yok'}\n` +
             `${data.debug.errorHint ? '- İpucu: ' + data.debug.errorHint : ''}` 
             : ''
           
-          alert(`❌ ${data.error}\n\n${data.message}${debugInfo}`)
+          alert(`${data.error}\n\n${data.message}${debugInfo}`)
           return
         }
 
@@ -115,42 +116,42 @@ export default function CancelOrderModal({
           if (data.technicalDetails) {
             // Yetkilendirme hatası (RLS, API Key vb.)
             alert(
-              `🔒 ${data.error}\n\n` +
+              `${data.error}\n\n` +
               `${data.message}\n\n` +
-              `📋 Teknik Detay: ${data.technicalDetails}\n\n` +
-              `${data.debug?.hint ? '💡 Çözüm: ' + data.debug.hint : ''}`
+              `Teknik Detay: ${data.technicalDetails}\n\n` +
+              `${data.debug?.hint ? 'Çözüm: ' + data.debug.hint : ''}`
             )
           } else if (data.currentStatus) {
             // Sipariş durumu uygun değil
             alert(
-              `⚠️ ${data.error}\n\n` +
+              `${data.error}\n\n` +
               `${data.message}\n\n` +
-              `📊 Mevcut Durum: ${data.currentStatus}\n` +
-              `💡 ${data.hint || ''}`
+              `Mevcut Durum: ${data.currentStatus}\n` +
+              `${data.hint || ''}`
             )
           } else {
             // Genel yetki hatası
-            alert(`❌ ${data.error}\n\n${data.message}`)
+            alert(`${data.error}\n\n${data.message}`)
           }
           return
         }
 
         // Diğer hatalar
         const debugInfo = data.debug ? 
-          `\n\n🔍 Debug:\n${JSON.stringify(data.debug, null, 2)}` 
+          `\n\nDebug:\n${JSON.stringify(data.debug, null, 2)}` 
           : ''
         
         alert(
-          `❌ Hata (${response.status}): ${data.error}\n\n` +
+          `Hata (${response.status}): ${data.error}\n\n` +
           `${data.message || 'Bilinmeyen hata'}` +
-          `${data.technicalDetails ? '\n\n📋 Teknik: ' + data.technicalDetails : ''}` +
+          `${data.technicalDetails ? '\n\nTeknik: ' + data.technicalDetails : ''}` +
           `${debugInfo}`
         )
         return
       }
 
       // Başarılı
-      alert(`✅ ${data.message}\n\n📦 Sipariş #${data.orderNumber || pkg.order_number}\n${data.notifiedCourier ? '📱 Kurye bilgilendirildi.' : ''}`)
+      alert(`${data.message}\n\nSipariş #${data.orderNumber || pkg.order_number}\n${data.notifiedCourier ? 'Kurye bilgilendirildi.' : ''}`)
       onSuccess()
       onClose()
     } catch (error) {
@@ -159,7 +160,7 @@ export default function CancelOrderModal({
       // Network hatası
       if (error instanceof TypeError && error.message.includes('fetch')) {
         alert(
-          `🌐 Bağlantı Hatası\n\n` +
+          `Bağlantı Hatası\n\n` +
           `Sunucuya bağlanılamadı. İnternet bağlantınızı kontrol edin.\n\n` +
           `Teknik: ${error.message}`
         )
@@ -168,7 +169,7 @@ export default function CancelOrderModal({
 
       // Genel hata
       alert(
-        `❌ Sipariş iptal edilirken bir hata oluştu!\n\n` +
+        `Sipariş iptal edilirken bir hata oluştu!\n\n` +
         `${error instanceof Error ? error.message : 'Bilinmeyen hata'}\n\n` +
         `Lütfen tekrar deneyin veya sistem yöneticisine bildirin.`
       )
@@ -183,15 +184,16 @@ export default function CancelOrderModal({
       onClick={onClose}
     >
       <div 
-        className={`rounded-xl p-6 max-w-md w-full shadow-2xl ${
+        className={`rounded-md p-6 max-w-md w-full shadow-sm ${
           darkMode ? 'bg-slate-900 border border-slate-700' : 'bg-white'
         }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Başlık */}
         <div className="flex items-center justify-between mb-4">
-          <h3 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-            ⚠️ Siparişi İptal Et
+          <h3 className={`text-lg font-bold flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+            <AlertTriangle className="w-5 h-5 text-gray-400" strokeWidth={1.5} />
+            Siparişi İptal Et
           </h3>
           <button
             onClick={onClose}
@@ -202,7 +204,7 @@ export default function CancelOrderModal({
         </div>
 
         {/* Sipariş Bilgisi */}
-        <div className={`p-3 rounded-lg mb-4 ${darkMode ? 'bg-slate-800' : 'bg-gray-50'}`}>
+        <div className={`p-3 rounded-md mb-4 ${darkMode ? 'bg-slate-800' : 'bg-gray-50'}`}>
           <div className="text-sm">
             <span className={darkMode ? 'text-slate-400' : 'text-gray-600'}>Sipariş No:</span>
             <span className={`ml-2 font-bold ${darkMode ? 'text-orange-400' : 'text-orange-600'}`}>
@@ -224,9 +226,10 @@ export default function CancelOrderModal({
         </div>
 
         {/* Uyarı Mesajı */}
-        <div className="bg-red-900/20 border border-red-700 rounded-lg p-3 mb-4">
-          <p className="text-red-300 text-sm font-semibold">
-            ⚠️ Bu işlem geri alınamaz!
+        <div className="bg-red-900/20 border border-red-700 rounded-md p-3 mb-4">
+          <p className="text-red-300 text-sm font-semibold flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-gray-400 shrink-0" strokeWidth={1.5} />
+            Bu işlem geri alınamaz!
           </p>
           <p className="text-red-400 text-xs mt-1">
             Sipariş iptal edildiğinde kurye bilgilendirilecek ve admin paneline kayıt düşecektir. Kurye yola çıktıysa iptal edemezsiniz.
@@ -243,7 +246,7 @@ export default function CancelOrderModal({
               <button
                 key={reason}
                 onClick={() => setSelectedReason(reason)}
-                className={`w-full text-left px-4 py-2 rounded-lg border transition-colors ${
+                className={`w-full text-left px-4 py-2 rounded-md border transition-colors ${
                   selectedReason === reason
                     ? darkMode
                       ? 'bg-orange-600 border-orange-600 text-white'
@@ -270,7 +273,7 @@ export default function CancelOrderModal({
               onChange={(e) => setCustomReason(e.target.value)}
               placeholder="İptal sebebini yazın..."
               rows={3}
-              className={`w-full px-3 py-2 rounded-lg border ${
+              className={`w-full px-3 py-2 rounded-md border ${
                 darkMode
                   ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500'
                   : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
@@ -284,7 +287,7 @@ export default function CancelOrderModal({
           <button
             onClick={onClose}
             disabled={isSubmitting}
-            className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
+            className={`flex-1 px-4 py-2 rounded-md font-medium transition-colors ${
               darkMode
                 ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -295,9 +298,13 @@ export default function CancelOrderModal({
           <button
             onClick={handleCancel}
             disabled={isSubmitting || !selectedReason || (selectedReason === 'Diğer' && !customReason.trim())}
-            className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 px-4 py-2 bg-red-600 text-white rounded-md font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? '⏳ İptal Ediliyor...' : '❌ İptal Et'}
+            {isSubmitting ? (
+              <span className="inline-flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" strokeWidth={1.5} />İptal Ediliyor...</span>
+            ) : (
+              <span className="inline-flex items-center justify-center gap-2"><XCircle className="w-4 h-4" strokeWidth={1.5} />İptal Et</span>
+            )}
           </button>
         </div>
       </div>

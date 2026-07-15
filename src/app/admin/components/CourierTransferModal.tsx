@@ -8,6 +8,10 @@
 import { useState } from 'react'
 import { Package, Courier } from '@/types'
 import { supabase } from '@/app/lib/supabase'
+import {
+  AlertTriangle, User, MapPin, Bike, Package as PackageIcon, CheckCircle2,
+  Loader2, Footprints, Car, Info
+} from 'lucide-react'
 
 interface CourierTransferModalProps {
     package: Package
@@ -35,7 +39,7 @@ export function CourierTransferModal({ package: pkg, couriers, onClose, onSucces
         // 🚫 GÜVENLİK KONTROLÜ: Sadece teslim edilmiş paketlerde devir yapılamaz!
         const blockedStatuses = ['delivered']
         if (blockedStatuses.includes(pkg.status)) {
-            setError(`❌ Bu paket "${pkg.status}" durumunda! Teslim edildikten sonra devir yapılamaz.`)
+            setError(`Bu paket "${pkg.status}" durumunda! Teslim edildikten sonra devir yapılamaz.`)
             return
         }
 
@@ -98,27 +102,28 @@ export function CourierTransferModal({ package: pkg, couriers, onClose, onSucces
             onClick={onClose}
         >
             <div 
-                className="bg-slate-900 rounded-xl p-6 max-w-md w-full border border-orange-500 shadow-2xl relative z-[10000]"
+                className="bg-slate-900 rounded-md p-6 max-w-md w-full border border-orange-500 shadow-sm relative z-[10000]"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Başlık */}
                 <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-700">
                     <div>
                         <h3 className="text-xl font-bold text-orange-400 flex items-center gap-2">
-                            🚨 Kurye Devret
+                            <AlertTriangle className="w-5 h-5" strokeWidth={1.5} />
+                            Kurye Devret
                         </h3>
                         <p className="text-xs text-slate-400 mt-1">Kriz Yönetimi - Paket durumu korunur</p>
                     </div>
                     <button
                         onClick={onClose}
-                        className="text-slate-400 hover:text-white text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-800 transition-colors"
+                        className="text-slate-400 hover:text-white text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-md hover:bg-slate-800 transition-colors"
                     >
                         ×
                     </button>
                 </div>
 
                 {/* Paket Bilgisi */}
-                <div className="bg-slate-800 p-4 rounded-lg mb-4 border border-slate-700">
+                <div className="bg-slate-800 p-4 rounded-md mb-4 border border-slate-700">
                     <div className="flex items-center justify-between mb-2">
                         <span className="text-sm font-bold text-orange-400">
                             {pkg.order_number || '......'}
@@ -128,19 +133,24 @@ export function CourierTransferModal({ package: pkg, couriers, onClose, onSucces
                             pkg.status === 'picking_up' ? 'bg-orange-900/50 text-orange-300' :
                             'bg-yellow-900/50 text-yellow-300'
                         }`}>
-                            {pkg.status === 'assigned' ? '👤 Atandı' :
-                             pkg.status === 'picking_up' ? '🏃 Alınıyor' : '🚗 Yolda'}
+                            {pkg.status === 'assigned' ? (
+                              <span className="inline-flex items-center gap-1"><User className="w-3 h-3" strokeWidth={1.5} /> Atandı</span>
+                            ) : pkg.status === 'picking_up' ? (
+                              <span className="inline-flex items-center gap-1"><Footprints className="w-3 h-3" strokeWidth={1.5} /> Alınıyor</span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1"><Car className="w-3 h-3" strokeWidth={1.5} /> Yolda</span>
+                            )}
                         </span>
                     </div>
-                    <p className="text-sm text-white">👤 {pkg.customer_name}</p>
-                    <p className="text-xs text-slate-400 mt-1">📍 {pkg.delivery_address}</p>
+                    <p className="text-sm text-white flex items-center gap-1"><User className="w-3.5 h-3.5 text-gray-400" strokeWidth={1.5} /> {pkg.customer_name}</p>
+                    <p className="text-xs text-slate-400 mt-1 flex items-start gap-1"><MapPin className="w-3 h-3 text-gray-400 shrink-0 mt-0.5" strokeWidth={1.5} /> {pkg.delivery_address}</p>
                 </div>
 
                 {/* Mevcut Kurye */}
-                <div className="bg-red-900/20 border border-red-700 p-3 rounded-lg mb-4">
+                <div className="bg-red-900/20 border border-red-700 p-3 rounded-md mb-4">
                     <p className="text-xs text-red-400 mb-1">Mevcut Kurye:</p>
-                    <p className="text-sm font-bold text-white">
-                        🚴 {currentCourier?.full_name || 'Bilinmeyen'}
+                    <p className="text-sm font-bold text-white flex items-center gap-1">
+                        <Bike className="w-4 h-4 text-gray-400" strokeWidth={1.5} /> {currentCourier?.full_name || 'Bilinmeyen'}
                     </p>
                 </div>
 
@@ -150,9 +160,10 @@ export function CourierTransferModal({ package: pkg, couriers, onClose, onSucces
                         Yeni Kurye Seçin:
                     </label>
                     {availableCouriers.length === 0 ? (
-                        <div className="bg-yellow-900/20 border border-yellow-700 p-3 rounded-lg">
-                            <p className="text-sm text-yellow-400">
-                                ⚠️ Müsait aktif kurye bulunmuyor
+                        <div className="bg-yellow-900/20 border border-yellow-700 p-3 rounded-md">
+                            <p className="text-sm text-yellow-400 flex items-center gap-1">
+                                <AlertTriangle className="w-4 h-4" strokeWidth={1.5} />
+                                Müsait aktif kurye bulunmuyor
                             </p>
                         </div>
                     ) : (
@@ -161,7 +172,7 @@ export function CourierTransferModal({ package: pkg, couriers, onClose, onSucces
                                 <div
                                     key={courier.id}
                                     onClick={() => setSelectedCourierId(courier.id)}
-                                    className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                                    className={`p-3 rounded-md border cursor-pointer transition-all ${
                                         selectedCourierId === courier.id
                                             ? 'bg-orange-600 border-orange-500 text-white'
                                             : 'bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700 hover:border-slate-500'
@@ -169,15 +180,13 @@ export function CourierTransferModal({ package: pkg, couriers, onClose, onSucces
                                 >
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <p className="font-semibold">🚴 {courier.full_name}</p>
-                                            <p className="text-xs opacity-75">
-                                                📦 {courier.activePackageCount || 0} aktif paket
+                                            <p className="font-semibold flex items-center gap-1"><Bike className="w-3.5 h-3.5" strokeWidth={1.5} /> {courier.full_name}</p>
+                                            <p className="text-xs opacity-75 flex items-center gap-1">
+                                                <PackageIcon className="w-3 h-3" strokeWidth={1.5} /> {courier.activePackageCount || 0} aktif paket
                                             </p>
                                         </div>
                                         {selectedCourierId === courier.id && (
-                                            <div className="text-white">
-                                                ✅
-                                            </div>
+                                            <CheckCircle2 className="w-5 h-5 text-white" strokeWidth={1.5} />
                                         )}
                                     </div>
                                 </div>
@@ -188,15 +197,16 @@ export function CourierTransferModal({ package: pkg, couriers, onClose, onSucces
 
                 {/* Hata Mesajı */}
                 {error && (
-                    <div className="bg-red-900/20 border border-red-700 p-3 rounded-lg mb-4">
-                        <p className="text-sm text-red-400">❌ {error}</p>
+                    <div className="bg-red-900/20 border border-red-700 p-3 rounded-md mb-4">
+                        <p className="text-sm text-red-400">{error}</p>
                     </div>
                 )}
 
                 {/* Uyarı */}
-                <div className="bg-blue-900/20 border border-blue-700 p-3 rounded-lg mb-4">
-                    <p className="text-xs text-blue-300">
-                        ℹ️ Paket durumu ve zaman bilgileri korunacak, sadece kurye değişecektir.
+                <div className="bg-blue-900/20 border border-blue-700 p-3 rounded-md mb-4">
+                    <p className="text-xs text-blue-300 flex items-start gap-1">
+                        <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" strokeWidth={1.5} />
+                        Paket durumu ve zaman bilgileri korunacak, sadece kurye değişecektir.
                     </p>
                 </div>
 
@@ -205,16 +215,20 @@ export function CourierTransferModal({ package: pkg, couriers, onClose, onSucces
                     <button
                         onClick={onClose}
                         disabled={isTransferring}
-                        className="flex-1 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 text-white px-4 py-3 rounded-lg font-semibold transition-colors"
+                        className="flex-1 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 text-white px-4 py-3 rounded-md font-semibold transition-colors"
                     >
                         İptal
                     </button>
                     <button
                         onClick={handleTransfer}
                         disabled={!selectedCourierId || isTransferring || availableCouriers.length === 0}
-                        className="flex-1 bg-orange-600 hover:bg-orange-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white px-4 py-3 rounded-lg font-semibold transition-colors"
+                        className="flex-1 bg-orange-600 hover:bg-orange-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white px-4 py-3 rounded-md font-semibold transition-colors flex items-center justify-center gap-2"
                     >
-                        {isTransferring ? '⏳ Devrediliyor...' : '✅ Kurye Devret'}
+                        {isTransferring ? (
+                          <><Loader2 className="w-4 h-4 animate-spin" strokeWidth={1.5} /> Devrediliyor...</>
+                        ) : (
+                          <><CheckCircle2 className="w-4 h-4" strokeWidth={1.5} /> Kurye Devret</>
+                        )}
                     </button>
                 </div>
             </div>

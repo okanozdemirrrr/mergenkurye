@@ -112,7 +112,7 @@ export default function UygulamaSiparisleriPage() {
 
       if (error) throw error
 
-      setSuccessMessage(`✅ ${editingRestaurant.name} için komisyon oranı %${rate} olarak güncellendi!`)
+      setSuccessMessage(`${editingRestaurant.name} için komisyon oranı %${rate} olarak güncellendi!`)
       setTimeout(() => setSuccessMessage(''), 3000)
       setEditingRestaurant(null)
       fetchRestaurants()
@@ -140,7 +140,7 @@ export default function UygulamaSiparisleriPage() {
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
-            📱 Restoranların Uygulama Siparişleri
+            Restoranların Uygulama Siparişleri
           </h1>
           <p className="text-slate-400 text-sm">
             Web platformundan gelen siparişlerin komisyon yönetimi
@@ -149,12 +149,12 @@ export default function UygulamaSiparisleriPage() {
 
         {/* Mesajlar */}
         {successMessage && (
-          <div className="mb-4 p-3 bg-green-900/30 border border-green-500 rounded-lg text-green-300">
+          <div className="mb-4 p-3 bg-green-900/30 border border-green-500 rounded-md text-green-300">
             {successMessage}
           </div>
         )}
         {errorMessage && (
-          <div className="mb-4 p-3 bg-red-900/30 border border-red-500 rounded-lg text-red-300">
+          <div className="mb-4 p-3 bg-red-900/30 border border-red-500 rounded-md text-red-300">
             {errorMessage}
           </div>
         )}
@@ -169,7 +169,7 @@ export default function UygulamaSiparisleriPage() {
             {restaurants.map((restaurant) => (
               <div
                 key={restaurant.id}
-                className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-5 border border-slate-700/50 hover:border-slate-600 transition-all"
+                className="bg-slate-800/50 backdrop-blur-sm rounded-md p-5 border border-slate-700/50 hover:border-slate-600 transition-all"
               >
                 {/* Restoran Adı */}
                 <div className="mb-4">
@@ -177,12 +177,12 @@ export default function UygulamaSiparisleriPage() {
                     {restaurant.name}
                   </h3>
                   {restaurant.phone && (
-                    <p className="text-xs text-slate-400">📞 {restaurant.phone}</p>
+                    <p className="text-xs text-slate-400">{restaurant.phone}</p>
                   )}
                 </div>
 
                 {/* Komisyon Oranı Rozeti */}
-                <div className="mb-4 inline-flex items-center gap-2 px-3 py-2 bg-purple-500/20 border border-purple-500/30 rounded-lg">
+                <div className="mb-4 inline-flex items-center gap-2 px-3 py-2 bg-purple-500/20 border border-purple-500/30 rounded-md">
                   <span className="text-purple-300 text-sm font-semibold">Komisyon:</span>
                   <span className="text-purple-100 text-lg font-bold">
                     %{restaurant.current_commission_rate?.toFixed(2) || '10.00'}
@@ -196,15 +196,15 @@ export default function UygulamaSiparisleriPage() {
                       setEditingRestaurant(restaurant)
                       setNewCommissionRate(restaurant.current_commission_rate?.toString() || '10')
                     }}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors"
                   >
-                    ✏️ Komisyon Düzenle
+                    Komisyon Düzenle
                   </button>
                   <button
                     onClick={() => setSelectedRestaurant(restaurant)}
-                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-md transition-colors"
                   >
-                    📊 Detaylar
+                    Detaylar
                   </button>
                 </div>
               </div>
@@ -219,22 +219,22 @@ export default function UygulamaSiparisleriPage() {
             onClick={() => setEditingRestaurant(null)}
           >
             <div
-              className="bg-slate-900 rounded-xl p-6 max-w-md w-full border border-slate-700 shadow-2xl"
+              className="bg-slate-900 rounded-md p-6 max-w-md w-full border border-slate-700 shadow-sm"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-bold text-white">
-                  ✏️ Komisyon Oranını Düzenle
+                  Komisyon Oranını Düzenle
                 </h3>
                 <button
                   onClick={() => setEditingRestaurant(null)}
-                  className="text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-lg transition-colors text-slate-400 hover:text-white hover:bg-slate-800"
+                  className="text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-md transition-colors text-slate-400 hover:text-white hover:bg-slate-800"
                 >
                   ×
                 </button>
               </div>
 
-              <div className="mb-4 p-3 rounded-lg bg-slate-800">
+              <div className="mb-4 p-3 rounded-md bg-slate-800">
                 <p className="text-sm text-slate-400">Restoran:</p>
                 <p className="font-bold text-purple-400">{editingRestaurant.name}</p>
               </div>
@@ -243,7 +243,7 @@ export default function UygulamaSiparisleriPage() {
                 <label className="block text-sm font-medium mb-2 text-slate-300">
                   Mevcut Oran
                 </label>
-                <div className="p-3 rounded-lg bg-slate-800">
+                <div className="p-3 rounded-md bg-slate-800">
                   <p className="text-2xl font-bold text-purple-400">
                     %{editingRestaurant.current_commission_rate?.toFixed(2) || '10.00'}
                   </p>
@@ -261,15 +261,15 @@ export default function UygulamaSiparisleriPage() {
                   max="100"
                   value={newCommissionRate}
                   onChange={(e) => setNewCommissionRate(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg border text-lg font-bold bg-slate-800 border-slate-700 text-white focus:border-purple-500 outline-none transition-colors"
+                  className="w-full px-4 py-3 rounded-md border text-lg font-bold bg-slate-800 border-slate-700 text-white focus:border-purple-500 outline-none transition-colors"
                   placeholder="Örn: 15"
                   autoFocus
                 />
               </div>
 
-              <div className="mb-4 p-3 bg-amber-900/30 border border-amber-700/50 rounded-lg">
+              <div className="mb-4 p-3 bg-amber-900/30 border border-amber-700/50 rounded-md">
                 <p className="text-amber-300 text-xs">
-                  ⚠️ <strong>Önemli:</strong> Bu değişiklik sadece <strong>gelecekteki</strong> siparişleri etkiler. 
+                  <strong>Önemli:</strong> Bu değişiklik sadece <strong>gelecekteki</strong> siparişleri etkiler. 
                   Geçmiş siparişlerin komisyonu değişmez.
                 </p>
               </div>
@@ -277,16 +277,16 @@ export default function UygulamaSiparisleriPage() {
               <div className="flex gap-3">
                 <button
                   onClick={() => setEditingRestaurant(null)}
-                  className="flex-1 px-4 py-3 rounded-lg font-semibold transition-colors bg-slate-700 hover:bg-slate-600 text-white"
+                  className="flex-1 px-4 py-3 rounded-md font-semibold transition-colors bg-slate-700 hover:bg-slate-600 text-white"
                 >
                   İptal
                 </button>
                 <button
                   onClick={handleUpdateCommission}
                   disabled={updating}
-                  className="flex-1 px-4 py-3 rounded-lg font-semibold transition-colors bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-3 rounded-md font-semibold transition-colors bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {updating ? '⏳ Güncelleniyor...' : '✅ Güncelle'}
+                  {updating ? 'Güncelleniyor...' : 'Güncelle'}
                 </button>
               </div>
             </div>
@@ -300,17 +300,17 @@ export default function UygulamaSiparisleriPage() {
             onClick={() => setSelectedRestaurant(null)}
           >
             <div
-              className="bg-slate-900 rounded-xl max-w-6xl w-full border border-slate-700 shadow-2xl my-8"
+              className="bg-slate-900 rounded-md max-w-6xl w-full border border-slate-700 shadow-sm my-8"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
               <div className="flex justify-between items-center px-6 py-4 border-b border-slate-700">
                 <h3 className="text-xl font-bold text-white">
-                  📊 {selectedRestaurant.name} - Uygulama Siparişleri Detayı
+                  {selectedRestaurant.name} - Uygulama Siparişleri Detayı
                 </h3>
                 <button
                   onClick={() => setSelectedRestaurant(null)}
-                  className="text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-lg transition-colors text-slate-400 hover:text-white hover:bg-slate-800"
+                  className="text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-md transition-colors text-slate-400 hover:text-white hover:bg-slate-800"
                 >
                   ×
                 </button>
@@ -326,7 +326,7 @@ export default function UygulamaSiparisleriPage() {
                   <>
                     {/* Finansal Özet Kartları */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                      <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
+                      <div className="bg-blue-500/10 border border-blue-500/30 rounded-md p-4">
                         <p className="text-xs font-semibold text-blue-300 uppercase mb-1">Toplam Ciro</p>
                         <p className="text-2xl font-bold text-blue-100">
                           {stats.total_revenue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
@@ -334,7 +334,7 @@ export default function UygulamaSiparisleriPage() {
                         <p className="text-xs text-blue-300/70 mt-1">{stats.order_count} sipariş</p>
                       </div>
 
-                      <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4">
+                      <div className="bg-purple-500/10 border border-purple-500/30 rounded-md p-4">
                         <p className="text-xs font-semibold text-purple-300 uppercase mb-1">Komisyon Tutarı</p>
                         <p className="text-2xl font-bold text-purple-100">
                           {stats.total_commission.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
@@ -342,7 +342,7 @@ export default function UygulamaSiparisleriPage() {
                         <p className="text-xs text-purple-300/70 mt-1">Mühürlenmiş oranlar</p>
                       </div>
 
-                      <div className="bg-rose-500/10 border border-rose-500/30 rounded-xl p-4">
+                      <div className="bg-rose-500/10 border border-rose-500/30 rounded-md p-4">
                         <p className="text-xs font-semibold text-rose-300 uppercase mb-1">Kurye Masrafı</p>
                         <p className="text-2xl font-bold text-rose-100">
                           {stats.total_cost.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
@@ -350,7 +350,7 @@ export default function UygulamaSiparisleriPage() {
                         <p className="text-xs text-rose-300/70 mt-1">Paket başı ücret</p>
                       </div>
 
-                      <div className={`border rounded-xl p-4 ${
+                      <div className={`border rounded-md p-4 ${
                         stats.net_payable >= 0 
                           ? 'bg-emerald-500/10 border-emerald-500/30' 
                           : 'bg-red-500/10 border-red-500/30'
@@ -374,7 +374,7 @@ export default function UygulamaSiparisleriPage() {
                     </div>
 
                     {/* Formül Açıklaması */}
-                    <div className="mb-6 p-4 bg-slate-800/50 border border-slate-700 rounded-xl">
+                    <div className="mb-6 p-4 bg-slate-800/50 border border-slate-700 rounded-md">
                       <p className="text-sm text-slate-300 font-mono">
                         <span className="text-blue-400">{stats.total_revenue.toFixed(2)}₺</span>
                         {' '}<span className="text-slate-500">-</span>{' '}
@@ -392,7 +392,7 @@ export default function UygulamaSiparisleriPage() {
                     </div>
 
                     {/* Sipariş Listesi */}
-                    <div className="bg-slate-800/30 border border-slate-700 rounded-xl overflow-hidden">
+                    <div className="bg-slate-800/30 border border-slate-700 rounded-md overflow-hidden">
                       <div className="px-4 py-3 border-b border-slate-700">
                         <h4 className="text-sm font-bold text-slate-200">
                           Sipariş Listesi ({orders.length})

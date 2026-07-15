@@ -62,12 +62,12 @@ function SortableCategoryItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`bg-slate-900 rounded-xl p-6 border border-slate-800 ${isDragging ? 'shadow-2xl ring-2 ring-orange-500/50' : ''}`}
+      className={`bg-slate-900 rounded-md p-6 border border-slate-800 ${isDragging ? 'shadow-sm ring-2 ring-orange-500/50' : ''}`}
     >
       <div className="flex items-center gap-3 mb-4">
         <button
           type="button"
-          className="flex-shrink-0 p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 cursor-grab active:cursor-grabbing touch-none"
+          className="flex-shrink-0 p-2 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 cursor-grab active:cursor-grabbing touch-none"
           aria-label={`${category.name} kategorisini taşı`}
           {...attributes}
           {...listeners}

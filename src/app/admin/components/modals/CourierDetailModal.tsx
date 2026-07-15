@@ -7,6 +7,7 @@ import { CourierPaymentSettingsModal } from './CourierPaymentSettingsModal'
 import { NightShiftConfirmModal } from './NightShiftConfirmModal'
 import { supabase } from '@/app/lib/supabase'
 import { useAdminData } from '../../AdminDataProvider'
+import { CheckCircle2, Package as PackageIcon } from 'lucide-react'
 
 interface CourierDetailModalProps {
   show: boolean
@@ -230,7 +231,7 @@ export function CourierDetailModal({
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div className="bg-slate-950 border border-slate-800 rounded-lg max-w-6xl w-full max-h-[92vh] overflow-hidden">
+      <div className="bg-slate-950 border border-slate-800 rounded-md max-w-6xl w-full max-h-[92vh] overflow-hidden">
         <div className="flex justify-between items-center px-6 py-4 border-b border-slate-800 bg-slate-950">
           <div className="flex items-center gap-4 flex-1 flex-wrap">
             <div>
@@ -312,7 +313,7 @@ export function CourierDetailModal({
         <div className="p-6 overflow-y-auto max-h-[calc(92vh-72px)] bg-slate-950">
           {earningsMode ? (
             <>
-              <div className="bg-slate-900 border border-slate-800 rounded-lg p-5 mb-4">
+              <div className="bg-slate-900 border border-slate-800 rounded-md p-5 mb-4">
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <div className="text-[10px] text-slate-600 tracking-tight uppercase font-medium mb-1">
@@ -339,7 +340,7 @@ export function CourierDetailModal({
                 </div>
               </div>
 
-              <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
+              <div className="bg-slate-900 border border-slate-800 rounded-md overflow-hidden">
                 <div className="px-4 py-3 border-b border-slate-800">
                   <h3 className="text-sm font-bold text-slate-200 tracking-tight">Ödenmemiş Hakediş Paketleri</h3>
                 </div>
@@ -350,7 +351,7 @@ export function CourierDetailModal({
                   </div>
                 ) : unpaidEarningsPackages.length === 0 ? (
                   <div className="text-center py-12 text-slate-600">
-                    <div className="text-3xl mb-2 opacity-30">✅</div>
+                    <CheckCircle2 className="w-10 h-10 mx-auto mb-2 opacity-30 text-gray-400" strokeWidth={1.5} />
                     <p className="text-sm tracking-tight">Ödenmemiş hakediş paketi yok</p>
                   </div>
                 ) : (
@@ -389,14 +390,14 @@ export function CourierDetailModal({
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
                 <div
                   onClick={() => setShowPaymentBreakdown(true)}
-                  className="bg-slate-900 border border-slate-800 rounded-lg p-4 cursor-pointer hover:border-slate-700 transition-colors"
+                  className="bg-slate-900 border border-slate-800 rounded-md p-4 cursor-pointer hover:border-slate-700 transition-colors"
                 >
                   <div className="text-xs text-slate-500 tracking-tight mb-2">PAKET SAYISI</div>
                   <div className="text-2xl font-bold text-slate-100 tracking-tight">{settlementSummary.packageCount}</div>
                   <div className="text-xs text-slate-600 mt-1 tracking-tight">Açık hesapta bekleyen paketler</div>
                 </div>
 
-                <div className="bg-slate-900 border border-slate-800 rounded-lg p-4">
+                <div className="bg-slate-900 border border-slate-800 rounded-md p-4">
                   <div className="text-xs text-slate-500 tracking-tight mb-2">HAKEDİŞ</div>
                   <div className="text-2xl font-bold text-emerald-500 tracking-tight">{earningsAmount.toFixed(0)}₺</div>
                   <div className="text-xs text-slate-600 mt-1 tracking-tight">
@@ -406,7 +407,7 @@ export function CourierDetailModal({
                   </div>
                 </div>
 
-                <div className="bg-slate-900 border border-slate-800 rounded-lg p-4">
+                <div className="bg-slate-900 border border-slate-800 rounded-md p-4">
                   <div className="text-xs text-slate-500 tracking-tight mb-2">KASAYA BORÇ (TAHSİLAT)</div>
                   <div
                     className={`text-2xl font-bold tracking-tight ${
@@ -428,7 +429,7 @@ export function CourierDetailModal({
                 </div>
               </div>
 
-              <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
+              <div className="bg-slate-900 border border-slate-800 rounded-md overflow-hidden">
                 <div className="px-4 py-3 border-b border-slate-800">
                   <h3 className="text-sm font-bold text-slate-200 tracking-tight">
                     Açık Hesapta Bekleyen Paketler
@@ -442,7 +443,7 @@ export function CourierDetailModal({
                   </div>
                 ) : openSettlementPackages.length === 0 ? (
                   <div className="text-center py-12 text-slate-600">
-                    <div className="text-3xl mb-2 opacity-30">📦</div>
+                    <PackageIcon className="w-10 h-10 mx-auto mb-2 opacity-30 text-gray-400" strokeWidth={1.5} />
                     <p className="text-sm tracking-tight">Açık hesapta bekleyen paket yok</p>
                   </div>
                 ) : (
@@ -540,7 +541,7 @@ export function CourierDetailModal({
 
       {showPaymentBreakdown && (
         <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-lg max-w-md w-full">
+          <div className="bg-slate-900 border border-slate-800 rounded-md max-w-md w-full">
             <div className="flex justify-between items-center px-5 py-3.5 border-b border-slate-800">
               <h3 className="text-sm font-bold text-slate-200 tracking-tight">Ödeme Detayları</h3>
               <button

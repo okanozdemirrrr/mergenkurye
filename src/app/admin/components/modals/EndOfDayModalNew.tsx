@@ -9,6 +9,7 @@ import { supabase } from '@/app/lib/supabase'
 import {
   fetchCourierLedgerPeriodAccount,
 } from '@/utils/courierLedger'
+import { CheckCircle2, AlertTriangle } from 'lucide-react'
 
 interface Courier {
   id: string
@@ -151,7 +152,7 @@ export function EndOfDayModalNew({
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div className="bg-slate-950 border border-slate-800 rounded-lg max-w-xl w-full max-h-[92vh] overflow-hidden">
+      <div className="bg-slate-950 border border-slate-800 rounded-md max-w-xl w-full max-h-[92vh] overflow-hidden">
         <div className="flex justify-between items-center px-6 py-4 border-b border-slate-800">
           <div>
             <h2 className="text-lg font-bold text-slate-100 tracking-tight">
@@ -182,8 +183,8 @@ export function EndOfDayModalNew({
             </div>
           ) : isFullySettled ? (
             <div className="space-y-5 py-6">
-              <div className="bg-emerald-900/20 border border-emerald-800/40 rounded-lg p-5 text-center">
-                <span className="text-2xl block mb-2">✅</span>
+              <div className="bg-emerald-900/20 border border-emerald-800/40 rounded-md p-5 text-center">
+                <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-green-400" strokeWidth={1.5} />
                 <p className="text-sm font-bold text-emerald-400 tracking-tight">
                   Açık cari yok
                 </p>
@@ -242,11 +243,11 @@ export function EndOfDayModalNew({
 
               <div className="bg-amber-900/20 border border-amber-700/40 rounded p-3 mb-5">
                 <p className="text-xs font-bold text-amber-400 tracking-tight text-center">
-                  ⚠️ NAKİT + KART + IBAN = TOPLAM TAHSİLAT, HAKEDİŞ AYRICA ÖDENİR
+                  NAKİT + KART + IBAN = TOPLAM TAHSİLAT, HAKEDİŞ AYRICA ÖDENİR
                 </p>
               </div>
 
-              <div className="bg-rose-900/20 border border-rose-800/40 rounded-lg p-4 mb-5">
+              <div className="bg-rose-900/20 border border-rose-800/40 rounded-md p-4 mb-5">
                 <div className="text-[10px] text-rose-400 tracking-tight uppercase mb-2 font-medium">Toplam Kalan Borç</div>
                 <div className="text-3xl font-black text-rose-400 tracking-tight mb-1">
                   {hesaplananBorc.toFixed(2)}₺

@@ -4,6 +4,8 @@
  */
 'use client'
 
+import { MapPin } from 'lucide-react'
+
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/app/lib/supabase'
 import {
@@ -127,20 +129,21 @@ export function CourierDailyRoutes({ couriers }: CourierDailyRoutesProps) {
   }
 
   return (
-    <div className="bg-slate-900 shadow-xl rounded-2xl p-2 border border-slate-800 h-full flex flex-col lg:sticky lg:top-4">
-      <div className="flex items-center justify-between mb-2 px-1">
-        <h2 className="text-sm font-bold text-white tracking-tight">
-          📍 Kurye Günlük Rota ve Performans
-        </h2>
+    <div className="bg-slate-900 shadow-sm rounded-md border border-slate-800 p-2 h-full flex flex-col lg:sticky lg:top-4">
+      <div className="flex items-center gap-2 mb-2 px-1">
         <button
           type="button"
           onClick={() => fetchTodayDelivered()}
           disabled={loading}
-          className="text-[10px] text-slate-400 hover:text-orange-400 disabled:opacity-50"
+          className="shrink-0 text-[10px] text-slate-400 hover:text-orange-400 disabled:opacity-50"
           title="Yenile"
         >
           ↻
         </button>
+        <h2 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
+          <MapPin className="w-4 h-4 text-gray-400" strokeWidth={1.5} />
+          Kurye Günlük Rota ve Performans
+        </h2>
       </div>
 
       {loadError && (
@@ -193,7 +196,7 @@ export function CourierDailyRoutes({ couriers }: CourierDailyRoutesProps) {
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Adres ara..."
           disabled={!selectedCourierId || loading}
-          className="flex-1 min-w-0 px-2.5 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-slate-200 placeholder-slate-500 focus:border-orange-500 focus:outline-none"
+          className="flex-1 min-w-0 px-2.5 py-1.5 bg-slate-950 border border-slate-700 rounded-md text-xs text-slate-200 placeholder-slate-500 focus:border-orange-500 focus:outline-none"
         />
         <span className="shrink-0 bg-orange-600/20 text-orange-300 border border-orange-600/40 px-2 py-1 rounded-full text-xs font-bold tabular-nums">
           {filteredPackages.length}
@@ -201,7 +204,7 @@ export function CourierDailyRoutes({ couriers }: CourierDailyRoutesProps) {
       </div>
 
       {/* Liste */}
-      <div className="flex-1 min-h-0 max-h-[600px] overflow-y-auto admin-scrollbar rounded-lg border border-slate-800/80 bg-slate-950/50">
+      <div className="flex-1 min-h-0 max-h-[600px] overflow-y-auto admin-scrollbar rounded-md border border-slate-800/80 bg-slate-950/50">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="h-6 w-6 border-2 border-slate-600 border-t-orange-500 rounded-full animate-spin" />

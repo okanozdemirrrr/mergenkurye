@@ -7,6 +7,7 @@
 'use client'
 
 import React, { Component, ReactNode } from 'react'
+import { AlertTriangle, RefreshCw, Map, ClipboardList } from 'lucide-react'
 
 interface Props {
   children: ReactNode
@@ -62,16 +63,16 @@ export class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
-      // Custom fallback varsa onu göster
       if (this.props.fallback) {
         return this.props.fallback
       }
 
-      // Default fallback UI
       return (
-        <div className="flex items-center justify-center p-8 bg-red-50 dark:bg-red-900/20 rounded-xl border-2 border-red-200 dark:border-red-800">
+        <div className="flex items-center justify-center p-8 bg-red-50 dark:bg-red-900/20 rounded-md border border-white/5 shadow-sm">
           <div className="text-center max-w-md">
-            <div className="text-6xl mb-4">⚠️</div>
+            <div className="mb-4 flex justify-center">
+              <AlertTriangle className="w-8 h-8 text-red-600 dark:text-red-400" strokeWidth={1.5} />
+            </div>
             <h3 className="text-xl font-bold text-red-700 dark:text-red-400 mb-2">
               {this.props.componentName || 'Bu Bileşen'} Yüklenemedi
             </h3>
@@ -90,9 +91,10 @@ export class ErrorBoundary extends Component<Props, State> {
             )}
             <button
               onClick={this.handleReset}
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md font-medium transition-colors inline-flex items-center gap-2"
             >
-              🔄 Tekrar Dene
+              <RefreshCw size={16} strokeWidth={1.5} />
+              Tekrar Dene
             </button>
           </div>
         </div>
@@ -103,11 +105,12 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 }
 
-// 🛡️ Özel fallback component'leri
 export const MapErrorFallback = () => (
-  <div className="flex items-center justify-center h-full bg-slate-100 dark:bg-slate-800 rounded-xl border-2 border-slate-300 dark:border-slate-700">
+  <div className="flex items-center justify-center h-full bg-slate-100 dark:bg-slate-800 rounded-md border border-white/5 shadow-sm">
     <div className="text-center p-6">
-      <div className="text-5xl mb-3">🗺️</div>
+      <div className="mb-3 flex justify-center">
+        <Map className="w-8 h-8 text-slate-600 dark:text-slate-400" strokeWidth={1.5} />
+      </div>
       <h4 className="text-lg font-bold text-slate-700 dark:text-slate-300 mb-2">
         Harita Yüklenemedi
       </h4>
@@ -119,9 +122,11 @@ export const MapErrorFallback = () => (
 )
 
 export const TableErrorFallback = () => (
-  <div className="flex items-center justify-center p-8 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl border-2 border-yellow-200 dark:border-yellow-800">
+  <div className="flex items-center justify-center p-8 bg-yellow-50 dark:bg-yellow-900/20 rounded-md border border-white/5 shadow-sm">
     <div className="text-center">
-      <div className="text-5xl mb-3">📋</div>
+      <div className="mb-3 flex justify-center">
+        <ClipboardList className="w-8 h-8 text-yellow-600 dark:text-yellow-400" strokeWidth={1.5} />
+      </div>
       <h4 className="text-lg font-bold text-yellow-700 dark:text-yellow-400 mb-2">
         Tablo Yüklenemedi
       </h4>

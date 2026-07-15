@@ -11,6 +11,7 @@
 
 import { useState, useEffect } from 'react'
 import { Restaurant } from '@/types'
+import { CheckCircle2, Sparkles } from 'lucide-react'
 
 interface RestaurantPaymentModalProps {
   show: boolean
@@ -54,7 +55,7 @@ export function RestaurantPaymentModal({
   const handleConfirmPayment = async () => {
     setLocalError(null)
     try {
-      // 🔥 KRİTİK: Ödeme işlemini BEKLE (atomik RPC)
+      // KRİTİK: Ödeme işlemini BEKLE (atomik RPC)
       await onConfirm()
 
       // Başarılıysa konfeti göster
@@ -64,11 +65,11 @@ export function RestaurantPaymentModal({
         onClose()
       }, 2000)
     } catch (error: any) {
-      console.error('❌ Ödeme hatası:', error)
+      console.error('Ödeme hatası:', error)
       // Hata mesajını modal içinde göster (modal kapanmasın!)
       const errorMsg = error?.message || 'Beklenmeyen bir hata oluştu'
       // "❌" ile başlayan mesajları aynen göster, diğerlerine prefix ekle
-      setLocalError(errorMsg.startsWith('❌') ? errorMsg : `❌ ${errorMsg}`)
+      setLocalError(errorMsg.startsWith('Hata') ? errorMsg : errorMsg)
     }
   }
 
@@ -77,12 +78,12 @@ export function RestaurantPaymentModal({
       className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
       onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!showConfetti) onClose() }}
     >
-      {/* 🎉 Konfeti */}
+      {/* Konfeti */}
       {showConfetti && (
         <div className="fixed inset-0 pointer-events-none z-[70] flex items-center justify-center">
           <div className="text-center animate-bounce">
-            <div className="text-8xl mb-4">🎉</div>
-            <div className="text-4xl font-black text-emerald-400 mb-2">ÖDEME BAŞARILI!</div>
+            <CheckCircle2 className="w-20 h-20 mx-auto mb-4 text-emerald-400" strokeWidth={1.5} />
+            <div className="text-2xl font-black text-emerald-400 mb-2">ÖDEME BAŞARILI!</div>
             <div className="text-xl text-emerald-300">Mutabakat fişi oluşturuldu</div>
           </div>
           <div className="absolute inset-0 overflow-hidden">
@@ -97,7 +98,7 @@ export function RestaurantPaymentModal({
                   fontSize: `${Math.random() * 20 + 20}px`,
                 }}
               >
-                {['🎊', '✨', '💰', '✅', '🎉'][Math.floor(Math.random() * 5)]}
+                <Sparkles className="w-6 h-6 text-emerald-400" strokeWidth={1.5} />
               </div>
             ))}
           </div>
@@ -105,19 +106,19 @@ export function RestaurantPaymentModal({
       )}
 
       <div
-        className="bg-slate-950 rounded-2xl max-w-lg w-full border border-slate-800 shadow-2xl"
+        className="bg-slate-950 rounded-md max-w-lg w-full border border-slate-800 shadow-sm"
         onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
       >
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b border-slate-800">
           <div>
-            <h3 className="text-2xl font-black text-white">💰 Dönem Mutabakatı</h3>
+            <h3 className="text-2xl font-black text-white">Dönem Mutabakatı</h3>
             <p className="text-sm text-slate-400 mt-1 font-medium">{restaurant.name}</p>
           </div>
           <button
             type="button"
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose() }}
-            className="text-slate-400 hover:text-white transition-colors text-2xl ml-4 hover:bg-slate-800 rounded-lg w-10 h-10 flex items-center justify-center"
+            className="text-slate-400 hover:text-white transition-colors text-2xl ml-4 hover:bg-slate-800 rounded-md w-10 h-10 flex items-center justify-center"
           >
             ×
           </button>
@@ -127,20 +128,20 @@ export function RestaurantPaymentModal({
         <div className="p-6">
           {/* Dönem Bilgisi */}
           {startDate && endDate && (
-            <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 mb-6">
+            <div className="bg-slate-900 p-4 rounded-md border border-slate-800 mb-6">
               <p className="text-xs text-slate-500 uppercase tracking-wider font-bold mb-1">Seçili Dönem</p>
               <p className="text-lg font-bold text-white">{startDate} — {endDate}</p>
             </div>
           )}
 
           {/* Net Ödenecek Tutar */}
-          <div className="bg-gradient-to-br from-emerald-900/40 to-emerald-950/40 p-6 rounded-2xl border-2 border-emerald-500/30 shadow-2xl shadow-emerald-900/30 mb-6">
+          <div className="bg-gradient-to-br from-emerald-900/40 to-emerald-950/40 p-6 rounded-md border-2 border-emerald-500/30 shadow-sm shadow-emerald-900/30 mb-6">
             <div className="text-center">
               <div className="text-emerald-400/70 text-xs font-bold uppercase tracking-wider mb-2">
                 Net Ödenecek Tutar
               </div>
               <div
-                className={`text-5xl font-black mb-2 tracking-tight ${
+                className={`text-2xl font-black mb-2 tracking-tight ${
                   guncelBakiye > 0 ? 'text-emerald-300' : 'text-slate-400'
                 }`}
               >
@@ -156,7 +157,7 @@ export function RestaurantPaymentModal({
 
           {/* Hata Mesajı (Modal İçi) */}
           {localError && (
-            <div className="bg-rose-950/60 border border-rose-500/50 rounded-xl p-4 mb-6">
+            <div className="bg-rose-950/60 border border-rose-500/50 rounded-md p-4 mb-6">
               <p className="text-rose-300 text-sm font-bold">{localError}</p>
               <p className="text-rose-400/70 text-xs mt-1">
                 Hata devam ediyorsa lütfen veritabanı bağlantısını kontrol edin veya sayfayı yenileyin.
@@ -165,8 +166,8 @@ export function RestaurantPaymentModal({
           )}
 
           {/* Uyarı */}
-          <div className="bg-amber-950/30 p-4 rounded-xl border border-amber-700/30 mb-6">
-            <p className="text-amber-400 text-sm font-bold mb-1">⚠️ Dikkat</p>
+          <div className="bg-amber-950/30 p-4 rounded-md border border-amber-700/30 mb-6">
+            <p className="text-amber-400 text-sm font-bold mb-1">Dikkat</p>
             <p className="text-amber-300/70 text-xs leading-relaxed">
               Bu işlem, seçili dönemdeki ödenmemiş paketler için kalıcı bir{' '}
               <strong>mutabakat fişi</strong> oluşturur ve paketleri ödendi olarak işaretler.
@@ -179,7 +180,7 @@ export function RestaurantPaymentModal({
             <button
               type="button"
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose() }}
-              className="flex-1 px-4 py-4 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold transition-colors border border-slate-700"
+              className="flex-1 px-4 py-4 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md font-bold transition-colors border border-slate-700"
             >
               İptal
             </button>
@@ -187,7 +188,7 @@ export function RestaurantPaymentModal({
               type="button"
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleConfirmPayment() }}
               disabled={processing || guncelBakiye <= 0}
-              className="flex-1 px-4 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-900/20"
+              className="flex-1 px-4 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md font-black transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shadow-emerald-900/20"
             >
               {processing ? (
                 <span className="flex items-center justify-center gap-2">

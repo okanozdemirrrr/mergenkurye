@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { supabase } from '@/app/lib/supabase'
 import { Courier } from '@/types'
+import { User, CheckCircle2, PauseCircle, XCircle } from 'lucide-react'
 
 interface CourierAccountStatusModalProps {
   courier: Courier
@@ -49,9 +50,10 @@ export function CourierAccountStatusModal({ courier, onClose, onSuccess }: Couri
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
-        <h2 className="text-2xl font-bold text-slate-900 mb-4">
-          👤 Hesap Durumu Yönetimi
+      <div className="bg-white rounded-md shadow-sm max-w-md w-full p-6">
+        <h2 className="text-2xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+          <User className="w-6 h-6 text-gray-400" strokeWidth={1.5} />
+          Hesap Durumu Yönetimi
         </h2>
 
         <div className="mb-4">
@@ -61,7 +63,7 @@ export function CourierAccountStatusModal({ courier, onClose, onSuccess }: Couri
         </div>
 
         <div className="space-y-3 mb-6">
-          <label className="flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+          <label className="flex items-center gap-3 p-4 border-2 rounded-md cursor-pointer hover:bg-slate-50 transition-colors">
             <input
               type="radio"
               name="accountStatus"
@@ -71,12 +73,12 @@ export function CourierAccountStatusModal({ courier, onClose, onSuccess }: Couri
               className="w-5 h-5"
             />
             <div>
-              <div className="font-semibold text-green-600">✅ Aktif</div>
+              <div className="font-semibold text-green-600 flex items-center gap-1"><CheckCircle2 className="w-4 h-4" strokeWidth={1.5} /> Aktif</div>
               <div className="text-xs text-slate-500">Normal hesap, giriş yapabilir</div>
             </div>
           </label>
 
-          <label className="flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+          <label className="flex items-center gap-3 p-4 border-2 rounded-md cursor-pointer hover:bg-slate-50 transition-colors">
             <input
               type="radio"
               name="accountStatus"
@@ -86,12 +88,12 @@ export function CourierAccountStatusModal({ courier, onClose, onSuccess }: Couri
               className="w-5 h-5"
             />
             <div>
-              <div className="font-semibold text-orange-600">⏸️ Askıya Alındı</div>
+              <div className="font-semibold text-orange-600 flex items-center gap-1"><PauseCircle className="w-4 h-4" strokeWidth={1.5} /> Askıya Alındı</div>
               <div className="text-xs text-slate-500">Geçici olarak giriş yapamaz</div>
             </div>
           </label>
 
-          <label className="flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+          <label className="flex items-center gap-3 p-4 border-2 rounded-md cursor-pointer hover:bg-slate-50 transition-colors">
             <input
               type="radio"
               name="accountStatus"
@@ -101,14 +103,14 @@ export function CourierAccountStatusModal({ courier, onClose, onSuccess }: Couri
               className="w-5 h-5"
             />
             <div>
-              <div className="font-semibold text-red-600">❌ İşten Çıkarıldı</div>
+              <div className="font-semibold text-red-600 flex items-center gap-1"><XCircle className="w-4 h-4" strokeWidth={1.5} /> İşten Çıkarıldı</div>
               <div className="text-xs text-slate-500">Kalıcı olarak giriş yapamaz</div>
             </div>
           </label>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
             {error}
           </div>
         )}
@@ -117,14 +119,14 @@ export function CourierAccountStatusModal({ courier, onClose, onSuccess }: Couri
           <button
             onClick={onClose}
             disabled={loading}
-            className="flex-1 px-4 py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg font-medium transition-colors disabled:opacity-50"
+            className="flex-1 px-4 py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-md font-medium transition-colors disabled:opacity-50"
           >
             İptal
           </button>
           <button
             onClick={handleSubmit}
             disabled={loading}
-            className="flex-1 px-4 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+            className="flex-1 px-4 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-md font-medium transition-colors disabled:opacity-50"
           >
             {loading ? 'Kaydediliyor...' : 'Kaydet'}
           </button>

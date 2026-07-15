@@ -108,14 +108,14 @@ export default function ProductOptionsManager({ options = [], onChange, darkMode
         <button
           type="button"
           onClick={addGroup}
-          className="flex items-center gap-1 text-xs font-semibold bg-orange-600 hover:bg-orange-700 text-white px-3 py-1.5 rounded-lg transition-colors"
+          className="flex items-center gap-1 text-xs font-semibold bg-orange-600 hover:bg-orange-700 text-white px-3 py-1.5 rounded-md transition-colors"
         >
           <Plus size={14} /> Yeni Grup Ekle
         </button>
       </div>
 
       {options.length === 0 ? (
-        <div className="text-center py-6 bg-slate-850 rounded-lg border border-dashed border-slate-800">
+        <div className="text-center py-6 bg-slate-850 rounded-md border border-dashed border-slate-800">
           <p className="text-sm text-slate-500">Bu ürün için henüz opsiyon tanımlanmamış.</p>
           <p className="text-xs text-slate-600 mt-1">Grup ekleyerek boyut, ekstra malzeme veya sos seçimi tanımlayabilirsiniz.</p>
         </div>
@@ -124,7 +124,7 @@ export default function ProductOptionsManager({ options = [], onChange, darkMode
           {options.map((group, groupIndex) => (
             <div
               key={groupIndex}
-              className={`border rounded-xl overflow-hidden ${
+              className={`border rounded-md overflow-hidden ${
                 darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'
               }`}
             >
@@ -142,7 +142,7 @@ export default function ProductOptionsManager({ options = [], onChange, darkMode
                     value={group.name}
                     onChange={e => handleGroupChange(groupIndex, 'name', e.target.value)}
                     placeholder="Grup Adı (Örn: Boyut Seçimi)"
-                    className={`px-3 py-1.5 rounded-lg border text-sm font-semibold outline-none transition-colors w-1/2 ${
+                    className={`px-3 py-1.5 rounded-md border text-sm font-semibold outline-none transition-colors w-1/2 ${
                       darkMode
                         ? 'bg-slate-800 border-slate-700 text-white focus:border-orange-500'
                         : 'bg-white border-gray-300 text-gray-900 focus:border-orange-500'
@@ -151,7 +151,7 @@ export default function ProductOptionsManager({ options = [], onChange, darkMode
                   <select
                     value={group.type}
                     onChange={e => handleGroupChange(groupIndex, 'type', e.target.value)}
-                    className={`px-3 py-1.5 rounded-lg border text-sm outline-none transition-colors w-1/3 ${
+                    className={`px-3 py-1.5 rounded-md border text-sm outline-none transition-colors w-1/3 ${
                       darkMode
                         ? 'bg-slate-800 border-slate-700 text-white focus:border-orange-500'
                         : 'bg-white border-gray-300 text-gray-900 focus:border-orange-500'
@@ -187,7 +187,7 @@ export default function ProductOptionsManager({ options = [], onChange, darkMode
                       e.stopPropagation()
                       removeGroup(groupIndex)
                     }}
-                    className="p-1.5 bg-red-900/30 hover:bg-red-900/50 text-red-400 rounded-lg transition-colors"
+                    className="p-1.5 bg-red-900/30 hover:bg-red-900/50 text-red-400 rounded-md transition-colors"
                     title="Grubu Sil"
                   >
                     <Trash2 size={16} />
@@ -210,7 +210,7 @@ export default function ProductOptionsManager({ options = [], onChange, darkMode
                           value={option.name}
                           onChange={e => handleOptionChange(groupIndex, optionIndex, 'name', e.target.value)}
                           placeholder="Seçenek Adı (Örn: Büyük Boy)"
-                          className={`flex-1 px-3 py-2 rounded-lg border text-xs outline-none transition-colors ${
+                          className={`flex-1 px-3 py-2 rounded-md border text-xs outline-none transition-colors ${
                             darkMode
                               ? 'bg-slate-800 border-slate-700 text-white focus:border-orange-500'
                               : 'bg-white border-gray-300 text-gray-900 focus:border-orange-500'
@@ -226,7 +226,7 @@ export default function ProductOptionsManager({ options = [], onChange, darkMode
                               handleOptionChange(groupIndex, optionIndex, 'price_modifier', isNaN(val) ? 0 : val)
                             }}
                             placeholder="+0.00"
-                            className={`w-full px-3 py-2 rounded-lg border text-xs text-right outline-none transition-colors ${
+                            className={`w-full px-3 py-2 rounded-md border text-xs text-right outline-none transition-colors ${
                               darkMode
                                 ? 'bg-slate-800 border-slate-700 text-white focus:border-orange-500'
                                 : 'bg-white border-gray-300 text-gray-900 focus:border-orange-500'
@@ -239,7 +239,7 @@ export default function ProductOptionsManager({ options = [], onChange, darkMode
                           <button
                             type="button"
                             onClick={() => removeOption(groupIndex, optionIndex)}
-                            className="p-2 text-slate-500 hover:text-red-400 rounded-lg hover:bg-slate-800 transition-colors"
+                            className="p-2 text-slate-500 hover:text-red-400 rounded-md hover:bg-slate-800 transition-colors"
                             title="Seçeneği Sil"
                           >
                             <Trash2 size={14} />

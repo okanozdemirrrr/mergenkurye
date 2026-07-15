@@ -36,7 +36,7 @@ export default function ProductModal({ product, category, onClose, onSuccess }: 
     unit: '1 Adet',
     description: '',
     image_url: '',
-    emoji: '📦',
+    emoji: '',
     stock_status: 'active' as 'active' | 'out_of_stock' | 'inactive',
     is_featured: false,
     sort_order: 0
@@ -124,7 +124,7 @@ export default function ProductModal({ product, category, onClose, onSuccess }: 
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-      <div className="bg-slate-900 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-slate-800">
+      <div className="bg-slate-900 rounded-md w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-slate-800">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-800 sticky top-0 bg-slate-900 z-10">
           <h2 className="text-2xl font-bold text-white">
@@ -132,7 +132,7 @@ export default function ProductModal({ product, category, onClose, onSuccess }: 
           </h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
+            className="p-2 hover:bg-slate-800 rounded-md transition-colors"
           >
             <X size={24} className="text-slate-400" />
           </button>
@@ -141,7 +141,7 @@ export default function ProductModal({ product, category, onClose, onSuccess }: 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {error && (
-            <div className="p-3 bg-red-900/30 border border-red-500 rounded-lg text-red-300 text-sm">
+            <div className="p-3 bg-red-900/30 border border-red-500 rounded-md text-red-300 text-sm">
               {error}
             </div>
           )}
@@ -156,7 +156,7 @@ export default function ProductModal({ product, category, onClose, onSuccess }: 
               required
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-orange-500 transition-colors"
+              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-md text-white focus:outline-none focus:border-orange-500 transition-colors"
               placeholder="Örn: Ülker Çikolatalı Gofret 36g"
             />
           </div>
@@ -174,7 +174,7 @@ export default function ProductModal({ product, category, onClose, onSuccess }: 
                 min="0"
                 value={formData.price}
                 onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-orange-500 transition-colors"
+                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-md text-white focus:outline-none focus:border-orange-500 transition-colors"
                 placeholder="0.00"
               />
             </div>
@@ -189,7 +189,7 @@ export default function ProductModal({ product, category, onClose, onSuccess }: 
                 min="0"
                 value={formData.discount_price}
                 onChange={(e) => setFormData({ ...formData, discount_price: e.target.value })}
-                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-orange-500 transition-colors"
+                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-md text-white focus:outline-none focus:border-orange-500 transition-colors"
                 placeholder="0.00"
               />
             </div>
@@ -197,9 +197,9 @@ export default function ProductModal({ product, category, onClose, onSuccess }: 
 
           {/* İndirim Yüzdesi (Otomatik) */}
           {formData.discount_percentage && (
-            <div className="p-3 bg-orange-500/20 border border-orange-500/50 rounded-lg">
+            <div className="p-3 bg-orange-500/20 border border-orange-500/50 rounded-md">
               <p className="text-orange-300 text-sm">
-                🔥 İndirim: <span className="font-bold">%{formData.discount_percentage}</span>
+                İndirim: <span className="font-bold">%{formData.discount_percentage}</span>
               </p>
             </div>
           )}
@@ -213,7 +213,7 @@ export default function ProductModal({ product, category, onClose, onSuccess }: 
               required
               value={formData.unit}
               onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-orange-500 transition-colors"
+              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-md text-white focus:outline-none focus:border-orange-500 transition-colors"
             >
               <option value="1 Adet">1 Adet</option>
               <option value="1 Kg">1 Kg</option>
@@ -235,8 +235,8 @@ export default function ProductModal({ product, category, onClose, onSuccess }: 
               maxLength={2}
               value={formData.emoji}
               onChange={(e) => setFormData({ ...formData, emoji: e.target.value })}
-              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-orange-500 transition-colors text-4xl text-center"
-              placeholder="📦"
+              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-md text-white focus:outline-none focus:border-orange-500 transition-colors text-2xl text-center"
+              placeholder="Ürün simgesi (opsiyonel)"
             />
           </div>
 
@@ -249,7 +249,7 @@ export default function ProductModal({ product, category, onClose, onSuccess }: 
               type="url"
               value={formData.image_url}
               onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-orange-500 transition-colors"
+              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-md text-white focus:outline-none focus:border-orange-500 transition-colors"
               placeholder="https://example.com/image.jpg"
             />
           </div>
@@ -263,7 +263,7 @@ export default function ProductModal({ product, category, onClose, onSuccess }: 
               rows={3}
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-orange-500 transition-colors resize-none"
+              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-md text-white focus:outline-none focus:border-orange-500 transition-colors resize-none"
               placeholder="Ürün açıklaması..."
             />
           </div>
@@ -277,35 +277,35 @@ export default function ProductModal({ product, category, onClose, onSuccess }: 
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, stock_status: 'active' })}
-                className={`py-3 rounded-lg font-semibold transition-colors ${
+                className={`py-3 rounded-md font-semibold transition-colors ${
                   formData.stock_status === 'active'
                     ? 'bg-green-500 text-white'
                     : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
                 }`}
               >
-                ✅ Aktif
+                Aktif
               </button>
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, stock_status: 'out_of_stock' })}
-                className={`py-3 rounded-lg font-semibold transition-colors ${
+                className={`py-3 rounded-md font-semibold transition-colors ${
                   formData.stock_status === 'out_of_stock'
                     ? 'bg-yellow-500 text-white'
                     : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
                 }`}
               >
-                ⚠️ Tükendi
+                Tükendi
               </button>
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, stock_status: 'inactive' })}
-                className={`py-3 rounded-lg font-semibold transition-colors ${
+                className={`py-3 rounded-md font-semibold transition-colors ${
                   formData.stock_status === 'inactive'
                     ? 'bg-red-500 text-white'
                     : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
                 }`}
               >
-                ❌ Pasif
+                Pasif
               </button>
             </div>
           </div>
@@ -320,7 +320,7 @@ export default function ProductModal({ product, category, onClose, onSuccess }: 
               className="w-5 h-5 bg-slate-800 border-slate-700 rounded"
             />
             <label htmlFor="is_featured" className="text-slate-300 font-medium">
-              🌟 Öne Çıkan Ürün
+              Öne Çıkan Ürün
             </label>
           </div>
 
@@ -329,14 +329,14 @@ export default function ProductModal({ product, category, onClose, onSuccess }: 
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-semibold transition-colors"
+              className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-md font-semibold transition-colors"
             >
               İptal
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-semibold transition-colors disabled:opacity-50"
+              className="flex-1 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-md font-semibold transition-colors disabled:opacity-50"
             >
               {isSubmitting ? 'Kaydediliyor...' : product ? 'Güncelle' : 'Ekle'}
             </button>

@@ -14,6 +14,10 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { CourierAccountStatusModal } from './modals/CourierAccountStatusModal'
 import { NightShiftConfirmModal } from './modals/NightShiftConfirmModal'
 import { useAdminData } from '../AdminDataProvider'
+import {
+  Bike, BarChart3, TrendingUp, ClipboardList, Banknote, Package as PackageIcon,
+  Users, Ban, Calendar
+} from 'lucide-react'
 
 interface CouriersTabProps {
     couriers: Courier[]
@@ -54,7 +58,7 @@ export function CouriersTab({
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {couriers.length === 0 ? (
                         <div className="col-span-full text-center py-16 text-slate-600">
-                            <div className="text-4xl mb-3 opacity-30">🚴</div>
+                            <Bike className="w-8 h-8 mx-auto mb-3 opacity-30 text-gray-400" strokeWidth={1.5} />
                             <p className="text-sm tracking-tight">Kurye bulunamadı</p>
                         </div>
                     ) : (
@@ -64,7 +68,7 @@ export function CouriersTab({
                             <div
                                 key={courier.id}
                                 onClick={() => onCourierClick(courier.id)}
-                                className="bg-slate-900 border border-slate-800 rounded-lg p-5 hover:border-slate-700 transition-colors cursor-pointer"
+                                className="bg-slate-900 border border-slate-800 rounded-md p-5 hover:border-slate-700 transition-colors cursor-pointer"
                             >
                                 {/* Kurye Adı + Durum */}
                                 <div className="flex justify-between items-start mb-4">
@@ -263,8 +267,11 @@ export function CouriersTab({
         }
 
         return (
-            <div className="bg-slate-900 shadow-xl rounded-2xl p-6">
-                <h2 className="text-2xl font-bold mb-6">📊 Kurye Performansları</h2>
+            <div className="bg-slate-900 shadow-sm rounded-md border border-slate-800 p-6">
+                <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+                  <BarChart3 className="w-6 h-6 text-gray-400" strokeWidth={1.5} />
+                  Kurye Performansları
+                </h2>
 
                 <div className="mb-8">
                     <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -273,7 +280,7 @@ export function CouriersTab({
                     <select
                         value={selectedCourierId}
                         onChange={(e) => setSelectedCourierId(e.target.value)}
-                        className="w-full max-w-md px-4 py-3 bg-slate-50 text-slate-900 rounded-xl border-2 border-slate-300 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all text-base font-medium"
+                        className="w-full max-w-md px-4 py-3 bg-slate-50 text-slate-900 rounded-md border-2 border-slate-300 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all text-base font-medium"
                     >
                         <option value="">-- Kurye Seçin --</option>
                         {couriers.map(courier => (
@@ -286,7 +293,7 @@ export function CouriersTab({
 
                 {!selectedCourierId && (
                     <div className="text-center py-16 text-slate-500">
-                        <div className="text-6xl mb-4">📈</div>
+                        <TrendingUp className="w-8 h-8 mx-auto mb-4 text-gray-400" strokeWidth={1.5} />
                         <p className="text-lg font-medium">Lütfen bir kurye seçin</p>
                         <p className="text-sm mt-2">Seçilen kuryenin son 30 günlük performansı burada görünecek</p>
                     </div>
@@ -302,7 +309,7 @@ export function CouriersTab({
                 {selectedCourierId && !loadingPerformance && performanceData.length > 0 && (
                     <div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                            <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl border-2 border-orange-200">
+                            <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-md border-2 border-orange-200">
                                 <div className="text-sm font-medium text-orange-700 mb-1">
                                     Toplam Teslimat (30 Gün)
                                 </div>
@@ -311,7 +318,7 @@ export function CouriersTab({
                                 </div>
                             </div>
 
-                            <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-xl border-2 border-green-200">
+                            <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-md border-2 border-green-200">
                                 <div className="text-sm font-medium text-green-700 mb-1">
                                     Günlük Ortalama
                                 </div>
@@ -320,7 +327,7 @@ export function CouriersTab({
                                 </div>
                             </div>
 
-                            <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-xl border-2 border-purple-200">
+                            <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-md border-2 border-purple-200">
                                 <div className="text-sm font-medium text-purple-700 mb-1">
                                     En Yüksek Günlük
                                 </div>
@@ -330,7 +337,7 @@ export function CouriersTab({
                             </div>
                         </div>
 
-                        <div className="bg-slate-50 p-6 rounded-xl border-2 border-slate-200">
+                        <div className="bg-slate-50 p-6 rounded-md border-2 border-slate-200">
                             <h3 className="text-lg font-bold mb-4 text-slate-900">
                                 Son 30 Günlük Performans Trendi
                             </h3>
@@ -376,10 +383,11 @@ export function CouriersTab({
                             </ResponsiveContainer>
                         </div>
 
-                        <div className="mt-6 bg-white rounded-xl border-2 border-slate-200 overflow-hidden">
+                        <div className="mt-6 bg-white rounded-md border-2 border-slate-200 overflow-hidden">
                             <div className="p-4 bg-slate-100 border-b border-slate-200">
-                                <h3 className="text-lg font-bold text-slate-900">
-                                    📋 Günlük Detay
+                                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                                    <ClipboardList className="w-5 h-5 text-gray-400" strokeWidth={1.5} />
+                                    Günlük Detay
                                 </h3>
                             </div>
                             <div className="max-h-96 overflow-y-auto">
@@ -459,51 +467,54 @@ export function CouriersTab({
         const totalDeliveries = courierEarnings.reduce((sum, c) => sum + c.deliveredCount, 0)
 
         return (
-            <div className="bg-slate-900 shadow-xl rounded-2xl p-6">
+            <div className="bg-slate-900 shadow-sm rounded-md border border-slate-800 p-6">
                 <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold">💰 Kurye Kazançları (Hakediş)</h2>
+                    <h2 className="text-2xl font-bold flex items-center gap-2">
+                      <Banknote className="w-6 h-6 text-gray-400" strokeWidth={1.5} />
+                      Kurye Kazançları (Hakediş)
+                    </h2>
 
                     <select
                         value={courierEarningsFilter}
                         onChange={(e) => setCourierEarningsFilter(e.target.value as 'today' | 'week' | 'month')}
-                        className="px-4 py-2 bg-slate-100 text-slate-900 rounded-lg border border-slate-300 font-medium"
+                        className="px-4 py-2 bg-slate-100 text-slate-900 rounded-md border border-slate-300 font-medium"
                     >
-                        <option value="today">📅 Bugün</option>
-                        <option value="week">📅 Haftalık (7 Gün)</option>
-                        <option value="month">📅 Aylık (30 Gün)</option>
+                        <option value="today">Bugün</option>
+                        <option value="week">Haftalık (7 Gün)</option>
+                        <option value="month">Aylık (30 Gün)</option>
                     </select>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl border-2 border-green-300">
+                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-md border-2 border-green-300">
                         <div className="text-center">
                             <div className="text-3xl font-black text-green-700">
                                 {totalEarnings.toFixed(2)} ₺
                             </div>
-                            <div className="text-sm font-semibold text-green-600 mt-1">
-                                💰 TOPLAM HAKEDİŞ
+                            <div className="text-xs uppercase tracking-wider text-green-600 mt-1 flex items-center justify-center gap-1">
+                                <Banknote className="w-3.5 h-3.5" strokeWidth={1.5} /> TOPLAM HAKEDİŞ
                             </div>
                         </div>
                     </div>
 
-                    <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-4 rounded-xl border-2 border-orange-300">
+                    <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-4 rounded-md border-2 border-orange-300">
                         <div className="text-center">
                             <div className="text-3xl font-black text-orange-700">
                                 {totalDeliveries}
                             </div>
-                            <div className="text-sm font-semibold text-orange-600 mt-1">
-                                📦 TOPLAM TESLİMAT
+                            <div className="text-xs uppercase tracking-wider text-orange-600 mt-1 flex items-center justify-center gap-1">
+                                <PackageIcon className="w-3.5 h-3.5" strokeWidth={1.5} /> TOPLAM TESLİMAT
                             </div>
                         </div>
                     </div>
 
-                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-xl border-2 border-purple-300">
+                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-md border-2 border-purple-300">
                         <div className="text-center">
                             <div className="text-3xl font-black text-purple-700">
                                 {couriers.length}
                             </div>
-                            <div className="text-sm font-semibold text-purple-600 mt-1">
-                                👥 TOPLAM KURYE
+                            <div className="text-xs uppercase tracking-wider text-purple-600 mt-1 flex items-center justify-center gap-1">
+                                <Users className="w-3.5 h-3.5" strokeWidth={1.5} /> TOPLAM KURYE
                             </div>
                         </div>
                     </div>
@@ -512,14 +523,14 @@ export function CouriersTab({
                 <div className="space-y-3">
                     {courierEarnings.length === 0 ? (
                         <div className="text-center py-8 text-slate-500">
-                            <div className="text-4xl mb-2">🚫</div>
+                            <Ban className="w-8 h-8 mx-auto mb-2 text-gray-400" strokeWidth={1.5} />
                             <p>Kurye bulunamadı</p>
                         </div>
                     ) : (
                         courierEarnings.map((courier, index) => (
                             <div
                                 key={courier.id}
-                                className={`p-4 rounded-xl border transition-all ${courier.earnings > 0
+                                className={`p-4 rounded-md border transition-all ${courier.earnings > 0
                                     ? 'bg-slate-50 border-slate-200'
                                     : 'bg-slate-100 border-slate-300 opacity-60'
                                     }`}
@@ -552,9 +563,9 @@ export function CouriersTab({
                                                 e.stopPropagation()
                                                 onCourierClick(courier.id)
                                             }}
-                                            className="px-4 py-1.5 bg-orange-100 text-orange-700 rounded-lg text-xs font-bold hover:bg-orange-200:bg-orange-800 transition-colors"
+                                            className="px-4 py-1.5 bg-orange-100 text-orange-700 rounded-md text-xs font-bold hover:bg-orange-200:bg-orange-800 transition-colors flex items-center gap-1"
                                         >
-                                            📊 Rapor
+                                            <BarChart3 className="w-3.5 h-3.5" strokeWidth={1.5} /> Rapor
                                         </button>
                                     </div>
                                 </div>

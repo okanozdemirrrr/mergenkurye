@@ -5,6 +5,9 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import {
+  Package as PackageIcon, Bike, MapPin, UtensilsCrossed, Loader2,
+} from 'lucide-react'
 import { Package } from '@/types'
 import { supabase } from '@/app/lib/supabase'
 
@@ -167,7 +170,9 @@ export function CustomerTrackingMap({ packageData }: CustomerTrackingMapProps) {
     return (
       <div className="h-full flex items-center justify-center bg-slate-950 text-slate-400">
         <div className="text-center">
-          <div className="animate-spin text-3xl mb-2">🗺️</div>
+          <div className="animate-spin mb-2">
+            <Loader2 size={32} strokeWidth={1.5} className="text-slate-400" />
+          </div>
           <div className="text-sm">Harita yükleniyor...</div>
         </div>
       </div>
@@ -235,7 +240,7 @@ export function CustomerTrackingMap({ packageData }: CustomerTrackingMapProps) {
       >
         <Popup>
           <div className="text-sm">
-            <div className="font-bold text-green-600">🏍️ Kurye</div>
+            <div className="font-bold text-green-600">Kurye</div>
             <div className="text-xs mt-1">
               <div><strong>Ad:</strong> {courierName}</div>
               <div><strong>Durum:</strong> {statusText}</div>
@@ -261,7 +266,7 @@ export function CustomerTrackingMap({ packageData }: CustomerTrackingMapProps) {
         justify-content: center;
         font-size: 18px;
         filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
-      ">📍</div>
+      ">•</div>
     `,
     className: '',
     iconSize: [32, 32],
@@ -295,7 +300,7 @@ export function CustomerTrackingMap({ packageData }: CustomerTrackingMapProps) {
             justify-content: center;
             font-size: 20px;
             filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
-          ">🏍️</div>
+          ">▲</div>
         </div>
       `,
       className: '',
@@ -345,7 +350,7 @@ export function CustomerTrackingMap({ packageData }: CustomerTrackingMapProps) {
           {/* Logo ve Başlık */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className="text-3xl">📦</div>
+              <PackageIcon size={28} strokeWidth={1.5} className="text-orange-400" />
               <div>
                 <h1 className="text-xl font-bold text-white">Mergen Kurye</h1>
                 <p className="text-sm text-slate-400">Siparişiniz Yolda</p>
@@ -358,11 +363,11 @@ export function CustomerTrackingMap({ packageData }: CustomerTrackingMapProps) {
           </div>
 
           {/* Durum Kartı */}
-          <div className="bg-slate-900/90 backdrop-blur-sm rounded-xl p-4 border border-slate-800 shadow-xl">
+          <div className="bg-slate-900/90 backdrop-blur-sm rounded-md p-4 border border-white/5 shadow-sm">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center text-2xl">
-                  🏍️
+                <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center">
+                  <Bike size={24} strokeWidth={1.5} className="text-white" />
                 </div>
                 <div>
                   <div className="text-white font-semibold">{getStatusText()}</div>
@@ -370,8 +375,9 @@ export function CustomerTrackingMap({ packageData }: CustomerTrackingMapProps) {
                     {packageData.courier_name || 'Kurye bilgisi yükleniyor...'}
                   </div>
                   {locationAge && (
-                    <div className="text-xs text-slate-500 mt-0.5">
-                      📍 {locationAge}
+                    <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                      <MapPin size={12} strokeWidth={1.5} />
+                      {locationAge}
                       {courierLocation?.accuracy && courierLocation.accuracy < 50 && (
                         <span className="ml-1 text-green-400">• Yüksek doğruluk</span>
                       )}
@@ -388,13 +394,14 @@ export function CustomerTrackingMap({ packageData }: CustomerTrackingMapProps) {
 
           {/* Teslimat Bilgileri */}
           <div className="mt-3 grid grid-cols-2 gap-3">
-            <div className="bg-slate-900/80 backdrop-blur-sm rounded-lg p-3 border border-slate-800">
+            <div className="bg-slate-900/80 backdrop-blur-sm rounded-md p-3 border border-white/5 shadow-sm">
               <div className="text-xs text-slate-400 mb-1">Restoran</div>
-              <div className="text-sm text-white font-medium">
-                🍽️ {packageData.restaurant?.name || 'Yükleniyor...'}
+              <div className="text-sm text-white font-medium flex items-center gap-1.5">
+                <UtensilsCrossed size={14} strokeWidth={1.5} className="text-orange-400" />
+                {packageData.restaurant?.name || 'Yükleniyor...'}
               </div>
             </div>
-            <div className="bg-slate-900/80 backdrop-blur-sm rounded-lg p-3 border border-slate-800">
+            <div className="bg-slate-900/80 backdrop-blur-sm rounded-md p-3 border border-white/5 shadow-sm">
               <div className="text-xs text-slate-400 mb-1">Tutar</div>
               <div className="text-sm text-green-400 font-bold">{packageData.amount}₺</div>
             </div>
@@ -423,7 +430,7 @@ export function CustomerTrackingMap({ packageData }: CustomerTrackingMapProps) {
           >
             <Popup>
               <div className="text-sm">
-                <div className="font-bold text-red-600">📍 Teslimat Adresi</div>
+                <div className="font-bold text-red-600">Teslimat Adresi</div>
                 <div className="text-xs mt-1">
                   <div><strong>Müşteri:</strong> {packageData.customer_name}</div>
                   <div><strong>Adres:</strong> {packageData.delivery_address}</div>
@@ -459,10 +466,13 @@ export function CustomerTrackingMap({ packageData }: CustomerTrackingMapProps) {
       {/* Alt Bilgi */}
       <div className="absolute bottom-0 left-0 right-0 z-[1000] bg-gradient-to-t from-slate-950 via-slate-950/95 to-transparent p-4">
         <div className="max-w-4xl mx-auto">
-          <div className="bg-slate-900/90 backdrop-blur-sm rounded-xl p-4 border border-slate-800">
+          <div className="bg-slate-900/90 backdrop-blur-sm rounded-md p-4 border border-white/5 shadow-sm">
             <div className="text-center">
               <div className="text-sm text-slate-400 mb-1">Teslimat Adresi</div>
-              <div className="text-white font-medium">📍 {packageData.delivery_address}</div>
+              <div className="text-white font-medium flex items-center justify-center gap-1.5">
+                <MapPin size={14} strokeWidth={1.5} className="text-orange-400 flex-shrink-0" />
+                {packageData.delivery_address}
+              </div>
             </div>
           </div>
         </div>

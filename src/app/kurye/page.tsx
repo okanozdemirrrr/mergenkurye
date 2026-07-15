@@ -19,6 +19,7 @@ import { useCourierRealtimeNotifications } from '@/hooks/useCourierRealtimeNotif
 import { useCourierLocationBroadcast } from '@/hooks/useCourierLocationBroadcast'
 import PullToRefresh from '@/components/PullToRefresh'
 import ChangelogModal from '@/components/ChangelogModal'
+import { NotificationBell } from '@/components/NotificationBell'
 import { usePersistedDateRange } from '@/hooks/usePersistedDateRange'
 import {
   fetchCourierDeliveredPackages,
@@ -27,6 +28,11 @@ import {
 } from '@/utils/courierAccount'
 import { fetchCourierLedgerPeriodAccount } from '@/utils/courierLedger'
 import { authenticateCourier, getCourierAccountStatusError } from '@/services/courierLoginService'
+import {
+  MapPin, AlertTriangle, Package, Wallet, Mic, Check, Flag, Store, Phone, Navigation,
+  Lightbulb, Rocket, Banknote, CreditCard, Building2, UtensilsCrossed, MessageCircle,
+  X, Clock, ClipboardList, Bike, Lock, LogOut, User,
+} from 'lucide-react'
 
 // ============================================
 // SAMSUN OPERASYON BÖLGESI TANIMLARI
@@ -626,7 +632,7 @@ export default function KuryePage() {
       // ⚡ Timeout hatası için özel mesaj
       const errorMsg = error.message?.toLowerCase() || ''
       if (errorMsg.includes('timeout') || errorMsg.includes('statement timeout')) {
-        setErrorMessage('⏱️ Bağlantı yavaş, tekrar deneniyor...')
+        setErrorMessage('Bağlantı yavaş, tekrar deneniyor...')
         setTimeout(() => fetchPackages(isInitialLoad), 2000)
         return
       }
@@ -873,7 +879,7 @@ export default function KuryePage() {
 
       setCourierStatus(newStatus)
       setIs_active(newIsActive)
-      setSuccessMessage(newIsActive ? '✅ Aktif duruma geçildi!' : '❌ Pasif duruma geçildi!')
+      setSuccessMessage(newIsActive ? 'Aktif duruma geçildi!' : 'Pasif duruma geçildi!')
       setTimeout(() => setSuccessMessage(''), 2000)
 
     } catch (error: any) {
@@ -1537,12 +1543,12 @@ export default function KuryePage() {
           : pkg
       ))
 
-      setSuccessMessage('✅ Paket kabul edildi!')
+      setSuccessMessage('Paket kabul edildi!')
       setTimeout(() => setSuccessMessage(''), 2000)
 
     } catch (error: any) {
       console.error('Kabul hatası:', error)
-      setErrorMessage('❌ Hata: ' + error.message)
+      setErrorMessage('Hata: ' + error.message)
       setTimeout(() => setErrorMessage(''), 3000)
 
       // Hata durumunda yenile
@@ -1566,7 +1572,7 @@ export default function KuryePage() {
     if (!cancellingPackage) return
     const courierId = localStorage.getItem(STORAGE_KEYS.COURIER_ID)
     if (!courierId) {
-      setErrorMessage('❌ Kurye kimliği bulunamadı, lütfen sayfayı yenileyin')
+      setErrorMessage('Kurye kimliği bulunamadı, lütfen sayfayı yenileyin')
       setTimeout(() => setErrorMessage(''), 3000)
       return
     }
@@ -1600,8 +1606,8 @@ export default function KuryePage() {
       setPackages(prev => prev.filter(pkg => pkg.id !== cancellingPackage.id))
       
       setSuccessMessage(isChargeable 
-        ? '✅ Sipariş ücretlendirilmiş olarak iptal edildi!'
-        : '✅ Sipariş ücretsiz olarak iptal edildi!'
+        ? 'Sipariş ücretlendirilmiş olarak iptal edildi!'
+        : 'Sipariş ücretsiz olarak iptal edildi!'
       )
       setTimeout(() => setSuccessMessage(''), 3000)
       
@@ -1614,7 +1620,7 @@ export default function KuryePage() {
       fetchTodayDeliveredPackages()
     } catch (error: any) {
       console.error('İptal hatası:', error)
-      setErrorMessage('❌ Hata: ' + error.message)
+      setErrorMessage('Hata: ' + error.message)
       setTimeout(() => setErrorMessage(''), 3000)
     } finally {
       setCancelLoading(false)
@@ -1632,7 +1638,7 @@ export default function KuryePage() {
     // Güvenlik kontrolü: Kurye ID'si yoksa işlemi durdur
     const courierId = localStorage.getItem(STORAGE_KEYS.COURIER_ID)
     if (!courierId) {
-      setErrorMessage('❌ Kurye kimliği bulunamadı, lütfen sayfayı yenileyin')
+      setErrorMessage('Kurye kimliği bulunamadı, lütfen sayfayı yenileyin')
       setTimeout(() => setErrorMessage(''), 3000)
       return
     }
@@ -1678,7 +1684,7 @@ export default function KuryePage() {
         }
       }
 
-      setSuccessMessage('✅ Paket teslim edildi!')
+      setSuccessMessage('Paket teslim edildi!')
       setTimeout(() => setSuccessMessage(''), 2000)
 
       // Arka planda yenile
@@ -1686,7 +1692,7 @@ export default function KuryePage() {
 
     } catch (error: any) {
       console.error('Teslim hatası:', error)
-      setErrorMessage('❌ Hata: ' + error.message)
+      setErrorMessage('Hata: ' + error.message)
       setTimeout(() => setErrorMessage(''), 3000)
 
       // Hata durumunda yenile
@@ -1707,7 +1713,7 @@ export default function KuryePage() {
 
     // Güvenlik kontrolü: Kurye ID'si yoksa işlemi durdur
     if (!selectedCourierId) {
-      setErrorMessage('❌ Kurye kimliği bulunamadı, lütfen sayfayı yenileyin')
+      setErrorMessage('Kurye kimliği bulunamadı, lütfen sayfayı yenileyin')
       setTimeout(() => setErrorMessage(''), 3000)
       return
     }
@@ -1734,12 +1740,12 @@ export default function KuryePage() {
       // İstatistikleri güncelle
       setDeliveredCount(prev => prev + 1)
 
-      setSuccessMessage('✅ IBAN ödemesi kaydedildi, paket teslim edildi!')
+      setSuccessMessage('IBAN ödemesi kaydedildi, paket teslim edildi!')
       setTimeout(() => setSuccessMessage(''), 2000)
 
     } catch (error: any) {
       console.error('IBAN teslim hatası:', error)
-      setErrorMessage('❌ Hata: ' + error.message)
+      setErrorMessage('Hata: ' + error.message)
       setTimeout(() => setErrorMessage(''), 3000)
     } finally {
       setIsUpdating(prev => {
@@ -1756,7 +1762,7 @@ export default function KuryePage() {
   const copyIbanToClipboard = () => {
     const iban = 'TR66 0015 7000 0000 0076 2180 38'
     navigator.clipboard.writeText(iban.replace(/\s/g, ''))
-    setSuccessMessage('✅ IBAN kopyalandı!')
+    setSuccessMessage('IBAN kopyalandı!')
     setTimeout(() => setSuccessMessage(''), 2000)
   }
 
@@ -2381,7 +2387,7 @@ export default function KuryePage() {
       // Kurye ID'yi al ve güvenlik kontrolü yap
       const courierId = localStorage.getItem(STORAGE_KEYS.COURIER_ID)
       if (!courierId) {
-        setErrorMessage('❌ Kurye kimliği bulunamadı, lütfen sayfayı yenileyin')
+        setErrorMessage('Kurye kimliği bulunamadı, lütfen sayfayı yenileyin')
         setTimeout(() => setErrorMessage(''), 3000)
         return
       }
@@ -2438,12 +2444,12 @@ export default function KuryePage() {
         ))
       }
 
-      setSuccessMessage('✅ Durum güncellendi!')
+      setSuccessMessage('Durum güncellendi!')
       setTimeout(() => setSuccessMessage(''), 2000)
 
     } catch (error: any) {
       console.error('Durum güncelleme hatası:', error)
-      setErrorMessage('❌ Hata: ' + error.message)
+      setErrorMessage('Hata: ' + error.message)
       setTimeout(() => setErrorMessage(''), 3000)
 
       // Hata durumunda yenile
@@ -2474,7 +2480,7 @@ export default function KuryePage() {
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-        <form onSubmit={handleLogin} className="bg-slate-900 p-8 rounded-2xl border border-slate-800 w-full max-w-md">
+        <form onSubmit={handleLogin} className="bg-slate-900 p-8 rounded-md border border-white/5 w-full max-w-md">
           <div className="text-center mb-8">
             <img
               src="/logo.png"
@@ -2487,15 +2493,15 @@ export default function KuryePage() {
           </div>
           <input
             type="text" placeholder="Kullanıcı Adı"
-            className="w-full p-3 mb-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-blue-500 transition-colors"
+            className="w-full p-3 mb-3 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500 outline-none focus:border-blue-500 transition-colors"
             onChange={e => setLoginForm({ ...loginForm, username: e.target.value })}
           />
           <input
             type="password" placeholder="Şifre"
-            className="w-full p-3 mb-4 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-blue-500 transition-colors"
+            className="w-full p-3 mb-4 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500 outline-none focus:border-blue-500 transition-colors"
             onChange={e => setLoginForm({ ...loginForm, password: e.target.value })}
           />
-          <button className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+          <button className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition-colors">
             Giriş Yap
           </button>
           {errorMessage && <p className="text-red-400 text-sm mt-3 text-center">{errorMessage}</p>}
@@ -2523,9 +2529,9 @@ export default function KuryePage() {
     {/* Google Play Uyumlu Belirgin Konum Beyanı Modalı */}
     {showLocationDisclosure && (
       <div className="fixed inset-0 bg-black/80 z-[9999] flex items-center justify-center p-4">
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-200">
-          <div className="w-12 h-12 bg-orange-600/10 border border-orange-500/20 text-orange-500 rounded-full flex items-center justify-center text-2xl mx-auto">
-            📍
+        <div className="bg-slate-900 border border-white/5 rounded-md p-6 max-w-md w-full shadow-sm space-y-4 animate-in fade-in zoom-in-95 duration-200">
+          <div className="w-12 h-12 bg-orange-600/10 border border-orange-500/20 text-orange-500 rounded-full flex items-center justify-center mx-auto">
+            <MapPin size={24} strokeWidth={1.5} />
           </div>
           
           <h3 className="text-lg font-bold text-white text-center">
@@ -2544,8 +2550,9 @@ export default function KuryePage() {
             <p>
               amacıyla uygulama kapalıyken veya arka plandayken dahi <strong>kesintisiz olarak konum verilerinizi toplar ve sunucuya iletir.</strong>
             </p>
-            <p className="text-slate-400 text-xs bg-slate-800 p-2.5 rounded border border-slate-700">
-              ⚠️ Cihazınızda konum izinlerini <strong>"Her zaman izin ver (Allow all the time)"</strong> olarak seçmeli ve pil tasarruf modunu <strong>"Kısıtlamasız"</strong> yapmalısınız.
+            <p className="text-slate-400 text-xs bg-slate-800 p-2.5 rounded border border-white/5 flex items-start gap-2">
+              <AlertTriangle size={14} strokeWidth={1.5} className="text-amber-400 flex-shrink-0 mt-0.5" />
+              <span>Cihazınızda konum izinlerini <strong>&quot;Her zaman izin ver (Allow all the time)&quot;</strong> olarak seçmeli ve pil tasarruf modunu <strong>&quot;Kısıtlamasız&quot;</strong> yapmalısınız.</span>
             </p>
           </div>
           
@@ -2558,7 +2565,7 @@ export default function KuryePage() {
                   setPendingStatusParams(null)
                 }
               }}
-              className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2.5 px-4 rounded-xl shadow-lg transition-colors text-sm"
+              className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2.5 px-4 rounded-md shadow-sm transition-colors text-sm"
             >
               Kabul Ediyorum ve Çevrimiçi Ol
             </button>
@@ -2567,7 +2574,7 @@ export default function KuryePage() {
                 setShowLocationDisclosure(false)
                 setPendingStatusParams(null)
               }}
-              className="w-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white font-medium py-2.5 px-4 rounded-xl transition-colors text-sm"
+              className="w-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white font-medium py-2.5 px-4 rounded-md transition-colors text-sm"
             >
               Kabul Etmiyorum / Vazgeç
             </button>
@@ -2578,12 +2585,18 @@ export default function KuryePage() {
     
     {/* ANA CONTAINER - Fixed height, no scroll */}
     <div className={`h-screen flex flex-col overflow-hidden ${darkMode ? 'bg-slate-950 text-white' : 'bg-gray-100 text-gray-900'}`}>
+
+      {isLoggedIn && (
+        <div className="fixed top-4 right-4 z-[9999]">
+          <NotificationBell userId={selectedCourierId} />
+        </div>
+      )}
       
       {/* HEADER - Fixed top */}
       {isLoggedIn && activeTab === 'packages' && (
         <div className="fixed top-0 left-0 right-0 z-[9998] p-2">
           <div className="max-w-2xl mx-auto">
-            <div className="bg-slate-900/95 backdrop-blur-sm rounded-lg p-2 border border-slate-800 shadow-lg">
+            <div className="bg-slate-900/95 backdrop-blur-sm rounded-md p-2 border border-white/5 shadow-sm">
               <div className="flex items-center justify-between gap-2">
                 {/* Logo */}
                 <img
@@ -2599,7 +2612,9 @@ export default function KuryePage() {
 
                 {/* Kurye Paneli + İsim */}
                 <div className="flex-shrink-0 min-w-0">
-                  <h1 className="text-xs font-bold truncate">📦 Kurye Paneli</h1>
+                  <h1 className="text-xs font-bold truncate flex items-center gap-1">
+                    <Package size={12} strokeWidth={1.5} /> Kurye Paneli
+                  </h1>
                   {courierNameLoading ? (
                     <div className="flex items-center gap-1">
                       <div className="w-2 h-2 bg-slate-400 rounded-full animate-pulse"></div>
@@ -2619,7 +2634,9 @@ export default function KuryePage() {
 
                 {/* Toplam Kazanç */}
                 <div className="bg-gradient-to-r from-green-900 to-emerald-900 px-2 py-1 rounded border border-green-700 flex-shrink-0">
-                  <p className="text-[10px] text-green-300">💰 Kazanç</p>
+                  <p className="text-[10px] text-green-300 flex items-center gap-1">
+                    <Wallet size={10} strokeWidth={1.5} /> Kazanç
+                  </p>
                   <p className="text-sm font-bold text-green-100">
                     {unpaidEarningsAmount.toFixed(0)}₺
                   </p>
@@ -2638,16 +2655,16 @@ export default function KuryePage() {
         {/* SESLİ KOMUT YARDIM POP-UP */}
         {showVoiceHelp && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-            <div className="bg-gradient-to-br from-slate-900 to-slate-800 border-2 border-blue-500/50 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-gradient-to-br from-slate-900 to-slate-800 border-2 border-blue-500/50 rounded-md shadow-sm max-w-2xl w-full max-h-[90vh] overflow-y-auto">
               {/* Başlık */}
               <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-purple-600 p-4 rounded-t-2xl flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <span className="text-3xl">🎤</span>
+                  <Mic size={28} strokeWidth={1.5} className="text-white" />
                   <h2 className="text-xl font-bold text-white">Sesli Komut Rehberi</h2>
                 </div>
                 <button
                   onClick={() => setShowVoiceHelp(false)}
-                  className="text-white hover:bg-white/20 rounded-lg p-2 transition-colors"
+                  className="text-white hover:bg-white/20 rounded-md p-2 transition-colors"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -2658,9 +2675,9 @@ export default function KuryePage() {
               {/* İçerik */}
               <div className="p-6 space-y-6">
                 {/* Kullanım Talimatı */}
-                <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-md p-4">
                   <p className="text-blue-300 text-sm leading-relaxed">
-                    🎯 <strong>Nasıl Kullanılır:</strong> Mikrofon butonuna basın veya interkom tuşuna basın, komutunuzu söyleyin.
+                    <strong>Nasıl Kullanılır:</strong> Mikrofon butonuna basın veya interkom tuşuna basın, komutunuzu söyleyin.
                     Paket numarasını söyleyip ardından işlemi belirtin.
                   </p>
                 </div>
@@ -2668,9 +2685,9 @@ export default function KuryePage() {
                 {/* Komut Grupları */}
                 <div className="space-y-4">
                   {/* Onay */}
-                  <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+                  <div className="bg-slate-800/50 rounded-md p-4 border border-slate-700">
                     <h3 className="text-green-400 font-bold mb-2 flex items-center gap-2">
-                      <span className="text-xl">✅</span> Paketi Kabul Etmek
+                      <Check size={18} strokeWidth={1.5} /> Paketi Kabul Etmek
                     </h3>
                     <p className="text-slate-300 text-sm mb-2">
                       <span className="text-white font-mono bg-slate-700 px-2 py-1 rounded">1 kabul</span> veya{' '}
@@ -2680,9 +2697,9 @@ export default function KuryePage() {
                   </div>
 
                   {/* Teslim Alma */}
-                  <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+                  <div className="bg-slate-800/50 rounded-md p-4 border border-slate-700">
                     <h3 className="text-yellow-400 font-bold mb-2 flex items-center gap-2">
-                      <span className="text-xl">📦</span> Paketi Teslim Almak (Restorandan)
+                      <Package size={18} strokeWidth={1.5} /> Paketi Teslim Almak (Restorandan)
                     </h3>
                     <p className="text-slate-300 text-sm mb-2">
                       <span className="text-white font-mono bg-slate-700 px-2 py-1 rounded">2 aldım</span> veya{' '}
@@ -2692,9 +2709,9 @@ export default function KuryePage() {
                   </div>
 
                   {/* Teslim Etme */}
-                  <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+                  <div className="bg-slate-800/50 rounded-md p-4 border border-slate-700">
                     <h3 className="text-blue-400 font-bold mb-2 flex items-center gap-2">
-                      <span className="text-xl">🏁</span> Paketi Teslim Etmek (Müşteriye)
+                      <Flag size={18} strokeWidth={1.5} /> Paketi Teslim Etmek (Müşteriye)
                     </h3>
                     <p className="text-slate-300 text-sm mb-2">
                       <span className="text-white font-mono bg-slate-700 px-2 py-1 rounded">3 bitti</span> veya{' '}
@@ -2704,9 +2721,9 @@ export default function KuryePage() {
                   </div>
 
                   {/* Dükkan Arama */}
-                  <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+                  <div className="bg-slate-800/50 rounded-md p-4 border border-slate-700">
                     <h3 className="text-orange-400 font-bold mb-2 flex items-center gap-2">
-                      <span className="text-xl">🏪</span> Restoranı Aramak
+                      <Store size={18} strokeWidth={1.5} /> Restoranı Aramak
                     </h3>
                     <p className="text-slate-300 text-sm mb-2">
                       <span className="text-white font-mono bg-slate-700 px-2 py-1 rounded">4 dükkan</span> veya{' '}
@@ -2716,9 +2733,9 @@ export default function KuryePage() {
                   </div>
 
                   {/* Müşteri Arama */}
-                  <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+                  <div className="bg-slate-800/50 rounded-md p-4 border border-slate-700">
                     <h3 className="text-purple-400 font-bold mb-2 flex items-center gap-2">
-                      <span className="text-xl">📞</span> Müşteriyi Aramak
+                      <Phone size={18} strokeWidth={1.5} /> Müşteriyi Aramak
                     </h3>
                     <p className="text-slate-300 text-sm mb-2">
                       <span className="text-white font-mono bg-slate-700 px-2 py-1 rounded">5 müşteri</span> veya{' '}
@@ -2728,9 +2745,9 @@ export default function KuryePage() {
                   </div>
 
                   {/* Navigasyon */}
-                  <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+                  <div className="bg-slate-800/50 rounded-md p-4 border border-slate-700">
                     <h3 className="text-pink-400 font-bold mb-2 flex items-center gap-2">
-                      <span className="text-xl">🗺️</span> Akıllı Navigasyon Açmak
+                      <Navigation size={18} strokeWidth={1.5} /> Akıllı Navigasyon Açmak
                     </h3>
                     <p className="text-slate-300 text-sm mb-2">
                       <span className="text-white font-mono bg-slate-700 px-2 py-1 rounded">6 konum</span> veya{' '}
@@ -2738,26 +2755,29 @@ export default function KuryePage() {
                       <span className="text-white font-mono bg-slate-700 px-2 py-1 rounded">6 harita</span> veya{' '}
                       <span className="text-white font-mono bg-slate-700 px-2 py-1 rounded">6 navigasyon</span>
                     </p>
-                    <p className="text-xs text-pink-300 mt-2">
-                      💡 Koordinat varsa hassas GPS navigasyonu, yoksa adres bazlı yönlendirme açılır
+                    <p className="text-xs text-pink-300 mt-2 flex items-start gap-1.5">
+                      <Lightbulb size={12} strokeWidth={1.5} className="flex-shrink-0 mt-0.5" />
+                      Koordinat varsa hassas GPS navigasyonu, yoksa adres bazlı yönlendirme açılır
                     </p>
                   </div>
                 </div>
 
                 {/* Alt Bilgi */}
-                <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/30 rounded-xl p-4">
-                  <p className="text-purple-300 text-xs leading-relaxed">
-                    💡 <strong>İpucu:</strong> Paket numaraları ekranın sol üstünde mor-pembe renkli kutularda gösterilir.
-                    Komutları söylerken net ve yavaş konuşun. Bluetooth kulaklık kullanıyorsanız, play/pause tuşu ile de mikrofonu açabilirsiniz.
+                <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/30 rounded-md p-4">
+                  <p className="text-purple-300 text-xs leading-relaxed flex items-start gap-1.5">
+                    <Lightbulb size={12} strokeWidth={1.5} className="flex-shrink-0 mt-0.5" />
+                    <span><strong>İpucu:</strong> Paket numaraları ekranın sol üstünde mor-pembe renkli kutularda gösterilir.
+                    Komutları söylerken net ve yavaş konuşun. Bluetooth kulaklık kullanıyorsanız, play/pause tuşu ile de mikrofonu açabilirsiniz.</span>
                   </p>
                 </div>
 
                 {/* Kapat Butonu */}
                 <button
                   onClick={() => setShowVoiceHelp(false)}
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-3 rounded-xl transition-all active:scale-95"
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-3 rounded-md transition-all inline-flex items-center justify-center gap-2"
                 >
-                  Anladım, Başlayalım! 🚀
+                  <Rocket size={18} strokeWidth={1.5} />
+                  Anladım, Başlayalım!
                 </button>
               </div>
             </div>
@@ -2765,13 +2785,13 @@ export default function KuryePage() {
         )}
 
         {successMessage && (
-          <div className="mb-3 p-3 bg-green-500/20 border border-green-500/50 rounded-lg text-green-400 text-sm text-center">
+          <div className="mb-3 p-3 bg-green-500/20 border border-green-500/50 rounded-md text-green-400 text-sm text-center">
             {successMessage}
           </div>
         )}
 
         {errorMessage && (
-          <div className="mb-3 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400 text-sm text-center">
+          <div className="mb-3 p-3 bg-red-500/20 border border-red-500/50 rounded-md text-red-400 text-sm text-center">
             {errorMessage}
           </div>
         )}
@@ -2781,14 +2801,16 @@ export default function KuryePage() {
           <div className="space-y-2 sm:space-y-3">
             {packages.length === 0 ? (
               <div className="text-center py-8 sm:py-12 text-slate-500">
-                <div className="text-3xl sm:text-4xl mb-2">📦</div>
+                <div className="mb-2 flex justify-center">
+                  <Package size={28} strokeWidth={1.5} className="text-slate-600" />
+                </div>
                 <p className="text-xs sm:text-sm">Atanmış paket bulunmuyor</p>
               </div>
             ) : (
               <>
                 {/* Paket Sayısı Göstergesi - Merkeze Hizalı */}
                 <div className="flex justify-center mb-3 sm:mb-4">
-                  <div className="bg-blue-600 px-4 py-2 rounded-xl border border-blue-500 shadow-lg">
+                  <div className="bg-blue-600 px-4 py-2 rounded-md border border-blue-500 shadow-sm">
                     <p className="text-sm sm:text-base text-white font-bold text-center">
                       {packages.length} aktif paket
                     </p>
@@ -2797,13 +2819,13 @@ export default function KuryePage() {
 
                 {/* Paket Listesi - Mobil Responsive */}
                 {packages.map((pkg, index) => (
-                  <div key={pkg.id} className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-800">
+                  <div key={pkg.id} className="bg-slate-900 p-3 sm:p-4 rounded-md border border-white/5">
                     {/* Üst Kısım */}
                     <div className="flex justify-between items-start mb-2 sm:mb-3">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                           {/* SLOT NUMARASI */}
-                          <span className="text-lg font-black text-white bg-gradient-to-r from-purple-600 to-pink-600 px-3 py-1 rounded-lg shadow-lg">
+                          <span className="text-lg font-black text-white bg-gradient-to-r from-purple-600 to-pink-600 px-3 py-1 rounded-md shadow-sm">
                             {packageSlots[pkg.id] || '?'}
                           </span>
                           <span className="text-xs font-bold text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded">
@@ -2829,7 +2851,7 @@ export default function KuryePage() {
                               }}
                               className="text-xs px-2 py-0.5 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 rounded transition-colors flex items-center gap-1"
                             >
-                              💳 IBAN At
+                              <CreditCard size={12} strokeWidth={1.5} /> IBAN At
                             </button>
                           )}
 
@@ -2839,7 +2861,7 @@ export default function KuryePage() {
                               onClick={() => handleOpenCancelModal(pkg)}
                               className="text-xs px-2 py-0.5 bg-red-600 hover:bg-red-700 text-white rounded transition-colors flex items-center gap-1 font-semibold shadow-sm"
                             >
-                              ❌ İptal
+                              <X size={12} strokeWidth={1.5} /> İptal
                             </button>
                           )}
                         </div>
@@ -2847,7 +2869,9 @@ export default function KuryePage() {
 
                         {/* İçerik Gösterimi - Müşteri isminin altında */}
                         {pkg.content && (
-                          <p className="text-xs text-slate-400 mt-1">📦 {pkg.content}</p>
+                          <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
+                            <Package size={12} strokeWidth={1.5} /> {pkg.content}
+                          </p>
                         )}
 
                         {/* Müşteri Telefonu - Koşullu Görünüm */}
@@ -2856,22 +2880,24 @@ export default function KuryePage() {
                             {/* Yolda ise: Tam numara + Büyük Ara Butonu */}
                             {pkg.status === 'on_the_way' ? (
                               <>
-                                <p className="text-xs text-slate-400 mb-2">📞 {pkg.customer_phone}</p>
+                                <p className="text-xs text-slate-400 mb-2 flex items-center gap-1">
+                                  <Phone size={12} strokeWidth={1.5} /> {pkg.customer_phone}
+                                </p>
                                 <div className={`grid gap-2 ${pkg.latitude && pkg.longitude && pkg.platform === 'web' ? 'grid-cols-3' : 'grid-cols-2'}`}>
                                   <a
                                     href={`tel:${pkg.customer_phone}`}
-                                    className="inline-flex items-center justify-center gap-2 py-3 px-4 bg-green-500 hover:bg-green-600 active:bg-green-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg hover:shadow-xl active:scale-95"
+                                    className="inline-flex items-center justify-center gap-2 py-3 px-4 bg-green-500 hover:bg-green-600 active:bg-green-700 text-white text-sm font-bold rounded-md transition-all shadow-sm hover:shadow-sm"
                                   >
-                                    <span className="text-xl">📞</span>
+                                    <Phone size={20} strokeWidth={1.5} />
                                     <span>Ara</span>
                                   </a>
                                   <a
-                                    href={`https://wa.me/${formatPhoneForWhatsApp(pkg.customer_phone)}?text=${encodeURIComponent(`Merhaba ${pkg.customer_name}, siparişiniz yolda! 🏍️\n\nSiparişinizi buradan takip edebilirsiniz:\n${typeof window !== 'undefined' ? window.location.origin : ''}/takip?kod=${pkg.order_number}\n\nMergen Kurye`)}`}
+                                    href={`https://wa.me/${formatPhoneForWhatsApp(pkg.customer_phone)}?text=${encodeURIComponent(`Merhaba ${pkg.customer_name}, siparişiniz yolda!\n\nSiparişinizi buradan takip edebilirsiniz:\n${typeof window !== 'undefined' ? window.location.origin : ''}/takip?kod=${pkg.order_number}\n\nMergen Kurye`)}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center justify-center gap-2 py-3 px-4 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white text-sm font-bold rounded-xl transition-all shadow-lg hover:shadow-xl active:scale-95"
+                                    className="inline-flex items-center justify-center gap-2 py-3 px-4 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white text-sm font-bold rounded-md transition-all shadow-sm hover:shadow-sm"
                                   >
-                                    <span className="text-xl">💬</span>
+                                    <MessageCircle size={20} strokeWidth={1.5} />
                                     <span>WhatsApp</span>
                                   </a>
                                   {/* 🗺️ KONUMA GİT BUTONU - Koşullu Görünüm */}
@@ -2881,9 +2907,9 @@ export default function KuryePage() {
                                         const url = `https://www.google.com/maps/dir/?api=1&destination=${pkg.latitude},${pkg.longitude}`
                                         window.open(url, '_blank')
                                       }}
-                                      className="inline-flex items-center justify-center gap-2 py-3 px-4 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg hover:shadow-xl active:scale-95"
+                                      className="inline-flex items-center justify-center gap-2 py-3 px-4 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white text-sm font-bold rounded-md transition-all shadow-sm hover:shadow-sm"
                                     >
-                                      <span className="text-xl">🗺️</span>
+                                      <Navigation size={20} strokeWidth={1.5} />
                                       <span>Konuma Git</span>
                                     </button>
                                   )}
@@ -2892,17 +2918,18 @@ export default function KuryePage() {
                             ) : (
                               /* Diğer durumlarda: Maskelenmiş numara + WhatsApp butonu (assigned ve picking_up için) */
                               <>
-                                <p className="text-xs text-slate-500">
-                                  📞 {pkg.customer_phone.substring(0, 4)} **** {pkg.customer_phone.substring(pkg.customer_phone.length - 2)}
+                                <p className="text-xs text-slate-500 flex items-center gap-1">
+                                  <Phone size={12} strokeWidth={1.5} />
+                                  {pkg.customer_phone.substring(0, 4)} **** {pkg.customer_phone.substring(pkg.customer_phone.length - 2)}
                                 </p>
                                 {(pkg.status === 'assigned' || pkg.status === 'picking_up') && (
                                   <a
-                                    href={`https://wa.me/${formatPhoneForWhatsApp(pkg.customer_phone)}?text=${encodeURIComponent(`Merhaba ${pkg.customer_name}, siparişinizi aldım! 🏍️\n\nSiparişinizi buradan takip edebilirsiniz:\n${typeof window !== 'undefined' ? window.location.origin : ''}/takip?kod=${pkg.order_number}\n\nMergen Kurye`)}`}
+                                    href={`https://wa.me/${formatPhoneForWhatsApp(pkg.customer_phone)}?text=${encodeURIComponent(`Merhaba ${pkg.customer_name}, siparişinizi aldım!\n\nSiparişinizi buradan takip edebilirsiniz:\n${typeof window !== 'undefined' ? window.location.origin : ''}/takip?kod=${pkg.order_number}\n\nMergen Kurye`)}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 mt-2 py-2 px-4 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white text-xs font-medium rounded-lg transition-all shadow-md hover:shadow-lg active:scale-95"
+                                    className="inline-flex items-center gap-2 mt-2 py-2 px-4 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white text-xs font-medium rounded-md transition-all shadow-sm hover:shadow-sm"
                                   >
-                                    <span>💬</span>
+                                    <MessageCircle size={14} strokeWidth={1.5} />
                                     <span>Takip Linki Gönder</span>
                                   </a>
                                 )}
@@ -2913,28 +2940,29 @@ export default function KuryePage() {
 
                         {/* Restoran bilgileri - Mobil Responsive */}
                         {(pkg.status === 'assigned' || pkg.status === 'picking_up' || pkg.status === 'on_the_way') && pkg.restaurant?.phone && (
-                          <div className="mt-2 p-2 bg-orange-50 rounded-lg border border-orange-200">
+                          <div className="mt-2 p-2 bg-orange-50 rounded-md border border-orange-200">
                             <div className="flex items-start gap-2 mb-1">
-                              <span className="text-xs">🍽️</span>
+                              <UtensilsCrossed size={14} strokeWidth={1.5} className="text-orange-600" />
                               <div className="flex-1">
                                 <p className="text-xs font-medium text-orange-900">
                                   {pkg.restaurant.name}
                                 </p>
-                                <p className="text-xs text-orange-700 break-all">
-                                  📞 {pkg.restaurant.phone}
+                                <p className="text-xs text-orange-700 break-all flex items-center gap-1">
+                                  <Phone size={12} strokeWidth={1.5} /> {pkg.restaurant.phone}
                                 </p>
                                 {pkg.restaurant.address && (
-                                  <p className="text-xs text-orange-700 mt-1">
-                                    📍 {pkg.restaurant.address}
+                                  <p className="text-xs text-orange-700 mt-1 flex items-start gap-1">
+                                    <MapPin size={12} strokeWidth={1.5} className="flex-shrink-0 mt-0.5" />
+                                    {pkg.restaurant.address}
                                   </p>
                                 )}
                               </div>
                             </div>
                             <a
                               href={`tel:${pkg.restaurant.phone}`}
-                              className="block w-full py-1.5 px-3 bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white text-xs sm:text-sm font-medium rounded transition-colors text-center mt-2"
+                              className="block w-full py-1.5 px-3 bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white text-xs sm:text-sm font-medium rounded transition-colors text-center mt-2 inline-flex items-center justify-center gap-1"
                             >
-                              📞 Restoranı Ara
+                              <Phone size={14} strokeWidth={1.5} /> Restoranı Ara
                             </a>
                           </div>
                         )}
@@ -2944,7 +2972,7 @@ export default function KuryePage() {
                           <p className="text-xl font-bold text-green-400">{pkg.amount}₺</p>
                           {pkg.ready_at && (
                             <p className="text-[10px] font-bold text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded border border-amber-400/20 flex items-center gap-1 animate-pulse">
-                              ⏰ Hazır: {new Date(pkg.ready_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                              <Clock size={10} strokeWidth={1.5} /> Hazır: {new Date(pkg.ready_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
                             </p>
                           )}
                         </div>
@@ -2955,7 +2983,7 @@ export default function KuryePage() {
                     </div>
 
                     {/* Adres */}
-                    <div className="mb-2 p-2 bg-slate-800/50 rounded-lg">
+                    <div className="mb-2 p-2 bg-slate-800/50 rounded-md">
                       <p className="text-xs text-slate-300">{pkg.delivery_address}</p>
                     </div>
 
@@ -2981,7 +3009,7 @@ export default function KuryePage() {
                       <button
                         disabled={isUpdating.has(pkg.id) || pkg.status === 'new' || pkg.status === 'preparing'}
                         onClick={() => handleUpdateStatus(pkg.id, 'picking_up')}
-                        className={`w-full py-2 sm:py-2.5 text-white text-sm sm:text-base font-bold rounded-lg transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg ${
+                        className={`w-full py-2 sm:py-2.5 text-white text-sm sm:text-base font-bold rounded-md transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm ${
                           (pkg.status === 'new' || pkg.status === 'preparing')
                             ? 'bg-slate-700 grayscale cursor-not-allowed'
                             : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'
@@ -2998,7 +3026,7 @@ export default function KuryePage() {
                       <button
                         disabled={isUpdating.has(pkg.id)}
                         onClick={() => handleUpdateStatus(pkg.id, 'on_the_way', { picked_up_at: new Date().toISOString() })}
-                        className="w-full py-2 sm:py-2.5 bg-yellow-600 hover:bg-yellow-700 active:bg-yellow-800 text-white text-sm sm:text-base font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full py-2 sm:py-2.5 bg-yellow-600 hover:bg-yellow-700 active:bg-yellow-800 text-white text-sm sm:text-base font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {isUpdating.has(pkg.id) ? 'İşleniyor...' : 'Paketi Aldım'}
                       </button>
@@ -3009,30 +3037,30 @@ export default function KuryePage() {
                         <div className="grid grid-cols-3 gap-2">
                           <button
                             onClick={() => setSelectedPaymentMethods({ ...selectedPaymentMethods, [pkg.id]: 'cash' })}
-                            className={`py-2 rounded-lg border font-medium text-sm transition-colors ${selectedPaymentMethods[pkg.id] === 'cash'
+                            className={`py-2 rounded-md border font-medium text-sm transition-colors ${selectedPaymentMethods[pkg.id] === 'cash'
                               ? 'bg-green-600 border-green-600 text-white'
                               : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600'
                               }`}
                           >
-                            💵 Nakit
+                            <Banknote size={14} strokeWidth={1.5} className="inline mr-1" /> Nakit
                           </button>
                           <button
                             onClick={() => setSelectedPaymentMethods({ ...selectedPaymentMethods, [pkg.id]: 'card' })}
-                            className={`py-2 rounded-lg border font-medium text-sm transition-colors ${selectedPaymentMethods[pkg.id] === 'card'
+                            className={`py-2 rounded-md border font-medium text-sm transition-colors ${selectedPaymentMethods[pkg.id] === 'card'
                               ? 'bg-blue-600 border-blue-600 text-white'
                               : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600'
                               }`}
                           >
-                            💳 Kart
+                            <CreditCard size={14} strokeWidth={1.5} className="inline mr-1" /> Kart
                           </button>
                           <button
                             onClick={() => setSelectedPaymentMethods({ ...selectedPaymentMethods, [pkg.id]: 'iban' })}
-                            className={`py-2 rounded-lg border font-medium text-sm transition-colors ${selectedPaymentMethods[pkg.id] === 'iban'
+                            className={`py-2 rounded-md border font-medium text-sm transition-colors ${selectedPaymentMethods[pkg.id] === 'iban'
                               ? 'bg-purple-600 border-purple-600 text-white'
                               : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600'
                               }`}
                           >
-                            🏦 IBAN
+                            <Building2 size={14} strokeWidth={1.5} className="inline mr-1" /> IBAN
                           </button>
                         </div>
                         <button
@@ -3041,7 +3069,7 @@ export default function KuryePage() {
                             payment_method: selectedPaymentMethods[pkg.id],
                             delivered_at: new Date().toISOString()
                           })}
-                          className="w-full py-2.5 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="w-full py-2.5 bg-green-600 hover:bg-green-700 text-white font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {isUpdating.has(pkg.id) ? 'Teslim Ediliyor...' : 'Teslim Et'}
                         </button>
@@ -3058,7 +3086,7 @@ export default function KuryePage() {
         {activeTab === 'history' && (
           <div className="space-y-2 sm:space-y-3">
             {/* Tarih Seçici - Merkeze Hizalı */}
-            <div className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-800">
+            <div className="bg-slate-900 p-3 sm:p-4 rounded-md border border-white/5">
               <h3 className="text-sm font-bold text-white mb-3 text-center">Tarih Aralığı Seçin (İş Günü: 05:00 - 04:59)</h3>
               <div className="flex gap-2 items-end">
                 <div className="flex-1">
@@ -3090,29 +3118,29 @@ export default function KuryePage() {
 
             {/* Özet Bilgiler - Kompakt Grid */}
             {filteredPackages.length > 0 && (
-              <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
+              <div className="bg-slate-900 p-3 rounded-md border border-white/5">
                 <p className="text-[10px] text-slate-500 mb-2 text-center">
                   Özet: mutabakat bekleyen · Liste: dönemdeki tüm teslimler ({filteredPackages.length})
                 </p>
                 <div className="grid grid-cols-3 gap-2">
-                  <div className="bg-slate-800/50 px-2 py-2 rounded-lg">
-                    <p className="text-[10px] text-slate-400 mb-1">📦 Mutabakat</p>
+                  <div className="bg-slate-800/50 px-2 py-2 rounded-md">
+                    <p className="text-[10px] text-slate-400 mb-1 flex items-center gap-1"><Package size={10} strokeWidth={1.5} /> Mutabakat</p>
                     <p className="text-base font-bold text-blue-400">{periodAccount.count}</p>
                   </div>
-                  <div className="bg-slate-800/50 px-2 py-2 rounded-lg">
-                    <p className="text-[10px] text-slate-400 mb-1">💵 Nakit</p>
+                  <div className="bg-slate-800/50 px-2 py-2 rounded-md">
+                    <p className="text-[10px] text-slate-400 mb-1 flex items-center gap-1"><Banknote size={10} strokeWidth={1.5} /> Nakit</p>
                     <p className="text-base font-bold text-green-400">{periodAccount.cash.toFixed(0)}₺</p>
                   </div>
-                  <div className="bg-slate-800/50 px-2 py-2 rounded-lg">
-                    <p className="text-[10px] text-slate-400 mb-1">💳 Kart</p>
+                  <div className="bg-slate-800/50 px-2 py-2 rounded-md">
+                    <p className="text-[10px] text-slate-400 mb-1 flex items-center gap-1"><CreditCard size={10} strokeWidth={1.5} /> Kart</p>
                     <p className="text-base font-bold text-blue-400">{periodAccount.card.toFixed(0)}₺</p>
                   </div>
-                  <div className="bg-slate-800/50 px-2 py-2 rounded-lg">
-                    <p className="text-[10px] text-slate-400 mb-1">🏦 IBAN</p>
+                  <div className="bg-slate-800/50 px-2 py-2 rounded-md">
+                    <p className="text-[10px] text-slate-400 mb-1 flex items-center gap-1"><Building2 size={10} strokeWidth={1.5} /> IBAN</p>
                     <p className="text-base font-bold text-orange-400">{periodAccount.iban.toFixed(0)}₺</p>
                   </div>
-                  <div className="bg-gradient-to-br from-orange-900/50 to-red-900/50 border-2 border-orange-500/50 px-3 py-2 rounded-lg col-span-2 shadow-lg">
-                    <p className="text-[10px] font-bold text-orange-200 mb-1">💰 Bu dönem ödenecek</p>
+                  <div className="bg-gradient-to-br from-orange-900/50 to-red-900/50 border-2 border-orange-500/50 px-3 py-2 rounded-md col-span-2 shadow-sm">
+                    <p className="text-[10px] font-bold text-orange-200 mb-1 flex items-center gap-1"><Wallet size={10} strokeWidth={1.5} /> Bu dönem ödenecek</p>
                     <p className="text-lg font-black text-orange-100">
                       {periodAccount.payableDebt.toFixed(2)}₺
                     </p>
@@ -3126,13 +3154,15 @@ export default function KuryePage() {
 
             {filteredPackages.length === 0 ? (
               <div className="text-center py-8 sm:py-12 text-slate-500">
-                <div className="text-3xl sm:text-4xl mb-2">📋</div>
+                <div className="mb-2 flex justify-center">
+                  <ClipboardList size={28} strokeWidth={1.5} className="text-slate-600" />
+                </div>
                 <p className="text-xs sm:text-sm">Bu tarih aralığında paket yok</p>
               </div>
             ) : (
               <>
                 {/* Paket Sayısı Göstergesi */}
-                <div className="bg-slate-900 p-2 sm:p-3 rounded-xl border border-slate-800">
+                <div className="bg-slate-900 p-2 sm:p-3 rounded-md border border-white/5">
                   <p className="text-xs sm:text-sm text-slate-400">
                     <span className="font-bold text-white">{filteredPackages.length}</span> paket bulundu
                   </p>
@@ -3140,7 +3170,7 @@ export default function KuryePage() {
 
                 {/* Teslim Edilen Paket Listesi */}
                 {filteredPackages.map((pkg, index) => (
-                  <div key={pkg.id} className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-800">
+                  <div key={pkg.id} className="bg-slate-900 p-3 sm:p-4 rounded-md border border-white/5">
                     {/* Üst Kısım */}
                     <div className="flex justify-between items-start mb-2 sm:mb-3">
                       <div className="flex-1">
@@ -3160,7 +3190,7 @@ export default function KuryePage() {
                               ? 'bg-red-500/20 text-red-400'
                               : 'bg-gray-500/20 text-gray-400'
                           }`}>
-                            {pkg.status === 'delivered' && '✓ Teslim Edildi'}
+                            {pkg.status === 'delivered' && 'Teslim Edildi'}
                             {pkg.status === 'cancelled' && '✕ Ücretli İptal'}
                           </span>
                         </div>
@@ -3168,65 +3198,70 @@ export default function KuryePage() {
 
                         {/* Müşteri Telefonu - Maskelenmiş */}
                         {pkg.customer_phone && (
-                          <p className="text-xs text-slate-500 mt-1">
-                            📞 {pkg.customer_phone.substring(0, 4)} **** {pkg.customer_phone.substring(pkg.customer_phone.length - 2)}
+                          <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                            <Phone size={12} strokeWidth={1.5} />
+                            {pkg.customer_phone.substring(0, 4)} **** {pkg.customer_phone.substring(pkg.customer_phone.length - 2)}
                           </p>
                         )}
 
                         {/* Paket İçeriği */}
                         {pkg.content && (
-                          <p className="text-xs text-slate-400 mt-1">
-                            📦 {pkg.content}
+                          <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
+                            <Package size={12} strokeWidth={1.5} /> {pkg.content}
                           </p>
                         )}
                       </div>
                       <div className="text-right">
                         <p className="text-xl font-bold text-green-400">{pkg.amount}₺</p>
                         <p className="text-xs text-slate-500">
-                          {pkg.payment_method === 'cash' ? '💵 Nakit' : pkg.payment_method === 'iban' ? '🏦 IBAN' : '💳 Kart'}
+                          {pkg.payment_method === 'cash' ? 'Nakit' : pkg.payment_method === 'iban' ? 'IBAN' : 'Kart'}
                         </p>
                       </div>
                     </div>
 
                     {/* Adres */}
-                    <div className="mb-2 p-2 bg-slate-800/50 rounded-lg">
-                      <p className="text-xs text-slate-300">📍 {pkg.delivery_address}</p>
+                    <div className="mb-2 p-2 bg-slate-800/50 rounded-md">
+                      <p className="text-xs text-slate-300 flex items-start gap-1">
+                        <MapPin size={12} strokeWidth={1.5} className="flex-shrink-0 mt-0.5" />
+                        {pkg.delivery_address}
+                      </p>
                     </div>
 
                     {/* Zaman Bilgileri */}
-                    <div className="mb-2 p-2 bg-slate-800/50 rounded-lg space-y-1">
+                    <div className="mb-2 p-2 bg-slate-800/50 rounded-md space-y-1">
                       <div className="flex justify-between text-xs">
-                        <span className="text-slate-400">📅 Sipariş Tarihi:</span>
+                        <span className="text-slate-400">Sipariş Tarihi:</span>
                         <span className="text-slate-300">{pkg.created_at ? new Date(pkg.created_at).toLocaleDateString('tr-TR') : '-'}</span>
                       </div>
                       <div className="flex justify-between text-xs">
-                        <span className="text-slate-400">📋 Atama Saati:</span>
+                        <span className="text-slate-400">Atama Saati:</span>
                         <span className="text-blue-400">{pkg.assigned_at ? new Date(pkg.assigned_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '-'}</span>
                       </div>
                       <div className="flex justify-between text-xs">
-                        <span className="text-slate-400">📦 Aldım Saati:</span>
+                        <span className="text-slate-400">Aldım Saati:</span>
                         <span className="text-yellow-400">{pkg.picked_up_at ? new Date(pkg.picked_up_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '-'}</span>
                       </div>
                       <div className="flex justify-between text-xs">
-                        <span className="text-slate-400">🚚 Teslim Saati:</span>
+                        <span className="text-slate-400">Teslim Saati:</span>
                         <span className="text-green-400">{pkg.delivered_at ? new Date(pkg.delivered_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '-'}</span>
                       </div>
                     </div>
 
                     {/* Restoran Bilgisi */}
                     {pkg.restaurant?.name && (
-                      <div className="p-2 bg-orange-900/20 rounded-lg border border-orange-800">
-                        <p className="text-xs text-orange-300">
-                          🍽️ {pkg.restaurant.name}
+                      <div className="p-2 bg-orange-900/20 rounded-md border border-orange-800">
+                        <p className="text-xs text-orange-300 flex items-center gap-1">
+                          <UtensilsCrossed size={12} strokeWidth={1.5} /> {pkg.restaurant.name}
                         </p>
                       </div>
                     )}
 
                     {/* Teslimat Zamanı Mesajı */}
                     {pkg.picked_up_at && pkg.delivered_at && (
-                      <div className="mt-2 p-2 bg-blue-900/20 rounded-lg border border-blue-800">
-                        <p className="text-xs text-blue-300 text-center">
-                          ⏰ {new Date(pkg.picked_up_at).toLocaleTimeString('tr-TR', {
+                      <div className="mt-2 p-2 bg-blue-900/20 rounded-md border border-blue-800">
+                        <p className="text-xs text-blue-300 text-center flex items-center justify-center gap-1">
+                          <Clock size={12} strokeWidth={1.5} />
+                          {new Date(pkg.picked_up_at).toLocaleTimeString('tr-TR', {
                             hour: '2-digit',
                             minute: '2-digit'
                           })} saatinde kabul ettiğiniz bu paketi {new Date(pkg.delivered_at).toLocaleTimeString('tr-TR', {
@@ -3255,7 +3290,7 @@ export default function KuryePage() {
             )}
 
             {/* Paket Listesi */}
-            <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
+            <div className="bg-slate-900 p-3 rounded-md border border-white/5">
               <div className="flex justify-between items-center mb-3">
                 <h3 className="text-sm font-bold text-white">Teslim Edilen Paketler</h3>
                 <span className="text-xs text-slate-400">
@@ -3270,12 +3305,14 @@ export default function KuryePage() {
               >
                 {getCurrentPagePackages().length === 0 ? (
                   <div className="text-center py-8 text-slate-500">
-                    <div className="text-3xl mb-2">📦</div>
+                    <div className="mb-2 flex justify-center">
+                      <Package size={28} strokeWidth={1.5} className="text-slate-600" />
+                    </div>
                     <p className="text-xs">Göster butonuna basın</p>
                   </div>
                 ) : (
                   getCurrentPagePackages().map((pkg) => (
-                    <div key={pkg.id} className="bg-slate-800/50 p-2 rounded-lg border border-slate-700">
+                    <div key={pkg.id} className="bg-slate-800/50 p-2 rounded-md border border-slate-700">
                       <div className="flex justify-between items-start mb-1">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
@@ -3290,29 +3327,31 @@ export default function KuryePage() {
                           </div>
                           <p className="font-medium text-sm text-white">{pkg.customer_name}</p>
                           {pkg.customer_phone && (
-                            <p className="text-xs text-slate-500 mt-1">
-                              📞 {pkg.customer_phone.substring(0, 4)} **** {pkg.customer_phone.substring(pkg.customer_phone.length - 2)}
+                            <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                              <Phone size={12} strokeWidth={1.5} />
+                              {pkg.customer_phone.substring(0, 4)} **** {pkg.customer_phone.substring(pkg.customer_phone.length - 2)}
                             </p>
                           )}
-                          <p className="text-xs text-slate-400 mt-1">
-                            📍 {pkg.delivery_address}
-                          </p>
+                            <p className="text-xs text-slate-400 mt-1 flex items-start gap-1">
+                              <MapPin size={12} strokeWidth={1.5} className="flex-shrink-0 mt-0.5" />
+                              {pkg.delivery_address}
+                            </p>
                           <div className="mt-2 space-y-1">
                             <p className="text-xs text-slate-500">
-                              📅 Sipariş: {new Date(pkg.created_at || '').toLocaleDateString('tr-TR')}
+                              Sipariş: {new Date(pkg.created_at || '').toLocaleDateString('tr-TR')}
                             </p>
                             <p className="text-xs text-blue-400">
-                              ✅ Kabul: {pkg.accepted_at ? new Date(pkg.accepted_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '-'}
+                              Kabul: {pkg.accepted_at ? new Date(pkg.accepted_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '-'}
                             </p>
                             <p className="text-xs text-green-400">
-                              🚚 Teslim: {pkg.delivered_at ? new Date(pkg.delivered_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '-'}
+                              Teslim: {pkg.delivered_at ? new Date(pkg.delivered_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '-'}
                             </p>
                           </div>
                         </div>
                         <div className="text-right">
                           <p className="text-lg font-bold text-green-400">{pkg.amount}₺</p>
                           <p className="text-xs text-slate-500">
-                            {pkg.payment_method === 'cash' ? '💵 Nakit' : pkg.payment_method === 'iban' ? '🏦 IBAN' : '💳 Kart'}
+                            {pkg.payment_method === 'cash' ? 'Nakit' : pkg.payment_method === 'iban' ? 'IBAN' : 'Kart'}
                           </p>
                         </div>
                       </div>
@@ -3382,10 +3421,10 @@ export default function KuryePage() {
         {activeTab === 'account' && (
           <div className="space-y-3">
             {/* Profil Bilgileri */}
-            <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
+            <div className="bg-slate-900 p-4 rounded-md border border-white/5">
               <div className="flex items-center gap-4 mb-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center text-3xl">
-                  🏍️
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
+                  <Bike size={28} strokeWidth={1.5} className="text-white" />
                 </div>
                 <div>
                   {courierNameLoading ? (
@@ -3403,7 +3442,7 @@ export default function KuryePage() {
               </div>
 
               {/* Durum Toggle */}
-              <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
+              <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-md">
                 <div>
                   <p className="text-sm font-medium text-white">Aktif Durum</p>
                   <p className="text-xs text-slate-400">
@@ -3424,7 +3463,7 @@ export default function KuryePage() {
                     }`}
                 >
                   <div
-                    className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300 ${is_active ? 'left-7' : 'left-0.5'
+                    className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow-sm transition-all duration-300 ${is_active ? 'left-7' : 'left-0.5'
                       }`}
                   >
                     {statusUpdating && (
@@ -3438,22 +3477,22 @@ export default function KuryePage() {
             </div>
 
             {/* İstatistikler - Kompakt Grid */}
-            <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
+            <div className="bg-slate-900 p-4 rounded-md border border-white/5">
               <h3 className="text-sm font-bold text-white mb-3">Bugünkü İstatistikler</h3>
               <div className="grid grid-cols-3 gap-2">
-                <div className="bg-slate-800/50 px-2 py-2 rounded-lg">
+                <div className="bg-slate-800/50 px-2 py-2 rounded-md">
                   <p className="text-[10px] text-slate-400 mb-1">Teslim</p>
                   <p className="text-base font-bold text-green-400">{deliveredCount}</p>
                 </div>
-                <div className="bg-slate-800/50 px-2 py-2 rounded-lg">
-                  <p className="text-[10px] text-slate-400 mb-1">💵 Nakit</p>
+                <div className="bg-slate-800/50 px-2 py-2 rounded-md">
+                  <p className="text-[10px] text-slate-400 mb-1 flex items-center gap-1"><Banknote size={10} strokeWidth={1.5} /> Nakit</p>
                   <p className="text-base font-bold text-yellow-400">{cashTotal}₺</p>
                 </div>
-                <div className="bg-slate-800/50 px-2 py-2 rounded-lg">
-                  <p className="text-[10px] text-slate-400 mb-1">💳 Kart</p>
+                <div className="bg-slate-800/50 px-2 py-2 rounded-md">
+                  <p className="text-[10px] text-slate-400 mb-1 flex items-center gap-1"><CreditCard size={10} strokeWidth={1.5} /> Kart</p>
                   <p className="text-base font-bold text-purple-400">{cardTotal}₺</p>
                 </div>
-                <div className="bg-slate-800/50 px-2 py-2 rounded-lg col-span-3">
+                <div className="bg-slate-800/50 px-2 py-2 rounded-md col-span-3">
                   <p className="text-[10px] text-slate-400 mb-1">Toplam Kazanç</p>
                   <p className="text-base font-bold text-blue-400">{(courierPackageRate || 0) * deliveredCount}₺</p>
                 </div>
@@ -3463,9 +3502,9 @@ export default function KuryePage() {
             {/* Şifre Değiştir */}
             <button
               onClick={() => setShowPasswordModal(true)}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition-colors flex items-center justify-center gap-2"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-md transition-colors flex items-center justify-center gap-2"
             >
-              <span className="text-xl">🔐</span>
+              <Lock size={20} strokeWidth={1.5} />
               <span>Şifreyi Güncelle</span>
             </button>
 
@@ -3493,9 +3532,9 @@ export default function KuryePage() {
                 // 4. Sayfayı tamamen yenileterek state'lerin sıfırlanmasını sağla
                 window.location.href = '/'
               }}
-              className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl transition-colors flex items-center justify-center gap-2"
+              className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-md transition-colors flex items-center justify-center gap-2"
             >
-              <span className="text-xl">🚪</span>
+              <LogOut size={20} strokeWidth={1.5} />
               <span>Çıkış Yap</span>
             </button>
           </div>
@@ -3506,7 +3545,7 @@ export default function KuryePage() {
       {
         showSummary && (
           <div className="fixed inset-0 bg-black/80 z-50 p-2 sm:p-4 overflow-y-auto flex items-center justify-center">
-            <div className="max-w-md w-full bg-slate-900 rounded-xl p-3 sm:p-4 border border-slate-800">
+            <div className="max-w-md w-full bg-slate-900 rounded-md p-3 sm:p-4 border border-white/5">
               <div className="flex justify-between items-center mb-3 sm:mb-4">
                 <h2 className="text-base sm:text-lg font-bold text-white">Günlük Rapor</h2>
                 <button onClick={() => setShowSummary(false)} className="text-slate-400 hover:text-white text-2xl active:scale-90">×</button>
@@ -3521,7 +3560,7 @@ export default function KuryePage() {
                 </div>
                 <button
                   onClick={() => setShowSummary(false)}
-                  className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-medium transition-colors"
+                  className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-md font-medium transition-colors"
                 >
                   Kapat
                 </button>
@@ -3535,10 +3574,13 @@ export default function KuryePage() {
       {
         showIbanModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-            <div className="bg-slate-900 rounded-2xl border-2 border-purple-500/50 shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="bg-slate-900 rounded-md border-2 border-purple-500/50 shadow-sm w-full max-w-md max-h-[90vh] overflow-y-auto">
               {/* Header */}
               <div className="sticky top-0 bg-slate-900 border-b border-slate-800 p-4 flex justify-between items-center">
-                <h2 className="text-xl font-bold text-white">💳 Ödeme Bilgileri</h2>
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <CreditCard size={20} strokeWidth={1.5} className="text-purple-400" />
+                  Ödeme Bilgileri
+                </h2>
                 <button
                   onClick={() => {
                     setShowIbanModal(false)
@@ -3556,19 +3598,19 @@ export default function KuryePage() {
               {/* Content */}
               <div className="p-6 space-y-6">
                 {/* Tutar */}
-                <div className="text-center bg-gradient-to-br from-purple-600 to-blue-600 p-6 rounded-xl">
+                <div className="text-center bg-gradient-to-br from-purple-600 to-blue-600 p-6 rounded-md">
                   <p className="text-slate-200 text-sm mb-2">Ödenecek Tutar</p>
-                  <p className="text-white text-4xl font-bold">{ibanPackageAmount}₺</p>
+                  <p className="text-white text-2xl font-bold">{ibanPackageAmount}₺</p>
                 </div>
 
                 {/* İsim */}
-                <div className="bg-slate-800 p-4 rounded-xl">
+                <div className="bg-slate-800 p-4 rounded-md">
                   <p className="text-slate-400 text-xs mb-1">Alıcı Adı</p>
                   <p className="text-white font-semibold text-lg">Ayşe Yarım</p>
                 </div>
 
                 {/* IBAN */}
-                <div className="bg-slate-800 p-4 rounded-xl">
+                <div className="bg-slate-800 p-4 rounded-md">
                   <p className="text-slate-400 text-xs mb-2">IBAN Numarası</p>
                   <div className="flex items-center gap-2">
                     <p className="text-white font-mono text-sm flex-1 break-all">
@@ -3576,15 +3618,15 @@ export default function KuryePage() {
                     </p>
                     <button
                       onClick={copyIbanToClipboard}
-                      className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex-shrink-0"
+                      className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-md text-sm font-medium transition-colors flex-shrink-0"
                     >
-                      📋 Kopyala
+                      <ClipboardList size={14} strokeWidth={1.5} className="inline mr-1" /> Kopyala
                     </button>
                   </div>
                 </div>
 
                 {/* QR Kod */}
-                <div className="bg-white p-6 rounded-xl flex flex-col items-center">
+                <div className="bg-white p-6 rounded-md flex flex-col items-center">
                   <img
                     src="/iban-qr.png"
                     alt="IBAN QR Kod"
@@ -3599,9 +3641,9 @@ export default function KuryePage() {
                 <button
                   onClick={handleIbanPaymentSent}
                   disabled={isUpdating.has(ibanPackageId || 0)}
-                  className="w-full py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white text-lg font-bold rounded-xl transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white text-lg font-bold rounded-md transition-all shadow-sm hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isUpdating.has(ibanPackageId || 0) ? 'İşleniyor...' : '✅ Ödeme Gönderildi'}
+                  {isUpdating.has(ibanPackageId || 0) ? 'İşleniyor...' : 'Ödeme Gönderildi'}
                 </button>
 
                 <p className="text-center text-slate-500 text-xs">
@@ -3616,11 +3658,12 @@ export default function KuryePage() {
       {/* ÜCRET TAHSİL EDİLEREK İPTAL ONAY MODALI */}
       {showCancelModal && cancellingPackage && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-slate-900 rounded-2xl border-2 border-red-500/50 shadow-2xl w-full max-w-md overflow-hidden">
+          <div className="bg-slate-900 rounded-md border-2 border-red-500/50 shadow-sm w-full max-w-md overflow-hidden">
             {/* Header */}
             <div className="bg-red-950/30 border-b border-slate-800 p-5 flex justify-between items-center">
               <h2 className="text-xl font-bold text-red-500 flex items-center gap-2">
-                🚫 Ücretlendirilmiş İptal
+                <X size={20} strokeWidth={1.5} />
+                Ücretlendirilmiş İptal
               </h2>
               <button
                 onClick={() => {
@@ -3642,9 +3685,10 @@ export default function KuryePage() {
                 numaralı siparişi iptal etmek istediğinize emin misiniz?
               </p>
 
-              <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-center">
-                <p className="text-xs text-red-400 font-medium">
-                  ⚠️ Bu işlem siparişi kuryeye ücretlendirilmiş olarak iptal edecek, restoranın borcuna yansıtacak ve geri alınamayacaktır.
+              <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-md text-center">
+                <p className="text-xs text-red-400 font-medium flex items-start gap-2 justify-center">
+                  <AlertTriangle size={14} strokeWidth={1.5} className="flex-shrink-0 mt-0.5" />
+                  Bu işlem siparişi kuryeye ücretlendirilmiş olarak iptal edecek, restoranın borcuna yansıtacak ve geri alınamayacaktır.
                 </p>
               </div>
 
@@ -3656,14 +3700,14 @@ export default function KuryePage() {
                     setCancellingPackage(null)
                   }}
                   disabled={cancelLoading}
-                  className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold transition-all disabled:opacity-50"
+                  className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md font-bold transition-all disabled:opacity-50"
                 >
                   Hayır
                 </button>
                 <button
                   onClick={handleConfirmCancel}
                   disabled={cancelLoading}
-                  className="flex-[2] py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-red-600/20"
+                  className="flex-[2] py-3 bg-red-600 hover:bg-red-700 text-white rounded-md font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm shadow-red-600/20"
                 >
                   {cancelLoading ? (
                     <>
@@ -3683,11 +3727,14 @@ export default function KuryePage() {
       {/* ŞİFRE DEĞİŞTİRME MODAL */}
       {showPasswordModal && (
         <div className="fixed inset-0 bg-black/80 z-50 p-4 overflow-y-auto flex items-center justify-center">
-          <div className="max-w-md w-full bg-slate-900 rounded-xl p-6 border border-slate-700 shadow-2xl">
+          <div className="max-w-md w-full bg-slate-900 rounded-md p-6 border border-slate-700 shadow-sm">
             <form onSubmit={handlePasswordChange}>
               {/* Başlık */}
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold text-white">🔐 Şifre Güncelle</h3>
+                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                  <Lock size={20} strokeWidth={1.5} className="text-blue-400" />
+                  Şifre Güncelle
+                </h3>
                 <button
                   type="button"
                   onClick={() => {
@@ -3695,7 +3742,7 @@ export default function KuryePage() {
                     setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' })
                     setPasswordError('')
                   }}
-                  className="text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-lg transition-colors text-slate-400 hover:text-white hover:bg-slate-800"
+                  className="text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-md transition-colors text-slate-400 hover:text-white hover:bg-slate-800"
                 >
                   ×
                 </button>
@@ -3703,7 +3750,7 @@ export default function KuryePage() {
 
               {/* Hata Mesajı */}
               {passwordError && (
-                <div className="mb-4 p-3 bg-red-900/30 border border-red-700/50 rounded-lg">
+                <div className="mb-4 p-3 bg-red-900/30 border border-red-700/50 rounded-md">
                   <p className="text-red-300 text-sm">{passwordError}</p>
                 </div>
               )}
@@ -3717,7 +3764,7 @@ export default function KuryePage() {
                   type="password"
                   value={passwordForm.oldPassword}
                   onChange={(e) => setPasswordForm(prev => ({ ...prev, oldPassword: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-lg border bg-slate-800 border-slate-700 text-white focus:border-blue-500 outline-none transition-colors"
+                  className="w-full px-4 py-3 rounded-md border bg-slate-800 border-slate-700 text-white focus:border-blue-500 outline-none transition-colors"
                   placeholder="Mevcut şifrenizi girin"
                   required
                 />
@@ -3732,7 +3779,7 @@ export default function KuryePage() {
                   type="password"
                   value={passwordForm.newPassword}
                   onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-lg border bg-slate-800 border-slate-700 text-white focus:border-blue-500 outline-none transition-colors"
+                  className="w-full px-4 py-3 rounded-md border bg-slate-800 border-slate-700 text-white focus:border-blue-500 outline-none transition-colors"
                   placeholder="Yeni şifrenizi girin (min 6 karakter)"
                   required
                   minLength={6}
@@ -3748,7 +3795,7 @@ export default function KuryePage() {
                   type="password"
                   value={passwordForm.confirmPassword}
                   onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-lg border bg-slate-800 border-slate-700 text-white focus:border-blue-500 outline-none transition-colors"
+                  className="w-full px-4 py-3 rounded-md border bg-slate-800 border-slate-700 text-white focus:border-blue-500 outline-none transition-colors"
                   placeholder="Yeni şifrenizi tekrar girin"
                   required
                   minLength={6}
@@ -3764,16 +3811,16 @@ export default function KuryePage() {
                     setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' })
                     setPasswordError('')
                   }}
-                  className="flex-1 px-4 py-3 rounded-lg font-semibold transition-colors bg-slate-700 hover:bg-slate-600 text-white"
+                  className="flex-1 px-4 py-3 rounded-md font-semibold transition-colors bg-slate-700 hover:bg-slate-600 text-white"
                 >
                   İptal
                 </button>
                 <button
                   type="submit"
                   disabled={passwordUpdating}
-                  className="flex-1 px-4 py-3 rounded-lg font-semibold transition-colors bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-3 rounded-md font-semibold transition-colors bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {passwordUpdating ? '⏳ Güncelleniyor...' : '✅ Güncelle'}
+                  {passwordUpdating ? 'Güncelleniyor...' : 'Güncelle'}
                 </button>
               </div>
             </form>
@@ -3795,7 +3842,7 @@ export default function KuryePage() {
               : 'text-slate-400 active:text-slate-300'
               }`}
           >
-            <span className="text-2xl mb-1">📦</span>
+            <Package size={22} strokeWidth={1.5} className="mb-1" />
             <span className="text-xs font-medium">Aktif</span>
           </button>
 
@@ -3807,7 +3854,7 @@ export default function KuryePage() {
               : 'text-slate-400 active:text-slate-300'
               }`}
           >
-            <span className="text-2xl mb-1">📋</span>
+            <ClipboardList size={22} strokeWidth={1.5} className="mb-1" />
             <span className="text-xs font-medium">Geçmişim</span>
           </button>
 
@@ -3819,7 +3866,7 @@ export default function KuryePage() {
               : 'text-slate-400 active:text-slate-300'
               }`}
           >
-            <span className="text-2xl mb-1">💰</span>
+            <Wallet size={22} strokeWidth={1.5} className="mb-1" />
             <span className="text-xs font-medium">Hesap</span>
           </button>
 
@@ -3831,7 +3878,7 @@ export default function KuryePage() {
               : 'text-slate-400 active:text-slate-300'
               }`}
           >
-            <span className="text-2xl mb-1">👤</span>
+            <User size={22} strokeWidth={1.5} className="mb-1" />
             <span className="text-xs font-medium">Profil</span>
           </button>
         </div>
@@ -3907,7 +3954,7 @@ function SummaryList({ courierId, calculateDuration }: { courierId: string, calc
   return (
     <div className="space-y-2 max-h-64 overflow-y-auto">
       {history.map(p => (
-        <div key={p.id} className="bg-slate-800/50 p-3 rounded-lg flex justify-between items-center">
+        <div key={p.id} className="bg-slate-800/50 p-3 rounded-md flex justify-between items-center">
           <div>
             <p className="font-medium text-sm text-white">{p.customer_name}</p>
             <p className="text-xs text-slate-400">

@@ -6,6 +6,7 @@
 
 import { useAdminData } from './AdminDataProvider'
 import { useEffect } from 'react'
+import { CheckCircle2, XCircle } from 'lucide-react'
 
 export function AdminMessages() {
   const { successMessage, errorMessage, setSuccessMessage, setErrorMessage } = useAdminData()
@@ -31,11 +32,11 @@ export function AdminMessages() {
     <div className="fixed top-4 right-4 z-[100] space-y-2 max-w-md">
       {/* Success Message */}
       {successMessage && (
-        <div className="bg-emerald-900/95 border-2 border-emerald-500 text-emerald-100 px-6 py-4 rounded-xl shadow-2xl shadow-emerald-900/50 backdrop-blur-sm animate-slide-in-right">
+        <div className="bg-emerald-900/95 border border-emerald-500 text-emerald-100 px-6 py-4 rounded-md shadow-sm shadow-emerald-900/50 backdrop-blur-sm animate-slide-in-right">
           <div className="flex items-start gap-3">
-            <div className="text-2xl">✅</div>
+            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" strokeWidth={1.5} />
             <div className="flex-1">
-              <p className="font-bold text-sm">{successMessage}</p>
+              <p className="font-medium text-sm">{successMessage}</p>
             </div>
             <button
               onClick={() => setSuccessMessage('')}
@@ -49,11 +50,11 @@ export function AdminMessages() {
 
       {/* Error Message */}
       {errorMessage && (
-        <div className="bg-rose-900/95 border-2 border-rose-500 text-rose-100 px-6 py-4 rounded-xl shadow-2xl shadow-rose-900/50 backdrop-blur-sm animate-slide-in-right">
+        <div className="bg-rose-900/95 border border-rose-500 text-rose-100 px-6 py-4 rounded-md shadow-sm shadow-rose-900/50 backdrop-blur-sm animate-slide-in-right">
           <div className="flex items-start gap-3">
-            <div className="text-2xl">❌</div>
+            <XCircle className="w-5 h-5 text-rose-400 shrink-0" strokeWidth={1.5} />
             <div className="flex-1">
-              <p className="font-bold text-sm whitespace-pre-wrap">{errorMessage}</p>
+              <p className="font-medium text-sm whitespace-pre-wrap">{errorMessage}</p>
             </div>
             <button
               onClick={() => setErrorMessage('')}

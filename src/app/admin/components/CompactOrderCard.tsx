@@ -7,6 +7,7 @@
 import { Package, Courier } from '@/types'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
 import { supabase } from '@/app/lib/supabase'
+import { RefreshCw, XCircle } from 'lucide-react'
 
 interface CompactOrderCardProps {
     package: Package
@@ -57,13 +58,13 @@ export function CompactOrderCard({
 
     const handleStatusChange = async () => {
         const statusOptions = [
-            { value: 'waiting', label: '⏳ Beklemede' },
-            { value: 'ready', label: '✅ Hazır' },
-            { value: 'assigned', label: '👤 Atandı' },
-            { value: 'picking_up', label: '🏃 Alınıyor' },
-            { value: 'on_the_way', label: '🚗 Yolda' },
-            { value: 'delivered', label: '✅ Teslim Edildi' },
-            { value: 'cancelled', label: '❌ İptal Edildi' }
+            { value: 'waiting', label: 'Beklemede' },
+            { value: 'ready', label: 'Hazır' },
+            { value: 'assigned', label: 'Atandı' },
+            { value: 'picking_up', label: 'Alınıyor' },
+            { value: 'on_the_way', label: 'Yolda' },
+            { value: 'delivered', label: 'Teslim Edildi' },
+            { value: 'cancelled', label: 'İptal Edildi' }
         ]
         
         const choice = prompt(
@@ -115,11 +116,11 @@ export function CompactOrderCard({
             
             if (error) throw error
             
-            alert('✅ Sipariş durumu başarıyla güncellendi!')
+            alert('Sipariş durumu başarıyla güncellendi!')
             onMenuToggle()
         } catch (error) {
             console.error('❌ Durum güncelleme hatası:', error)
-            alert('❌ Durum güncellenirken hata oluştu!')
+            alert('Durum güncellenirken hata oluştu!')
         }
     }
 
@@ -127,11 +128,11 @@ export function CompactOrderCard({
     const paymentBadge = getPaymentBadge(pkg.payment_method)
 
     return (
-        <div className="relative bg-white rounded-lg border border-slate-200 hover:border-orange-400 hover:shadow-lg transition-all group">
+        <div className="relative bg-white rounded-md border border-slate-200 hover:border-orange-400 hover:shadow-sm transition-all group">
             {/* Tıklanabilir Alan */}
             <div 
                 onClick={onCardClick} 
-                className="absolute inset-0 z-0 rounded-lg cursor-pointer"
+                className="absolute inset-0 z-0 rounded-md cursor-pointer"
             />
 
             {/* 3 Nokta Menü */}
@@ -148,12 +149,13 @@ export function CompactOrderCard({
 
                     {/* Dropdown Menü */}
                     {isMenuOpen && (
-                        <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-xl border border-slate-200 py-1 z-50">
+                        <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-sm border border-slate-200 py-1 z-50">
                             <button
                                 onClick={handleStatusChange}
-                                className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
+                                className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-orange-50 hover:text-orange-600 transition-colors flex items-center gap-2"
                             >
-                                🔄 Sipariş Durumunu Değiştir
+                                <RefreshCw className="w-3.5 h-3.5" strokeWidth={1.5} />
+                                Sipariş Durumunu Değiştir
                             </button>
                             <button
                                 onClick={() => {
@@ -163,9 +165,10 @@ export function CompactOrderCard({
                                         onMenuToggle()
                                     }
                                 }}
-                                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
                             >
-                                ❌ Sipariş İptal Et
+                                <XCircle className="w-3.5 h-3.5" strokeWidth={1.5} />
+                                Sipariş İptal Et
                             </button>
                         </div>
                     )}

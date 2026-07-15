@@ -6,6 +6,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { UtensilsCrossed, Lightbulb, Info } from 'lucide-react'
 import { createApplication } from '@/services/applicationService'
 import type { RestaurantApplicationData } from '@/types/application'
 
@@ -88,17 +89,19 @@ export default function RegisterRestoranPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4 py-8">
-      <div className="bg-slate-900 p-6 md:p-8 rounded-2xl border border-slate-800 w-full max-w-2xl my-4">
+      <div className="bg-slate-900 p-6 md:p-8 rounded-md border border-white/5 shadow-sm w-full max-w-2xl my-4">
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="text-5xl mb-3">🍽️</div>
+          <div className="mb-3 flex justify-center">
+            <UtensilsCrossed className="w-8 h-8 text-orange-400" strokeWidth={1.5} />
+          </div>
           <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">Restoran Başvurusu</h1>
           <p className="text-slate-400 text-sm">Formu doldurun, admin onayı bekleyin</p>
         </div>
 
         {/* Success Message */}
         {successMessage && (
-          <div className="mb-4 p-3 bg-green-500/20 border border-green-500/50 rounded-lg">
+          <div className="mb-4 p-3 bg-green-500/20 border border-green-500/50 rounded-md">
             <p className="text-green-400 text-center font-medium text-sm">{successMessage}</p>
             <p className="text-green-300 text-xs text-center mt-1">Giriş sayfasına yönlendiriliyorsunuz...</p>
           </div>
@@ -106,7 +109,7 @@ export default function RegisterRestoranPage() {
 
         {/* Error Message */}
         {errorMessage && (
-          <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg">
+          <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-md">
             <p className="text-red-400 text-center text-sm">{errorMessage}</p>
           </div>
         )}
@@ -120,7 +123,7 @@ export default function RegisterRestoranPage() {
               value={form.firstName}
               onChange={handleChange}
               required
-              className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors"
+              className="w-full p-3 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors"
             />
             <input
               type="text"
@@ -129,7 +132,7 @@ export default function RegisterRestoranPage() {
               value={form.lastName}
               onChange={handleChange}
               required
-              className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors"
+              className="w-full p-3 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors"
             />
           </div>
 
@@ -140,7 +143,7 @@ export default function RegisterRestoranPage() {
             value={form.email}
             onChange={handleChange}
             required
-            className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors"
+            className="w-full p-3 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors"
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -153,7 +156,7 @@ export default function RegisterRestoranPage() {
               required
               min="18"
               max="99"
-              className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors"
+              className="w-full p-3 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors"
             />
             <input
               type="text"
@@ -162,7 +165,7 @@ export default function RegisterRestoranPage() {
               value={form.location}
               onChange={handleChange}
               required
-              className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors"
+              className="w-full p-3 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors"
             />
           </div>
 
@@ -173,7 +176,7 @@ export default function RegisterRestoranPage() {
             value={form.businessAddress}
             onChange={handleChange}
             required
-            className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors"
+            className="w-full p-3 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors"
           />
 
           <input
@@ -183,7 +186,7 @@ export default function RegisterRestoranPage() {
             value={form.phone}
             onChange={handleChange}
             required
-            className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors"
+            className="w-full p-3 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors"
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -195,7 +198,7 @@ export default function RegisterRestoranPage() {
               onChange={handleChange}
               required
               step="any"
-              className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors"
+              className="w-full p-3 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors"
             />
             <input
               type="number"
@@ -205,11 +208,12 @@ export default function RegisterRestoranPage() {
               onChange={handleChange}
               required
               step="any"
-              className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors"
+              className="w-full p-3 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors"
             />
           </div>
-          <p className="text-slate-500 text-xs -mt-2">
-            💡 Google Maps'ten restoranınızın koordinatlarını alabilirsiniz
+          <p className="text-slate-500 text-xs -mt-2 flex items-start gap-1.5">
+            <Lightbulb size={12} strokeWidth={1.5} className="flex-shrink-0 mt-0.5" />
+            Google Maps&apos;ten restoranınızın koordinatlarını alabilirsiniz
           </p>
 
           <div className="border-t border-slate-700 pt-4 mt-4">
@@ -223,10 +227,11 @@ export default function RegisterRestoranPage() {
               required
               minLength={3}
               autoComplete="new-username"
-              className="w-full p-3 mb-4 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors"
+              className="w-full p-3 mb-4 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors"
             />
-            <p className="text-slate-500 text-xs -mt-2 mb-4">
-              ℹ️ Bu isim hem giriş için hem de restoran adı olarak kullanılacaktır
+            <p className="text-slate-500 text-xs -mt-2 mb-4 flex items-start gap-1.5">
+              <Info size={12} strokeWidth={1.5} className="flex-shrink-0 mt-0.5" />
+              Bu isim hem giriş için hem de restoran adı olarak kullanılacaktır
             </p>
             <input
               type="password"
@@ -237,14 +242,14 @@ export default function RegisterRestoranPage() {
               required
               minLength={6}
               autoComplete="new-password"
-              className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors"
+              className="w-full p-3 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors"
             />
           </div>
 
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full py-3 bg-orange-600 hover:bg-orange-700 disabled:bg-slate-700 text-white font-medium rounded-lg transition-colors disabled:cursor-not-allowed"
+            className="w-full py-3 bg-orange-600 hover:bg-orange-700 disabled:bg-slate-700 text-white font-medium rounded-md transition-colors disabled:cursor-not-allowed"
           >
             {isSubmitting ? 'Gönderiliyor...' : 'Başvuru Gönder'}
           </button>

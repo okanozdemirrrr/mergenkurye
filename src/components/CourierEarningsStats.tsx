@@ -5,6 +5,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { Package, Banknote, CreditCard, Building2, Wallet, Check } from 'lucide-react'
 import { supabase } from '@/app/lib/supabase'
 
 interface CourierEarningsStatsProps {
@@ -90,7 +91,7 @@ export function CourierEarningsStats({
 
   if (loading) {
     return (
-      <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
+      <div className="bg-slate-900 p-3 rounded-md border border-white/5 shadow-sm">
         <div className="flex items-center justify-center py-4">
           <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
         </div>
@@ -99,32 +100,44 @@ export function CourierEarningsStats({
   }
 
   return (
-    <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
+    <div className="bg-slate-900 p-3 rounded-md border border-white/5 shadow-sm">
       <p className="text-[10px] text-slate-500 mb-2 text-center">
         Admin ile aynı · seçili dönemde mutabakat bekleyen paketler
       </p>
       <div className="grid grid-cols-3 gap-2">
-        <div className="bg-slate-800/50 px-2 py-2 rounded-lg">
-          <p className="text-[10px] text-slate-400 mb-1">📦 Paket</p>
+        <div className="bg-slate-800/50 px-2 py-2 rounded-md border border-white/5 shadow-sm">
+          <p className="text-[10px] text-slate-400 mb-1 flex items-center gap-1">
+            <Package size={12} strokeWidth={1.5} /> Paket
+          </p>
           <p className="text-base font-bold text-blue-400">{account.count}</p>
         </div>
-        <div className="bg-slate-800/50 px-2 py-2 rounded-lg">
-          <p className="text-[10px] text-slate-400 mb-1">💵 Nakit</p>
+        <div className="bg-slate-800/50 px-2 py-2 rounded-md border border-white/5 shadow-sm">
+          <p className="text-[10px] text-slate-400 mb-1 flex items-center gap-1">
+            <Banknote size={12} strokeWidth={1.5} /> Nakit
+          </p>
           <p className="text-base font-bold text-green-400">{account.cash.toFixed(0)}₺</p>
         </div>
-        <div className="bg-slate-800/50 px-2 py-2 rounded-lg">
-          <p className="text-[10px] text-slate-400 mb-1">💳 Kart</p>
+        <div className="bg-slate-800/50 px-2 py-2 rounded-md border border-white/5 shadow-sm">
+          <p className="text-[10px] text-slate-400 mb-1 flex items-center gap-1">
+            <CreditCard size={12} strokeWidth={1.5} /> Kart
+          </p>
           <p className="text-base font-bold text-blue-400">{account.card.toFixed(0)}₺</p>
         </div>
-        <div className="bg-slate-800/50 px-2 py-2 rounded-lg">
-          <p className="text-[10px] text-slate-400 mb-1">🏦 IBAN</p>
+        <div className="bg-slate-800/50 px-2 py-2 rounded-md border border-white/5 shadow-sm">
+          <p className="text-[10px] text-slate-400 mb-1 flex items-center gap-1">
+            <Building2 size={12} strokeWidth={1.5} /> IBAN
+          </p>
           <p className="text-base font-bold text-orange-400">{account.iban.toFixed(0)}₺</p>
         </div>
-        <div className="bg-gradient-to-br from-orange-900/50 to-red-900/50 border-2 border-orange-500/50 px-3 py-3 rounded-lg col-span-2 shadow-lg">
+        <div className="bg-gradient-to-br from-orange-900/50 to-red-900/50 border-2 border-orange-500/50 px-3 py-3 rounded-md col-span-2 shadow-sm">
           <div className="flex items-center justify-between mb-1">
-            <p className="text-xs font-bold text-orange-200">💰 Bu dönem ödenecek</p>
+            <p className="text-xs font-bold text-orange-200 flex items-center gap-1">
+              <Wallet size={14} strokeWidth={1.5} /> Bu dönem ödenecek
+            </p>
             {account.payableDebt === 0 && (
-              <span className="text-xs bg-green-500/20 text-green-300 px-2 py-0.5 rounded">✅ Kapatıldı</span>
+              <span className="text-xs bg-green-500/20 text-green-300 px-2 py-0.5 rounded flex items-center gap-1">
+                <Check size={12} strokeWidth={1.5} /> Kapatıldı
+              </span>
             )}
           </div>
           <p className="text-2xl font-black text-orange-100">{account.payableDebt.toFixed(2)}₺</p>

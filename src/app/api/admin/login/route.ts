@@ -2,8 +2,8 @@
  * @file src/app/api/admin/login/route.ts
  * @description Admin giriş API — şifre doğrulama + başarılı girişte Telegram log (non-blocking)
  *
- * Not: Proje localde `output: 'export'` kullandığı için next/headers headers()
- * ve force-dynamic kullanılamaz. IP/UA NextRequest.headers ile alınır.
+ * Not: Localde `output: 'export'` olduğu için next/headers headers() kullanılamaz.
+ * IP/UA NextRequest.headers ile alınır. Telegram, Vercel'de kesilmesin diye after() ile gider.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -18,7 +18,7 @@ function getClientIp(headerStore: Headers): string {
   return 'Bilinmiyor'
 }
 
-function sendTelegramLoginLog(params: {
+async function sendTelegramLoginLog(params: {
   username: string
   ip: string
   userAgent: string
@@ -41,26 +41,24 @@ function sendTelegramLoginLog(params: {
     `📅 Tarih: ${params.date}`
   ].join('\n')
 
-  // await yok — login yanıtını bloklamaz
-  fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text
+      })
     })
-  })
-    .then(async (res) => {
-      const data = await res.json().catch(() => null)
-      if (!res.ok || !data?.ok) {
-        console.error('Telegram login log başarısız:', res.status, data)
-      } else {
-        console.log('Telegram login log gönderildi')
-      }
-    })
-    .catch((err) => {
-      console.error('Telegram login log hatası:', err)
-    })
+    const data = await res.json().catch(() => null)
+    if (!res.ok || !data?.ok) {
+      console.error('Telegram login log başarısız:', res.status, data)
+    } else {
+      console.log('Telegram login log gönderildi')
+    }
+  } catch (err) {
+    console.error('Telegram login log hatası:', err)
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -76,7 +74,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Mevcut admin layout ile aynı doğrulama mantığı
     const adminUser = process.env.NEXT_PUBLIC_ADMIN_USERNAME || 'admin'
     const adminPass = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'admin123'
 
@@ -91,7 +88,8 @@ export async function POST(request: NextRequest) {
     const userAgent = request.headers.get('user-agent') || 'Bilinmiyor'
     const date = new Date().toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' })
 
-    sendTelegramLoginLog({ username, ip, userAgent, date })
+    // Vercel serverless fire-and-forget'i öldürüyor; kısa await ile garanti gönder
+    await sendTelegramLoginLog({ username, ip, userAgent, date })
 
     return NextResponse.json({ success: true })
   } catch (error) {

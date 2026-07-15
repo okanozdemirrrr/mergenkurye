@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @file src/app/admin/components/OrderActivityFeed.tsx
  * @description Anlık Sipariş Durumu Bileşeni + Canlı Harita.
  * Üstte tam genişlikte Malatya haritası, altta yatay kaydırmalı sipariş kartları.
@@ -9,6 +9,7 @@ import dynamic from 'next/dynamic'
 import { Package, Courier } from '@/types'
 import { OrderActionMenu } from '@/components/ui/OrderActionMenu'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
+import { Rocket, Package as PackageIcon, Inbox, User, Footprints, Car, Bike, Banknote, CreditCard, Building2 } from 'lucide-react'
 
 // Harita bileşenini dinamik olarak yükle (SSR devre dışı)
 const LiveMapComponent = dynamic(
@@ -38,8 +39,11 @@ export function OrderActivityFeed({
     )
 
     return (
-        <div className="bg-slate-900 shadow-xl rounded-2xl p-3 mb-3">
-            <h2 className="text-base font-bold mb-2">🚀 Anlık Sipariş Durumu & Canlı Harita</h2>
+        <div className="bg-slate-900 shadow-sm rounded-md border border-slate-800 p-3 mb-3">
+            <h2 className="text-base font-bold mb-2 flex items-center gap-2">
+              <Rocket className="w-4 h-4 text-gray-400" strokeWidth={1.5} />
+              Anlık Sipariş Durumu & Canlı Harita
+            </h2>
             
             {/* Dikey Layout: ÜSTTE Harita, ALTTA Kartlar */}
             <div className="space-y-3">
@@ -50,12 +54,13 @@ export function OrderActivityFeed({
 
                 {/* ALTTA: Sipariş Kartları (Yatay Scroll) */}
                 <div>
-                    <h3 className="text-sm font-semibold mb-2 text-slate-700">
-                        📦 Canlı Sipariş Takibi ({activeOperationPackages.length})
+                    <h3 className="text-sm font-semibold mb-2 text-slate-700 flex items-center gap-2">
+                        <PackageIcon className="w-4 h-4 text-gray-400" strokeWidth={1.5} />
+                        Canlı Sipariş Takibi ({activeOperationPackages.length})
                     </h3>
                     {activeOperationPackages.length === 0 ? (
                         <div className="text-center py-8 text-slate-500 text-sm">
-                            <div className="text-4xl mb-2">📭</div>
+                            <Inbox className="w-8 h-8 mx-auto mb-2 text-gray-400" strokeWidth={1.5} />
                             <p>Şu an yolda olan sipariş yok</p>
                         </div>
                     ) : (
@@ -64,7 +69,7 @@ export function OrderActivityFeed({
                                 {activeOperationPackages.map(pkg => (
                                     <div 
                                         key={pkg.id} 
-                                        className="relative bg-white rounded-lg border-2 border-slate-200 p-3 w-[160px] flex-shrink-0 hover:shadow-lg transition-shadow"
+                                        className="relative bg-white rounded-md border-2 border-slate-200 p-3 w-[160px] flex-shrink-0 hover:shadow-sm transition-shadow"
                                     >
                                         {/* 3 Nokta Menüsü */}
                                         <div className="absolute top-1.5 left-1.5 z-10">
@@ -110,16 +115,21 @@ export function OrderActivityFeed({
                                                     pkg.status === 'picking_up' ? 'bg-orange-100 text-orange-700' :
                                                     'bg-red-100 text-red-700'
                                                 }`}>
-                                                    {pkg.status === 'assigned' ? '👤 Atandı' :
-                                                     pkg.status === 'picking_up' ? '🏃 Alınıyor' : '🚗 Yolda'}
+                                                    {pkg.status === 'assigned' ? (
+                                                        <span className="inline-flex items-center gap-0.5"><User className="w-2.5 h-2.5" strokeWidth={1.5} /> Atandı</span>
+                                                    ) : pkg.status === 'picking_up' ? (
+                                                        <span className="inline-flex items-center gap-0.5"><Footprints className="w-2.5 h-2.5" strokeWidth={1.5} /> Alınıyor</span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center gap-0.5"><Car className="w-2.5 h-2.5" strokeWidth={1.5} /> Yolda</span>
+                                                    )}
                                                 </span>
                                             </div>
                                             
                                             {/* Kurye - Merkez */}
                                             {pkg.courier_id && (
                                                 <div className="flex justify-center">
-                                                    <span className="text-[8px] bg-indigo-50 text-indigo-700 px-2 py-1 rounded font-semibold truncate max-w-full">
-                                                        🚴 {couriers.find(c => c.id === pkg.courier_id)?.full_name || 'Bilinmeyen'}
+                                                    <span className="text-[8px] bg-indigo-50 text-indigo-700 px-2 py-1 rounded font-semibold truncate max-w-full inline-flex items-center gap-0.5">
+                                                        <Bike className="w-2.5 h-2.5" strokeWidth={1.5} /> {couriers.find(c => c.id === pkg.courier_id)?.full_name || 'Bilinmeyen'}
                                                     </span>
                                                 </div>
                                             )}
@@ -159,7 +169,13 @@ export function OrderActivityFeed({
                                                         ? 'bg-purple-50 text-purple-700'
                                                         : 'bg-orange-50 text-orange-700'
                                                 }`}>
-                                                    {pkg.payment_method === 'cash' ? '💵 Nakit' : pkg.payment_method === 'iban' ? '🏦 IBAN' : '💳 Kart'}
+                                                    {pkg.payment_method === 'cash' ? (
+                                                        <span className="inline-flex items-center gap-0.5"><Banknote className="w-2.5 h-2.5" strokeWidth={1.5} /> Nakit</span>
+                                                    ) : pkg.payment_method === 'iban' ? (
+                                                        <span className="inline-flex items-center gap-0.5"><Building2 className="w-2.5 h-2.5" strokeWidth={1.5} /> IBAN</span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center gap-0.5"><CreditCard className="w-2.5 h-2.5" strokeWidth={1.5} /> Kart</span>
+                                                    )}
                                                 </span>
                                             </div>
                                         </div>

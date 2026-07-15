@@ -12,6 +12,12 @@ import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platfor
 import UpdateAmountModal from './UpdateAmountModal'
 import CancelOrderModal from './CancelOrderModal'
 import { stopRestaurantAlert } from '@/hooks/useRestaurantRealtimeNotifications'
+import {
+  Bell, ChefHat, CheckCircle, Clock, Package, MapPin, Inbox, X, Lock, Loader2,
+  Store, ShoppingCart, FileText, User, Phone, Compass, Pencil, AlertTriangle,
+  Bike, Banknote, CreditCard, Building2
+} from 'lucide-react'
+import type { ReactNode } from 'react'
 
 const PACKAGE_DETAIL_SELECT =
   'id, order_number, status, created_at, amount, subtotal, delivery_fee, customer_name, customer_phone, delivery_address, payment_method, items, platform, content, courier_id, getting_ready_at, ready_at, assigned_at, picked_up_at, delivered_at'
@@ -177,7 +183,7 @@ export default function KanbanBoard({
         stopRestaurantAlert()
         setSelectedPackage(pkg)
       }}
-      className={`relative p-4 rounded-lg border cursor-pointer ${
+      className={`relative p-4 rounded-md border cursor-pointer ${
         isDelayed
           ? darkMode
             ? 'bg-red-900/30 border-red-700 animate-pulse'
@@ -189,17 +195,18 @@ export default function KanbanBoard({
           : darkMode 
           ? 'bg-slate-800 border-slate-700' 
           : 'bg-white border-gray-200'
-      } shadow-sm hover:shadow-md transition-shadow ${
+      } shadow-sm hover:shadow-sm transition-shadow ${
         isDelayed ? 'ring-2 ring-red-500/50' : ''
       }`}
     >
       {/* 🔔 Gecikme Uyarısı Banner */}
       {isDelayed && (
-        <div className={`mb-3 p-2 rounded-lg ${
+        <div className={`mb-3 p-2 rounded-md ${
           darkMode ? 'bg-red-800/50 border border-red-700' : 'bg-red-100 border border-red-300'
         }`}>
-          <p className={`text-xs font-bold ${darkMode ? 'text-red-300' : 'text-red-700'} flex items-center gap-1`}>
-            ⏰ {delayedMinutes} dakikadır bekliyor!
+          <p className={`text-xs font-bold ${darkMode ? 'text-red-300' : 'text-red-700'} flex items-center gap-1.5`}>
+            <Clock className="w-3.5 h-3.5 text-gray-400 shrink-0" strokeWidth={1.5} />
+            {delayedMinutes} dakikadır bekliyor!
           </p>
           <p className={`text-xs ${darkMode ? 'text-red-400' : 'text-red-600'} mt-1`}>
             Lütfen hazırlık durumunu güncelleyin!
@@ -230,8 +237,8 @@ export default function KanbanBoard({
 
       {/* Content */}
       <div className={`text-xs mb-2 ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
-        <p className="font-medium mb-1">📦 {pkg.content}</p>
-        <p className="text-xs opacity-75">📍 {parseDeliveryAddress(pkg.delivery_address).address?.substring(0, 50)}...</p>
+        <p className="font-medium mb-1 flex items-start gap-1.5"><Package className="w-3.5 h-3.5 text-gray-400 shrink-0 mt-0.5" strokeWidth={1.5} />{pkg.content}</p>
+        <p className="text-xs opacity-75 flex items-start gap-1.5"><MapPin className="w-3 h-3 text-gray-400 shrink-0 mt-0.5" strokeWidth={1.5} />{parseDeliveryAddress(pkg.delivery_address).address?.substring(0, 50)}...</p>
       </div>
 
       {/* Footer */}
@@ -253,13 +260,13 @@ export default function KanbanBoard({
                 buttonAction()
               }}
               disabled={loading === pkg.id}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
                 darkMode
                   ? 'bg-orange-600 hover:bg-orange-700 text-white'
                   : 'bg-orange-500 hover:bg-orange-600 text-white'
               } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
-              {loading === pkg.id ? '⏳' : buttonText}
+              {loading === pkg.id ? <Loader2 className="w-3.5 h-3.5 animate-spin inline" strokeWidth={1.5} /> : buttonText}
             </button>
           )}
           
@@ -276,10 +283,10 @@ export default function KanbanBoard({
                 })
                 setCancelPackage(pkg)
               }}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-600 hover:bg-red-700 text-white transition-colors"
+              className="px-3 py-1.5 rounded-md text-xs font-semibold bg-red-600 hover:bg-red-700 text-white transition-colors flex items-center justify-center"
               title="Siparişi İptal Et"
             >
-              ❌
+              <X className="w-3.5 h-3.5" strokeWidth={1.5} />
             </button>
           )}
           
@@ -287,10 +294,10 @@ export default function KanbanBoard({
           {!canCancel && (
             <button
               disabled
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-600 text-gray-400 cursor-not-allowed"
+              className="px-3 py-1.5 rounded-md text-xs font-semibold bg-gray-600 text-gray-400 cursor-not-allowed flex items-center justify-center"
               title="Kurye yola çıktığı için iptal edemezsiniz"
             >
-              🔒
+              <Lock className="w-3.5 h-3.5" strokeWidth={1.5} />
             </button>
           )}
         </div>
@@ -310,14 +317,14 @@ export default function KanbanBoard({
   }: {
     title: string
     count: number
-    icon: string
+    icon: ReactNode
     color: string
     orders: Package[]
     showButton?: boolean
     buttonText?: string
     buttonAction?: (pkg: Package) => void
   }) => (
-    <div className={`rounded-xl border ${
+    <div className={`rounded-md border ${
       darkMode 
         ? 'bg-slate-900 border-slate-800' 
         : 'bg-gray-50 border-gray-200'
@@ -326,7 +333,7 @@ export default function KanbanBoard({
       <div className={`p-3 border-b ${darkMode ? 'border-slate-800' : 'border-gray-200'}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-xl">{icon}</span>
+            <span className="text-gray-400">{icon}</span>
             <h3 className={`font-bold text-base ${darkMode ? 'text-white' : 'text-gray-900'}`}>
               {title}
             </h3>
@@ -341,7 +348,7 @@ export default function KanbanBoard({
       <div className="p-4 space-y-3 max-h-[60vh] lg:max-h-[calc(100vh-300px)] overflow-y-auto">
         {orders.length === 0 ? (
           <div className={`text-center py-12 ${darkMode ? 'text-slate-500' : 'text-gray-400'}`}>
-            <p className="text-4xl mb-2">📭</p>
+            <Inbox className="w-8 h-8 mx-auto mb-2 text-gray-400" strokeWidth={1.5} />
             <p className="text-sm">Sipariş yok</p>
           </div>
         ) : (
@@ -399,17 +406,20 @@ export default function KanbanBoard({
 
         return (
         <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4" onClick={() => setSelectedPackage(null)}>
-          <div className={`rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto border shadow-2xl ${
+          <div className={`rounded-md p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto border shadow-sm ${
             darkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'
           }`} onClick={(e) => e.stopPropagation()}>
             {/* Başlık ve Kapat Butonu */}
             <div className={`flex justify-between items-center mb-4 sticky top-0 pb-4 border-b z-10 ${
               darkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'
             }`}>
-              <h3 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>📦 Sipariş Detayları</h3>
+              <h3 className={`text-xl font-bold flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                <Package className="w-5 h-5 text-gray-400" strokeWidth={1.5} />
+                Sipariş Detayları
+              </h3>
               <button
                 onClick={() => setSelectedPackage(null)}
-                className={`text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${
+                className={`text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-md transition-colors ${
                   darkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-100'
                 }`}
               >
@@ -432,14 +442,15 @@ export default function KanbanBoard({
                   )}
                 </div>
                 {restaurantName && (
-                  <p className={`text-sm ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
-                    🏪 {restaurantName}
+                  <p className={`text-sm flex items-center gap-1.5 ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                    <Store className="w-3.5 h-3.5 text-gray-400 shrink-0" strokeWidth={1.5} />
+                    {restaurantName}
                   </p>
                 )}
               </div>
 
               {/* Durum */}
-              <div className={`p-4 rounded-lg ${darkMode ? 'bg-slate-800' : 'bg-gray-50'}`}>
+              <div className={`p-4 rounded-md ${darkMode ? 'bg-slate-800' : 'bg-gray-50'}`}>
                 <div className="flex items-center justify-between">
                   <span className={`text-sm ${darkMode ? 'text-slate-400' : 'text-gray-600'}`}>Durum:</span>
                   <span className={`px-3 py-1.5 rounded-full text-sm font-semibold ${
@@ -458,11 +469,12 @@ export default function KanbanBoard({
               </div>
 
               {/* Sipariş İçeriği */}
-              <div className={`p-4 rounded-lg border ${
+              <div className={`p-4 rounded-md border ${
                 darkMode ? 'bg-[#0f172a] border-[#475569]' : 'bg-gray-800 border-gray-700'
               }`}>
                 <h4 className={`font-semibold mb-3 flex items-center gap-2 ${darkMode ? 'text-orange-400' : 'text-orange-500'}`}>
-                  🛒 Sipariş İçeriği
+                  <ShoppingCart className="w-4 h-4 text-gray-400" strokeWidth={1.5} />
+                  Sipariş İçeriği
                 </h4>
                 {detailLoading ? (
                   <div className={`text-sm py-4 text-center ${darkMode ? 'text-slate-400' : 'text-gray-400'}`}>
@@ -510,8 +522,9 @@ export default function KanbanBoard({
                             </ul>
                           )}
                           {item.item_note && (
-                            <p className={`mt-2 text-xs italic ${darkMode ? 'text-slate-300' : 'text-gray-300'}`}>
-                              📝 {item.item_note}
+                            <p className={`mt-2 text-xs italic flex items-start gap-1.5 ${darkMode ? 'text-slate-300' : 'text-gray-300'}`}>
+                              <FileText className="w-3 h-3 text-gray-400 shrink-0 mt-0.5" strokeWidth={1.5} />
+                              {item.item_note}
                             </p>
                           )}
                         </div>
@@ -522,26 +535,26 @@ export default function KanbanBoard({
               </div>
 
               {/* Müşteri Bilgileri */}
-              <div className={`p-4 rounded-lg space-y-3 ${darkMode ? 'bg-slate-800' : 'bg-gray-50'}`}>
+              <div className={`p-4 rounded-md space-y-3 ${darkMode ? 'bg-slate-800' : 'bg-gray-50'}`}>
                 <h4 className={`font-semibold mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Müşteri Bilgileri</h4>
                 <div>
                   <p className={`text-xs mb-1 ${darkMode ? 'text-slate-400' : 'text-gray-600'}`}>Ad Soyad</p>
-                  <p className={darkMode ? 'text-white' : 'text-gray-900'}>👤 {pkg.customer_name}</p>
+                  <p className={`flex items-center gap-1.5 ${darkMode ? 'text-white' : 'text-gray-900'}`}><User className="w-3.5 h-3.5 text-gray-400 shrink-0" strokeWidth={1.5} />{pkg.customer_name}</p>
                 </div>
                 {pkg.customer_phone && (
                   <div>
                     <p className={`text-xs mb-1 ${darkMode ? 'text-slate-400' : 'text-gray-600'}`}>Telefon</p>
-                    <p className={darkMode ? 'text-white' : 'text-gray-900'}>📞 {pkg.customer_phone}</p>
+                    <p className={`flex items-center gap-1.5 ${darkMode ? 'text-white' : 'text-gray-900'}`}><Phone className="w-3.5 h-3.5 text-gray-400 shrink-0" strokeWidth={1.5} />{pkg.customer_phone}</p>
                   </div>
                 )}
                 <div>
                   <p className={`text-xs mb-1 ${darkMode ? 'text-slate-400' : 'text-gray-600'}`}>Teslimat Adresi</p>
-                  <p className={darkMode ? 'text-white' : 'text-gray-900'}>📍 {displayAddress}</p>
+                  <p className={`flex items-start gap-1.5 ${darkMode ? 'text-white' : 'text-gray-900'}`}><MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0 mt-0.5" strokeWidth={1.5} />{displayAddress}</p>
                 </div>
                 <div>
                   <p className={`text-xs mb-1 ${darkMode ? 'text-slate-400' : 'text-gray-600'}`}>Adres Tarifi</p>
                   {addressTarif ? (
-                    <p className={`italic ${darkMode ? 'text-orange-300' : 'text-orange-700'}`}>🧭 {addressTarif}</p>
+                    <p className={`italic flex items-start gap-1.5 ${darkMode ? 'text-orange-300' : 'text-orange-700'}`}><Compass className="w-3.5 h-3.5 text-gray-400 shrink-0 mt-0.5" strokeWidth={1.5} />{addressTarif}</p>
                   ) : (
                     <p className={`text-sm italic ${darkMode ? 'text-slate-500' : 'text-gray-400'}`}>Tarif girilmemiş</p>
                   )}
@@ -549,7 +562,7 @@ export default function KanbanBoard({
               </div>
 
               {/* Tutar */}
-              <div className={`p-4 rounded-lg ${darkMode ? 'bg-slate-800' : 'bg-gray-50'}`}>
+              <div className={`p-4 rounded-md ${darkMode ? 'bg-slate-800' : 'bg-gray-50'}`}>
                 <div className="flex items-center justify-between mb-3">
                   <p className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Tutar</p>
                   {!['on_the_way', 'delivered', 'cancelled'].includes(pkg.status) && (
@@ -558,13 +571,14 @@ export default function KanbanBoard({
                         setUpdateAmountPackage(pkg)
                         setSelectedPackage(null)
                       }}
-                      className={`text-xs px-3 py-1 rounded-lg font-semibold transition-colors ${
+                      className={`text-xs px-3 py-1 rounded-md font-semibold transition-colors flex items-center gap-1 ${
                         darkMode
                           ? 'bg-orange-600 hover:bg-orange-700 text-white'
                           : 'bg-orange-500 hover:bg-orange-600 text-white'
                       }`}
                     >
-                      ✏️ Güncelle
+                      <Pencil className="w-3 h-3" strokeWidth={1.5} />
+                      Güncelle
                     </button>
                   )}
                 </div>
@@ -589,22 +603,23 @@ export default function KanbanBoard({
                   </div>
                 </div>
                 {['on_the_way', 'delivered', 'cancelled'].includes(pkg.status) && (
-                  <p className={`text-xs mt-2 ${darkMode ? 'text-slate-500' : 'text-gray-500'}`}>
-                    ⚠️ Tutar artık değiştirilemez
+                  <p className={`text-xs mt-2 flex items-center gap-1.5 ${darkMode ? 'text-slate-500' : 'text-gray-500'}`}>
+                    <AlertTriangle className="w-3 h-3 text-gray-400 shrink-0" strokeWidth={1.5} />
+                    Tutar artık değiştirilemez
                   </p>
                 )}
               </div>
 
               {/* Paket İçeriği */}
               {pkg.content && (
-                <div className={`p-4 rounded-lg ${darkMode ? 'bg-slate-800' : 'bg-gray-50'}`}>
+                <div className={`p-4 rounded-md ${darkMode ? 'bg-slate-800' : 'bg-gray-50'}`}>
                   <p className={`text-xs mb-1 ${darkMode ? 'text-slate-400' : 'text-gray-600'}`}>Paket İçeriği</p>
-                  <p className={darkMode ? 'text-orange-200' : 'text-orange-700'}>📝 {pkg.content}</p>
+                  <p className={`flex items-start gap-1.5 ${darkMode ? 'text-orange-200' : 'text-orange-700'}`}><FileText className="w-3.5 h-3.5 text-gray-400 shrink-0 mt-0.5" strokeWidth={1.5} />{pkg.content}</p>
                 </div>
               )}
 
               {/* Ödeme Yöntemi */}
-              <div className={`p-4 rounded-lg ${darkMode ? 'bg-slate-800' : 'bg-gray-50'}`}>
+              <div className={`p-4 rounded-md ${darkMode ? 'bg-slate-800' : 'bg-gray-50'}`}>
                 <div className="flex items-center justify-between">
                   <span className={`text-sm ${darkMode ? 'text-slate-400' : 'text-gray-600'}`}>Ödeme Yöntemi:</span>
                   <span className={`px-3 py-1 rounded text-sm font-medium ${
@@ -614,56 +629,63 @@ export default function KanbanBoard({
                       ? 'bg-purple-900/50 text-purple-300'
                       : 'bg-orange-900/50 text-orange-300'
                   }`}>
-                    {pkg.payment_method === 'cash' ? '💵 Nakit' : pkg.payment_method === 'iban' ? '🏦 IBAN' : '💳 Kart'}
+                    {pkg.payment_method === 'cash' ? (
+                      <span className="inline-flex items-center gap-1"><Banknote className="w-3.5 h-3.5" strokeWidth={1.5} />Nakit</span>
+                    ) : pkg.payment_method === 'iban' ? (
+                      <span className="inline-flex items-center gap-1"><Building2 className="w-3.5 h-3.5" strokeWidth={1.5} />IBAN</span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1"><CreditCard className="w-3.5 h-3.5" strokeWidth={1.5} />Kart</span>
+                    )}
                   </span>
                 </div>
               </div>
 
               {/* Kurye Bilgisi */}
               {pkg.courier_id && (
-                <div className={`p-4 rounded-lg ${darkMode ? 'bg-slate-800' : 'bg-gray-50'}`}>
+                <div className={`p-4 rounded-md ${darkMode ? 'bg-slate-800' : 'bg-gray-50'}`}>
                   <p className={`text-xs mb-1 ${darkMode ? 'text-slate-400' : 'text-gray-600'}`}>Atanan Kurye</p>
-                  <p className={darkMode ? 'text-white' : 'text-gray-900'}>🚴 {couriers.find(c => c.id === pkg.courier_id)?.full_name || 'Bilinmeyen'}</p>
+                  <p className={`flex items-center gap-1.5 ${darkMode ? 'text-white' : 'text-gray-900'}`}><Bike className="w-3.5 h-3.5 text-gray-400 shrink-0" strokeWidth={1.5} />{couriers.find(c => c.id === pkg.courier_id)?.full_name || 'Bilinmeyen'}</p>
                 </div>
               )}
 
               {/* Zaman Bilgileri */}
-              <div className={`p-4 rounded-lg space-y-2 ${darkMode ? 'bg-slate-800' : 'bg-gray-50'}`}>
+              <div className={`p-4 rounded-md space-y-2 ${darkMode ? 'bg-slate-800' : 'bg-gray-50'}`}>
                 <h4 className={`font-semibold mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Zaman Bilgileri</h4>
                 <div className="flex justify-between text-sm">
                   <span className={darkMode ? 'text-slate-400' : 'text-gray-600'}>Oluşturulma:</span>
-                  <span className={darkMode ? 'text-white' : 'text-gray-900'}>🕐 {formatTurkishTime(pkg.created_at)}</span>
+                  <span className={`flex items-center gap-1.5 ${darkMode ? 'text-white' : 'text-gray-900'}`}><Clock className="w-3.5 h-3.5 text-gray-400 shrink-0" strokeWidth={1.5} />{formatTurkishTime(pkg.created_at)}</span>
                 </div>
                 {pkg.getting_ready_at && (
                   <div className="flex justify-between text-sm">
                     <span className={darkMode ? 'text-slate-400' : 'text-gray-600'}>Hazırlanmaya Başlandı:</span>
-                    <span className={darkMode ? 'text-white' : 'text-gray-900'}>
-                      🕐 {formatTurkishTime(pkg.getting_ready_at)}
+                    <span className={`flex items-center gap-1.5 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                      <Clock className="w-3.5 h-3.5 text-gray-400 shrink-0" strokeWidth={1.5} />
+                      {formatTurkishTime(pkg.getting_ready_at)}
                     </span>
                   </div>
                 )}
                 {pkg.ready_at && (
                   <div className="flex justify-between text-sm">
                     <span className={darkMode ? 'text-slate-400' : 'text-gray-600'}>Hazır Oldu:</span>
-                    <span className={darkMode ? 'text-white' : 'text-gray-900'}>🕐 {formatTurkishTime(pkg.ready_at)}</span>
+                    <span className={`flex items-center gap-1.5 ${darkMode ? 'text-white' : 'text-gray-900'}`}><Clock className="w-3.5 h-3.5 text-gray-400 shrink-0" strokeWidth={1.5} />{formatTurkishTime(pkg.ready_at)}</span>
                   </div>
                 )}
                 {pkg.assigned_at && (
                   <div className="flex justify-between text-sm">
                     <span className={darkMode ? 'text-slate-400' : 'text-gray-600'}>Kuryeye Atandı:</span>
-                    <span className={darkMode ? 'text-white' : 'text-gray-900'}>🕐 {formatTurkishTime(pkg.assigned_at)}</span>
+                    <span className={`flex items-center gap-1.5 ${darkMode ? 'text-white' : 'text-gray-900'}`}><Clock className="w-3.5 h-3.5 text-gray-400 shrink-0" strokeWidth={1.5} />{formatTurkishTime(pkg.assigned_at)}</span>
                   </div>
                 )}
                 {pkg.picked_up_at && (
                   <div className="flex justify-between text-sm">
                     <span className={darkMode ? 'text-slate-400' : 'text-gray-600'}>Alındı:</span>
-                    <span className={darkMode ? 'text-white' : 'text-gray-900'}>🕐 {formatTurkishTime(pkg.picked_up_at)}</span>
+                    <span className={`flex items-center gap-1.5 ${darkMode ? 'text-white' : 'text-gray-900'}`}><Clock className="w-3.5 h-3.5 text-gray-400 shrink-0" strokeWidth={1.5} />{formatTurkishTime(pkg.picked_up_at)}</span>
                   </div>
                 )}
                 {pkg.delivered_at && (
                   <div className="flex justify-between text-sm">
                     <span className={darkMode ? 'text-slate-400' : 'text-gray-600'}>Teslim Edildi:</span>
-                    <span className={darkMode ? 'text-white' : 'text-gray-900'}>🕐 {formatTurkishTime(pkg.delivered_at)}</span>
+                    <span className={`flex items-center gap-1.5 ${darkMode ? 'text-white' : 'text-gray-900'}`}><Clock className="w-3.5 h-3.5 text-gray-400 shrink-0" strokeWidth={1.5} />{formatTurkishTime(pkg.delivered_at)}</span>
                   </div>
                 )}
               </div>
@@ -678,7 +700,7 @@ export default function KanbanBoard({
       <Column
         title="Yeni Siparişler"
         count={newOrders.length}
-        icon="🔔"
+        icon={<Bell className="w-5 h-5" strokeWidth={1.5} />}
         color={darkMode ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}
         orders={newOrders}
         showButton={true}
@@ -690,7 +712,7 @@ export default function KanbanBoard({
       <Column
         title="Hazırlanan"
         count={gettingReady.length}
-        icon="👨‍🍳"
+        icon={<ChefHat className="w-5 h-5" strokeWidth={1.5} />}
         color={darkMode ? 'bg-cyan-900/50 text-cyan-300' : 'bg-cyan-100 text-cyan-700'}
         orders={gettingReady}
         showButton={true}
@@ -702,7 +724,7 @@ export default function KanbanBoard({
       <Column
         title="Hazır"
         count={ready.length}
-        icon="✅"
+        icon={<CheckCircle className="w-5 h-5" strokeWidth={1.5} />}
         color={darkMode ? 'bg-teal-900/50 text-teal-300' : 'bg-teal-100 text-teal-700'}
         orders={ready}
         showButton={false}

@@ -7,6 +7,10 @@
 import { useState, useEffect } from 'react'
 import { useAdminData } from '../AdminDataProvider'
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
+import {
+  BarChart3, Calendar, CalendarDays, Banknote, CreditCard, Building2,
+  TrendingUp, Bike, Timer
+} from 'lucide-react'
 
 type TimeFilter = 'today' | 'week' | 'month'
 
@@ -222,79 +226,93 @@ export default function IstatistiklerPage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">📊 Genel İstatistikler</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-white mb-2 flex items-center gap-2">
+            <BarChart3 className="w-7 h-7 text-gray-400" strokeWidth={1.5} />
+            Genel İstatistikler
+          </h1>
           <p className="text-slate-400 text-sm">Ödeme yöntemleri dağılımı ve finansal özet</p>
         </div>
 
         {/* Zaman Filtreleri */}
-        <div className="bg-slate-900 rounded-xl border border-slate-800 p-4 mb-6">
+        <div className="bg-slate-900 rounded-md border border-slate-800 p-4 mb-6">
           <div className="flex gap-2 flex-wrap">
             <button
               onClick={() => setTimeFilter('today')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              className={`px-4 py-2 rounded-md font-medium transition-colors flex items-center gap-2 ${
                 timeFilter === 'today'
                   ? 'bg-orange-600 text-white'
                   : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
               }`}
             >
-              📅 Bugün
+              <Calendar className="w-4 h-4" strokeWidth={1.5} /> Bugün
             </button>
             <button
               onClick={() => setTimeFilter('week')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              className={`px-4 py-2 rounded-md font-medium transition-colors flex items-center gap-2 ${
                 timeFilter === 'week'
                   ? 'bg-orange-600 text-white'
                   : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
               }`}
             >
-              📆 Haftalık
+              <CalendarDays className="w-4 h-4" strokeWidth={1.5} /> Haftalık
             </button>
             <button
               onClick={() => setTimeFilter('month')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              className={`px-4 py-2 rounded-md font-medium transition-colors flex items-center gap-2 ${
                 timeFilter === 'month'
                   ? 'bg-orange-600 text-white'
                   : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
               }`}
             >
-              📊 Aylık
+              <BarChart3 className="w-4 h-4" strokeWidth={1.5} /> Aylık
             </button>
           </div>
-          <p className="text-slate-500 text-xs mt-2">
-            ⏱️ Otomatik yenileme: 30 saniye
+          <p className="text-slate-500 text-xs mt-2 flex items-center gap-1">
+            <Timer className="w-3.5 h-3.5" strokeWidth={1.5} /> Otomatik yenileme: 30 saniye
           </p>
         </div>
 
         {/* İstatistik Kartları */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-xl border border-slate-700 p-6">
-            <div className="text-slate-400 text-sm mb-2">💰 Toplam Ciro</div>
-            <div className="text-3xl font-bold text-white">{stats.total.toFixed(2)} ₺</div>
+          <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-md border border-white/5 p-6 shadow-sm">
+            <div className="text-xs uppercase tracking-wider text-gray-400 mb-2 flex items-center gap-1">
+              <Banknote className="w-3.5 h-3.5" strokeWidth={1.5} /> Toplam Ciro
+            </div>
+            <div className="text-3xl font-semibold text-white">{stats.total.toFixed(2)} ₺</div>
           </div>
 
-          <div className="bg-gradient-to-br from-green-900/30 to-green-800/20 rounded-xl border border-green-700/50 p-6">
-            <div className="text-green-400 text-sm mb-2">💵 Nakit</div>
-            <div className="text-3xl font-bold text-green-300">{stats.cash.toFixed(2)} ₺</div>
+          <div className="bg-gradient-to-br from-green-900/30 to-green-800/20 rounded-md border border-green-700/50 p-6 shadow-sm">
+            <div className="text-xs uppercase tracking-wider text-green-400 mb-2 flex items-center gap-1">
+              <Banknote className="w-3.5 h-3.5" strokeWidth={1.5} /> Nakit
+            </div>
+            <div className="text-3xl font-semibold text-green-300">{stats.cash.toFixed(2)} ₺</div>
             <div className="text-green-500 text-xs mt-1">{getPercentage(stats.cash)}%</div>
           </div>
 
-          <div className="bg-gradient-to-br from-blue-900/30 to-blue-800/20 rounded-xl border border-blue-700/50 p-6">
-            <div className="text-blue-400 text-sm mb-2">💳 Kart</div>
-            <div className="text-3xl font-bold text-blue-300">{stats.card.toFixed(2)} ₺</div>
+          <div className="bg-gradient-to-br from-blue-900/30 to-blue-800/20 rounded-md border border-blue-700/50 p-6 shadow-sm">
+            <div className="text-xs uppercase tracking-wider text-blue-400 mb-2 flex items-center gap-1">
+              <CreditCard className="w-3.5 h-3.5" strokeWidth={1.5} /> Kart
+            </div>
+            <div className="text-3xl font-semibold text-blue-300">{stats.card.toFixed(2)} ₺</div>
             <div className="text-blue-500 text-xs mt-1">{getPercentage(stats.card)}%</div>
           </div>
 
-          <div className="bg-gradient-to-br from-orange-900/30 to-orange-800/20 rounded-xl border border-orange-700/50 p-6">
-            <div className="text-orange-400 text-sm mb-2">🏦 IBAN</div>
-            <div className="text-3xl font-bold text-orange-300">{stats.iban.toFixed(2)} ₺</div>
+          <div className="bg-gradient-to-br from-orange-900/30 to-orange-800/20 rounded-md border border-orange-700/50 p-6 shadow-sm">
+            <div className="text-xs uppercase tracking-wider text-orange-400 mb-2 flex items-center gap-1">
+              <Building2 className="w-3.5 h-3.5" strokeWidth={1.5} /> IBAN
+            </div>
+            <div className="text-3xl font-semibold text-orange-300">{stats.iban.toFixed(2)} ₺</div>
             <div className="text-orange-500 text-xs mt-1">{getPercentage(stats.iban)}%</div>
             <div className="text-orange-600 text-[10px] mt-1">Ayşe Yarım</div>
           </div>
         </div>
 
         {/* Pasta Grafiği */}
-        <div className="bg-slate-900 rounded-xl border border-slate-800 p-6">
-          <h2 className="text-xl font-bold text-white mb-4">📈 Ödeme Yöntemleri Dağılımı</h2>
+        <div className="bg-slate-900 rounded-md border border-slate-800 p-6">
+          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-gray-400" strokeWidth={1.5} />
+            Ödeme Yöntemleri Dağılımı
+          </h2>
           
           {stats.total === 0 ? (
             <div className="text-center py-20">
@@ -336,33 +354,33 @@ export default function IstatistiklerPage() {
 
               {/* Detaylı Liste */}
               <div className="space-y-4">
-                <div className="bg-green-900/20 border border-green-700/50 rounded-lg p-4">
+                <div className="bg-green-900/20 border border-green-700/50 rounded-md p-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 bg-green-500 rounded-full"></div>
-                      <span className="text-white font-medium">💵 Nakit</span>
+                      <span className="text-white font-medium flex items-center gap-1"><Banknote className="w-3.5 h-3.5" strokeWidth={1.5} /> Nakit</span>
                     </div>
                     <span className="text-green-400 font-bold">{getPercentage(stats.cash)}%</span>
                   </div>
                   <div className="text-2xl font-bold text-green-300">{stats.cash.toFixed(2)} ₺</div>
                 </div>
 
-                <div className="bg-blue-900/20 border border-blue-700/50 rounded-lg p-4">
+                <div className="bg-blue-900/20 border border-blue-700/50 rounded-md p-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
-                      <span className="text-white font-medium">💳 Kart</span>
+                      <span className="text-white font-medium flex items-center gap-1"><CreditCard className="w-3.5 h-3.5" strokeWidth={1.5} /> Kart</span>
                     </div>
                     <span className="text-blue-400 font-bold">{getPercentage(stats.card)}%</span>
                   </div>
                   <div className="text-2xl font-bold text-blue-300">{stats.card.toFixed(2)} ₺</div>
                 </div>
 
-                <div className="bg-orange-900/20 border border-orange-700/50 rounded-lg p-4">
+                <div className="bg-orange-900/20 border border-orange-700/50 rounded-md p-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 bg-orange-500 rounded-full"></div>
-                      <span className="text-white font-medium">🏦 IBAN</span>
+                      <span className="text-white font-medium flex items-center gap-1"><Building2 className="w-3.5 h-3.5" strokeWidth={1.5} /> IBAN</span>
                     </div>
                     <span className="text-orange-400 font-bold">{getPercentage(stats.iban)}%</span>
                   </div>
@@ -375,8 +393,11 @@ export default function IstatistiklerPage() {
         </div>
 
         {/* Kurye Performans Grafiği */}
-        <div className="bg-slate-900 rounded-xl border border-slate-800 p-6 mt-6">
-          <h2 className="text-xl font-bold text-white mb-4">🚴 Kurye Performansı</h2>
+        <div className="bg-slate-900 rounded-md border border-slate-800 p-6 mt-6">
+          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+            <Bike className="w-5 h-5 text-gray-400" strokeWidth={1.5} />
+            Kurye Performansı
+          </h2>
           
           {courierStats.length === 0 ? (
             <div className="text-center py-20">
@@ -435,7 +456,7 @@ export default function IstatistiklerPage() {
                   const percentage = ((courier.packageCount / totalPackages) * 100).toFixed(1)
 
                   return (
-                    <div key={courier.courier_id} className={`${colorSet.bg} border ${colorSet.border} rounded-lg p-4`}>
+                    <div key={courier.courier_id} className={`${colorSet.bg} border ${colorSet.border} rounded-md p-4`}>
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
                           <div className={`w-4 h-4 ${colorSet.dot} rounded-full`}></div>

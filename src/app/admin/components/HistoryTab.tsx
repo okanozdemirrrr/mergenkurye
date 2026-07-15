@@ -13,6 +13,7 @@ import { OrderActionMenu } from '@/components/ui/OrderActionMenu'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
 import { formatTurkishTime } from '@/utils/dateHelpers'
 import { useAdminData } from '../AdminDataProvider'
+import { ClipboardList, Package as PackageIcon, Ban, Clock } from 'lucide-react'
 
 interface HistoryTabProps {
     deliveredPackages?: Package[]
@@ -202,7 +203,7 @@ export function HistoryTab({
                 })
 
             } catch (error) {
-                console.error('⚠️ Geçmiş siparişler çekilirken hata oluştu:', error)
+                console.error('Geçmiş siparişler çekilirken hata oluştu:', error)
             } finally {
                 if (active) {
                     setIsLoading(false)
@@ -304,12 +305,12 @@ export function HistoryTab({
             {/* DETAY MODAL */}
             {selectedPackage && (
                 <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4" onClick={() => setSelectedPackage(null)}>
-                    <div className="bg-slate-900 rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-700 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                    <div className="bg-slate-900 rounded-md p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-700 shadow-sm" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-between items-center mb-4 sticky top-0 bg-slate-900 pb-4 border-b border-slate-700 z-10">
-                            <h3 className="text-xl font-bold text-white">📦 Sipariş Detayları</h3>
+                            <h3 className="text-xl font-bold text-white">Sipariş Detayları</h3>
                             <button
                                 onClick={() => setSelectedPackage(null)}
-                                className="text-slate-400 hover:text-white text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-800 transition-colors"
+                                className="text-slate-400 hover:text-white text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-md hover:bg-slate-800 transition-colors"
                             >
                                 ×
                             </button>
@@ -327,7 +328,7 @@ export function HistoryTab({
                                 )}
                             </div>
 
-                            <div className="bg-slate-800 p-4 rounded-lg">
+                            <div className="bg-slate-800 p-4 rounded-md">
                                 <div className="flex items-center justify-between">
                                     <span className="text-slate-400 text-sm">Durum:</span>
                                     <span className={`px-3 py-1.5 rounded-full text-sm font-semibold ${
@@ -339,49 +340,49 @@ export function HistoryTab({
                                         'bg-green-900/50 text-green-300'
                                     }`}>
                                         {selectedPackage.status === 'cancelled'
-                                            ? (selectedPackage.is_chargeable_cancellation ? '💰 Ücretli İptal' : '🚫 Ücretsiz İptal')
+                                            ? (selectedPackage.is_chargeable_cancellation ? 'Ücretli İptal' : 'Ücretsiz İptal')
                                             : getStatusText(selectedPackage.status)}
                                     </span>
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="bg-slate-800 p-4 rounded-lg">
+                                <div className="bg-slate-800 p-4 rounded-md">
                                     <p className="text-slate-400 text-xs mb-1">Restoran</p>
-                                    <p className="text-white font-semibold">🍽️ {selectedPackage.restaurant?.name || 'Bilinmeyen'}</p>
+                                    <p className="text-white font-semibold">{selectedPackage.restaurant?.name || 'Bilinmeyen'}</p>
                                 </div>
-                                <div className="bg-slate-800 p-4 rounded-lg">
+                                <div className="bg-slate-800 p-4 rounded-md">
                                     <p className="text-slate-400 text-xs mb-1">Tutar</p>
                                     <p className="text-green-400 font-bold text-xl">{selectedPackage.amount}₺</p>
                                 </div>
                             </div>
 
-                            <div className="bg-slate-800 p-4 rounded-lg space-y-3">
+                            <div className="bg-slate-800 p-4 rounded-md space-y-3">
                                 <h4 className="text-white font-semibold mb-2">Müşteri Bilgileri</h4>
                                 <div>
                                     <p className="text-slate-400 text-xs mb-1">Ad Soyad</p>
-                                    <p className="text-white">👤 {selectedPackage.customer_name}</p>
+                                    <p className="text-white">{selectedPackage.customer_name}</p>
                                 </div>
                                 {selectedPackage.customer_phone && (
                                     <div>
                                         <p className="text-slate-400 text-xs mb-1">Telefon</p>
-                                        <p className="text-white">📞 {selectedPackage.customer_phone}</p>
+                                        <p className="text-white">{selectedPackage.customer_phone}</p>
                                     </div>
                                 )}
                                 <div>
                                     <p className="text-slate-400 text-xs mb-1">Teslimat Adresi</p>
-                                    <p className="text-white">📍 {selectedPackage.delivery_address}</p>
+                                    <p className="text-white">{selectedPackage.delivery_address}</p>
                                 </div>
                             </div>
 
                             {selectedPackage.content && (
-                                <div className="bg-slate-800 p-4 rounded-lg">
+                                <div className="bg-slate-800 p-4 rounded-md">
                                     <p className="text-slate-400 text-xs mb-1">Paket İçeriği</p>
-                                    <p className="text-orange-200">📝 {selectedPackage.content}</p>
+                                    <p className="text-orange-200">{selectedPackage.content}</p>
                                 </div>
                             )}
 
-                            <div className="bg-slate-800 p-4 rounded-lg">
+                            <div className="bg-slate-800 p-4 rounded-md">
                                 <div className="flex items-center justify-between">
                                     <span className="text-slate-400 text-sm">Ödeme Yöntemi:</span>
                                     <span className={`px-3 py-1 rounded text-sm font-medium ${
@@ -391,60 +392,63 @@ export function HistoryTab({
                                             ? 'bg-purple-900/50 text-purple-300'
                                             : 'bg-orange-900/50 text-orange-300'
                                     }`}>
-                                        {selectedPackage.payment_method === 'cash' ? '💵 Nakit' : selectedPackage.payment_method === 'iban' ? '🏦 IBAN' : '💳 Kart'}
+                                        {selectedPackage.payment_method === 'cash' ? 'Nakit' : selectedPackage.payment_method === 'iban' ? 'IBAN' : 'Kart'}
                                     </span>
                                 </div>
                             </div>
 
                             {selectedPackage.courier_id && (
-                                <div className="bg-slate-800 p-4 rounded-lg">
+                                <div className="bg-slate-800 p-4 rounded-md">
                                     <p className="text-slate-400 text-xs mb-1">Atanan Kurye</p>
-                                    <p className="text-white">🚴 {couriers.find(c => c.id === selectedPackage.courier_id)?.full_name || selectedPackage.courier_name || 'Bilinmeyen'}</p>
+                                    <p className="text-white">{couriers.find(c => c.id === selectedPackage.courier_id)?.full_name || selectedPackage.courier_name || 'Bilinmeyen'}</p>
                                 </div>
                             )}
 
-                            <div className="bg-slate-800 p-4 rounded-lg space-y-2">
-                                <h4 className="text-white font-semibold mb-2">⏱️ Zaman Çizelgesi</h4>
+                            <div className="bg-slate-800 p-4 rounded-md space-y-2">
+                                <h4 className="text-white font-semibold mb-2 flex items-center gap-2">
+                                    <Clock className="w-4 h-4 text-gray-400" strokeWidth={1.5} />
+                                    Zaman Çizelgesi
+                                </h4>
                                 
                                 <div className="flex justify-between text-sm">
-                                    <span className="text-slate-400">📝 Oluşturulma:</span>
+                                    <span className="text-slate-400">Oluşturulma:</span>
                                     <span className="text-white font-medium">
                                         {selectedPackage.created_at ? formatTurkishTime(selectedPackage.created_at) : '-'}
                                     </span>
                                 </div>
                                 <div className="flex justify-between text-sm">
-                                    <span className="text-slate-400">👨‍🍳 Hazırlamaya Başlama:</span>
+                                    <span className="text-slate-400">Hazırlamaya Başlama:</span>
                                     <span className="text-white font-medium">
                                         {selectedPackage.getting_ready_at ? formatTurkishTime(selectedPackage.getting_ready_at) : '-'}
                                     </span>
                                 </div>
                                 <div className="flex justify-between text-sm">
-                                    <span className="text-slate-400">✅ Hazır Olma:</span>
+                                    <span className="text-slate-400">Hazır Olma:</span>
                                     <span className="text-white font-medium">
                                         {selectedPackage.ready_at ? formatTurkishTime(selectedPackage.ready_at) : '-'}
                                     </span>
                                 </div>
                                 <div className="flex justify-between text-sm">
-                                    <span className="text-slate-400">✔️ Kurye Kabul Saati:</span>
+                                    <span className="text-slate-400">Kurye Kabul Saati:</span>
                                     <span className="text-white font-medium">
                                         {selectedPackage.assigned_at ? formatTurkishTime(selectedPackage.assigned_at) : '-'}
                                     </span>
                                 </div>
                                 <div className="flex justify-between text-sm">
-                                    <span className="text-slate-400">🏪 Esnaftan Alınma:</span>
+                                    <span className="text-slate-400">Esnaftan Alınma:</span>
                                     <span className="text-white font-medium">
                                         {selectedPackage.picked_up_at ? formatTurkishTime(selectedPackage.picked_up_at) : '-'}
                                     </span>
                                 </div>
                                 <div className="flex justify-between text-sm">
-                                    <span className="text-slate-400">🎯 Teslim Edilme:</span>
+                                    <span className="text-slate-400">Teslim Edilme:</span>
                                     <span className="text-white font-medium">
                                         {selectedPackage.delivered_at ? formatTurkishTime(selectedPackage.delivered_at) : '-'}
                                     </span>
                                 </div>
                                 {selectedPackage.cancelled_at && (
                                     <div className="flex justify-between text-sm border-t border-slate-700 pt-2 mt-2">
-                                        <span className="text-red-400">❌ İptal:</span>
+                                        <span className="text-red-400">İptal:</span>
                                         <span className="text-red-300 font-medium">
                                             {formatTurkishTime(selectedPackage.cancelled_at)}
                                         </span>
@@ -453,7 +457,7 @@ export function HistoryTab({
                             </div>
 
                             {selectedPackage.status === 'cancelled' && (
-                                <div className="bg-red-900/20 p-4 rounded-lg border border-red-700">
+                                <div className="bg-red-900/20 p-4 rounded-md border border-red-700">
                                     <h4 className="text-red-300 font-semibold mb-2">İptal Bilgileri</h4>
                                     {selectedPackage.cancelled_by && (
                                         <div className="flex justify-between text-sm mb-1">
@@ -474,41 +478,41 @@ export function HistoryTab({
                 </div>
             )}
 
-            <div id="history-container" className="bg-slate-900 shadow-xl rounded-2xl p-6">
+            <div id="history-container" className="bg-slate-900 shadow-sm rounded-md border border-slate-800 p-6">
                 <div className="flex flex-col gap-4 mb-6">
                     {/* Başlık ve Kategorik Filtre */}
                     <div className="flex justify-between items-center">
                         <div className="flex items-center gap-4">
-                            <h2 className="text-2xl font-bold">📋 Geçmiş Siparişler</h2>
+                            <h2 className="text-2xl font-bold">Geçmiş Siparişler</h2>
                             
                             {/* Kategorik Filtre Butonları */}
                             <div className="flex gap-2">
                                 <button
                                     onClick={() => handleFilterChange('all')}
-                                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${statusFilter === 'all'
-                                        ? 'bg-orange-600 text-white shadow-lg'
+                                    className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${statusFilter === 'all'
+                                        ? 'bg-orange-600 text-white shadow-sm'
                                         : 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700 hover:text-white'
                                         }`}
                                 >
-                                    📦 Tümü
+                                    Tümü
                                 </button>
                                 <button
                                     onClick={() => handleFilterChange('delivered')}
-                                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${statusFilter === 'delivered'
-                                        ? 'bg-green-600 text-white shadow-lg'
+                                    className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${statusFilter === 'delivered'
+                                        ? 'bg-green-600 text-white shadow-sm'
                                         : 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700 hover:text-white'
                                         }`}
                                 >
-                                    ✅ Teslim Edilen
+                                    Teslim Edilen
                                 </button>
                                 <button
                                     onClick={() => handleFilterChange('cancelled')}
-                                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${statusFilter === 'cancelled'
-                                        ? 'bg-red-600 text-white shadow-lg'
+                                    className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${statusFilter === 'cancelled'
+                                        ? 'bg-red-600 text-white shadow-sm'
                                         : 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700 hover:text-white'
                                         }`}
                                 >
-                                    🚫 İptal Edilen
+                                    <span className="inline-flex items-center gap-1"><Ban className="w-3.5 h-3.5" strokeWidth={1.5} /> İptal Edilen</span>
                                 </button>
                             </div>
                         </div>
@@ -529,7 +533,7 @@ export function HistoryTab({
                                     const todayStr = turkeyDate.toISOString().split('T')[0]
                                     handleDateFilterChange(todayStr, todayStr)
                                 }}
-                                className="px-3 py-1 bg-orange-950/40 text-orange-400 border border-orange-900/60 rounded-lg text-sm font-medium hover:bg-orange-950/60 transition-colors"
+                                className="px-3 py-1 bg-orange-950/40 text-orange-400 border border-orange-900/60 rounded-md text-sm font-medium hover:bg-orange-950/60 transition-colors"
                             >
                                 Bugün
                             </button>
@@ -541,7 +545,7 @@ export function HistoryTab({
                                     const yesterdayStr = turkeyDate.toISOString().split('T')[0]
                                     handleDateFilterChange(yesterdayStr, yesterdayStr)
                                 }}
-                                className="px-3 py-1 bg-slate-800 text-slate-300 border border-slate-700 rounded-lg text-sm font-medium hover:bg-slate-700 transition-colors"
+                                className="px-3 py-1 bg-slate-800 text-slate-300 border border-slate-700 rounded-md text-sm font-medium hover:bg-slate-700 transition-colors"
                             >
                                 Dün
                             </button>
@@ -553,7 +557,7 @@ export function HistoryTab({
                                     turkeyWeekAgo.setDate(turkeyToday.getDate() - 7)
                                     handleDateFilterChange(turkeyWeekAgo.toISOString().split('T')[0], turkeyToday.toISOString().split('T')[0])
                                 }}
-                                className="px-3 py-1 bg-slate-800 text-slate-300 border border-slate-700 rounded-lg text-sm font-medium hover:bg-slate-700 transition-colors"
+                                className="px-3 py-1 bg-slate-800 text-slate-300 border border-slate-700 rounded-md text-sm font-medium hover:bg-slate-700 transition-colors"
                             >
                                 Son 7 Gün
                             </button>
@@ -563,7 +567,7 @@ export function HistoryTab({
                             type="date"
                             value={startDate || ''}
                             onChange={(e) => handleDateFilterChange(e.target.value || null, endDate)}
-                            className="px-3 py-2 bg-slate-850 border border-slate-700 rounded-lg text-sm text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
+                            className="px-3 py-2 bg-slate-850 border border-slate-700 rounded-md text-sm text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
                             placeholder="Başlangıç"
                         />
                         <span className="text-slate-500">-</span>
@@ -571,37 +575,37 @@ export function HistoryTab({
                             type="date"
                             value={endDate || ''}
                             onChange={(e) => handleDateFilterChange(startDate, e.target.value || null)}
-                            className="px-3 py-2 bg-slate-850 border border-slate-700 rounded-lg text-sm text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
+                            className="px-3 py-2 bg-slate-850 border border-slate-700 rounded-md text-sm text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
                             placeholder="Bitiş"
                         />
                         <button
                             onClick={() => handleDateFilterChange(null, null)}
-                            className="px-3 py-2 bg-slate-800 text-white border border-slate-700 rounded-lg text-sm font-medium hover:bg-slate-700 transition-colors"
+                            className="px-3 py-2 bg-slate-800 text-white border border-slate-700 rounded-md text-sm font-medium hover:bg-slate-700 transition-colors"
                         >
-                            🗓️ Tüm Tarihler
+                            Tüm Tarihler
                         </button>
                     </div>
                 </div>
 
                 {/* İstatistikler */}
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-                    <div className="bg-slate-800 border border-slate-700/60 p-4 rounded-xl shadow-md">
+                    <div className="bg-slate-800 border border-slate-700/60 p-4 rounded-md shadow-sm">
                         <div className="text-xs text-orange-400 font-medium uppercase tracking-wider mb-1">Toplam Sipariş</div>
                         <div className="text-2xl font-bold text-white">{totalCount}</div>
                     </div>
-                    <div className="bg-slate-800 border border-slate-700/60 p-4 rounded-xl shadow-md">
+                    <div className="bg-slate-800 border border-slate-700/60 p-4 rounded-md shadow-sm">
                         <div className="text-xs text-blue-400 font-medium uppercase tracking-wider mb-1">Sayfa</div>
                         <div className="text-2xl font-bold text-white">{currentPage} / {totalPages || 1}</div>
                     </div>
-                    <div className="bg-slate-800 border border-slate-700/60 p-4 rounded-xl shadow-md">
+                    <div className="bg-slate-800 border border-slate-700/60 p-4 rounded-md shadow-sm">
                         <div className="text-xs text-green-400 font-medium uppercase tracking-wider mb-1">Toplam Tutar</div>
                         <div className="text-2xl font-bold text-green-400">{stats.totalAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺</div>
                     </div>
-                    <div className="bg-slate-800 border border-slate-700/60 p-4 rounded-xl shadow-md">
+                    <div className="bg-slate-800 border border-slate-700/60 p-4 rounded-md shadow-sm">
                         <div className="text-xs text-emerald-400 font-medium uppercase tracking-wider mb-1">Nakit</div>
                         <div className="text-2xl font-bold text-white">{stats.cashAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺</div>
                     </div>
-                    <div className="bg-slate-800 border border-slate-700/60 p-4 rounded-xl shadow-md">
+                    <div className="bg-slate-800 border border-slate-700/60 p-4 rounded-md shadow-sm">
                         <div className="text-xs text-sky-400 font-medium uppercase tracking-wider mb-1">Kart / IBAN</div>
                         <div className="text-2xl font-bold text-white">{stats.cardAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺</div>
                     </div>
@@ -682,7 +686,7 @@ export function HistoryTab({
                                                             ? 'bg-orange-900/40 text-orange-300'
                                                             : 'bg-slate-700/60 text-slate-400'
                                                     }`}>
-                                                        {pkg.is_chargeable_cancellation ? '💰 ÜCRETLİ İPTAL' : '🚫 İPTAL'}
+                                                        {pkg.is_chargeable_cancellation ? 'ÜCRETLİ İPTAL' : 'İPTAL'}
                                                     </span>
                                                 )}
                                             </div>
@@ -706,7 +710,7 @@ export function HistoryTab({
                                         <td className="py-3 px-4 font-medium text-white">
                                             <div>{pkg.customer_name}</div>
                                             {pkg.customer_phone && (
-                                                <div className="text-xs text-slate-400 mt-1">📞 {pkg.customer_phone}</div>
+                                                <div className="text-xs text-slate-400 mt-1">{pkg.customer_phone}</div>
                                             )}
                                         </td>
                                         <td className="py-3 px-4 text-white">{pkg.restaurant?.name}</td>
@@ -727,11 +731,11 @@ export function HistoryTab({
                                                         : 'bg-slate-800 text-slate-300'
                                                 }`}>
                                                 {pkg.status === 'delivered'
-                                                    ? '✅ Teslim Edildi'
+                                                    ? 'Teslim Edildi'
                                                     : pkg.status === 'cancelled' && pkg.is_chargeable_cancellation
-                                                        ? '💰 Ücretli İptal'
+                                                        ? 'Ücretli İptal'
                                                         : pkg.status === 'cancelled'
-                                                            ? '🚫 Ücretsiz İptal'
+                                                            ? 'Ücretsiz İptal'
                                                             : pkg.status}
                                             </span>
                                         </td>
@@ -753,7 +757,7 @@ export function HistoryTab({
                                                     ? 'bg-purple-950/60 text-purple-400 border border-purple-900/30'
                                                     : 'bg-orange-950/60 text-orange-400 border border-orange-900/30'
                                                     }`}>
-                                                    {pkg.payment_method === 'cash' ? '💵 Nakit' : pkg.payment_method === 'iban' ? '🏦 IBAN' : '💳 Kart'}
+                                                    {pkg.payment_method === 'cash' ? 'Nakit' : pkg.payment_method === 'iban' ? 'IBAN' : 'Kart'}
                                                 </span>
                                             )}
                                         </td>
@@ -771,7 +775,7 @@ export function HistoryTab({
                         <button
                             onClick={() => handlePageChange(currentPage - 1)}
                             disabled={currentPage === 1}
-                            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                                 currentPage === 1
                                     ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
                                     : 'bg-slate-700 text-white hover:bg-slate-600 border border-slate-600'
@@ -802,9 +806,9 @@ export function HistoryTab({
                                     <button
                                         key={pageNum}
                                         onClick={() => handlePageChange(pageNum)}
-                                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                        className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                                             currentPage === pageNum
-                                                ? 'bg-orange-600 text-white shadow-lg'
+                                                ? 'bg-orange-600 text-white shadow-sm'
                                                 : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
                                         }`}
                                     >
@@ -818,7 +822,7 @@ export function HistoryTab({
                         <button
                             onClick={() => handlePageChange(currentPage + 1)}
                             disabled={currentPage === totalPages}
-                            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                                 currentPage === totalPages
                                     ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
                                     : 'bg-slate-700 text-white hover:bg-slate-600 border border-slate-600'
@@ -836,12 +840,12 @@ export function HistoryTab({
                     onClick={closeAmountModal}
                 >
                     <div
-                        className="bg-slate-900 border border-slate-700 rounded-xl p-6 max-w-md w-full shadow-2xl"
+                        className="bg-slate-900 border border-slate-700 rounded-md p-6 max-w-md w-full shadow-sm"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <h3 className="text-xl font-bold text-white mb-4">Sipariş Tutarı Değiştir</h3>
 
-                        <div className="mb-4 p-3 rounded-lg bg-slate-800">
+                        <div className="mb-4 p-3 rounded-md bg-slate-800">
                             <p className="text-sm text-slate-400">Sipariş / Müşteri</p>
                             <p className="font-bold text-orange-400">
                                 {amountModalPackage.order_number || `#${amountModalPackage.id}`}
@@ -851,7 +855,7 @@ export function HistoryTab({
 
                         <div className="mb-4">
                             <label className="block text-sm font-medium text-slate-300 mb-2">Mevcut Tutar</label>
-                            <div className="p-3 rounded-lg bg-slate-800">
+                            <div className="p-3 rounded-md bg-slate-800">
                                 <p className="text-2xl font-bold text-green-400">{amountModalPackage.amount}₺</p>
                             </div>
                         </div>
@@ -864,14 +868,14 @@ export function HistoryTab({
                                 min="0"
                                 value={newAmount}
                                 onChange={(e) => setNewAmount(e.target.value)}
-                                className="w-full px-4 py-3 rounded-lg border bg-slate-800 border-slate-700 text-white text-lg font-bold outline-none focus:border-orange-500 transition-colors"
+                                className="w-full px-4 py-3 rounded-md border bg-slate-800 border-slate-700 text-white text-lg font-bold outline-none focus:border-orange-500 transition-colors"
                                 placeholder="Yeni tutarı girin"
                                 autoFocus
                             />
                         </div>
 
                         {amountUpdateError && (
-                            <div className="mb-4 p-3 bg-red-900/30 border border-red-700/50 rounded-lg">
+                            <div className="mb-4 p-3 bg-red-900/30 border border-red-700/50 rounded-md">
                                 <p className="text-red-300 text-sm">{amountUpdateError}</p>
                             </div>
                         )}
@@ -879,14 +883,14 @@ export function HistoryTab({
                         <div className="flex gap-3">
                             <button
                                 onClick={closeAmountModal}
-                                className="flex-1 px-4 py-3 rounded-lg font-semibold bg-slate-700 hover:bg-slate-600 text-white transition-colors"
+                                className="flex-1 px-4 py-3 rounded-md font-semibold bg-slate-700 hover:bg-slate-600 text-white transition-colors"
                             >
                                 İptal
                             </button>
                             <button
                                 onClick={handleUpdateAmount}
                                 disabled={isUpdatingAmount}
-                                className="flex-1 px-4 py-3 rounded-lg font-semibold bg-orange-600 hover:bg-orange-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                className="flex-1 px-4 py-3 rounded-md font-semibold bg-orange-600 hover:bg-orange-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                             >
                                 {isUpdatingAmount ? 'Güncelleniyor...' : 'Güncelle'}
                             </button>

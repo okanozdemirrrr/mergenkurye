@@ -5,8 +5,8 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Maximize2, Minimize2 } from 'lucide-react'
-import { Package, Courier } from '@/types'
+import { Maximize2, Minimize2, Map, Package, Bike, Utensils } from 'lucide-react'
+import { Package as PackageType, Courier } from '@/types'
 import { supabase } from '@/app/lib/supabase'
 import dynamic from 'next/dynamic'
 import 'leaflet/dist/leaflet.css'
@@ -64,7 +64,7 @@ interface Restaurant {
 }
 
 interface LiveMapComponentProps {
-  packages: Package[]
+  packages: PackageType[]
   couriers: Courier[]
   restaurants: Restaurant[]
   onRefresh?: () => void
@@ -87,11 +87,21 @@ export function LiveMapComponent({
   const [restaurants, setRestaurants] = useState<Restaurant[]>(initialRestaurants || [])
   const [couriers, setCouriers] = useState<Courier[]>(initialCouriers || [])
 
-  // 🔴 CANLI KONUMLAR: DB'den değil, Broadcast'ten (WebSocket)
+  // CANLI KONUMLAR: DB'den değil, Broadcast'ten (WebSocket)
   const [liveLocations, setLiveLocations] = useState<Record<string, LiveLocation>>({})
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
   const BROADCAST_CHANNEL = 'courier-live-locations'
   const STALE_THRESHOLD_MS = 30_000 // 30 saniyeden eski konumu "eski" say
+
+  const formatLastCoordinateUpdate = (timestamp?: string | null) => {
+    if (!timestamp) return 'Bilinmiyor'
+
+    const date = new Date(timestamp)
+    if (isNaN(date.getTime())) return 'Bilinmiyor'
+
+    const diffSec = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000))
+    return `${diffSec} sn önce`
+  }
 
   // Veritabanından restoranları yükle
   useEffect(() => {
@@ -142,7 +152,7 @@ export function LiveMapComponent({
     }
   }, [initialCouriers])
 
-  // ✅ BROADCAST LISTENER: Kurye canlı konumlarını WebSocket ile al
+  // BROADCAST LISTENER: Kurye canlı konumlarını WebSocket ile al
   useEffect(() => {
     const channel = supabase.channel(BROADCAST_CHANNEL, {
       config: { broadcast: { ack: false } }
@@ -150,7 +160,7 @@ export function LiveMapComponent({
 
     channel
       .on('broadcast', { event: 'location' }, (payload) => {
-        console.log('📡 Canlı konum yayını alındı:', payload)
+        console.log('Canlı konum yayını alındı:', payload)
         const { courierId, courierName, latitude, longitude, accuracy, timestamp } = payload.payload as LiveLocation
         
         // 1. liveLocations state'ini güncelle
@@ -202,7 +212,7 @@ export function LiveMapComponent({
         })
       })
       .subscribe((status) => {
-        console.log(`📡 Broadcast kanal abonelik durumu (${BROADCAST_CHANNEL}):`, status)
+        console.log(`Broadcast kanal abonelik durumu (${BROADCAST_CHANNEL}):`, status)
       })
 
     channelRef.current = channel
@@ -245,9 +255,9 @@ export function LiveMapComponent({
   // SSR sırasında loading göster
   if (!isClient) {
     return (
-      <div className="h-full flex items-center justify-center bg-slate-800 rounded-xl text-slate-400">
+      <div className="h-full flex items-center justify-center bg-slate-800 rounded-md text-slate-400">
         <div className="text-center">
-          <div className="animate-spin text-3xl mb-2">🗺️</div>
+          <Map className="w-8 h-8 mx-auto mb-2 animate-pulse text-gray-400" strokeWidth={1.5} />
           <div className="text-sm">Harita yükleniyor...</div>
         </div>
       </div>
@@ -255,7 +265,7 @@ export function LiveMapComponent({
   }
 
   // Paket durumuna göre ikon oluştur
-  const getPackageIcon = (pkg: Package) => {
+  const getPackageIcon = (pkg: PackageType) => {
     const isUnassigned = !pkg.courier_id
     
     if (isUnassigned) {
@@ -424,12 +434,12 @@ export function LiveMapComponent({
   return (
     <>
       <div className={`${isFullscreen ? 'fixed inset-0 z-50 bg-slate-950 p-4' : 'relative w-full h-full'}`}>
-        <div className="relative w-full h-full rounded-xl overflow-hidden border border-slate-700">
+        <div className="relative w-full h-full rounded-md overflow-hidden border border-slate-700">
 
           {/* Büyüt/Küçült Butonu */}
           <button
             onClick={() => setIsFullscreen(!isFullscreen)}
-            className="absolute top-4 right-4 z-[1000] bg-slate-800 hover:bg-slate-700 text-white p-2 rounded-lg shadow-lg transition-colors"
+            className="absolute top-4 right-4 z-[1000] bg-slate-800 hover:bg-slate-700 text-white p-2 rounded-md shadow-sm transition-colors"
             title={isFullscreen ? 'Küçült' : 'Büyüt'}
           >
             {isFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
@@ -438,7 +448,7 @@ export function LiveMapComponent({
           {/* Manuel Temizlik Butonu */}
           <button
             onClick={async () => {
-              console.log('🧹 Manuel harita temizliği başlatıldı')
+              console.log('Manuel harita temizliği başlatıldı')
               setTodayHeatmapPoints([])
               
               const twentyFourHoursAgo = new Date()
@@ -459,16 +469,16 @@ export function LiveMapComponent({
                 
                 setTimeout(() => {
                   setTodayHeatmapPoints(points)
-                  console.log('✅ Manuel temizlik tamamlandı, nokta sayısı:', points.length)
+                  console.log('Manuel temizlik tamamlandı, nokta sayısı:', points.length)
                 }, 100)
               }
               
               if (onRefresh) onRefresh()
             }}
-            className="absolute top-4 right-16 z-[1000] bg-orange-600 hover:bg-orange-700 text-white px-3 py-2 rounded-lg shadow-lg transition-colors text-sm font-medium"
+            className="absolute top-4 right-16 z-[1000] bg-orange-600 hover:bg-orange-700 text-white px-3 py-2 rounded-md shadow-sm transition-colors text-sm font-medium"
             title="Haritayı Yenile"
           >
-            🧹 Temizle
+            Temizle
           </button>
 
           {/* Harita */}
@@ -503,7 +513,7 @@ export function LiveMapComponent({
                 >
                   <Popup>
                     <div className="text-sm">
-                      <div className="font-bold text-orange-600">🍽️ {restaurant.name}</div>
+                      <div className="font-bold text-orange-600">{restaurant.name}</div>
                       <div className="text-xs mt-1">
                         {restaurant.phone && <div><strong>Telefon:</strong> {restaurant.phone}</div>}
                         {restaurant.address && <div><strong>Adres:</strong> {restaurant.address}</div>}
@@ -514,11 +524,11 @@ export function LiveMapComponent({
                           <div className="mt-1 space-y-1">
                             {restaurantPackages.map(pkg => (
                               <div key={pkg.id} className="text-[10px] bg-slate-100 p-1 rounded">
-                                📦 {pkg.order_number || `#${pkg.id}`} - {
-                                  pkg.status === 'waiting' ? '⏳ Bekliyor' :
-                                  pkg.status === 'assigned' ? '👤 Atandı' :
-                                  pkg.status === 'picking_up' ? '🏃 Alınıyor' :
-                                  pkg.status === 'on_the_way' ? '🚗 Yolda' : pkg.status
+                                {pkg.order_number || `#${pkg.id}`} - {
+                                  pkg.status === 'waiting' ? 'Bekliyor' :
+                                  pkg.status === 'assigned' ? 'Atandı' :
+                                  pkg.status === 'picking_up' ? 'Alınıyor' :
+                                  pkg.status === 'on_the_way' ? 'Yolda' : pkg.status
                                 }
                               </div>
                             ))}
@@ -540,7 +550,7 @@ export function LiveMapComponent({
               >
                 <Popup>
                   <div className="text-sm">
-                    <div className="font-bold text-orange-600">📦 {pkg.order_number || `#${pkg.id}`}</div>
+                    <div className="font-bold text-orange-600">{pkg.order_number || `#${pkg.id}`}</div>
                     <div className="text-xs mt-1">
                       <div><strong>Restoran:</strong> {pkg.restaurant?.name || 'Bilinmiyor'}</div>
                       <div><strong>Müşteri:</strong> {pkg.customer_name}</div>
@@ -548,7 +558,7 @@ export function LiveMapComponent({
                       <div><strong>Tutar:</strong> {pkg.amount}₺</div>
                       <div className="mt-1">
                         <strong>Durum:</strong> {
-                          !pkg.courier_id ? '🔴 SAHİPSİZ' : '🟢 ATANMIŞ'
+                          !pkg.courier_id ? 'SAHİPSİZ' : 'ATANMIŞ'
                         }
                       </div>
                     </div>
@@ -570,6 +580,7 @@ export function LiveMapComponent({
               const lng = live?.longitude ?? courier.last_location?.longitude
               const isLive = !!live
               const lastSeenSec = live ? Math.round((Date.now() - (live.lastSeenMs ?? 0)) / 1000) : null
+              const lastCoordAt = live?.timestamp ?? courier.last_location?.updated_at
               
               return (
                 <Marker
@@ -582,14 +593,18 @@ export function LiveMapComponent({
                   </Tooltip>
                   <Popup>
                     <div className="text-sm">
-                      <div className="font-bold text-orange-600">🏍️ {courier.full_name}</div>
+                      <div className="font-bold text-orange-600">{courier.full_name}</div>
                       <div className="text-xs mt-1">
                         <div className={`font-semibold mb-1 ${isLive ? 'text-green-600' : 'text-gray-500'}`}>
                           {isLive
-                            ? `📡 CANLI (${lastSeenSec}s önce)`
-                            : '⚠️ SON KONUM (DB)'}
+                            ? `CANLI (${lastSeenSec}s önce)`
+                            : 'SON KONUM (DB)'}
                         </div>
-                        <div><strong>Durum:</strong> {courier.is_active ? '✅ Aktif' : '❌ Pasif'}</div>
+                        <div>
+                          <strong>Son koordinat güncellemesi:</strong>{' '}
+                          {formatLastCoordinateUpdate(lastCoordAt)}
+                        </div>
+                        <div><strong>Durum:</strong> {courier.is_active ? 'Aktif' : 'Pasif'}</div>
                         <div><strong>Telefon:</strong> {courier.phone || '-'}</div>
                         <div className="mt-1">
                           <strong>Üzerindeki Paketler:</strong> {courierPackages.length}
@@ -598,10 +613,10 @@ export function LiveMapComponent({
                           <div className="mt-1 space-y-1">
                             {courierPackages.map(pkg => (
                               <div key={pkg.id} className="text-[10px] bg-slate-100 p-1 rounded">
-                                📦 {pkg.order_number || `#${pkg.id}`} - {
-                                  pkg.status === 'assigned' ? '⏳ Atandı' :
-                                  pkg.status === 'picking_up' ? '🏃 Alıyor' :
-                                  pkg.status === 'on_the_way' ? '🚗 Yolda' : pkg.status
+                                {pkg.order_number || `#${pkg.id}`} - {
+                                  pkg.status === 'assigned' ? 'Atandı' :
+                                  pkg.status === 'picking_up' ? 'Alıyor' :
+                                  pkg.status === 'on_the_way' ? 'Yolda' : pkg.status
                                 }
                               </div>
                             ))}

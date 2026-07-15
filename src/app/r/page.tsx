@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { Shield, UtensilsCrossed, Bike } from 'lucide-react'
 
 export default function HomePage() {
   const [isMounted, setIsMounted] = useState(false)
@@ -20,14 +21,13 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col items-center justify-center p-4">
-      {/* Logo */}
       <div className="mb-12 text-center">
         <img
           src="/logo.png"
           alt="Mergen Teknoloji"
           className="w-32 h-32 mx-auto mb-6"
         />
-        <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">
+        <h1 className="text-2xl md:text-2xl font-bold text-white mb-3">
           Mergen Kurye Sistemi
         </h1>
         <p className="text-slate-400 text-lg">
@@ -35,14 +35,12 @@ export default function HomePage() {
         </p>
       </div>
 
-      {/* Panel Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl">
-        {/* Admin Panel */}
         <Link href="/admin">
-          <div className="group bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-2xl p-8 hover:bg-slate-800 hover:border-orange-500 transition-all duration-300 cursor-pointer transform hover:scale-105">
+          <div className="group bg-slate-800/50 backdrop-blur-sm border border-white/5 rounded-md p-8 hover:bg-slate-800 hover:border-orange-500 transition-all duration-300 cursor-pointer shadow-sm">
             <div className="text-center">
-              <div className="text-6xl mb-4 group-hover:scale-110 transition-transform">
-                🔑
+              <div className="mb-4 flex justify-center">
+                <Shield className="w-8 h-8 text-purple-400" strokeWidth={1.5} />
               </div>
               <h2 className="text-2xl font-bold text-white mb-2">
                 Admin
@@ -54,12 +52,11 @@ export default function HomePage() {
           </div>
         </Link>
 
-        {/* Restoran Panel */}
         <Link href="/restoran">
-          <div className="group bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-2xl p-8 hover:bg-slate-800 hover:border-orange-500 transition-all duration-300 cursor-pointer transform hover:scale-105">
+          <div className="group bg-slate-800/50 backdrop-blur-sm border border-white/5 rounded-md p-8 hover:bg-slate-800 hover:border-orange-500 transition-all duration-300 cursor-pointer shadow-sm">
             <div className="text-center">
-              <div className="text-6xl mb-4 group-hover:scale-110 transition-transform">
-                🍽️
+              <div className="mb-4 flex justify-center">
+                <UtensilsCrossed className="w-8 h-8 text-orange-400" strokeWidth={1.5} />
               </div>
               <h2 className="text-2xl font-bold text-white mb-2">
                 Restoran
@@ -71,12 +68,11 @@ export default function HomePage() {
           </div>
         </Link>
 
-        {/* Kurye Panel */}
         <Link href="/kurye">
-          <div className="group bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-2xl p-8 hover:bg-slate-800 hover:border-orange-500 transition-all duration-300 cursor-pointer transform hover:scale-105">
+          <div className="group bg-slate-800/50 backdrop-blur-sm border border-white/5 rounded-md p-8 hover:bg-slate-800 hover:border-orange-500 transition-all duration-300 cursor-pointer shadow-sm">
             <div className="text-center">
-              <div className="text-6xl mb-4 group-hover:scale-110 transition-transform">
-                🚴
+              <div className="mb-4 flex justify-center">
+                <Bike className="w-8 h-8 text-blue-400" strokeWidth={1.5} />
               </div>
               <h2 className="text-2xl font-bold text-white mb-2">
                 Kurye
@@ -89,7 +85,6 @@ export default function HomePage() {
         </Link>
       </div>
 
-      {/* Footer */}
       <div className="mt-12 text-center text-slate-500 text-sm">
         © 2026 Mergen Teknoloji - Tüm hakları saklıdır
         <br />

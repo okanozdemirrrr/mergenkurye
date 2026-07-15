@@ -4,26 +4,29 @@
  */
 'use client'
 
+import { Mail, AlertTriangle, Lock, Check, ChevronLeft } from 'lucide-react'
+
 export default function AccountDeletionPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
-      <div className="bg-slate-900 p-8 md:p-12 rounded-2xl border border-slate-800 w-full max-w-2xl">
-        {/* Logo */}
+      <div className="bg-slate-900 p-8 md:p-12 rounded-md border border-white/5 shadow-sm w-full max-w-2xl">
         <div className="text-center mb-8">
           <img src="/logo.png" alt="Mergen Kurye Logo" className="w-32 h-32 mx-auto mb-4" />
           <h1 className="text-3xl font-bold text-white mb-2">Account Deletion Request</h1>
           <p className="text-slate-400 text-sm">Mergen Kurye System</p>
         </div>
 
-        {/* Content */}
         <div className="space-y-6 text-slate-300">
-          <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-white mb-4">📧 Account Deletion Procedure</h2>
+          <div className="bg-slate-800/50 border border-white/5 rounded-md p-6 shadow-sm">
+            <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+              <Mail size={20} strokeWidth={1.5} className="text-orange-400" />
+              Account Deletion Procedure
+            </h2>
             <p className="mb-4 leading-relaxed">
               If you wish to delete your account from the Mergen Kurye system, please send your 
               account deletion request to the following email address:
             </p>
-            <div className="bg-slate-900 border border-slate-600 rounded-lg p-4 mb-4">
+            <div className="bg-slate-900 border border-white/5 rounded-md p-4 mb-4 shadow-sm">
               <a 
                 href="mailto:ozdemiribrahimokan@gmail.com?subject=Mergen Kurye - Account Deletion Request"
                 className="text-orange-400 hover:text-orange-300 font-medium text-lg transition-colors"
@@ -36,8 +39,11 @@ export default function AccountDeletionPage() {
             </p>
           </div>
 
-          <div className="bg-red-900/20 border border-red-700/50 rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-red-300 mb-4">⚠️ Important Notice</h2>
+          <div className="bg-red-900/20 border border-red-700/50 rounded-md p-6 shadow-sm">
+            <h2 className="text-xl font-semibold text-red-300 mb-4 flex items-center gap-2">
+              <AlertTriangle size={20} strokeWidth={1.5} />
+              Important Notice
+            </h2>
             <ul className="space-y-3 text-sm">
               <li className="flex items-start gap-2">
                 <span className="text-red-400 mt-1">•</span>
@@ -62,44 +68,39 @@ export default function AccountDeletionPage() {
             </ul>
           </div>
 
-          <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-white mb-4">🔒 Data to be Deleted</h2>
+          <div className="bg-slate-800/50 border border-white/5 rounded-md p-6 shadow-sm">
+            <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+              <Lock size={20} strokeWidth={1.5} className="text-slate-400" />
+              Data to be Deleted
+            </h2>
             <ul className="space-y-2 text-sm">
-              <li className="flex items-center gap-2">
-                <span className="text-green-400">✓</span>
-                <span>Personal information (name, phone, email)</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="text-green-400">✓</span>
-                <span>Order history</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="text-green-400">✓</span>
-                <span>Payment records</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="text-green-400">✓</span>
-                <span>Location history</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="text-green-400">✓</span>
-                <span>Account settings</span>
-              </li>
+              {[
+                'Personal information (name, phone, email)',
+                'Order history',
+                'Payment records',
+                'Location history',
+                'Account settings',
+              ].map((item) => (
+                <li key={item} className="flex items-center gap-2">
+                  <Check size={14} strokeWidth={1.5} className="text-green-400 flex-shrink-0" />
+                  <span>{item}</span>
+                </li>
+              ))}
             </ul>
           </div>
 
           <div className="text-center pt-4">
             <a 
               href="/"
-              className="inline-block px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-md transition-colors"
             >
-              ← Back to Home
+              <ChevronLeft size={16} strokeWidth={1.5} />
+              Back to Home
             </a>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="mt-8 pt-6 border-t border-slate-800 text-center text-slate-500 text-xs">
+        <div className="mt-8 pt-6 border-t border-white/5 text-center text-slate-500 text-xs">
           <p>© 2026 Mergen Teknoloji - All rights reserved</p>
           <p className="mt-2">
             For questions:{' '}

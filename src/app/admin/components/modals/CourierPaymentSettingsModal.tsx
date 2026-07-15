@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/app/lib/supabase'
 import { Courier } from '@/types'
+import { Banknote, Package as PackageIcon, Clock } from 'lucide-react'
 
 interface CourierPaymentSettingsModalProps {
   courier: Courier
@@ -66,11 +67,12 @@ export function CourierPaymentSettingsModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full p-6">
+      <div className="bg-white rounded-md max-w-md w-full p-6 border border-slate-200 shadow-sm">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-bold text-slate-900">
-            💰 Kazanç Şekli Ayarları
+          <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+            <Banknote className="w-5 h-5 text-gray-400" strokeWidth={1.5} />
+            Kazanç Şekli Ayarları
           </h3>
           <button
             onClick={onClose}
@@ -81,7 +83,7 @@ export function CourierPaymentSettingsModal({
         </div>
 
         {/* Kurye Bilgisi */}
-        <div className="mb-6 p-3 bg-slate-50 rounded-lg">
+        <div className="mb-6 p-3 bg-slate-50 rounded-md">
           <p className="text-sm text-slate-600">Kurye:</p>
           <p className="font-bold text-slate-900">{courier.full_name}</p>
         </div>
@@ -92,7 +94,7 @@ export function CourierPaymentSettingsModal({
             Ödeme Türü
           </label>
           <div className="space-y-2">
-            <label className="flex items-center gap-3 p-3 border border-slate-300 rounded-lg cursor-pointer hover:bg-slate-50">
+            <label className="flex items-center gap-3 p-3 border border-slate-300 rounded-md cursor-pointer hover:bg-slate-50">
               <input
                 type="radio"
                 name="paymentType"
@@ -102,12 +104,12 @@ export function CourierPaymentSettingsModal({
                 className="w-4 h-4 text-orange-600"
               />
               <div>
-                <div className="font-medium text-slate-900">📦 Paket Başı</div>
+                <div className="font-medium text-slate-900 flex items-center gap-1"><PackageIcon className="w-4 h-4 text-gray-400" strokeWidth={1.5} /> Paket Başı</div>
                 <div className="text-xs text-slate-600">Her teslim edilen paket için sabit ücret</div>
               </div>
             </label>
             
-            <label className="flex items-center gap-3 p-3 border border-slate-300 rounded-lg cursor-pointer hover:bg-slate-50">
+            <label className="flex items-center gap-3 p-3 border border-slate-300 rounded-md cursor-pointer hover:bg-slate-50">
               <input
                 type="radio"
                 name="paymentType"
@@ -117,7 +119,7 @@ export function CourierPaymentSettingsModal({
                 className="w-4 h-4 text-orange-600"
               />
               <div>
-                <div className="font-medium text-slate-900">⏰ Saatlik</div>
+                <div className="font-medium text-slate-900 flex items-center gap-1"><Clock className="w-4 h-4 text-gray-400" strokeWidth={1.5} /> Saatlik</div>
                 <div className="text-xs text-slate-600">Sabit maaş + paket başı ek ücret</div>
               </div>
             </label>
@@ -136,7 +138,7 @@ export function CourierPaymentSettingsModal({
             value={packageRate}
             onChange={(e) => setPackageRate(e.target.value)}
             placeholder={paymentType === 'paket_basi' ? 'Örn: 65.00' : 'Örn: 13.00'}
-            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+            className="w-full px-4 py-3 border border-slate-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
           />
           {paymentType === 'saatlik' && (
             <p className="text-xs text-slate-600 mt-1">
@@ -147,7 +149,7 @@ export function CourierPaymentSettingsModal({
 
         {/* Hata Mesajı */}
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
             <p className="text-sm text-red-600">{error}</p>
           </div>
         )}
@@ -156,14 +158,14 @@ export function CourierPaymentSettingsModal({
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-3 bg-slate-200 text-slate-700 rounded-lg font-medium hover:bg-slate-300 transition-colors"
+            className="flex-1 px-4 py-3 bg-slate-200 text-slate-700 rounded-md font-medium hover:bg-slate-300 transition-colors"
           >
             İptal
           </button>
           <button
             onClick={handleSave}
             disabled={loading}
-            className="flex-1 px-4 py-3 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex-1 px-4 py-3 bg-orange-600 text-white rounded-md font-medium hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {loading ? 'Kaydediliyor...' : 'Kaydet'}
           </button>

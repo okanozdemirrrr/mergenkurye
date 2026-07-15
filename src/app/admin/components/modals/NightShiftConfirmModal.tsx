@@ -37,7 +37,7 @@ export function NightShiftConfirmModal({ courier, onClose, onSuccess }: NightShi
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[70] p-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-lg max-w-md w-full shadow-2xl">
+      <div className="bg-slate-900 border border-slate-800 rounded-md max-w-md w-full shadow-sm">
         <div className="px-6 py-4 border-b border-slate-800">
           <h2 className="text-lg font-bold text-slate-100 tracking-tight">Gece Vardiyacısı Yap</h2>
         </div>

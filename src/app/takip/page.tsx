@@ -7,6 +7,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
+import { Package as PackageIcon, CheckCircle2 } from 'lucide-react'
 import { Package } from '@/types'
 import { supabase } from '../lib/supabase'
 
@@ -108,13 +109,15 @@ function TakipContent() {
         <div className="w-full max-w-md">
           {/* Logo ve Başlık */}
           <div className="text-center mb-8">
-            <div className="text-6xl mb-4">📦</div>
+            <div className="mb-4 flex justify-center">
+              <PackageIcon size={32} strokeWidth={1.5} className="text-orange-400" />
+            </div>
             <h1 className="text-3xl font-bold text-white mb-2">Mergen Kurye</h1>
             <p className="text-slate-400">Siparişinizi Takip Edin</p>
           </div>
 
           {/* Giriş Formu */}
-          <div className="bg-slate-900 rounded-2xl p-8 border border-slate-800 shadow-2xl">
+          <div className="bg-slate-900 rounded-md p-8 border border-white/5 shadow-sm">
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">
@@ -126,13 +129,13 @@ function TakipContent() {
                   onChange={(e) => setOrderNumber(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                   placeholder="Örn: MRG-2024-001"
-                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                   disabled={isLoading}
                 />
               </div>
 
               {error && (
-                <div className="bg-red-900/30 border border-red-700 text-red-300 px-4 py-3 rounded-lg text-sm">
+                <div className="bg-red-900/30 border border-red-700 text-red-300 px-4 py-3 rounded-md text-sm">
                   {error}
                 </div>
               )}
@@ -140,7 +143,7 @@ function TakipContent() {
               <button
                 onClick={() => handleSearch()}
                 disabled={isLoading}
-                className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-slate-700 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-lg transition-colors"
+                className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-slate-700 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-md transition-colors"
               >
                 {isLoading ? 'Sorgulanıyor...' : 'Siparişi Takip Et'}
               </button>
@@ -161,9 +164,11 @@ function TakipContent() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
-          <div className="bg-slate-900 rounded-2xl p-8 border border-slate-800 shadow-2xl">
+          <div className="bg-slate-900 rounded-md p-8 border border-white/5 shadow-sm">
             <div className="text-center">
-              <div className="text-6xl mb-4">✅</div>
+              <div className="mb-4 flex justify-center">
+                <CheckCircle2 size={32} strokeWidth={1.5} className="text-green-400" />
+              </div>
               <h2 className="text-2xl font-bold text-white mb-4">Sipariş Teslim Edildi</h2>
               <p className="text-slate-300 leading-relaxed mb-6">
                 {deliveredMessage}
@@ -174,7 +179,7 @@ function TakipContent() {
                   setOrderNumber('')
                   setPackageData(null)
                 }}
-                className="bg-orange-600 hover:bg-orange-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors"
+                className="bg-orange-600 hover:bg-orange-700 text-white font-semibold px-6 py-3 rounded-md transition-colors"
               >
                 Başka Sipariş Sorgula
               </button>
@@ -198,7 +203,9 @@ export default function TakipPage() {
     <Suspense fallback={
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-6xl mb-4 animate-bounce">📦</div>
+          <div className="mb-4 flex justify-center">
+            <PackageIcon size={32} strokeWidth={1.5} className="text-orange-400 animate-bounce" />
+          </div>
           <p className="text-slate-400">Yükleniyor...</p>
         </div>
       </div>

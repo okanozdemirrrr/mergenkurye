@@ -10,8 +10,8 @@ import { supabase } from '@/app/lib/supabase'
 import { formatTurkishTime } from '@/utils/dateHelpers'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
 import { getRestaurantPeriodFinancials, PeriodFinancials } from '@/services/restaurantService'
+import { Clock } from 'lucide-react'
 
-// 📌 KATMAN 3: Saniye Saniye Paket Yaşam Döngüsü (Vertical Timeline)
 function DrawerOrderRow({ pkg }: { pkg: Package }) {
   const [isExpanded, setIsExpanded] = useState(false)
 
@@ -47,39 +47,39 @@ function DrawerOrderRow({ pkg }: { pkg: Package }) {
     try {
       // Akış aşamaları (Optional Chaining & Fallback)
       const steps = [
-        { label: 'Siparişin Sisteme Düşmesi (Yeni Sipariş)', time: pkg?.created_at, icon: '📥', color: 'emerald' },
-        { label: 'Hazırlanmaya Başlanması', time: pkg?.getting_ready_at, icon: '👨‍🍳', color: 'emerald' },
-        { label: 'Hazır Olması', time: pkg?.ready_at, icon: '✅', color: 'emerald' },
-        { label: 'Kuryenin Kabul Etmesi', time: pkg?.assigned_at, icon: '🛵', color: 'emerald' },
-        { label: 'Kuryenin Restorandan Teslim Alması', time: pkg?.picked_up_at, icon: '📦', color: 'emerald' },
+        { label: 'Siparişin Sisteme Düşmesi (Yeni Sipariş)', time: pkg?.created_at, color: 'emerald' },
+        { label: 'Hazırlanmaya Başlanması', time: pkg?.getting_ready_at, color: 'emerald' },
+        { label: 'Hazır Olması', time: pkg?.ready_at, color: 'emerald' },
+        { label: 'Kuryenin Kabul Etmesi', time: pkg?.assigned_at, color: 'emerald' },
+        { label: 'Kuryenin Restorandan Teslim Alması', time: pkg?.picked_up_at, color: 'emerald' },
         pkg?.status === 'cancelled'
-          ? { label: 'Siparişin İptal Edilmesi', time: pkg?.cancelled_at, icon: '❌', color: 'rose' }
-          : { label: 'Müşteriye Teslim Edilmesi', time: pkg?.delivered_at, icon: '🏁', color: 'emerald' },
+          ? { label: 'Siparişin İptal Edilmesi', time: pkg?.cancelled_at, color: 'rose' }
+          : { label: 'Müşteriye Teslim Edilmesi', time: pkg?.delivered_at, color: 'emerald' },
       ]
 
       return (
         <div className="p-4 border-t border-slate-850 bg-slate-950/40 space-y-4">
           {/* Müşteri ve Sipariş Detay Bilgisi (Optional Chaining & Fallback) */}
-          <div className="grid grid-cols-2 gap-3 bg-slate-900/60 p-3 rounded-lg border border-slate-800/80 text-xs">
+          <div className="grid grid-cols-2 gap-3 bg-slate-900/60 p-3 rounded-md border border-slate-800/80 text-xs">
             <div>
-              <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1">👤 Müşteri Bilgileri</p>
+              <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1">Müşteri Bilgileri</p>
               <p className="text-slate-300 font-semibold">{pkg?.customer_name ?? 'Bilinmeyen Müşteri'}</p>
               {pkg?.customer_phone && (
                 <p className="text-slate-400 mt-0.5 font-medium">{pkg.customer_phone}</p>
               )}
             </div>
             <div>
-              <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1">🛵 Teslimat Bilgisi</p>
+              <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1">Teslimat Bilgisi</p>
               <p className="text-slate-300 font-semibold">{pkg?.courier_name ?? 'Atanmadı'}</p>
               <p className="text-slate-400 truncate mt-0.5 font-medium" title={pkg?.delivery_address ?? 'Adres Belirtilmemiş'}>
-                📍 {pkg?.delivery_address ?? 'Adres Belirtilmemiş'}
+                {pkg?.delivery_address ?? 'Adres Belirtilmemiş'}
               </p>
             </div>
           </div>
 
           {/* Dikey Zaman Çizelgesi */}
           <div className="pl-1 pr-1 py-1">
-            <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-3">🕒 DENETİM İZİ (AUDIT LOG)</p>
+            <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-3">DENETİM İZİ (AUDIT LOG)</p>
             <div className="relative border-l border-slate-850 ml-3 space-y-5">
               {steps.map((step, idx) => {
                 const formatted = formatTimelineTime(step.time)
@@ -97,7 +97,7 @@ function DrawerOrderRow({ pkg }: { pkg: Package }) {
                           : 'bg-slate-950 border-slate-850 text-slate-600'
                       }`}
                     >
-                      {step.icon}
+                      {idx + 1}
                     </span>
 
                     {/* Çizgi rengini bağlama */}
@@ -137,17 +137,17 @@ function DrawerOrderRow({ pkg }: { pkg: Package }) {
         </div>
       )
     } catch (err: any) {
-      console.error("❌ Accordion render hatası:", err)
+      console.error("Accordion render hatası:", err)
       return (
         <div className="p-4 border-t border-slate-850 bg-rose-950/10 text-rose-400 text-xs rounded-b-xl">
-          ⚠️ Sipariş detayları yüklenirken bir hata oluştu. Bazı veriler eksik veya bozuk olabilir.
+          Sipariş detayları yüklenirken bir hata oluştu. Bazı veriler eksik veya bozuk olabilir.
         </div>
       )
     }
   }
 
   return (
-    <div className="bg-slate-900 border border-slate-800/80 rounded-xl overflow-hidden transition-all duration-200">
+    <div className="bg-slate-900 border border-slate-800/80 rounded-md overflow-hidden transition-all duration-200">
       {/* Kart Başlığı (Accordion Toggle) */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
@@ -277,7 +277,7 @@ export function RestaurantDetailModal({
 
       setDrawerOrders(combined)
     } catch (err: any) {
-      console.error('❌ Drawer sipariş verisi hatası:', err.message)
+      console.error('Drawer sipariş verisi hatası:', err.message)
       setDrawerOrders([])
     } finally {
       setLoadingDrawerOrders(false)
@@ -302,7 +302,7 @@ export function RestaurantDetailModal({
       if (finResult.success && finResult.data) {
         setFinancials(finResult.data)
       } else {
-        console.error('❌ Finansal özet hatası:', finResult.error)
+        console.error('Finansal özet hatası:', finResult.error)
       }
 
       // 2. Sadece tabloyu doldurmak için gerekli olan dönem siparişleri
@@ -349,7 +349,7 @@ export function RestaurantDetailModal({
 
       setOrders(combined)
     } catch (error: any) {
-      console.error('❌ Veri hatası:', error.message)
+      console.error('Veri hatası:', error.message)
       setOrders([])
     } finally {
       setIsLoading(false)
@@ -368,7 +368,7 @@ export function RestaurantDetailModal({
       if (error) throw error
       setPaymentHistory(data || [])
     } catch (error: any) {
-      console.error('❌ Ödeme geçmişi hatası:', error.message)
+      console.error('Ödeme geçmişi hatası:', error.message)
       setPaymentHistory([])
     }
   }, [restaurantId])
@@ -378,12 +378,12 @@ export function RestaurantDetailModal({
     fetchPaymentHistory()
   }, [fetchData, fetchPaymentHistory])
 
-  // 🔥 KRİTİK: onRefetch değiştiğinde (ödeme sonrası) verileri yeniden çek
+  // KRİTİK: onRefetch değiştiğinde (ödeme sonrası) verileri yeniden çek
   const [prevRefetch, setPrevRefetch] = useState<number | undefined>(onRefetch)
   useEffect(() => {
     if (onRefetch !== undefined && onRefetch !== prevRefetch) {
       setPrevRefetch(onRefetch)
-      console.log('🔄 Ödeme sonrası refetch tetiklendi, RPC yeniden çağrılıyor...')
+      console.log('Ödeme sonrası refetch tetiklendi, RPC yeniden çağrılıyor...')
       fetchData()
       fetchPaymentHistory()
     }
@@ -392,7 +392,7 @@ export function RestaurantDetailModal({
   const guncelBakiye = financials?.net_payable ?? 0
   const unpaidCount = financials?.unpaid_package_count ?? 0
 
-  // 📞 Telefon & 📱 Uygulama siparişlerini filtreleme mantığı
+  // Telefon & Uygulama siparişlerini filtreleme mantığı
   const filteredOrders = orders.filter((pkg: any) => {
     if (activeTab === 'phone_orders') {
       return !pkg.platform || pkg.platform !== 'web'
@@ -409,7 +409,7 @@ export function RestaurantDetailModal({
       onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose() }}
     >
       <div
-        className="bg-slate-950 border border-slate-800 rounded-xl max-w-6xl w-full max-h-[95vh] overflow-hidden shadow-2xl flex flex-col"
+        className="bg-slate-950 border border-slate-800 rounded-md max-w-6xl w-full max-h-[95vh] overflow-hidden shadow-sm flex flex-col"
         onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
       >
         {/* ── Header Bar ── */}
@@ -420,7 +420,7 @@ export function RestaurantDetailModal({
             </h3>
 
             {/* Tarih Filtresi Barı */}
-            <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-lg p-1">
+            <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-md p-1">
               <span className="px-3 py-1.5 text-slate-300 text-sm font-medium">
                 {globalStartDate}
               </span>
@@ -436,7 +436,7 @@ export function RestaurantDetailModal({
               className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-sm border border-slate-700 transition-colors"
               title="Yenile"
             >
-              🔄
+              ↻
             </button>
           </div>
 
@@ -460,7 +460,7 @@ export function RestaurantDetailModal({
             <div className="p-6 space-y-6">
               
               {/* ── 1. DEV HERO CARD (DÖNEM ÖDENMEMİŞ BAKİYE) ── */}
-              <div className={`rounded-2xl p-8 border-2 shadow-2xl relative overflow-hidden ${
+              <div className={`rounded-md p-8 border-2 shadow-sm relative overflow-hidden ${
                 guncelBakiye > 0 
                   ? 'bg-gradient-to-br from-emerald-900/80 to-slate-900 border-emerald-500/50 shadow-emerald-900/20' 
                   : guncelBakiye < 0
@@ -477,7 +477,7 @@ export function RestaurantDetailModal({
                       Dönem Ödenmemiş Bakiye
                     </h2>
                     <div className="flex items-baseline gap-2">
-                      <span className="text-6xl font-black text-white tracking-tighter">
+                      <span className="text-2xl font-black text-white tracking-tighter">
                         {Math.abs(guncelBakiye).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
                       </span>
                       <span className="text-3xl text-white/60 font-bold">₺</span>
@@ -493,13 +493,13 @@ export function RestaurantDetailModal({
                     <button
                       onClick={() => onPaymentClick(guncelBakiye)}
                       disabled={unpaidCount === 0}
-                      className={`w-full py-4 px-6 rounded-xl font-black text-lg transition-all shadow-lg ${
+                      className={`w-full py-4 px-6 rounded-md font-black text-lg transition-all shadow-sm ${
                         unpaidCount > 0 
                           ? 'bg-emerald-500 hover:bg-emerald-400 text-emerald-950 shadow-emerald-500/30'
                           : 'bg-slate-700 text-slate-400 cursor-not-allowed shadow-none'
                       }`}
                     >
-                      {unpaidCount > 0 ? '💳 HESAP ÖDE' : '✓ ÖDENDİ'}
+                      {unpaidCount > 0 ? 'HESAP ÖDE' : 'ÖDENDİ'}
                     </button>
                     <div className="text-xs text-center text-white/40 font-medium">
                       Bitiş tarihine ({globalEndDate}) kadar olan tüm ödenmemiş bakiyeyi kapatır
@@ -512,14 +512,14 @@ export function RestaurantDetailModal({
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-xl font-bold text-slate-200 tracking-tight flex items-center gap-2">
-                    📅 Dönem Ekstresi
+                    Dönem Ekstresi
                     <span className="text-xs font-normal text-slate-500 bg-slate-900 border border-slate-800 px-2 py-1 rounded">
                       {globalStartDate} — {globalEndDate}
                     </span>
                   </h3>
                   
                   {/* Tab Geçişi */}
-                  <div className="flex bg-slate-900 p-1 rounded-lg border border-slate-800">
+                  <div className="flex bg-slate-900 p-1 rounded-md border border-slate-800">
                     <button
                       onClick={() => setActiveTab('phone_orders')}
                       className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
@@ -551,7 +551,7 @@ export function RestaurantDetailModal({
                   <>
                     {/* Dönem Finansal Özet Kartları (Paket Bazlı) */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-                      <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-5">
+                      <div className="bg-slate-900/50 border border-slate-800 rounded-md p-5">
                         <p className="text-xs font-bold text-slate-500 tracking-widest uppercase mb-1">Ödenmemiş Ciro</p>
                         <p className="text-2xl font-black text-slate-200">
                           {(financials?.unpaid_revenue ?? 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
@@ -559,7 +559,7 @@ export function RestaurantDetailModal({
                         <p className="text-xs text-slate-500 mt-1">{financials?.unpaid_package_count ?? 0} ödenmemiş paket</p>
                       </div>
                       
-                      <div className="bg-rose-950/20 border border-rose-900/30 rounded-xl p-5">
+                      <div className="bg-rose-950/20 border border-rose-900/30 rounded-md p-5">
                         <p className="text-xs font-bold text-rose-500/70 tracking-widest uppercase mb-1">Kurye Masrafı</p>
                         <p className="text-2xl font-black text-rose-400">
                           {(financials?.unpaid_cost ?? 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
@@ -569,7 +569,7 @@ export function RestaurantDetailModal({
                         </p>
                       </div>
 
-                      <div className="bg-rose-950/20 border border-rose-900/30 rounded-xl p-5">
+                      <div className="bg-rose-950/20 border border-rose-900/30 rounded-md p-5">
                         <p className="text-xs font-bold text-rose-500/70 tracking-widest uppercase mb-1">KOMİSYON KESİNTİSİ</p>
                         <p className="text-2xl font-black text-rose-400">
                           {(financials?.unpaid_commission ?? 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
@@ -577,7 +577,7 @@ export function RestaurantDetailModal({
                         <p className="text-xs text-rose-500/50 mt-1">Sistem komisyon kesintisi</p>
                       </div>
 
-                      <div className={`border rounded-xl p-5 ${
+                      <div className={`border rounded-md p-5 ${
                         (financials?.net_payable ?? 0) > 0 
                           ? 'bg-emerald-950/20 border-emerald-900/30' 
                           : 'bg-slate-900/50 border-slate-800'
@@ -591,7 +591,7 @@ export function RestaurantDetailModal({
                         <p className="text-xs text-emerald-500/50 mt-1">Ciro - Masraf - Komisyon</p>
                       </div>
 
-                      <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-5">
+                      <div className="bg-slate-900/50 border border-slate-800 rounded-md p-5">
                         <p className="text-xs font-bold text-slate-500 tracking-widest uppercase mb-1">Ödenmiş</p>
                         <p className="text-2xl font-black text-slate-500">
                           {((financials?.paid_revenue ?? 0) - ((financials?.paid_package_count ?? 0) * (financials?.package_fee ?? 0))).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
@@ -601,7 +601,7 @@ export function RestaurantDetailModal({
                     </div>
 
                     {/* Sipariş Tablosu */}
-                    <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+                    <div className="bg-slate-900 border border-slate-800 rounded-md overflow-hidden">
                       {filteredOrders.length === 0 ? (
                         <div className="text-center py-16 text-slate-500">
                           <p>Bu kategoride sipariş bulunamadı</p>
@@ -672,7 +672,7 @@ export function RestaurantDetailModal({
                   </>
                 ) : (
                   /* Ödeme Geçmişi */
-                  <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+                  <div className="bg-slate-900 border border-slate-800 rounded-md overflow-hidden">
                     {paymentHistory.length === 0 ? (
                       <div className="text-center py-16 text-slate-500">
                         <p>Henüz ödeme kaydı bulunmuyor</p>
@@ -683,7 +683,7 @@ export function RestaurantDetailModal({
                           <div 
                             key={payment.id} 
                             onClick={() => setSelectedPaymentForDetails(payment)}
-                            className="p-6 flex justify-between items-center bg-slate-900/30 border border-slate-800 hover:bg-slate-850/40 hover:border-slate-700 rounded-xl cursor-pointer transition-all duration-200"
+                            className="p-6 flex justify-between items-center bg-slate-900/30 border border-slate-800 hover:bg-slate-850/40 hover:border-slate-700 rounded-md cursor-pointer transition-all duration-200"
                           >
                             <div className="flex-1 pr-4">
                               <p className="font-bold text-slate-200 text-base">
@@ -693,7 +693,7 @@ export function RestaurantDetailModal({
                               
                               {/* Kapsanan Tarih Dönemi (Katman 1) */}
                               <p className="text-xs text-slate-500 mt-2.5 flex items-center gap-1 font-medium bg-slate-950/60 border border-slate-900 px-2.5 py-1 rounded-md w-fit">
-                                📅 Kapsanan Dönem: {payment.period_start && payment.period_end ? (
+                                Kapsanan Dönem: {payment.period_start && payment.period_end ? (
                                   <>
                                     <span className="text-slate-400 font-semibold">
                                       {new Date(payment.period_start).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -715,7 +715,7 @@ export function RestaurantDetailModal({
                                 </span>
                               </div>
                               <span className="text-slate-500 text-lg transition-transform hover:translate-x-1 duration-200">
-                                ➔
+                                →
                               </span>
                             </div>
                           </div>
@@ -741,7 +741,7 @@ export function RestaurantDetailModal({
 
       {/* ── KATMAN 2 & 3: Sliding Drawer ve Vertical Timeline ── */}
       <div 
-        className={`fixed inset-y-0 right-0 max-w-2xl w-full bg-slate-950 border-l border-slate-850 h-full flex flex-col shadow-2xl z-[70] transition-transform duration-300 ease-in-out transform ${
+        className={`fixed inset-y-0 right-0 max-w-2xl w-full bg-slate-950 border-l border-slate-850 h-full flex flex-col shadow-sm z-[70] transition-transform duration-300 ease-in-out transform ${
           selectedPaymentForDetails ? 'translate-x-0' : 'translate-x-full'
         }`}
         onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
@@ -752,7 +752,7 @@ export function RestaurantDetailModal({
             <div className="flex justify-between items-center p-6 border-b border-slate-850 bg-slate-900/40">
               <div>
                 <h4 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-                  <span>💰 Dönem Ekstresi Detayı</span>
+                  <span>Dönem Ekstresi Detayı</span>
                 </h4>
                 <p className="text-xs text-slate-500 mt-1 font-medium">
                   {selectedPaymentForDetails.period_start && selectedPaymentForDetails.period_end ? (
@@ -764,7 +764,7 @@ export function RestaurantDetailModal({
               </div>
               <button 
                 onClick={() => setSelectedPaymentForDetails(null)}
-                className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-slate-200 hover:bg-slate-900 rounded-lg transition-colors text-2xl"
+                className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-slate-200 hover:bg-slate-900 rounded-md transition-colors text-2xl"
               >
                 ×
               </button>
@@ -772,7 +772,7 @@ export function RestaurantDetailModal({
 
             {/* Drawer Body (Siparişler Listesi) */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4 admin-scrollbar bg-slate-950/40">
-              <div className="bg-slate-900/40 border border-slate-850/80 rounded-2xl p-6 mb-2">
+              <div className="bg-slate-900/40 border border-slate-850/80 rounded-md p-6 mb-2">
                 <div className="flex justify-between items-center">
                   <div>
                     <span className="text-xs text-slate-500 font-extrabold uppercase tracking-wider">Makbuz Tutarı</span>
@@ -780,7 +780,7 @@ export function RestaurantDetailModal({
                       {selectedPaymentForDetails.amount_paid.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
                     </h5>
                   </div>
-                  <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-4 py-2 rounded-xl text-xs font-black uppercase">
+                  <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-4 py-2 rounded-md text-xs font-black uppercase">
                     Tam Ödeme
                   </div>
                 </div>
@@ -793,7 +793,7 @@ export function RestaurantDetailModal({
               </div>
 
               <div className="flex items-center justify-between mt-6 mb-2">
-                <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest">📦 İlgili Dönemin Paketleri</h5>
+                <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest">İlgili Dönemin Paketleri</h5>
                 <span className="text-[10px] font-extrabold text-slate-500 bg-slate-900 border border-slate-800 px-2 py-0.5 rounded-full">
                   {drawerOrders.length} Paket
                 </span>
@@ -805,7 +805,7 @@ export function RestaurantDetailModal({
                   <p className="text-xs font-medium">Sipariş Denetim İzi Çekiliyor...</p>
                 </div>
               ) : drawerOrders.length === 0 ? (
-                <div className="text-center py-20 text-slate-500 bg-slate-900/20 rounded-xl border border-slate-900 border-dashed">
+                <div className="text-center py-20 text-slate-500 bg-slate-900/20 rounded-md border border-slate-900 border-dashed">
                   <p className="text-sm">Bu ödeme dönemine ait paket bulunamadı</p>
                 </div>
               ) : (
@@ -831,14 +831,14 @@ export function RestaurantDetailModal({
           }}
         >
           <div
-            className="bg-slate-900 rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-700 shadow-2xl"
+            className="bg-slate-900 rounded-md p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-700 shadow-sm"
             onClick={(e) => {
               e.preventDefault()
               e.stopPropagation()
             }}
           >
             <div className="flex justify-between items-center mb-4 sticky top-0 bg-slate-900 pb-4 border-b border-slate-700 z-10">
-              <h3 className="text-xl font-bold text-white">📦 Sipariş Detayları</h3>
+              <h3 className="text-xl font-bold text-white">Sipariş Detayları</h3>
               <button
                 type="button"
                 onClick={(e) => {
@@ -846,7 +846,7 @@ export function RestaurantDetailModal({
                   e.stopPropagation()
                   setSelectedOrder(null)
                 }}
-                className="text-slate-400 hover:text-white text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-800 transition-colors"
+                className="text-slate-400 hover:text-white text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-md hover:bg-slate-800 transition-colors"
               >
                 ×
               </button>
@@ -864,7 +864,7 @@ export function RestaurantDetailModal({
                 )}
               </div>
 
-              <div className="bg-slate-800 p-4 rounded-lg">
+              <div className="bg-slate-800 p-4 rounded-md">
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400 text-sm">Durum:</span>
                   <span
@@ -880,42 +880,42 @@ export function RestaurantDetailModal({
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-800 p-4 rounded-lg">
+                <div className="bg-slate-800 p-4 rounded-md">
                   <p className="text-slate-400 text-xs mb-1">Restoran</p>
-                  <p className="text-white font-semibold">🍽️ {restaurant.name}</p>
+                  <p className="text-white font-semibold">{restaurant.name}</p>
                 </div>
-                <div className="bg-slate-800 p-4 rounded-lg">
+                <div className="bg-slate-800 p-4 rounded-md">
                   <p className="text-slate-400 text-xs mb-1">Tutar</p>
                   <p className="text-green-400 font-bold text-xl">{selectedOrder.amount}₺</p>
                 </div>
               </div>
 
-              <div className="bg-slate-800 p-4 rounded-lg space-y-3">
+              <div className="bg-slate-800 p-4 rounded-md space-y-3">
                 <h4 className="text-white font-semibold mb-2">Müşteri Bilgileri</h4>
                 <div>
                   <p className="text-slate-400 text-xs mb-1">Ad Soyad</p>
-                  <p className="text-white">👤 {selectedOrder.customer_name}</p>
+                  <p className="text-white">{selectedOrder.customer_name}</p>
                 </div>
                 {selectedOrder.customer_phone && (
                   <div>
                     <p className="text-slate-400 text-xs mb-1">Telefon</p>
-                    <p className="text-white">📞 {selectedOrder.customer_phone}</p>
+                    <p className="text-white">{selectedOrder.customer_phone}</p>
                   </div>
                 )}
                 <div>
                   <p className="text-slate-400 text-xs mb-1">Teslimat Adresi</p>
-                  <p className="text-white">📍 {selectedOrder.delivery_address}</p>
+                  <p className="text-white">{selectedOrder.delivery_address}</p>
                 </div>
               </div>
 
               {selectedOrder.content && (
-                <div className="bg-slate-800 p-4 rounded-lg">
+                <div className="bg-slate-800 p-4 rounded-md">
                   <p className="text-slate-400 text-xs mb-1">Paket İçeriği</p>
-                  <p className="text-orange-200">📝 {selectedOrder.content}</p>
+                  <p className="text-orange-200">{selectedOrder.content}</p>
                 </div>
               )}
 
-              <div className="bg-slate-800 p-4 rounded-lg">
+              <div className="bg-slate-800 p-4 rounded-md">
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400 text-sm">Ödeme Yöntemi:</span>
                   <span
@@ -928,64 +928,67 @@ export function RestaurantDetailModal({
                     }`}
                   >
                     {selectedOrder.payment_method === 'cash'
-                      ? '💵 Nakit'
+                      ? 'Nakit'
                       : selectedOrder.payment_method === 'iban'
-                        ? '🏦 IBAN'
-                        : '💳 Kart'}
+                        ? 'IBAN'
+                        : 'Kart'}
                   </span>
                 </div>
               </div>
 
               {(selectedOrder.courier_name || selectedOrder.courier_id) && (
-                <div className="bg-slate-800 p-4 rounded-lg">
+                <div className="bg-slate-800 p-4 rounded-md">
                   <p className="text-slate-400 text-xs mb-1">Atanan Kurye</p>
                   <p className="text-white">
-                    🚴 {selectedOrder.courier_name || 'Bilinmeyen'}
+                    {selectedOrder.courier_name || 'Bilinmeyen'}
                   </p>
                 </div>
               )}
 
-              <div className="bg-slate-800 p-4 rounded-lg space-y-2">
-                <h4 className="text-white font-semibold mb-2">⏱️ Zaman Çizelgesi</h4>
+              <div className="bg-slate-800 p-4 rounded-md space-y-2">
+                <h4 className="text-white font-semibold mb-2 flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-gray-400" strokeWidth={1.5} />
+                  Zaman Çizelgesi
+                </h4>
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">📝 Oluşturulma:</span>
+                  <span className="text-slate-400">Oluşturulma:</span>
                   <span className="text-white font-medium">
                     {selectedOrder.created_at ? formatTurkishTime(selectedOrder.created_at) : '-'}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">👨‍🍳 Hazırlamaya Başlama:</span>
+                  <span className="text-slate-400">Hazırlamaya Başlama:</span>
                   <span className="text-white font-medium">
                     {selectedOrder.getting_ready_at ? formatTurkishTime(selectedOrder.getting_ready_at) : '-'}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">✅ Hazır Olma:</span>
+                  <span className="text-slate-400">Hazır Olma:</span>
                   <span className="text-white font-medium">
                     {selectedOrder.ready_at ? formatTurkishTime(selectedOrder.ready_at) : '-'}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">✔️ Kurye Kabul Saati:</span>
+                  <span className="text-slate-400">Kurye Kabul Saati:</span>
                   <span className="text-white font-medium">
                     {selectedOrder.assigned_at ? formatTurkishTime(selectedOrder.assigned_at) : '-'}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">🏪 Esnaftan Alınma:</span>
+                  <span className="text-slate-400">Esnaftan Alınma:</span>
                   <span className="text-white font-medium">
                     {selectedOrder.picked_up_at ? formatTurkishTime(selectedOrder.picked_up_at) : '-'}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">🎯 Teslim Edilme:</span>
+                  <span className="text-slate-400">Teslim Edilme:</span>
                   <span className="text-white font-medium">
                     {selectedOrder.delivered_at ? formatTurkishTime(selectedOrder.delivered_at) : '-'}
                   </span>
                 </div>
                 {selectedOrder.cancelled_at && (
                   <div className="flex justify-between text-sm border-t border-slate-700 pt-2 mt-2">
-                    <span className="text-red-400">❌ İptal:</span>
+                    <span className="text-red-400">İptal:</span>
                     <span className="text-red-300 font-medium">
                       {formatTurkishTime(selectedOrder.cancelled_at)}
                     </span>
@@ -994,7 +997,7 @@ export function RestaurantDetailModal({
               </div>
 
               {selectedOrder.status === 'cancelled' && (
-                <div className="bg-red-900/20 p-4 rounded-lg border border-red-700">
+                <div className="bg-red-900/20 p-4 rounded-md border border-red-700">
                   <h4 className="text-red-300 font-semibold mb-2">İptal Bilgileri</h4>
                   {selectedOrder.cancelled_by && (
                     <div className="flex justify-between text-sm mb-1">

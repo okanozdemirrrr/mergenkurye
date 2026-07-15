@@ -305,7 +305,7 @@ export default function RestoranMutabakatlarPage() {
             type="date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
-            className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 shadow-sm transition-colors hover:border-slate-600 focus:border-orange-500/60 focus:outline-none focus:ring-1 focus:ring-orange-500/40 [color-scheme:dark]"
+            className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 shadow-sm transition-colors hover:border-slate-600 focus:border-orange-500/60 focus:outline-none focus:ring-1 focus:ring-orange-500/40 [color-scheme:dark]"
             aria-label="Başlangıç tarihi"
           />
           <span className="text-slate-500 text-sm font-medium select-none">ile</span>
@@ -313,7 +313,7 @@ export default function RestoranMutabakatlarPage() {
             type="date"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
-            className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 shadow-sm transition-colors hover:border-slate-600 focus:border-orange-500/60 focus:outline-none focus:ring-1 focus:ring-orange-500/40 [color-scheme:dark]"
+            className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 shadow-sm transition-colors hover:border-slate-600 focus:border-orange-500/60 focus:outline-none focus:ring-1 focus:ring-orange-500/40 [color-scheme:dark]"
             aria-label="Bitiş tarihi"
           />
           {(startDate || endDate) && (
@@ -323,7 +323,7 @@ export default function RestoranMutabakatlarPage() {
                 setStartDate('')
                 setEndDate('')
               }}
-              className="rounded-lg border border-slate-700 bg-slate-800/80 px-3 py-2 text-xs font-medium text-slate-400 transition-colors hover:border-slate-600 hover:text-slate-200"
+              className="rounded-md border border-slate-700 bg-slate-800/80 px-3 py-2 text-xs font-medium text-slate-400 transition-colors hover:border-slate-600 hover:text-slate-200"
             >
               Temizle
             </button>
@@ -332,18 +332,18 @@ export default function RestoranMutabakatlarPage() {
       </div>
 
       {joinWarning && (
-        <p className="text-amber-400/90 text-xs border border-amber-800/40 bg-amber-950/30 rounded-lg px-4 py-2">
+        <p className="text-amber-400/90 text-xs border border-amber-800/40 bg-amber-950/30 rounded-md px-4 py-2">
           {joinWarning}
         </p>
       )}
 
       {fetchError && (
-        <p className="text-red-400 text-sm border border-red-900/50 bg-red-950/30 rounded-lg px-4 py-3">
+        <p className="text-red-400 text-sm border border-red-900/50 bg-red-950/30 rounded-md px-4 py-3">
           Veriler yüklenemedi: {fetchError}
         </p>
       )}
 
-      <div className="rounded-xl border border-slate-700/80 bg-slate-900/60 shadow-xl overflow-hidden">
+      <div className="rounded-md border border-slate-700/80 bg-slate-900/60 shadow-sm overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-24">
             <div className="h-10 w-10 animate-spin rounded-full border-2 border-slate-600 border-t-orange-500" />

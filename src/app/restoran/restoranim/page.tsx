@@ -8,7 +8,7 @@
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
-import { Upload, Save, Image as ImageIcon, Star, MessageSquare, Eye, EyeOff, Trash2 } from 'lucide-react'
+import { Upload, Save, Image as ImageIcon, Star, MessageSquare, Eye, EyeOff, Trash2, Store, FolderOpen, Link2, Lightbulb, AlertTriangle, Loader2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import ProductOptionsManager, { OptionGroup } from '../components/ProductOptionsManager'
 import SortableCategoryList from '../components/SortableCategoryList'
@@ -217,7 +217,7 @@ function RestoranimPageContent() {
       setLoading(true)
       const restaurantId = localStorage.getItem('restoran_logged_restaurant_id')
       if (!restaurantId) {
-        setErrorMessage('❌ Restoran ID bulunamadı')
+        setErrorMessage('Restoran ID bulunamadı')
         setLoading(false)
         return
       }
@@ -233,7 +233,7 @@ function RestoranimPageContent() {
           coverUrl = url
           console.log('Kapak URL:', url)
         } else {
-          setErrorMessage('❌ Kapak fotoğrafı yüklenemedi')
+          setErrorMessage('Kapak fotoğrafı yüklenemedi')
           setLoading(false)
           return
         }
@@ -247,7 +247,7 @@ function RestoranimPageContent() {
           logoUrl = url
           console.log('Logo URL:', url)
         } else {
-          setErrorMessage('❌ Logo yüklenemedi')
+          setErrorMessage('Logo yüklenemedi')
           setLoading(false)
           return
         }
@@ -256,14 +256,14 @@ function RestoranimPageContent() {
       // Minimum sepet tutarını validate et
       const minimumOrderValue = parseFloat(brandingForm.minimum_order_value)
       if (isNaN(minimumOrderValue) || minimumOrderValue < 0) {
-        setErrorMessage('❌ Geçerli bir minimum sepet tutarı girin')
+        setErrorMessage('Geçerli bir minimum sepet tutarı girin')
         setLoading(false)
         return
       }
 
       const deliveryFee = Number(brandingForm.delivery_fee)
       if (isNaN(deliveryFee) || deliveryFee < 0) {
-        setErrorMessage('❌ Geçerli bir teslimat ücreti girin')
+        setErrorMessage('Geçerli bir teslimat ücreti girin')
         setLoading(false)
         return
       }
@@ -288,12 +288,12 @@ function RestoranimPageContent() {
         throw error
       }
 
-      setSuccessMessage('✅ Mağaza bilgileri başarıyla güncellendi!')
+      setSuccessMessage('Mağaza bilgileri başarıyla güncellendi!')
       setTimeout(() => setSuccessMessage(''), 3000)
       await loadRestaurantData()
     } catch (error: any) {
       console.error('Kayıt hatası:', error)
-      setErrorMessage(`❌ Kayıt sırasında hata oluştu: ${error.message || 'Bilinmeyen hata'}`)
+      setErrorMessage(`Kayıt sırasında hata oluştu: ${error.message || 'Bilinmeyen hata'}`)
       setTimeout(() => setErrorMessage(''), 5000)
     } finally {
       setLoading(false)
@@ -313,11 +313,11 @@ function RestoranimPageContent() {
         p.id === productId ? { ...p, is_available: !currentStatus } : p
       ))
 
-      setSuccessMessage('✅ Stok durumu güncellendi!')
+      setSuccessMessage('Stok durumu güncellendi!')
       setTimeout(() => setSuccessMessage(''), 2000)
     } catch (error) {
       console.error('Stok güncellenemedi:', error)
-      setErrorMessage('❌ Stok güncellenemedi')
+      setErrorMessage('Stok güncellenemedi')
       setTimeout(() => setErrorMessage(''), 3000)
     }
   }
@@ -344,12 +344,12 @@ function RestoranimPageContent() {
 
       console.log('Yanıt kaydedildi:', data)
 
-      setSuccessMessage('✅ Yanıt kaydedildi ve müşteriye bildirim gönderildi!')
+      setSuccessMessage('Yanıt kaydedildi ve müşteriye bildirim gönderildi!')
       setTimeout(() => setSuccessMessage(''), 3000)
       await loadRestaurantData()
     } catch (error: any) {
       console.error('Yanıt kaydedilemedi:', error)
-      setErrorMessage(`❌ Yanıt kaydedilemedi: ${error.message || 'Bilinmeyen hata'}`)
+      setErrorMessage(`Yanıt kaydedilemedi: ${error.message || 'Bilinmeyen hata'}`)
       setTimeout(() => setErrorMessage(''), 5000)
     } finally {
       setLoading(false)
@@ -373,7 +373,7 @@ function RestoranimPageContent() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 bg-green-500/90 text-white px-6 py-3 rounded-lg shadow-lg"
+            className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 bg-green-500/90 text-white px-6 py-3 rounded-md shadow-sm"
           >
             {successMessage}
           </motion.div>
@@ -383,7 +383,7 @@ function RestoranimPageContent() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 bg-red-500/90 text-white px-6 py-3 rounded-lg shadow-lg"
+            className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 bg-red-500/90 text-white px-6 py-3 rounded-md shadow-sm"
           >
             {errorMessage}
           </motion.div>
@@ -393,7 +393,10 @@ function RestoranimPageContent() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-white mb-2">🏪 Restoranım</h1>
+          <h1 className="text-3xl font-bold text-white mb-2 flex items-center gap-2">
+            <Store className="w-7 h-7 text-gray-400" strokeWidth={1.5} />
+            Restoranım
+          </h1>
           <p className="text-slate-400">Dijital varlıklarınızı tek yerden yönetin</p>
         </div>
 
@@ -469,7 +472,7 @@ function BrandingTab({ brandingForm, setBrandingForm, coverPreview, logoPreview,
       setToggleLoading(true)
       const restaurantId = localStorage.getItem('restoran_logged_restaurant_id')
       if (!restaurantId) {
-        setToastMessage('❌ Restoran ID bulunamadı')
+        setToastMessage('Restoran ID bulunamadı')
         setShowToast(true)
         setTimeout(() => setShowToast(false), 3000)
         return
@@ -485,12 +488,12 @@ function BrandingTab({ brandingForm, setBrandingForm, coverPreview, logoPreview,
       if (error) throw error
 
       setIsActive(newStatus)
-      setToastMessage(newStatus ? '✅ Restoran siparişe açıldı!' : '⏸️ Restoran siparişe kapatıldı!')
+      setToastMessage(newStatus ? 'Restoran siparişe açıldı!' : 'Restoran siparişe kapatıldı!')
       setShowToast(true)
       setTimeout(() => setShowToast(false), 3000)
     } catch (error: any) {
       console.error('Durum güncellenemedi:', error)
-      setToastMessage('❌ Durum güncellenemedi')
+      setToastMessage('Durum güncellenemedi')
       setShowToast(true)
       setTimeout(() => setShowToast(false), 3000)
     } finally {
@@ -519,7 +522,7 @@ function BrandingTab({ brandingForm, setBrandingForm, coverPreview, logoPreview,
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="bg-slate-900 rounded-xl p-6 border border-slate-800"
+      className="bg-slate-900 rounded-md p-6 border border-slate-800"
     >
       {/* Toast Notification */}
       <AnimatePresence>
@@ -528,7 +531,7 @@ function BrandingTab({ brandingForm, setBrandingForm, coverPreview, logoPreview,
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 bg-slate-800 text-white px-6 py-3 rounded-lg shadow-2xl border border-slate-700"
+            className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 bg-slate-800 text-white px-6 py-3 rounded-md shadow-sm border border-slate-700"
           >
             {toastMessage}
           </motion.div>
@@ -538,12 +541,12 @@ function BrandingTab({ brandingForm, setBrandingForm, coverPreview, logoPreview,
       <h2 className="text-xl font-bold text-white mb-6">Mağaza Görünümü</h2>
 
       {/* Çalışma Durumu Toggle */}
-      <div className="mb-8 p-6 bg-gradient-to-r from-slate-800 to-slate-900 rounded-xl border-2 border-slate-700">
+      <div className="mb-8 p-6 bg-gradient-to-r from-slate-800 to-slate-900 rounded-md border-2 border-slate-700">
         <div className="flex items-center justify-between">
           <div className="flex-1">
             <h3 className="text-lg font-bold text-white mb-1">Restoran Durumu</h3>
             <p className={`text-sm font-medium ${isActive ? 'text-green-400' : 'text-red-400'}`}>
-              {isActive ? '🟢 Restoran Şuan Siparişe Açık' : '🔴 Restoran Şuan Siparişe Kapalı'}
+              {isActive ? 'Restoran şu an siparişe açık' : 'Restoran şu an siparişe kapalı'}
             </p>
             <p className="text-xs text-slate-500 mt-1">
               {isActive ? 'Müşteriler sipariş verebilir' : 'Müşteriler sipariş veremez'}
@@ -561,7 +564,7 @@ function BrandingTab({ brandingForm, setBrandingForm, coverPreview, logoPreview,
             }`}
           >
             <span
-              className={`inline-block h-10 w-10 transform rounded-full bg-white shadow-lg transition-transform duration-300 ${
+              className={`inline-block h-10 w-10 transform rounded-full bg-white shadow-sm transition-transform duration-300 ${
                 isActive ? 'translate-x-16' : 'translate-x-2'
               }`}
             >
@@ -585,20 +588,20 @@ function BrandingTab({ brandingForm, setBrandingForm, coverPreview, logoPreview,
         </label>
         <div className="relative">
           {coverPreview ? (
-            <div className="relative w-full h-48 rounded-lg overflow-hidden border-2 border-slate-700">
+            <div className="relative w-full h-48 rounded-md overflow-hidden border-2 border-slate-700">
               <img src={coverPreview} alt="Cover" className="w-full h-full object-cover" />
               <button
                 onClick={() => {
                   setCoverPreview(null)
                   setCoverImageFile(null)
                 }}
-                className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-2 rounded-lg"
+                className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-2 rounded-md"
               >
                 <Trash2 size={16} />
               </button>
             </div>
           ) : (
-            <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-slate-700 rounded-lg cursor-pointer hover:border-orange-500 transition-colors">
+            <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-slate-700 rounded-md cursor-pointer hover:border-orange-500 transition-colors">
               <Upload size={32} className="text-slate-500 mb-2" />
               <span className="text-sm text-slate-500">Kapak fotoğrafı yükle</span>
               <input type="file" accept="image/*" onChange={handleCoverChange} className="hidden" />
@@ -614,7 +617,7 @@ function BrandingTab({ brandingForm, setBrandingForm, coverPreview, logoPreview,
         </label>
         <div className="relative">
           {logoPreview ? (
-            <div className="relative w-32 h-32 rounded-lg overflow-hidden border-2 border-slate-700">
+            <div className="relative w-32 h-32 rounded-md overflow-hidden border-2 border-slate-700">
               <img src={logoPreview} alt="Logo" className="w-full h-full object-cover" />
               <button
                 onClick={() => {
@@ -627,7 +630,7 @@ function BrandingTab({ brandingForm, setBrandingForm, coverPreview, logoPreview,
               </button>
             </div>
           ) : (
-            <label className="flex flex-col items-center justify-center w-32 h-32 border-2 border-dashed border-slate-700 rounded-lg cursor-pointer hover:border-orange-500 transition-colors">
+            <label className="flex flex-col items-center justify-center w-32 h-32 border-2 border-dashed border-slate-700 rounded-md cursor-pointer hover:border-orange-500 transition-colors">
               <ImageIcon size={24} className="text-slate-500 mb-1" />
               <span className="text-xs text-slate-500">Logo yükle</span>
               <input type="file" accept="image/*" onChange={handleLogoChange} className="hidden" />
@@ -644,7 +647,7 @@ function BrandingTab({ brandingForm, setBrandingForm, coverPreview, logoPreview,
             type="text"
             value={brandingForm.name}
             onChange={(e) => setBrandingForm({ ...brandingForm, name: e.target.value })}
-            className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:border-orange-500 outline-none"
+            className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500 focus:border-orange-500 outline-none"
             placeholder="Örn: Öküz Burger"
           />
         </div>
@@ -655,7 +658,7 @@ function BrandingTab({ brandingForm, setBrandingForm, coverPreview, logoPreview,
             value={brandingForm.description}
             onChange={(e) => setBrandingForm({ ...brandingForm, description: e.target.value })}
             rows={3}
-            className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:border-orange-500 outline-none resize-none"
+            className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500 focus:border-orange-500 outline-none resize-none"
             placeholder="Restoranınızı tanıtın..."
           />
         </div>
@@ -666,7 +669,7 @@ function BrandingTab({ brandingForm, setBrandingForm, coverPreview, logoPreview,
             type="text"
             value={brandingForm.working_hours}
             onChange={(e) => setBrandingForm({ ...brandingForm, working_hours: e.target.value })}
-            className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:border-orange-500 outline-none"
+            className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500 focus:border-orange-500 outline-none"
             placeholder="Örn: 09:00 - 23:00"
           />
         </div>
@@ -679,7 +682,7 @@ function BrandingTab({ brandingForm, setBrandingForm, coverPreview, logoPreview,
             min="0"
             value={brandingForm.minimum_order_value}
             onChange={(e) => setBrandingForm({ ...brandingForm, minimum_order_value: e.target.value })}
-            className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:border-orange-500 outline-none"
+            className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500 focus:border-orange-500 outline-none"
             placeholder="Örn: 50.00"
           />
           <p className="text-xs text-slate-500 mt-1">
@@ -695,7 +698,7 @@ function BrandingTab({ brandingForm, setBrandingForm, coverPreview, logoPreview,
             min="0"
             value={brandingForm.delivery_fee ?? '0'}
             onChange={(e) => setBrandingForm({ ...brandingForm, delivery_fee: e.target.value })}
-            className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:border-orange-500 outline-none"
+            className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500 focus:border-orange-500 outline-none"
             placeholder="Örn: 25.00"
           />
           <p className="text-xs text-slate-500 mt-1">
@@ -708,7 +711,7 @@ function BrandingTab({ brandingForm, setBrandingForm, coverPreview, logoPreview,
       <button
         onClick={saveBranding}
         disabled={loading}
-        className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-slate-700 text-white font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+        className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-slate-700 text-white font-medium py-3 rounded-md transition-colors flex items-center justify-center gap-2"
       >
         <Save size={20} />
         {loading ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}
@@ -769,7 +772,7 @@ function MenuTab({ categories, setCategories, products, toggleProductAvailabilit
       // Güvenlik: Sadece kendi restoranının ürününü silebilir
       const restaurantId = localStorage.getItem('restoran_logged_restaurant_id')
       if (!restaurantId) {
-        alert('❌ Restoran ID bulunamadı')
+        alert('Restoran ID bulunamadı')
         return
       }
 
@@ -781,12 +784,12 @@ function MenuTab({ categories, setCategories, products, toggleProductAvailabilit
         .single()
 
       if (checkError || !productCheck) {
-        alert('❌ Ürün bulunamadı')
+        alert('Ürün bulunamadı')
         return
       }
 
       if (productCheck.restaurant_id !== restaurantId) {
-        alert('❌ Bu ürünü silme yetkiniz yok')
+        alert('Bu ürünü silme yetkiniz yok')
         return
       }
 
@@ -804,12 +807,12 @@ function MenuTab({ categories, setCategories, products, toggleProductAvailabilit
       
       // Başarı mesajı
       const event = new CustomEvent('show-toast', { 
-        detail: { message: '✅ Ürün başarıyla silindi!', type: 'success' } 
+        detail: { message: 'Ürün başarıyla silindi!', type: 'success' } 
       })
       window.dispatchEvent(event)
     } catch (error: any) {
       console.error('Ürün silinemedi:', error)
-      alert('❌ Ürün silinemedi: ' + (error.message || 'Bilinmeyen hata'))
+      alert('Ürün silinemedi: ' + (error.message || 'Bilinmeyen hata'))
     } finally {
       setDeleteLoading(false)
     }
@@ -828,7 +831,7 @@ function MenuTab({ categories, setCategories, products, toggleProductAvailabilit
           onClick={() => {
             if (categories.length === 0) {
               // Kategori yoksa uyarı göster ve scroll yap
-              alert('⚠️ Önce bir kategori oluşturmalısınız!\n\nAşağıdaki alandan kategori ekleyebilirsiniz.')
+              alert('Önce bir kategori oluşturmalısınız!\n\nAşağıdaki alandan kategori ekleyebilirsiniz.')
               const categorySection = document.getElementById('category-section')
               categorySection?.scrollIntoView({ behavior: 'smooth', block: 'start' })
             } else {
@@ -836,16 +839,19 @@ function MenuTab({ categories, setCategories, products, toggleProductAvailabilit
               setShowAddModal(true)
             }
           }}
-          className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-4 rounded-xl transition-colors flex items-center justify-center gap-2"
+          className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-4 rounded-md transition-colors flex items-center justify-center gap-2"
         >
           <span className="text-2xl">+</span>
           Yeni Ürün Ekle
         </button>
 
         {categories.length === 0 ? (
-          <div id="category-section" className="bg-slate-900 rounded-xl p-8 border border-slate-800">
+          <div id="category-section" className="bg-slate-900 rounded-md p-8 border border-slate-800">
             <div className="text-center mb-6">
-              <p className="text-slate-400 text-lg font-semibold mb-2">📂 Henüz kategori eklenmemiş</p>
+              <p className="text-slate-400 text-lg font-semibold mb-2 flex items-center justify-center gap-2">
+                <FolderOpen className="w-5 h-5 text-gray-400" strokeWidth={1.5} />
+                Henüz kategori eklenmemiş
+              </p>
               <p className="text-slate-500 text-sm">Ürün eklemek için önce bir kategori oluşturun</p>
             </div>
             
@@ -868,16 +874,16 @@ function MenuTab({ categories, setCategories, products, toggleProductAvailabilit
                       <div
                         key={product.id}
                         onClick={() => openEditModal(product)}
-                        className="relative flex items-center gap-4 p-4 bg-slate-800 rounded-lg border border-slate-700 cursor-pointer hover:border-orange-500 hover:shadow-lg transition-all"
+                        className="relative flex items-center gap-4 p-4 bg-slate-800 rounded-md border border-slate-700 cursor-pointer hover:border-orange-500 hover:shadow-sm transition-all"
                       >
                         {product.image_url ? (
                           <img
                             src={product.image_url}
                             alt={product.name}
-                            className="w-16 h-16 rounded-lg object-cover"
+                            className="w-16 h-16 rounded-md object-cover"
                           />
                         ) : (
-                          <div className="w-16 h-16 rounded-lg bg-slate-700 flex items-center justify-center">
+                          <div className="w-16 h-16 rounded-md bg-slate-700 flex items-center justify-center">
                             <ImageIcon size={24} className="text-slate-500" />
                           </div>
                         )}
@@ -891,10 +897,11 @@ function MenuTab({ categories, setCategories, products, toggleProductAvailabilit
                         <div className="flex items-center gap-2">
                           <button
                             onClick={(e) => openUpsellModal(product, e)}
-                            className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-all text-xs font-medium"
+                            className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-md transition-all text-xs font-medium flex items-center gap-1.5"
                             title="Yan Ürünleri Yönet"
                           >
-                            🔗 Yan Ürünler
+                            <Link2 className="w-3.5 h-3.5" strokeWidth={1.5} />
+                            Yan Ürünler
                           </button>
 
                           <button
@@ -902,7 +909,7 @@ function MenuTab({ categories, setCategories, products, toggleProductAvailabilit
                               e.stopPropagation()
                               toggleProductAvailability(product.id, product.is_available)
                             }}
-                            className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-all ${
+                            className={`flex items-center gap-2 px-3 py-2 rounded-md font-medium transition-all ${
                               product.is_available
                                 ? 'bg-green-600 hover:bg-green-700 text-white'
                                 : 'bg-red-600 hover:bg-red-700 text-white'
@@ -914,7 +921,7 @@ function MenuTab({ categories, setCategories, products, toggleProductAvailabilit
 
                           <button
                             onClick={(e) => openDeleteModal(product, e)}
-                            className="p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all"
+                            className="p-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-all"
                             title="Ürünü Sil"
                           >
                             <Trash2 size={18} />
@@ -960,7 +967,7 @@ function MenuTab({ categories, setCategories, products, toggleProductAvailabilit
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-slate-900 rounded-2xl w-full max-w-md border border-slate-800"
+            className="bg-slate-900 rounded-md w-full max-w-md border border-slate-800"
           >
             {/* Header */}
             <div className="p-6 border-b border-slate-800">
@@ -980,9 +987,10 @@ function MenuTab({ categories, setCategories, products, toggleProductAvailabilit
               <p className="text-slate-300 mb-4">
                 <span className="font-bold text-white">{deletingProduct.name}</span> ürününü kalıcı olarak silmek istediğinize emin misiniz?
               </p>
-              <div className="bg-red-900/20 border border-red-800 rounded-lg p-3">
-                <p className="text-red-400 text-sm">
-                  ⚠️ Bu ürün veritabanından tamamen silinecek ve müşteri panelinde görünmeyecektir.
+              <div className="bg-red-900/20 border border-red-800 rounded-md p-3">
+                <p className="text-red-400 text-sm flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" strokeWidth={1.5} />
+                  Bu ürün veritabanından tamamen silinecek ve müşteri panelinde görünmeyecektir.
                 </p>
               </div>
             </div>
@@ -992,14 +1000,14 @@ function MenuTab({ categories, setCategories, products, toggleProductAvailabilit
               <button
                 onClick={closeDeleteModal}
                 disabled={deleteLoading}
-                className="flex-1 h-12 border-2 border-slate-700 text-slate-300 rounded-lg font-medium hover:bg-slate-800 transition-colors disabled:opacity-50"
+                className="flex-1 h-12 border-2 border-slate-700 text-slate-300 rounded-md font-medium hover:bg-slate-800 transition-colors disabled:opacity-50"
               >
                 İptal
               </button>
               <button
                 onClick={handleDeleteProduct}
                 disabled={deleteLoading}
-                className="flex-1 h-12 bg-red-600 hover:bg-red-700 disabled:bg-slate-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                className="flex-1 h-12 bg-red-600 hover:bg-red-700 disabled:bg-slate-700 text-white rounded-md font-medium transition-colors flex items-center justify-center gap-2"
               >
                 <Trash2 size={20} />
                 {deleteLoading ? 'Siliniyor...' : 'Evet, Sil'}
@@ -1165,7 +1173,7 @@ function ProductAddModal({
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-slate-900 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-slate-800"
+        className="bg-slate-900 rounded-md w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-slate-800"
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-800 sticky top-0 bg-slate-900 z-10">
@@ -1182,7 +1190,7 @@ function ProductAddModal({
         <div className="p-6 space-y-6">
           {/* Error Message */}
           {error && (
-            <div className="p-3 bg-red-500/20 border border-red-500/50 rounded-lg">
+            <div className="p-3 bg-red-500/20 border border-red-500/50 rounded-md">
               <p className="text-red-400 text-sm">{error}</p>
             </div>
           )}
@@ -1198,16 +1206,17 @@ function ProductAddModal({
               <div className="space-y-3">
                 <select
                   disabled
-                  className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-500 cursor-not-allowed"
+                  className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-md text-slate-500 cursor-not-allowed"
                 >
                   <option>Lütfen önce bir kategori oluşturun</option>
                 </select>
                 
                 {/* Kategori Oluştur Butonu */}
-                <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-md">
                   <div className="flex-1">
-                    <p className="text-amber-300 text-sm font-medium">
-                      ⚠️ Kategori bulunamadı
+                    <p className="text-amber-300 text-sm font-medium flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-gray-400 shrink-0" strokeWidth={1.5} />
+                      Kategori bulunamadı
                     </p>
                     <p className="text-amber-300/70 text-xs mt-0.5">
                       Ürün eklemek için önce bir kategori oluşturmalısınız
@@ -1222,7 +1231,7 @@ function ProductAddModal({
                         categorySection?.scrollIntoView({ behavior: 'smooth', block: 'start' })
                       }, 300)
                     }}
-                    className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
+                    className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-md transition-colors whitespace-nowrap"
                   >
                     + Yeni Kategori Oluştur
                   </button>
@@ -1233,7 +1242,7 @@ function ProductAddModal({
               <select
                 value={formData.category_id}
                 onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
-                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-orange-500 outline-none"
+                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-md text-white focus:border-orange-500 outline-none"
               >
                 <option value="">Kategori seçin...</option>
                 {categories.map((category) => (
@@ -1251,20 +1260,20 @@ function ProductAddModal({
               Ürün Görseli
             </label>
             {imagePreview ? (
-              <div className="relative w-full h-48 rounded-lg overflow-hidden border-2 border-slate-700">
+              <div className="relative w-full h-48 rounded-md overflow-hidden border-2 border-slate-700">
                 <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
                 <button
                   onClick={() => {
                     setImagePreview(null)
                     setImageFile(null)
                   }}
-                  className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-2 rounded-lg"
+                  className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-2 rounded-md"
                 >
                   <Trash2 size={16} />
                 </button>
               </div>
             ) : (
-              <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-slate-700 rounded-lg cursor-pointer hover:border-orange-500 transition-colors">
+              <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-slate-700 rounded-md cursor-pointer hover:border-orange-500 transition-colors">
                 <Upload size={32} className="text-slate-500 mb-2" />
                 <span className="text-sm text-slate-500">Görsel yükle</span>
                 <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
@@ -1281,7 +1290,7 @@ function ProductAddModal({
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:border-orange-500 outline-none"
+              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500 focus:border-orange-500 outline-none"
               placeholder="Örn: Öküz Burger"
             />
           </div>
@@ -1295,7 +1304,7 @@ function ProductAddModal({
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={3}
-              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:border-orange-500 outline-none resize-none"
+              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500 focus:border-orange-500 outline-none resize-none"
               placeholder="Ürün açıklaması..."
             />
           </div>
@@ -1310,7 +1319,7 @@ function ProductAddModal({
               step="0.01"
               value={formData.price}
               onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:border-orange-500 outline-none"
+              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500 focus:border-orange-500 outline-none"
               placeholder="0.00"
             />
           </div>
@@ -1328,14 +1337,14 @@ function ProductAddModal({
           <div className="flex gap-3 pt-4">
             <button
               onClick={onClose}
-              className="flex-1 h-12 border-2 border-slate-700 text-slate-300 rounded-lg font-medium hover:bg-slate-800 transition-colors"
+              className="flex-1 h-12 border-2 border-slate-700 text-slate-300 rounded-md font-medium hover:bg-slate-800 transition-colors"
             >
               İptal
             </button>
             <button
               onClick={handleSave}
               disabled={loading}
-              className="flex-1 h-12 bg-orange-600 hover:bg-orange-700 disabled:bg-slate-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+              className="flex-1 h-12 bg-orange-600 hover:bg-orange-700 disabled:bg-slate-700 text-white rounded-md font-medium transition-colors flex items-center justify-center gap-2"
             >
               <Save size={20} />
               {loading ? 'Ekleniyor...' : 'Ürünü Ekle'}
@@ -1494,7 +1503,7 @@ function ProductEditModal({ product, onClose, onSuccess }: { product: Product; o
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-slate-900 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-slate-800"
+        className="bg-slate-900 rounded-md w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-slate-800"
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-800 sticky top-0 bg-slate-900 z-10">
@@ -1511,7 +1520,7 @@ function ProductEditModal({ product, onClose, onSuccess }: { product: Product; o
         <div className="p-6 space-y-6">
           {/* Error Message */}
           {error && (
-            <div className="p-3 bg-red-500/20 border border-red-500/50 rounded-lg">
+            <div className="p-3 bg-red-500/20 border border-red-500/50 rounded-md">
               <p className="text-red-400 text-sm">{error}</p>
             </div>
           )}
@@ -1522,20 +1531,20 @@ function ProductEditModal({ product, onClose, onSuccess }: { product: Product; o
               Ürün Görseli
             </label>
             {imagePreview ? (
-              <div className="relative w-full h-48 rounded-lg overflow-hidden border-2 border-slate-700">
+              <div className="relative w-full h-48 rounded-md overflow-hidden border-2 border-slate-700">
                 <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
                 <button
                   onClick={() => {
                     setImagePreview(null)
                     setImageFile(null)
                   }}
-                  className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-2 rounded-lg"
+                  className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-2 rounded-md"
                 >
                   <Trash2 size={16} />
                 </button>
               </div>
             ) : (
-              <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-slate-700 rounded-lg cursor-pointer hover:border-orange-500 transition-colors">
+              <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-slate-700 rounded-md cursor-pointer hover:border-orange-500 transition-colors">
                 <Upload size={32} className="text-slate-500 mb-2" />
                 <span className="text-sm text-slate-500">Görsel yükle</span>
                 <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
@@ -1552,7 +1561,7 @@ function ProductEditModal({ product, onClose, onSuccess }: { product: Product; o
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:border-orange-500 outline-none"
+              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500 focus:border-orange-500 outline-none"
               placeholder="Örn: Öküz Burger"
             />
           </div>
@@ -1566,7 +1575,7 @@ function ProductEditModal({ product, onClose, onSuccess }: { product: Product; o
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={3}
-              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:border-orange-500 outline-none resize-none"
+              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500 focus:border-orange-500 outline-none resize-none"
               placeholder="Ürün açıklaması..."
             />
           </div>
@@ -1581,7 +1590,7 @@ function ProductEditModal({ product, onClose, onSuccess }: { product: Product; o
               step="0.01"
               value={formData.price}
               onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:border-orange-500 outline-none"
+              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500 focus:border-orange-500 outline-none"
               placeholder="0.00"
             />
           </div>
@@ -1599,14 +1608,14 @@ function ProductEditModal({ product, onClose, onSuccess }: { product: Product; o
           <div className="flex gap-3 pt-4">
             <button
               onClick={onClose}
-              className="flex-1 h-12 border-2 border-slate-700 text-slate-300 rounded-lg font-medium hover:bg-slate-800 transition-colors"
+              className="flex-1 h-12 border-2 border-slate-700 text-slate-300 rounded-md font-medium hover:bg-slate-800 transition-colors"
             >
               İptal
             </button>
             <button
               onClick={handleSave}
               disabled={loading}
-              className="flex-1 h-12 bg-orange-600 hover:bg-orange-700 disabled:bg-slate-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+              className="flex-1 h-12 bg-orange-600 hover:bg-orange-700 disabled:bg-slate-700 text-white rounded-md font-medium transition-colors flex items-center justify-center gap-2"
             >
               <Save size={20} />
               {loading ? 'Kaydediliyor...' : 'Kaydet'}
@@ -1650,14 +1659,14 @@ function ReviewsTab({ reviews, saveReply }: any) {
       className="space-y-4"
     >
       {reviews.length === 0 ? (
-        <div className="bg-slate-900 rounded-xl p-12 border border-slate-800 text-center">
+        <div className="bg-slate-900 rounded-md p-12 border border-slate-800 text-center">
           <Star size={48} className="text-slate-700 mx-auto mb-4" />
           <p className="text-slate-400 text-lg">Henüz yorum yapılmamış</p>
           <p className="text-slate-500 text-sm mt-2">İlk yorumlar burada görünecek</p>
         </div>
       ) : (
         reviews.map((review: Review) => (
-          <div key={review.id} className="bg-slate-900 rounded-xl p-6 border border-slate-800">
+          <div key={review.id} className="bg-slate-900 rounded-md p-6 border border-slate-800">
             {/* Customer Info */}
             <div className="flex items-start justify-between mb-4">
               <div>
@@ -1684,14 +1693,14 @@ function ReviewsTab({ reviews, saveReply }: any) {
 
             {/* Comment */}
             {review.comment && (
-              <div className="bg-slate-800 rounded-lg p-4 mb-4">
+              <div className="bg-slate-800 rounded-md p-4 mb-4">
                 <p className="text-slate-300">{review.comment}</p>
               </div>
             )}
 
             {/* Restaurant Reply */}
             {review.restaurant_reply ? (
-              <div className="bg-orange-900/20 border border-orange-800 rounded-lg p-4">
+              <div className="bg-orange-900/20 border border-orange-800 rounded-md p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <MessageSquare size={16} className="text-orange-500" />
                   <span className="text-sm font-medium text-orange-500">Restoran Yanıtı</span>
@@ -1708,12 +1717,12 @@ function ReviewsTab({ reviews, saveReply }: any) {
                   onChange={(e) => handleReplyChange(review.id, e.target.value)}
                   placeholder="Müşteriye yanıt yazın..."
                   rows={3}
-                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:border-orange-500 outline-none resize-none"
+                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500 focus:border-orange-500 outline-none resize-none"
                 />
                 <button
                   onClick={() => handleSaveReply(review.id)}
                   disabled={!replyTexts[review.id]?.trim() || savingReplyId === review.id}
-                  className="bg-orange-600 hover:bg-orange-700 disabled:bg-slate-700 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                  className="bg-orange-600 hover:bg-orange-700 disabled:bg-slate-700 disabled:cursor-not-allowed text-white px-4 py-2 rounded-md font-medium transition-colors"
                 >
                   {savingReplyId === review.id ? 'Gönderiliyor...' : 'Yanıtı Gönder'}
                 </button>
@@ -1778,14 +1787,15 @@ function UpsellModal({ product, allProducts, onClose, onSuccess }: {
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-slate-900 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden border border-slate-800"
+        className="bg-slate-900 rounded-md w-full max-w-3xl max-h-[90vh] overflow-hidden border border-slate-800"
       >
         {/* Header */}
         <div className="p-6 border-b border-slate-800 sticky top-0 bg-slate-900 z-10">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                🔗 Yan Ürünleri Yönet
+                <Link2 className="w-5 h-5 text-gray-400" strokeWidth={1.5} />
+                Yan Ürünleri Yönet
               </h2>
               <p className="text-sm text-slate-400 mt-1">
                 <span className="font-semibold text-white">{product.name}</span> için önerilen ürünler
@@ -1804,15 +1814,16 @@ function UpsellModal({ product, allProducts, onClose, onSuccess }: {
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
           {/* Error Message */}
           {error && (
-            <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg">
+            <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-md">
               <p className="text-red-400 text-sm">{error}</p>
             </div>
           )}
 
           {/* Info Box */}
-          <div className="mb-6 p-4 bg-purple-900/20 border border-purple-800 rounded-lg">
-            <p className="text-purple-300 text-sm">
-              💡 Müşteri bu ürünü sepete eklediğinde, seçtiğiniz yan ürünler öneri olarak gösterilecektir.
+          <div className="mb-6 p-4 bg-purple-900/20 border border-purple-800 rounded-md">
+            <p className="text-purple-300 text-sm flex items-start gap-2">
+              <Lightbulb className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" strokeWidth={1.5} />
+              Müşteri bu ürünü sepete eklediğinde, seçtiğiniz yan ürünler öneri olarak gösterilecektir.
             </p>
           </div>
 
@@ -1845,7 +1856,7 @@ function UpsellModal({ product, allProducts, onClose, onSuccess }: {
                   <div
                     key={p.id}
                     onClick={() => toggleUpsell(p.id)}
-                    className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                    className={`flex items-center gap-3 p-3 rounded-md border-2 cursor-pointer transition-all ${
                       isSelected
                         ? 'border-purple-500 bg-purple-900/20'
                         : 'border-slate-700 bg-slate-800 hover:border-slate-600'
@@ -1869,10 +1880,10 @@ function UpsellModal({ product, allProducts, onClose, onSuccess }: {
                       <img
                         src={p.image_url}
                         alt={p.name}
-                        className="w-12 h-12 rounded-lg object-cover"
+                        className="w-12 h-12 rounded-md object-cover"
                       />
                     ) : (
-                      <div className="w-12 h-12 rounded-lg bg-slate-700 flex items-center justify-center">
+                      <div className="w-12 h-12 rounded-md bg-slate-700 flex items-center justify-center">
                         <ImageIcon size={20} className="text-slate-500" />
                       </div>
                     )}
@@ -1895,14 +1906,14 @@ function UpsellModal({ product, allProducts, onClose, onSuccess }: {
           <button
             onClick={onClose}
             disabled={loading}
-            className="flex-1 h-12 border-2 border-slate-700 text-slate-300 rounded-lg font-medium hover:bg-slate-800 transition-colors disabled:opacity-50"
+            className="flex-1 h-12 border-2 border-slate-700 text-slate-300 rounded-md font-medium hover:bg-slate-800 transition-colors disabled:opacity-50"
           >
             İptal
           </button>
           <button
             onClick={handleSave}
             disabled={loading}
-            className="flex-1 h-12 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+            className="flex-1 h-12 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-700 text-white rounded-md font-medium transition-colors flex items-center justify-center gap-2"
           >
             <Save size={20} />
             {loading ? 'Kaydediliyor...' : 'Kaydet'}
@@ -1964,7 +1975,7 @@ function CategoryAddForm({ onSuccess }: { onSuccess: () => void }) {
       
       // Toast mesajı
       const event = new CustomEvent('show-toast', { 
-        detail: { message: '✅ Kategori başarıyla eklendi!', type: 'success' } 
+        detail: { message: 'Kategori başarıyla eklendi!', type: 'success' } 
       })
       window.dispatchEvent(event)
     } catch (error: any) {
@@ -1976,7 +1987,7 @@ function CategoryAddForm({ onSuccess }: { onSuccess: () => void }) {
   }
 
   return (
-    <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+    <div className="bg-slate-800/50 rounded-md p-4 border border-slate-700">
       <div className="flex items-center gap-3">
         <div className="flex-1">
           <input
@@ -1992,7 +2003,7 @@ function CategoryAddForm({ onSuccess }: { onSuccess: () => void }) {
               }
             }}
             placeholder="Yeni kategori adı (örn: Burgerler, Pizzalar...)"
-            className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:border-orange-500 outline-none"
+            className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-md text-white placeholder-slate-500 focus:border-orange-500 outline-none"
           />
           {error && (
             <p className="text-red-400 text-xs mt-1">{error}</p>
@@ -2001,9 +2012,9 @@ function CategoryAddForm({ onSuccess }: { onSuccess: () => void }) {
         <button
           onClick={handleAddCategory}
           disabled={loading || !categoryName.trim()}
-          className="px-6 py-3 bg-orange-600 hover:bg-orange-700 disabled:bg-slate-700 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors whitespace-nowrap"
+          className="px-6 py-3 bg-orange-600 hover:bg-orange-700 disabled:bg-slate-700 disabled:cursor-not-allowed text-white font-semibold rounded-md transition-colors whitespace-nowrap"
         >
-          {loading ? '⏳' : '+ Kategori Ekle'}
+          {loading ? <Loader2 className="w-4 h-4 animate-spin inline" strokeWidth={1.5} /> : '+ Kategori Ekle'}
         </button>
       </div>
     </div>

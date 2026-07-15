@@ -1,13 +1,12 @@
 /**
  * @file src/components/UpsellSuggestions.tsx
  * @description Yan Ürün Önerileri Komponenti
- * Müşteri bir ürünü sepete eklediğinde, o ürünün yan ürünlerini öneri olarak gösterir
  */
 'use client'
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Plus } from 'lucide-react'
+import { X, Plus, Check, UtensilsCrossed } from 'lucide-react'
 import { Product } from '@/types/menu'
 import { supabase } from '@/app/lib/supabase'
 import { useCart } from '@/app/context/CartContext'
@@ -30,18 +29,16 @@ export function UpsellSuggestions({ product, onClose }: UpsellSuggestionsProps) 
     try {
       setLoading(true)
 
-      // Ürünün yan ürün ID'lerini kontrol et
       if (!product.upsell_product_ids || product.upsell_product_ids.length === 0) {
         setUpsellProducts([])
         return
       }
 
-      // Yan ürünleri getir
       const { data, error } = await supabase
         .from('products')
         .select('*')
         .in('id', product.upsell_product_ids)
-        .eq('is_available', true) // Sadece stokta olanları göster
+        .eq('is_available', true)
 
       if (error) throw error
 
@@ -57,14 +54,12 @@ export function UpsellSuggestions({ product, onClose }: UpsellSuggestionsProps) 
   const handleAddToCart = (upsellProduct: Product) => {
     addToCart(upsellProduct, 1)
     
-    // Toast bildirimi göster
     const event = new CustomEvent('show-toast', {
-      detail: { message: `✅ ${upsellProduct.name} sepete eklendi!`, type: 'success' }
+      detail: { message: `${upsellProduct.name} sepete eklendi!`, type: 'success' }
     })
     window.dispatchEvent(event)
   }
 
-  // Yan ürün yoksa modal'ı gösterme
   if (!loading && upsellProducts.length === 0) {
     return null
   }
@@ -76,14 +71,14 @@ export function UpsellSuggestions({ product, onClose }: UpsellSuggestionsProps) 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="bg-slate-900 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden border border-slate-800"
+          className="bg-slate-900 rounded-md w-full max-w-2xl max-h-[90vh] overflow-hidden border border-white/5 shadow-sm"
         >
-          {/* Header */}
-          <div className="p-6 border-b border-slate-800 bg-gradient-to-r from-purple-900/20 to-orange-900/20">
+          <div className="p-6 border-b border-white/5 bg-gradient-to-r from-purple-900/20 to-orange-900/20">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                  ✅ Sepete Eklendi!
+                  <Check size={22} strokeWidth={1.5} className="text-green-400" />
+                  Sepete Eklendi!
                 </h2>
                 <p className="text-sm text-slate-400 mt-1">
                   Bunları da denemek ister misiniz?
@@ -93,12 +88,11 @@ export function UpsellSuggestions({ product, onClose }: UpsellSuggestionsProps) 
                 onClick={onClose}
                 className="text-slate-400 hover:text-white transition-colors"
               >
-                <X size={24} />
+                <X size={24} strokeWidth={1.5} />
               </button>
             </div>
           </div>
 
-          {/* Content */}
           <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
             {loading ? (
               <div className="flex items-center justify-center py-12">
@@ -111,22 +105,20 @@ export function UpsellSuggestions({ product, onClose }: UpsellSuggestionsProps) 
                     key={upsellProduct.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-slate-800 rounded-xl p-4 border border-slate-700 hover:border-orange-500 transition-all"
+                    className="bg-slate-800 rounded-md p-4 border border-white/5 hover:border-orange-500 transition-all shadow-sm"
                   >
-                    {/* Product Image */}
                     {upsellProduct.image_url ? (
                       <img
                         src={upsellProduct.image_url}
                         alt={upsellProduct.name}
-                        className="w-full h-32 object-cover rounded-lg mb-3"
+                        className="w-full h-32 object-cover rounded-md mb-3"
                       />
                     ) : (
-                      <div className="w-full h-32 bg-slate-700 rounded-lg mb-3 flex items-center justify-center">
-                        <span className="text-4xl">🍽️</span>
+                      <div className="w-full h-32 bg-slate-700 rounded-md mb-3 flex items-center justify-center">
+                        <UtensilsCrossed size={28} strokeWidth={1.5} className="text-slate-500" />
                       </div>
                     )}
 
-                    {/* Product Info */}
                     <h3 className="font-bold text-white text-lg mb-1">
                       {upsellProduct.name}
                     </h3>
@@ -136,16 +128,15 @@ export function UpsellSuggestions({ product, onClose }: UpsellSuggestionsProps) 
                       </p>
                     )}
 
-                    {/* Price and Add Button */}
                     <div className="flex items-center justify-between">
                       <span className="text-2xl font-bold text-orange-500">
                         {upsellProduct.price.toFixed(2)} ₺
                       </span>
                       <button
                         onClick={() => handleAddToCart(upsellProduct)}
-                        className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-medium transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-md font-medium transition-colors"
                       >
-                        <Plus size={18} />
+                        <Plus size={18} strokeWidth={1.5} />
                         Ekle
                       </button>
                     </div>
@@ -155,11 +146,10 @@ export function UpsellSuggestions({ product, onClose }: UpsellSuggestionsProps) 
             )}
           </div>
 
-          {/* Footer */}
-          <div className="p-6 border-t border-slate-800 bg-slate-900">
+          <div className="p-6 border-t border-white/5 bg-slate-900">
             <button
               onClick={onClose}
-              className="w-full h-12 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-colors"
+              className="w-full h-12 bg-slate-700 hover:bg-slate-600 text-white rounded-md font-medium transition-colors"
             >
               Alışverişe Devam Et
             </button>

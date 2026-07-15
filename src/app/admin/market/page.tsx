@@ -2,13 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ShoppingCart } from 'lucide-react'
+import { ShoppingCart, Package, CheckCircle2, AlertTriangle, Flame, Lightbulb, type LucideIcon, UtensilsCrossed, Beef, Leaf, Milk, Egg, Popcorn, CupSoda, Wheat, Snowflake } from 'lucide-react'
 import { supabase } from '@/app/lib/supabase'
 
 interface Category {
   id: string
   name: string
-  icon: string
+  icon: LucideIcon
   color: string
   count?: number
 }
@@ -21,16 +21,16 @@ interface Stats {
 }
 
 const categories: Category[] = [
-  { id: 'firsatlar', name: 'Haftanın Fırsatları', icon: '🔥', color: 'from-red-500 to-orange-500' },
-  { id: 'yemeklik', name: 'Yemeklik Malzemeler', icon: '🍝', color: 'from-orange-500 to-amber-500' },
-  { id: 'et', name: 'Et & Tavuk & Şarküteri', icon: '🥩', color: 'from-red-600 to-red-700' },
-  { id: 'meyve', name: 'Meyve & Sebze', icon: '🥬', color: 'from-green-500 to-emerald-500' },
-  { id: 'sut', name: 'Süt & Süt Ürünleri', icon: '🥛', color: 'from-blue-400 to-cyan-400' },
-  { id: 'kahvalti', name: 'Kahvaltılık', icon: '🍳', color: 'from-yellow-500 to-amber-500' },
-  { id: 'atistirmalik', name: 'Atıştırmalık', icon: '🍿', color: 'from-purple-500 to-pink-500' },
-  { id: 'icecek', name: 'İçecek', icon: '🥤', color: 'from-cyan-500 to-blue-500' },
-  { id: 'ekmek', name: 'Ekmek & Pastane', icon: '🍞', color: 'from-amber-600 to-orange-600' },
-  { id: 'dondurulmus', name: 'Dondurulmuş Ürünler', icon: '🧊', color: 'from-blue-600 to-indigo-600' }
+  { id: 'firsatlar', name: 'Haftanın Fırsatları', icon: Flame, color: 'from-red-500 to-orange-500' },
+  { id: 'yemeklik', name: 'Yemeklik Malzemeler', icon: UtensilsCrossed, color: 'from-orange-500 to-amber-500' },
+  { id: 'et', name: 'Et & Tavuk & Şarküteri', icon: Beef, color: 'from-red-600 to-red-700' },
+  { id: 'meyve', name: 'Meyve & Sebze', icon: Leaf, color: 'from-green-500 to-emerald-500' },
+  { id: 'sut', name: 'Süt & Süt Ürünleri', icon: Milk, color: 'from-blue-400 to-cyan-400' },
+  { id: 'kahvalti', name: 'Kahvaltılık', icon: Egg, color: 'from-yellow-500 to-amber-500' },
+  { id: 'atistirmalik', name: 'Atıştırmalık', icon: Popcorn, color: 'from-purple-500 to-pink-500' },
+  { id: 'icecek', name: 'İçecek', icon: CupSoda, color: 'from-cyan-500 to-blue-500' },
+  { id: 'ekmek', name: 'Ekmek & Pastane', icon: Wheat, color: 'from-amber-600 to-orange-600' },
+  { id: 'dondurulmus', name: 'Dondurulmuş Ürünler', icon: Snowflake, color: 'from-blue-600 to-indigo-600' }
 ]
 
 export default function MarketYonetimiPage() {
@@ -131,23 +131,23 @@ export default function MarketYonetimiPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+        <div className="bg-slate-900 border border-slate-800 rounded-md p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-slate-400 text-sm mb-1">Toplam Ürün</p>
+              <p className="text-xs uppercase tracking-wider text-gray-400 mb-1">Toplam Ürün</p>
               {isLoading ? (
                 <div className="h-9 w-16 bg-slate-800 animate-pulse rounded" />
               ) : (
-                <p className="text-3xl font-bold text-white">{stats.total}</p>
+                <p className="text-3xl font-semibold text-white">{stats.total}</p>
               )}
             </div>
-            <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
-              <span className="text-2xl">📦</span>
+            <div className="w-12 h-12 bg-blue-500/20 rounded-md flex items-center justify-center">
+              <Package className="w-6 h-6 text-gray-400" strokeWidth={1.5} />
             </div>
           </div>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+        <div className="bg-slate-900 border border-slate-800 rounded-md p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-slate-400 text-sm mb-1">Aktif Ürün</p>
@@ -157,13 +157,13 @@ export default function MarketYonetimiPage() {
                 <p className="text-3xl font-bold text-green-400">{stats.active}</p>
               )}
             </div>
-            <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
-              <span className="text-2xl">✅</span>
+            <div className="w-12 h-12 bg-green-500/20 rounded-md flex items-center justify-center">
+              <CheckCircle2 className="w-6 h-6 text-green-400" strokeWidth={1.5} />
             </div>
           </div>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+        <div className="bg-slate-900 border border-slate-800 rounded-md p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-slate-400 text-sm mb-1">Stok Tükendi</p>
@@ -173,13 +173,13 @@ export default function MarketYonetimiPage() {
                 <p className="text-3xl font-bold text-red-400">{stats.outOfStock}</p>
               )}
             </div>
-            <div className="w-12 h-12 bg-red-500/20 rounded-lg flex items-center justify-center">
-              <span className="text-2xl">⚠️</span>
+            <div className="w-12 h-12 bg-red-500/20 rounded-md flex items-center justify-center">
+              <AlertTriangle className="w-6 h-6 text-red-400" strokeWidth={1.5} />
             </div>
           </div>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+        <div className="bg-slate-900 border border-slate-800 rounded-md p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-slate-400 text-sm mb-1">İndirimli</p>
@@ -189,8 +189,8 @@ export default function MarketYonetimiPage() {
                 <p className="text-3xl font-bold text-orange-400">{stats.discounted}</p>
               )}
             </div>
-            <div className="w-12 h-12 bg-orange-500/20 rounded-lg flex items-center justify-center">
-              <span className="text-2xl">🔥</span>
+            <div className="w-12 h-12 bg-orange-500/20 rounded-md flex items-center justify-center">
+              <Flame className="w-6 h-6 text-orange-400" strokeWidth={1.5} />
             </div>
           </div>
         </div>
@@ -204,16 +204,16 @@ export default function MarketYonetimiPage() {
             <button
               key={category.id}
               onClick={() => router.push(`/admin/market/${category.id}`)}
-              className="group relative bg-slate-900 border-2 border-slate-800 rounded-2xl p-6 hover:border-orange-500 hover:shadow-2xl hover:shadow-orange-500/20 transition-all duration-300"
+              className="group relative bg-slate-900 border-2 border-slate-800 rounded-md p-6 hover:border-orange-500 hover:shadow-sm hover:shadow-orange-500/20 transition-all duration-300"
             >
               {/* Gradient Background */}
-              <div className={`absolute inset-0 bg-gradient-to-br ${category.color} opacity-0 group-hover:opacity-10 rounded-2xl transition-opacity duration-300`} />
+              <div className={`absolute inset-0 bg-gradient-to-br ${category.color} opacity-0 group-hover:opacity-10 rounded-md transition-opacity duration-300`} />
 
               {/* Content */}
               <div className="relative">
                 {/* Icon */}
-                <div className={`w-16 h-16 bg-gradient-to-br ${category.color} rounded-2xl flex items-center justify-center text-4xl mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
-                  {category.icon}
+                <div className={`w-16 h-16 bg-gradient-to-br ${category.color} rounded-md flex items-center justify-center mb-4 transition-transform duration-300 shadow-sm`}>
+                  <category.icon className="w-7 h-7 text-white" strokeWidth={1.5} />
                 </div>
 
                 {/* Category Name */}
@@ -239,9 +239,9 @@ export default function MarketYonetimiPage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="mt-8 bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/30 rounded-2xl p-6">
+      <div className="mt-8 bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/30 rounded-md p-6">
         <div className="flex items-start gap-4">
-          <div className="text-4xl">💡</div>
+          <Lightbulb className="w-6 h-6 text-gray-400 shrink-0" strokeWidth={1.5} />
           <div>
             <h3 className="text-lg font-bold text-white mb-2">Hızlı İpuçları</h3>
             <ul className="text-slate-300 text-sm space-y-1">

@@ -12,6 +12,10 @@ import { Restaurant, Package } from '@/types'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { supabase } from '@/app/lib/supabase'
 import { getAllRestaurantsUnpaidBalances } from '@/services/restaurantService'
+import {
+  BarChart3, Package as PackageIcon, Inbox, Banknote, Search, Store, Phone, MapPin,
+  Pencil, Loader2, CheckCircle2, TrendingDown, FileText, Lightbulb, ClipboardList, CreditCard
+} from 'lucide-react'
 
 interface RestaurantsTabProps {
     restaurants: Restaurant[]
@@ -38,7 +42,7 @@ export function RestaurantsTab({
     const [successMessage, setSuccessMessage] = useState('')
     const [errorMessage, setErrorMessage] = useState('')
     
-    // 🎯 Tarih Filtreleme State'leri - HER ZAMAN EN ÜSTTE!
+    // Tarih Filtreleme State'leri - HER ZAMAN EN ÜSTTE!
     const [startDate, setStartDate] = useState('')
     const [endDate, setEndDate] = useState('')
     const [tempStartDate, setTempStartDate] = useState('')
@@ -65,14 +69,14 @@ export function RestaurantsTab({
 
             if (error) throw error
 
-            setSuccessMessage(`✅ ${editingRestaurant.name} için paket başı ücret ${fee}₺ olarak güncellendi!`)
+            setSuccessMessage(`${editingRestaurant.name} için paket başı ücret ${fee}₺ olarak güncellendi!`)
             setTimeout(() => {
                 setSuccessMessage('')
                 setEditingRestaurant(null)
                 window.location.reload() // Listeyi yenile
             }, 2000)
         } catch (error: any) {
-            console.error('❌ Paket ücreti güncellenemedi:', error)
+            console.error('Paket ücreti güncellenemedi:', error)
             setErrorMessage('Ücret güncellenemedi: ' + error.message)
         } finally {
             setIsUpdating(false)
@@ -139,13 +143,13 @@ export function RestaurantsTab({
         const hasData = pieChartData.length > 0
 
         return (
-            <div className="bg-slate-900 shadow-xl rounded-2xl p-6">
+            <div className="bg-slate-900 shadow-sm rounded-md border border-slate-800 p-6">
                 <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold">📊 Restoran Sipariş Detayları</h2>
+                    <h2 className="text-2xl font-bold">Restoran Sipariş Detayları</h2>
                     <select
                         value={restaurantChartFilter}
                         onChange={(e) => setRestaurantChartFilter(e.target.value as any)}
-                        className="px-3 py-2 bg-slate-100 border border-slate-300 rounded-lg text-sm"
+                        className="px-3 py-2 bg-slate-100 border border-slate-300 rounded-md text-sm"
                     >
                         <option value="today">Bugün</option>
                         <option value="week">Bu Hafta</option>
@@ -154,12 +158,12 @@ export function RestaurantsTab({
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="bg-slate-50 p-4 rounded-xl border">
-                        <h3 className="text-lg font-bold mb-4">📦 Restoran Paket Dağılımı</h3>
+                    <div className="bg-slate-50 p-4 rounded-md border">
+                        <h3 className="text-lg font-bold mb-4">Restoran Paket Dağılımı</h3>
                         {!hasData ? (
                             <div className="flex items-center justify-center h-[300px] text-slate-500">
                                 <div className="text-center">
-                                    <div className="text-4xl mb-2">📭</div>
+                                    <div className="text-2xl mb-2"></div>
                                     <p className="text-sm">Veri bulunamadı</p>
                                 </div>
                             </div>
@@ -194,12 +198,12 @@ export function RestaurantsTab({
                         )}
                     </div>
 
-                    <div className="bg-slate-50 p-4 rounded-xl border">
-                        <h3 className="text-lg font-bold mb-4">💰 Restoran Ciroları</h3>
+                    <div className="bg-slate-50 p-4 rounded-md border">
+                        <h3 className="text-lg font-bold mb-4">Restoran Ciroları</h3>
                         {!hasData ? (
                             <div className="flex items-center justify-center h-[300px] text-slate-500">
                                 <div className="text-center">
-                                    <div className="text-4xl mb-2">📭</div>
+                                    <div className="text-2xl mb-2"></div>
                                     <p className="text-sm">Veri bulunamadı</p>
                                 </div>
                             </div>
@@ -253,58 +257,58 @@ export function RestaurantsTab({
         const totalDeliveries = restaurantDebts.reduce((sum, r) => sum + r.deliveredCount, 0)
 
         return (
-            <div className="bg-slate-900 shadow-xl rounded-2xl p-6">
-                <h2 className="text-2xl font-bold mb-6">💰 Restoranların Borcu</h2>
+            <div className="bg-slate-900 shadow-sm rounded-md border border-slate-800 p-6">
+                <h2 className="text-2xl font-bold mb-6">Restoranların Borcu</h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <div className="bg-gradient-to-r from-red-50 to-orange-50 p-4 rounded-xl border-2 border-red-300">
+                    <div className="bg-gradient-to-r from-red-50 to-orange-50 p-4 rounded-md border-2 border-red-300">
                         <div className="text-center">
                             <div className="text-3xl font-black text-red-700">
                                 {totalDebt.toFixed(2)} ₺
                             </div>
                             <div className="text-sm font-semibold text-red-600 mt-1">
-                                💰 TOPLAM BORÇ
+                                TOPLAM BORÇ
                             </div>
                         </div>
                     </div>
 
-                    <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-4 rounded-xl border-2 border-orange-300">
+                    <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-4 rounded-md border-2 border-orange-300">
                         <div className="text-center">
                             <div className="text-3xl font-black text-orange-700">
                                 {totalDeliveries}
                             </div>
                             <div className="text-sm font-semibold text-orange-600 mt-1">
-                                📦 TOPLAM TESLİMAT
+                                TOPLAM TESLİMAT
                             </div>
                         </div>
                     </div>
                 </div>
 
                 {/* Filtreleme Kutucukları */}
-                <div className="mb-6 p-4 bg-slate-800 rounded-xl border border-slate-700">
-                    <h3 className="text-lg font-semibold text-white mb-4">🔍 Filtreleme</h3>
+                <div className="mb-6 p-4 bg-slate-800 rounded-md border border-slate-700">
+                    <h3 className="text-lg font-semibold text-white mb-4">Filtreleme</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* Minimum Borç Filtresi */}
                         <div>
                             <label className="block text-sm font-medium text-slate-300 mb-2">
-                                💰 Minimum Borç Tutarı (₺)
+                                Minimum Borç Tutarı (₺)
                             </label>
                             <input
                                 type="number"
                                 placeholder="Örn: 1000"
-                                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                             />
                         </div>
 
                         {/* Restoran Adı Filtresi */}
                         <div>
                             <label className="block text-sm font-medium text-slate-300 mb-2">
-                                🏪 Restoran Adı
+                                Restoran Adı
                             </label>
                             <input
                                 type="text"
                                 placeholder="Restoran adı ara..."
-                                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                             />
                         </div>
                     </div>
@@ -313,14 +317,13 @@ export function RestaurantsTab({
                 <div className="space-y-3">
                     {restaurantDebts.length === 0 ? (
                         <div className="text-center py-8 text-slate-500">
-                            <div className="text-4xl mb-2">🏪</div>
-                            <p>Restoran bulunamadı</p>
+                            <Store className="w-8 h-8 mx-auto mb-2 text-gray-400" strokeWidth={1.5} />                            <p>Restoran bulunamadı</p>
                         </div>
                     ) : (
                         restaurantDebts.map((restaurant, index) => (
                             <div
                                 key={restaurant.id}
-                                className={`p-4 rounded-xl border transition-all ${restaurant.debt > 0
+                                className={`p-4 rounded-md border transition-all ${restaurant.debt > 0
                                     ? 'bg-slate-50 border-slate-200'
                                     : 'bg-slate-100 border-slate-300 opacity-60'
                                     }`}
@@ -332,7 +335,7 @@ export function RestaurantsTab({
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <h4 className="font-bold text-lg text-slate-900 flex items-center gap-2 min-w-0">
-                                                <span className="shrink-0">🏪</span>
+                                                <Store className="w-4 h-4 shrink-0 text-gray-400" strokeWidth={1.5} />
                                                 <span className="truncate">{restaurant.name}</span>
                                             </h4>
                                             <p className="text-sm text-slate-500 whitespace-nowrap shrink-0">
@@ -340,7 +343,7 @@ export function RestaurantsTab({
                                             </p>
                                             {restaurant.phone && (
                                                 <p className="text-xs text-slate-400 mt-1">
-                                                    📞 {restaurant.phone}
+                                                    {restaurant.phone}
                                                 </p>
                                             )}
                                         </div>
@@ -354,9 +357,9 @@ export function RestaurantsTab({
                                                 e.stopPropagation()
                                                 onRestaurantClick(restaurant.id)
                                             }}
-                                            className="px-4 py-1.5 bg-orange-100 text-orange-700 rounded-lg text-xs font-bold hover:bg-orange-200 transition-colors"
+                                            className="px-4 py-1.5 bg-orange-100 text-orange-700 rounded-md text-xs font-bold hover:bg-orange-200 transition-colors"
                                         >
-                                            📊 Rapor
+                                            Rapor
                                         </button>
                                     </div>
                                 </div>
@@ -365,12 +368,12 @@ export function RestaurantsTab({
                     )}
                 </div>
 
-                <div className="mt-6 p-4 bg-orange-50 rounded-lg border border-orange-200">
+                <div className="mt-6 p-4 bg-orange-50 rounded-md border border-orange-200">
                     <p className="text-sm text-orange-700">
-                        📝 <strong>Not:</strong> Restoran borçları, teslim edilen her paket için dinamik ücret üzerinden hesaplanmaktadır.
+                        <strong>Not:</strong> Restoran borçları, teslim edilen her paket için dinamik ücret üzerinden hesaplanmaktadır.
                         Sadece <strong>status = 'delivered'</strong> olan paketler hesaplamaya dahildir.
                         <br />
-                        💡 <strong>Kâr Hesabı:</strong> Restoranlardan alınan ücret - Kuryelere ödenen 80₺ = Kâr (paket başına)
+                        <strong>Kâr Hesabı:</strong> Restoranlardan alınan ücret - Kuryelere ödenen 80₺ = Kâr (paket başına)
                     </p>
                 </div>
             </div>
@@ -379,11 +382,11 @@ export function RestaurantsTab({
 
     // Ödemeler - KURUMSAL FİNANS PANELİ
     if (restaurantSubTab === 'payments') {
-        // 🔥 RESTORAN İSTATİSTİKLERİ STATE
+        // RESTORAN İSTATİSTİKLERİ STATE
         const [restaurantsWithStats, setRestaurantsWithStats] = useState<any[]>([])
         const [isLoadingStats, setIsLoadingStats] = useState(false)
         
-        // 🔥 İSTATİSTİKLERİ HESAPLA (RPC Üzerinden Toplu)
+        // İSTATİSTİKLERİ HESAPLA (RPC Üzerinden Toplu)
         useEffect(() => {
             const fetchStats = async () => {
                 setIsLoadingStats(true)
@@ -396,10 +399,10 @@ export function RestaurantsTab({
                     if (result.success && result.data) {
                         setRestaurantsWithStats(result.data)
                     } else {
-                        console.error('❌ RPC Hatası:', result.error)
+                        console.error('RPC Hatası:', result.error)
                     }
                 } catch (error) {
-                    console.error('❌ İstatistik çekme hatası:', error)
+                    console.error('İstatistik çekme hatası:', error)
                 } finally {
                     setIsLoadingStats(false)
                 }
@@ -411,17 +414,17 @@ export function RestaurantsTab({
         const hasDateFilter = !!(startDate && endDate)
         const filterLabel = hasDateFilter ? `${startDate} — ${endDate}` : 'Tüm Zamanlar'
         
-        // 🎯 Manuel Filtreleme Fonksiyonu - BAŞTA 0 GÖSTER
+        // Manuel Filtreleme Fonksiyonu - BAŞTA 0 GÖSTER
         const handleApplyFilter = () => {
             if (!tempStartDate || !tempEndDate) {
-                alert('⚠️ Lütfen başlangıç ve bitiş tarihlerini seçin!')
+                alert('Lütfen başlangıç ve bitiş tarihlerini seçin!')
                 return
             }
             setStartDate(tempStartDate)
             setEndDate(tempEndDate)
         }
 
-        // 🎯 Filtreyi Temizle
+        // Filtreyi Temizle
         const handleClearFilter = () => {
             setTempStartDate('')
             setTempEndDate('')
@@ -429,7 +432,7 @@ export function RestaurantsTab({
             setEndDate('')
         }
 
-        // 📊 Genel Toplamlar
+        // Genel Toplamlar
         const grandTotalRevenue = restaurantsWithStats.reduce((sum, r) => sum + (r.unpaid_revenue || 0), 0)
         const grandTotalDebt = restaurantsWithStats.reduce((sum, r) => sum + (r.unpaid_cost || 0), 0)
         const grandNetBalance = restaurantsWithStats.reduce((sum, r) => sum + (r.current_balance || 0), 0)
@@ -448,7 +451,7 @@ export function RestaurantsTab({
                         </p>
                     </div>
 
-                    {/* 🔍 TARİH FİLTRELEME */}
+                    {/* TARİH FİLTRELEME */}
                     <div className="flex items-end gap-3">
                         <div>
                             <label className="block text-xs font-medium text-slate-500 mb-1 tracking-tight">
@@ -476,7 +479,7 @@ export function RestaurantsTab({
                             onClick={handleApplyFilter}
                             className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium rounded border border-slate-700 transition-colors tracking-tight"
                         >
-                            🔍 Filtrele
+                            Filtrele
                         </button>
                         <button
                             onClick={handleClearFilter}
@@ -487,10 +490,10 @@ export function RestaurantsTab({
                     </div>
                 </div>
 
-                {/* 📊 4'LÜ FİNANSAL KART YAPISI - ÖDEMELER DAHİL */}
+                {/* 4'LÜ FİNANSAL KART YAPISI - ÖDEMELER DAHİL */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                     {/* KART 1: TOPLAM CİRO */}
-                    <div className="bg-slate-900 border border-slate-800 rounded-lg p-5">
+                    <div className="bg-slate-900 border border-slate-800 rounded-md p-5">
                         <div className="flex items-start justify-between mb-3">
                             <div>
                                 <p className="text-xs font-medium text-slate-500 tracking-tight uppercase mb-1">
@@ -500,7 +503,7 @@ export function RestaurantsTab({
                                     {grandTotalRevenue.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
                                 </p>
                             </div>
-                            <div className="text-slate-700 text-2xl">💰</div>
+                            <Banknote className="text-slate-700 w-8 h-8" strokeWidth={1.5} />
                         </div>
                         <p className="text-xs text-slate-600 tracking-tight">
                             {hasDateFilter ? `Seçili dönem: ${filterLabel}` : 'Ödenmemiş paketlerin toplamı'}
@@ -508,7 +511,7 @@ export function RestaurantsTab({
                     </div>
 
                     {/* KART 2: SERVİS BEDELİ (Muted Rose) */}
-                    <div className="bg-slate-900 border border-rose-900/30 rounded-lg p-5">
+                    <div className="bg-slate-900 border border-rose-900/30 rounded-md p-5">
                         <div className="flex items-start justify-between mb-3">
                             <div>
                                 <p className="text-xs font-medium text-rose-400/70 tracking-tight uppercase mb-1">
@@ -518,7 +521,7 @@ export function RestaurantsTab({
                                     {grandTotalDebt.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
                                 </p>
                             </div>
-                            <div className="text-rose-900/50 text-2xl">📦</div>
+                            <PackageIcon className="text-rose-900/50 w-8 h-8" strokeWidth={1.5} />
                         </div>
                         <p className="text-xs text-slate-600 tracking-tight">
                             {grandTotalOrders} Paket × Dinamik Ücret
@@ -526,7 +529,7 @@ export function RestaurantsTab({
                     </div>
 
                     {/* KART 3: TOPLAM BAKİYE (Emerald/Rose) */}
-                    <div className={`border rounded-lg p-5 ${
+                    <div className={`border rounded-md p-5 ${
                         grandNetBalance >= 0 
                             ? 'bg-emerald-950/20 border-emerald-900/30' 
                             : 'bg-rose-950/20 border-rose-900/30'
@@ -544,7 +547,11 @@ export function RestaurantsTab({
                                     {Math.abs(grandNetBalance).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
                                 </p>
                             </div>
-                            <div className="text-2xl">{grandNetBalance >= 0 ? '💰' : '📉'}</div>
+                            {grandNetBalance >= 0 ? (
+                              <Banknote className="w-8 h-8 text-gray-400" strokeWidth={1.5} />
+                            ) : (
+                              <TrendingDown className="w-8 h-8 text-gray-400" strokeWidth={1.5} />
+                            )}
                         </div>
                         <p className="text-xs text-slate-600 tracking-tight">
                             {hasDateFilter ? `Seçili dönem: ${filterLabel}` : 'Tüm zamanların net durumu'}
@@ -552,7 +559,7 @@ export function RestaurantsTab({
                     </div>
 
                     {/* KART 4: TOPLAM PAKET SAYISI */}
-                    <div className="bg-slate-900 border border-slate-800 rounded-lg p-5">
+                    <div className="bg-slate-900 border border-slate-800 rounded-md p-5">
                         <div className="flex items-start justify-between mb-3">
                             <div>
                                 <p className="text-xs font-medium text-slate-500 tracking-tight uppercase mb-1">
@@ -562,7 +569,7 @@ export function RestaurantsTab({
                                     {grandTotalOrders}
                                 </p>
                             </div>
-                            <div className="text-slate-700 text-2xl">📦</div>
+                            <PackageIcon className="text-slate-700 w-8 h-8" strokeWidth={1.5} />
                         </div>
                         <p className="text-xs text-slate-600 tracking-tight">
                             {hasDateFilter ? `Dönem: ${filterLabel}` : 'Ödenmemiş paketler'}
@@ -570,17 +577,17 @@ export function RestaurantsTab({
                     </div>
                 </div>
                 
-                {/* 📝 AÇIKLAYICI NOT */}
-                <div className="mt-6 px-4 py-3 bg-slate-900 border border-slate-800 rounded-lg">
+                {/* AÇIKLAYICI NOT */}
+                <div className="mt-6 px-4 py-3 bg-slate-900 border border-slate-800 rounded-md">
                     <p className="text-xs text-slate-600 tracking-tight">
-                        <span className="font-semibold text-slate-500">💡 Not:</span> {hasDateFilter 
+                        <span className="font-semibold text-slate-500">Not:</span> {hasDateFilter 
                             ? <><span className="text-amber-400">Filtre aktif ({filterLabel})</span>. Rakamlar sadece seçili dönemdeki <span className="text-slate-200">ödenmemiş</span> paketleri gösterir.</>
                             : <><span className="text-slate-200">Bakiye</span> kolonu daima <span className="text-amber-400">ödenmemiş paketlerin</span> net durumunu gösterir (is_paid_to_restaurant = false). Ödeme yapıldığında paketler ödendi olarak işaretlenir.</>}
                     </p>
                 </div>
 
-                {/* 🏪 RESTORAN LİSTESİ - KURUMSAL TABLO */}
-                <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
+                {/* RESTORAN LİSTESİ - KURUMSAL TABLO */}
+                <div className="bg-slate-900 border border-slate-800 rounded-md overflow-hidden">
                     <div className="px-6 py-4 border-b border-slate-800">
                         <h2 className="text-lg font-bold text-slate-100 tracking-tight">
                             Restoran Bazlı Detaylar
@@ -590,12 +597,12 @@ export function RestaurantsTab({
                     <div className="divide-y divide-slate-800">
                         {isLoadingStats ? (
                             <div className="text-center py-12 text-slate-500">
-                                <div className="text-4xl mb-2 animate-pulse">⏳</div>
+                                <Loader2 className="w-8 h-8 mx-auto mb-2 animate-spin text-gray-400" strokeWidth={1.5} />
                                 <p className="text-sm tracking-tight">Ödemeler hesaplanıyor...</p>
                             </div>
                         ) : restaurants.length === 0 ? (
                             <div className="text-center py-12 text-slate-600">
-                                <div className="text-4xl mb-2 opacity-30">🏪</div>
+                                <Store className="w-8 h-8 mx-auto mb-2 opacity-30 text-gray-400" strokeWidth={1.5} />
                                 <p className="text-sm tracking-tight">Restoran bulunamadı</p>
                             </div>
                         ) : (
@@ -653,7 +660,7 @@ export function RestaurantsTab({
                                                 onClick={(e) => {
                                                     e.preventDefault()
                                                     e.stopPropagation()
-                                                    // 🔥 TEK NAVIGATION: onRestaurantClick zaten router.push yapıyor
+                                                    // TEK NAVIGATION: onRestaurantClick zaten router.push yapıyor
                                                     // Tarihleri URL'ye eklemek için özel handler kullan
                                                     onRestaurantClick(r.id, startDate, endDate)
                                                 }}
@@ -671,8 +678,8 @@ export function RestaurantsTab({
                     </div>
                 </div>
 
-                {/* 📝 FOOTER NOT */}
-                <div className="mt-6 px-4 py-3 bg-slate-900 border border-slate-800 rounded-lg">
+                {/* FOOTER NOT */}
+                <div className="mt-6 px-4 py-3 bg-slate-900 border border-slate-800 rounded-md">
                     <p className="text-xs text-slate-600 tracking-tight">
                         <span className="font-semibold text-slate-500">Not:</span> Sayfa ilk açıldığında bugünün (Business Day: 05:00 - 05:00) verileri gösterilir. 
                         Servis bedeli, her paket için dinamik ücret (applied_price) üzerinden hesaplanır. Ücretli iptaller (is_chargeable_cancellation = true) hesaplamalara dahildir.
@@ -688,24 +695,24 @@ export function RestaurantsTab({
             {editingRestaurant && (
                 <div className="fixed inset-0 bg-black/80 z-[110] flex items-center justify-center p-4" onClick={() => setEditingRestaurant(null)}>
                     <div
-                        className="bg-slate-900 rounded-xl p-6 max-w-md w-full border border-slate-700 shadow-2xl"
+                        className="bg-slate-900 rounded-md p-6 max-w-md w-full border border-slate-700 shadow-sm"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Başlık */}
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-xl font-bold text-white">
-                                ✏️ Paket Başı Ücret Düzenle
+                                Paket Başı Ücret Düzenle
                             </h3>
                             <button
                                 onClick={() => setEditingRestaurant(null)}
-                                className="text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-lg transition-colors text-slate-400 hover:text-white hover:bg-slate-800"
+                                className="text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-md transition-colors text-slate-400 hover:text-white hover:bg-slate-800"
                             >
                                 ×
                             </button>
                         </div>
 
                         {/* Restoran Adı */}
-                        <div className="mb-4 p-3 rounded-lg bg-slate-800">
+                        <div className="mb-4 p-3 rounded-md bg-slate-800">
                             <p className="text-sm text-slate-400">Restoran:</p>
                             <p className="font-bold text-orange-400">{editingRestaurant.name}</p>
                         </div>
@@ -715,7 +722,7 @@ export function RestaurantsTab({
                             <label className="block text-sm font-medium mb-2 text-slate-300">
                                 Mevcut Ücret
                             </label>
-                            <div className="p-3 rounded-lg bg-slate-800">
+                            <div className="p-3 rounded-md bg-slate-800">
                                 <p className="text-2xl font-bold text-green-400">
                                     {editingRestaurant.package_fee || 100}₺
                                 </p>
@@ -733,7 +740,7 @@ export function RestaurantsTab({
                                 min="0"
                                 value={newPackageFee}
                                 onChange={(e) => setNewPackageFee(e.target.value)}
-                                className="w-full px-4 py-3 rounded-lg border text-lg font-bold bg-slate-800 border-slate-700 text-white focus:border-orange-500 outline-none transition-colors"
+                                className="w-full px-4 py-3 rounded-md border text-lg font-bold bg-slate-800 border-slate-700 text-white focus:border-orange-500 outline-none transition-colors"
                                 placeholder="Yeni ücreti girin"
                                 autoFocus
                             />
@@ -741,12 +748,12 @@ export function RestaurantsTab({
 
                         {/* Mesajlar */}
                         {errorMessage && (
-                            <div className="mb-4 p-3 bg-red-900/30 border border-red-700/50 rounded-lg">
+                            <div className="mb-4 p-3 bg-red-900/30 border border-red-700/50 rounded-md">
                                 <p className="text-red-300 text-sm">{errorMessage}</p>
                             </div>
                         )}
                         {successMessage && (
-                            <div className="mb-4 p-3 bg-green-900/30 border border-green-700/50 rounded-lg">
+                            <div className="mb-4 p-3 bg-green-900/30 border border-green-700/50 rounded-md">
                                 <p className="text-green-300 text-sm">{successMessage}</p>
                             </div>
                         )}
@@ -755,16 +762,16 @@ export function RestaurantsTab({
                         <div className="flex gap-3">
                             <button
                                 onClick={() => setEditingRestaurant(null)}
-                                className="flex-1 px-4 py-3 rounded-lg font-semibold transition-colors bg-slate-700 hover:bg-slate-600 text-white"
+                                className="flex-1 px-4 py-3 rounded-md font-semibold transition-colors bg-slate-700 hover:bg-slate-600 text-white"
                             >
                                 İptal
                             </button>
                             <button
                                 onClick={handleUpdatePackageFee}
                                 disabled={isUpdating}
-                                className="flex-1 px-4 py-3 rounded-lg font-semibold transition-colors bg-orange-600 hover:bg-orange-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex-1 px-4 py-3 rounded-md font-semibold transition-colors bg-orange-600 hover:bg-orange-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                {isUpdating ? '⏳ Güncelleniyor...' : '✅ Güncelle'}
+                                {isUpdating ? 'Güncelleniyor...' : 'Güncelle'}
                             </button>
                         </div>
                     </div>
@@ -773,43 +780,42 @@ export function RestaurantsTab({
 
             {/* Mevcut içerik */}
             {restaurantSubTab === 'list' && (
-                <div className="bg-slate-900 shadow-xl rounded-2xl p-6">
-                    <h2 className="text-2xl font-bold mb-6">🏪 Restoranlar Listesi</h2>
+                <div className="bg-slate-900 shadow-sm rounded-md border border-slate-800 p-6">
+                    <h2 className="text-2xl font-bold mb-6">Restoranlar Listesi</h2>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {restaurants.length === 0 ? (
                             <div className="col-span-full text-center py-8 text-slate-500">
-                                <div className="text-4xl mb-2">🏪</div>
-                                <div className="font-bold">Restoran bulunamadı!</div>
+                                <Store className="w-8 h-8 mx-auto mb-2 text-gray-400" strokeWidth={1.5} />                                <div className="font-bold">Restoran bulunamadı!</div>
                             </div>
                         ) : (
                             restaurants.map(r => (
-                                <div key={r.id} className="bg-slate-50 p-4 rounded-xl border hover:shadow-lg transition-all">
+                                <div key={r.id} className="bg-slate-50 p-4 rounded-md border hover:shadow-sm transition-all">
                                     <div className="flex justify-between items-start mb-3 gap-2 min-w-0">
                                         <button
                                             onClick={() => onRestaurantClick(r.id)}
                                             className="font-bold text-lg text-orange-600 hover:text-orange-800 transition-colors cursor-pointer text-left flex-1 min-w-0 truncate"
                                         >
-                                            🏪 {r.name}
+                                            {r.name}
                                         </button>
                                     </div>
 
                                     <div className="space-y-2 text-sm">
                                         {r.phone && (
                                             <div className="text-slate-600">
-                                                📞 {r.phone}
+                                                {r.phone}
                                             </div>
                                         )}
                                         {r.address && (
                                             <div className="text-slate-600 text-xs">
-                                                📍 {r.address}
+                                                {r.address}
                                             </div>
                                         )}
 
                                         {/* Paket Başı Ücret */}
-                                        <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 mt-2">
+                                        <div className="bg-orange-50 border border-orange-200 rounded-md p-2 mt-2">
                                             <div className="flex justify-between items-center gap-2 min-w-0">
-                                                <span className="text-xs text-slate-600 shrink-0">💰 Paket Başı Ücret:</span>
+                                                <span className="text-xs text-slate-600 shrink-0">Paket Başı Ücret:</span>
                                                 <span className="font-bold text-orange-600 shrink-0 whitespace-nowrap">{r.package_fee || 100}₺</span>
                                             </div>
                                         </div>
@@ -817,15 +823,15 @@ export function RestaurantsTab({
                                         <div className="grid grid-cols-2 gap-2 mt-3">
                                             <button
                                                 onClick={() => onRestaurantClick(r.id)}
-                                                className="text-xs bg-orange-100 text-orange-700 py-2 rounded-lg hover:bg-orange-200 transition-colors"
+                                                className="text-xs bg-orange-100 text-orange-700 py-2 rounded-md hover:bg-orange-200 transition-colors"
                                             >
-                                                📊 Detay
+                                                Detay
                                             </button>
                                             <button
                                                 onClick={() => openEditModal(r)}
-                                                className="text-xs bg-blue-100 text-blue-700 py-2 rounded-lg hover:bg-blue-200 transition-colors"
+                                                className="text-xs bg-blue-100 text-blue-700 py-2 rounded-md hover:bg-blue-200 transition-colors"
                                             >
-                                                ✏️ Ücret Düzenle
+                                                Ücret Düzenle
                                             </button>
                                         </div>
                                     </div>

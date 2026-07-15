@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @file src/app/admin/components/tabs/LiveOrdersView.tsx
  * @description Canlı Sipariş Takibi Görünümü
  * AŞAMA 1: Sadece görünüm katmanı - Tüm state ve logic ana dosyada kalıyor
@@ -6,6 +6,10 @@
 
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
 import { NightShiftIndicator } from '../NightShiftIndicator'
+import {
+  Package as PackageIcon, Clock, Utensils, User, Phone, FileText, MapPin,
+  Banknote, CreditCard, Building2, Bike, Truck, Loader2, CheckCircle2, AlertTriangle, Footprints, Car
+} from 'lucide-react'
 
 interface Restaurant {
   id: number | string
@@ -77,8 +81,11 @@ export function LiveOrdersView({
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
         <div className="lg:col-span-4 space-y-3">
           {/* SİPARİŞ KARTLARI - PADDING AZALTILDI */}
-          <div className="bg-slate-900 shadow-xl rounded-2xl p-4">
-            <h2 className="text-xl font-bold mb-4">📦 Canlı Sipariş Takibi</h2>
+          <div className="bg-slate-900 shadow-sm rounded-md border border-slate-800 p-4">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <PackageIcon className="w-5 h-5 text-gray-400" strokeWidth={1.5} />
+              Canlı Sipariş Takibi
+            </h2>
         
             {/* Sipariş Kartları */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -88,7 +95,7 @@ export function LiveOrdersView({
                 <div className="col-span-full text-center py-8 text-slate-500">Aktif sipariş bulunmuyor.</div>
               ) : (
                 packages.map(pkg => (
-                  <div key={pkg.id} className={`bg-slate-900 p-3 rounded-lg border-l-4 shadow-sm ${
+                  <div key={pkg.id} className={`bg-slate-900 p-3 rounded-md border-l-4 shadow-sm ${
                     pkg.status === 'pending' || pkg.status === 'waiting' ? 'border-l-yellow-500' :
                     pkg.status === 'assigned' ? 'border-l-blue-500' :
                     pkg.status === 'picking_up' ? 'border-l-orange-500' :
@@ -112,14 +119,14 @@ export function LiveOrdersView({
                         )}
                       </div>
                       <span className="text-xs text-gray-500 flex items-center gap-1">
-                        🕐 {formatTurkishTime(pkg.created_at)}
+                        <Clock className="w-3 h-3 text-gray-400" strokeWidth={1.5} /> {formatTurkishTime(pkg.created_at)}
                       </span>
                     </div>
 
                     {/* Üst Kısım - Restoran ve Durum */}
                     <div className="flex justify-between items-start mb-2">
-                      <span className="bg-orange-50 text-orange-700 px-2 py-1 rounded text-sm font-bold">
-                        🍽️ {pkg.restaurant?.name || 'Bilinmeyen'}
+                      <span className="bg-orange-50 text-orange-700 px-2 py-1 rounded text-sm font-bold flex items-center gap-1">
+                        <Utensils className="w-3.5 h-3.5" strokeWidth={1.5} /> {pkg.restaurant?.name || 'Bilinmeyen'}
                       </span>
                       <span className="text-lg font-bold text-green-600">
                         {pkg.amount}₺
@@ -134,49 +141,61 @@ export function LiveOrdersView({
                         pkg.status === 'picking_up' ? 'bg-orange-100 text-orange-700' :
                         'bg-red-100 text-red-700'
                       }`}>
-                        {pkg.status === 'pending' || pkg.status === 'waiting' ? '⏳ Kurye Bekliyor' : 
-                         pkg.status === 'assigned' ? '👤 Atandı' :
-                         pkg.status === 'picking_up' ? '🏃 Alınıyor' : '🚗 Yolda'}
+                        {pkg.status === 'pending' || pkg.status === 'waiting' ? (
+                          <span className="inline-flex items-center gap-1"><Loader2 className="w-3 h-3" strokeWidth={1.5} /> Kurye Bekliyor</span>
+                        ) : pkg.status === 'assigned' ? (
+                          <span className="inline-flex items-center gap-1"><User className="w-3 h-3" strokeWidth={1.5} /> Atandı</span>
+                        ) : pkg.status === 'picking_up' ? (
+                          <span className="inline-flex items-center gap-1"><Footprints className="w-3 h-3" strokeWidth={1.5} /> Alınıyor</span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1"><Car className="w-3 h-3" strokeWidth={1.5} /> Yolda</span>
+                        )}
                       </span>
                     </div>
 
                     {/* Müşteri Bilgileri */}
                     <div className="space-y-2 mb-3">
-                      <h3 className="font-semibold text-sm text-slate-900">
-                        👤 {pkg.customer_name}
+                      <h3 className="font-semibold text-sm text-slate-900 flex items-center gap-1">
+                        <User className="w-3.5 h-3.5 text-gray-400" strokeWidth={1.5} /> {pkg.customer_name}
                       </h3>
                       
                       {pkg.customer_phone && (
-                        <p className="text-xs text-slate-600">
-                          📞 {pkg.customer_phone}
+                        <p className="text-xs text-slate-600 flex items-center gap-1">
+                          <Phone className="w-3 h-3 text-gray-400" strokeWidth={1.5} /> {pkg.customer_phone}
                         </p>
                       )}
                       
                       {pkg.content && (
                         <div>
                           <p className="text-xs text-slate-600">Paket İçeriği:</p>
-                          <p className="text-xs text-slate-800 bg-orange-50 p-1.5 rounded">
-                            📝 {pkg.content}
+                          <p className="text-xs text-slate-800 bg-orange-50 p-1.5 rounded flex items-start gap-1">
+                            <FileText className="w-3 h-3 text-gray-400 shrink-0 mt-0.5" strokeWidth={1.5} /> {pkg.content}
                           </p>
                         </div>
                       )}
                       
                       <div>
                         <p className="text-xs text-slate-600">Adres:</p>
-                        <p className="text-xs text-slate-700 overflow-hidden" style={{display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'}}>
-                          📍 {pkg.delivery_address}
+                        <p className="text-xs text-slate-700 overflow-hidden flex items-start gap-1" style={{display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'}}>
+                          <MapPin className="w-3 h-3 text-gray-400 shrink-0 mt-0.5" strokeWidth={1.5} /> {pkg.delivery_address}
                         </p>
                       </div>
 
                       <div className="flex justify-between items-center">
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        <span className={`px-2 py-1 rounded text-xs font-medium inline-flex items-center gap-1 ${
                           pkg.payment_method === 'cash' 
                             ? 'bg-green-50 text-green-700'
                             : pkg.payment_method === 'iban'
                             ? 'bg-purple-50 text-purple-700'
                             : 'bg-orange-50 text-orange-700'
                         }`}>
-                          {pkg.payment_method === 'cash' ? '💵 Nakit' : pkg.payment_method === 'iban' ? '🏦 IBAN' : '💳 Kart'}
+                          {pkg.payment_method === 'cash' ? (
+                            <><Banknote className="w-3 h-3" strokeWidth={1.5} /> Nakit</>
+                          ) : pkg.payment_method === 'iban' ? (
+                            <><Building2 className="w-3 h-3" strokeWidth={1.5} /> IBAN</>
+                          ) : (
+                            <><CreditCard className="w-3 h-3" strokeWidth={1.5} /> Kart</>
+                          )}
                         </span>
                       </div>
                     </div>
@@ -192,7 +211,7 @@ export function LiveOrdersView({
                         >
                           <option value="">Kurye Seçin</option>
                           {couriers.filter(c => c.is_active).length === 0 ? (
-                            <option disabled>⚠️ Aktif Kurye Bulunmuyor</option>
+                            <option disabled>Aktif Kurye Bulunmuyor</option>
                           ) : (
                             <>
                               <option disabled>Kurye Seçin (Aktif: {couriers.filter(c => c.is_active).length})</option>
@@ -210,9 +229,13 @@ export function LiveOrdersView({
                         <button 
                           onClick={() => handleAssignCourier(pkg.id)}
                           disabled={!selectedCouriers[pkg.id] || assigningIds.has(pkg.id)}
-                          className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white px-3 py-1.5 rounded text-xs font-semibold transition-all"
+                          className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white px-3 py-1.5 rounded text-xs font-semibold transition-all flex items-center justify-center gap-1"
                         >
-                          {assigningIds.has(pkg.id) ? '⏳ Atanıyor...' : '✅ Kurye Ata'}
+                          {assigningIds.has(pkg.id) ? (
+                            <><Loader2 className="w-3 h-3 animate-spin" strokeWidth={1.5} /> Atanıyor...</>
+                          ) : (
+                            <><CheckCircle2 className="w-3 h-3" strokeWidth={1.5} /> Kurye Ata</>
+                          )}
                         </button>
                       </div>
                     )}
@@ -221,8 +244,8 @@ export function LiveOrdersView({
                     {pkg.courier_id && (pkg.status === 'assigned' || pkg.status === 'picking_up' || pkg.status === 'on_the_way') && (
                       <div className="border-t border-slate-200 pt-2">
                         <div className="flex items-center justify-center">
-                          <span className="bg-orange-50 text-orange-700 px-2 py-1 rounded text-xs font-medium">
-                            🚴 {couriers.find(c => c.id === pkg.courier_id)?.full_name || 'Bilinmeyen'}
+                          <span className="bg-orange-50 text-orange-700 px-2 py-1 rounded text-xs font-medium inline-flex items-center gap-1">
+                            <Bike className="w-3 h-3" strokeWidth={1.5} /> {couriers.find(c => c.id === pkg.courier_id)?.full_name || 'Bilinmeyen'}
                           </span>
                         </div>
                       </div>
@@ -236,8 +259,11 @@ export function LiveOrdersView({
 
         {/* SAĞ PANEL: KURYELERİN DURUMU - PADDING AZALTILDI */}
         <div className="lg:col-span-1 space-y-3">
-          <div className="bg-slate-900 shadow-xl rounded-2xl p-3">
-            <h2 className="text-sm font-bold mb-2">🚴 Kurye Durumları</h2>
+          <div className="bg-slate-900 shadow-sm rounded-md border border-slate-800 p-3">
+            <h2 className="text-sm font-bold mb-2 flex items-center gap-2">
+              <Bike className="w-4 h-4 text-gray-400" strokeWidth={1.5} />
+              Kurye Durumları
+            </h2>
             <div className="space-y-2">
               {couriers.map(c => {
                 // Bu kuryenin paketlerini bul
@@ -246,7 +272,7 @@ export function LiveOrdersView({
                 return (
                   <div 
                     key={c.id} 
-                    className="p-2 bg-slate-50 rounded-lg border"
+                    className="p-2 bg-slate-50 rounded-md border"
                   >
                     <div className="flex justify-between items-center mb-1.5">
                       <div className="flex items-center gap-1.5 min-w-0">
@@ -254,19 +280,19 @@ export function LiveOrdersView({
                         <span className="font-bold text-xs truncate">{c.full_name}</span>
                       </div>
                       <div className="text-right">
-                        <span className="text-[10px] text-green-600 block font-semibold">
-                          📦 {c.todayDeliveryCount || 0} bugün
+                        <span className="text-[10px] text-green-600 block font-semibold flex items-center gap-0.5">
+                          <PackageIcon className="w-3 h-3" strokeWidth={1.5} /> {c.todayDeliveryCount || 0} bugün
                         </span>
-                        <span className="text-[10px] text-orange-600 block font-semibold">
-                          🚚 {c.activePackageCount || 0} üzerinde
+                        <span className="text-[10px] text-orange-600 block font-semibold flex items-center gap-0.5">
+                          <Truck className="w-3 h-3" strokeWidth={1.5} /> {c.activePackageCount || 0} üzerinde
                         </span>
                       </div>
                     </div>
                     
                     {/* Aktiflik Durumu */}
                     <div className="mb-1.5">
-                      {!c.is_active && <span className="text-[9px] bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded font-bold">⚫ AKTİF DEĞİL</span>}
-                      {c.is_active && <span className="text-[9px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-bold">🟢 AKTİF</span>}
+                      {!c.is_active && <span className="text-[9px] bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded font-bold">AKTİF DEĞİL</span>}
+                      {c.is_active && <span className="text-[9px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-bold">AKTİF</span>}
                     </div>
                     
                     {/* Paket Durumları */}
@@ -280,9 +306,9 @@ export function LiveOrdersView({
                               pkg.status === 'picking_up' ? 'bg-orange-100 text-orange-700' :
                               'bg-red-100 text-red-700'
                             }`}>
-                              {pkg.status === 'pending' || pkg.status === 'waiting' ? '⏳ Bekliyor' :
-                               pkg.status === 'assigned' ? '👤 Atandı' :
-                               pkg.status === 'picking_up' ? '🏃 Alıyor' : '🚗 Yolda'}
+                              {pkg.status === 'pending' || pkg.status === 'waiting' ? 'Bekliyor' :
+                               pkg.status === 'assigned' ? 'Atandı' :
+                               pkg.status === 'picking_up' ? 'Alıyor' : 'Yolda'}
                             </span>
                             <span className="text-slate-600 truncate">
                               {pkg.customer_name}

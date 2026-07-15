@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { supabase } from '@/app/lib/supabase'
 import Image from 'next/image'
+import { Pencil, Loader2 } from 'lucide-react'
 
 interface MenuItem {
   id: number
@@ -69,15 +70,16 @@ export default function MenuItemEditModal({ item, onClose, onSuccess, darkMode }
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-      <div className={`rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto ${
+      <div className={`rounded-md w-full max-w-2xl max-h-[90vh] overflow-y-auto ${
         darkMode ? 'bg-slate-900' : 'bg-white'
       }`}>
         {/* Header */}
         <div className={`flex items-center justify-between p-6 border-b ${
           darkMode ? 'border-slate-800' : 'border-gray-200'
         } sticky top-0 ${darkMode ? 'bg-slate-900' : 'bg-white'} z-10`}>
-          <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-            ✏️ Menü Düzenle
+          <h2 className={`text-2xl font-bold flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+            <Pencil className="w-5 h-5 text-gray-400" strokeWidth={1.5} />
+            Menü Düzenle
           </h2>
           <button
             onClick={onClose}
@@ -91,7 +93,7 @@ export default function MenuItemEditModal({ item, onClose, onSuccess, darkMode }
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Error Message */}
           {error && (
-            <div className="p-3 bg-red-500/20 border border-red-500/50 rounded-lg">
+            <div className="p-3 bg-red-500/20 border border-red-500/50 rounded-md">
               <p className="text-red-400 text-sm">{error}</p>
             </div>
           )}
@@ -99,7 +101,7 @@ export default function MenuItemEditModal({ item, onClose, onSuccess, darkMode }
           {/* Görsel Önizleme */}
           {formData.image_url && (
             <div className="flex justify-center">
-              <div className="relative w-32 h-32 rounded-lg overflow-hidden border-2 border-orange-500">
+              <div className="relative w-32 h-32 rounded-md overflow-hidden border-2 border-orange-500">
                 <Image
                   src={formData.image_url}
                   alt={formData.name}
@@ -125,7 +127,7 @@ export default function MenuItemEditModal({ item, onClose, onSuccess, darkMode }
               value={formData.name}
               onChange={handleChange}
               required
-              className={`w-full px-3 py-2 rounded-lg border outline-none transition-colors ${
+              className={`w-full px-3 py-2 rounded-md border outline-none transition-colors ${
                 darkMode 
                   ? 'bg-slate-800 border-slate-700 text-white focus:border-orange-500' 
                   : 'bg-white border-gray-300 text-gray-900 focus:border-orange-500'
@@ -145,7 +147,7 @@ export default function MenuItemEditModal({ item, onClose, onSuccess, darkMode }
               value={formData.description}
               onChange={handleChange}
               rows={3}
-              className={`w-full px-3 py-2 rounded-lg border outline-none transition-colors resize-none ${
+              className={`w-full px-3 py-2 rounded-md border outline-none transition-colors resize-none ${
                 darkMode 
                   ? 'bg-slate-800 border-slate-700 text-white focus:border-orange-500' 
                   : 'bg-white border-gray-300 text-gray-900 focus:border-orange-500'
@@ -168,7 +170,7 @@ export default function MenuItemEditModal({ item, onClose, onSuccess, darkMode }
               required
               min="0"
               step="0.01"
-              className={`w-full px-3 py-2 rounded-lg border outline-none transition-colors ${
+              className={`w-full px-3 py-2 rounded-md border outline-none transition-colors ${
                 darkMode 
                   ? 'bg-slate-800 border-slate-700 text-white focus:border-orange-500' 
                   : 'bg-white border-gray-300 text-gray-900 focus:border-orange-500'
@@ -188,7 +190,7 @@ export default function MenuItemEditModal({ item, onClose, onSuccess, darkMode }
               name="image_url"
               value={formData.image_url}
               onChange={handleChange}
-              className={`w-full px-3 py-2 rounded-lg border outline-none transition-colors ${
+              className={`w-full px-3 py-2 rounded-md border outline-none transition-colors ${
                 darkMode 
                   ? 'bg-slate-800 border-slate-700 text-white focus:border-orange-500' 
                   : 'bg-white border-gray-300 text-gray-900 focus:border-orange-500'
@@ -220,7 +222,7 @@ export default function MenuItemEditModal({ item, onClose, onSuccess, darkMode }
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className={`flex-1 py-3 rounded-lg font-semibold transition-colors ${
+              className={`flex-1 py-3 rounded-md font-semibold transition-colors ${
                 darkMode
                   ? 'bg-slate-800 text-white hover:bg-slate-700'
                   : 'bg-gray-200 text-gray-900 hover:bg-gray-300'
@@ -231,9 +233,11 @@ export default function MenuItemEditModal({ item, onClose, onSuccess, darkMode }
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-semibold transition-colors disabled:opacity-50"
+              className="flex-1 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-md font-semibold transition-colors disabled:opacity-50"
             >
-              {isSubmitting ? '⏳ Kaydediliyor...' : '✅ Kaydet'}
+              {isSubmitting ? (
+                <span className="inline-flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" strokeWidth={1.5} />Kaydediliyor...</span>
+              ) : 'Kaydet'}
             </button>
           </div>
         </form>

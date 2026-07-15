@@ -7,10 +7,10 @@
 export default function PrivacyPolicyPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 py-8 px-4">
-      <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-2xl p-8 md:p-12">
+      <div className="max-w-4xl mx-auto bg-white rounded-md border border-slate-200 shadow-sm p-8 md:p-12">
         {/* Header */}
         <div className="border-b-4 border-orange-500 pb-4 mb-6">
-          <h1 className="text-4xl font-bold text-orange-600">🔒 Gizlilik Politikası</h1>
+          <h1 className="text-2xl font-bold text-orange-600">Gizlilik Politikası</h1>
           <p className="text-slate-600 italic mt-2">Son Güncelleme: 9 Şubat 2026</p>
         </div>
 
@@ -41,7 +41,7 @@ export default function PrivacyPolicyPage() {
             <div className="space-y-6">
               {/* 2.1 Location */}
               <div>
-                <h3 className="text-xl font-semibold text-orange-600 mb-3">2.1. 📍 Konum Verileri</h3>
+                <h3 className="text-xl font-semibold text-orange-600 mb-3">2.1. Konum Verileri</h3>
                 <p className="font-semibold mb-2">Toplanan Veri:</p>
                 <ul className="list-disc pl-6 space-y-1 mb-3">
                   <li>GPS koordinatları (enlem, boylam)</li>
@@ -66,7 +66,7 @@ export default function PrivacyPolicyPage() {
 
               {/* 2.2 Microphone */}
               <div>
-                <h3 className="text-xl font-semibold text-orange-600 mb-3">2.2. 🎤 Mikrofon Verisi</h3>
+                <h3 className="text-xl font-semibold text-orange-600 mb-3">2.2. Mikrofon Verisi</h3>
                 <p className="font-semibold mb-2">Toplanan Veri:</p>
                 <ul className="list-disc pl-6 space-y-1 mb-3">
                   <li>Sesli komut ses akışı (geçici)</li>
@@ -89,7 +89,7 @@ export default function PrivacyPolicyPage() {
 
               {/* 2.3 Notifications */}
               <div>
-                <h3 className="text-xl font-semibold text-orange-600 mb-3">2.3. 🔔 Bildirim Verileri</h3>
+                <h3 className="text-xl font-semibold text-orange-600 mb-3">2.3. Bildirim Verileri</h3>
                 <p className="font-semibold mb-2">Toplanan Veri:</p>
                 <ul className="list-disc pl-6 space-y-1 mb-3">
                   <li>Cihaz bildirim token'ı</li>
@@ -104,7 +104,7 @@ export default function PrivacyPolicyPage() {
 
               {/* 2.4 Device Info */}
               <div>
-                <h3 className="text-xl font-semibold text-orange-600 mb-3">2.4. 📱 Cihaz Bilgileri</h3>
+                <h3 className="text-xl font-semibold text-orange-600 mb-3">2.4. Cihaz Bilgileri</h3>
                 <p className="font-semibold mb-2">Toplanan Veri:</p>
                 <ul className="list-disc pl-6 space-y-1 mb-3">
                   <li>Cihaz modeli ve işletim sistemi</li>
@@ -121,7 +121,7 @@ export default function PrivacyPolicyPage() {
 
               {/* 2.5 User Account */}
               <div>
-                <h3 className="text-xl font-semibold text-orange-600 mb-3">2.5. 👤 Kullanıcı Hesap Bilgileri</h3>
+                <h3 className="text-xl font-semibold text-orange-600 mb-3">2.5. Kullanıcı Hesap Bilgileri</h3>
                 <p className="font-semibold mb-2">Toplanan Veri:</p>
                 <ul className="list-disc pl-6 space-y-1 mb-3">
                   <li>Kullanıcı adı</li>
@@ -141,7 +141,7 @@ export default function PrivacyPolicyPage() {
 
               {/* 2.6 Financial Account Info */}
               <div>
-                <h3 className="text-xl font-semibold text-orange-600 mb-3">2.6. 💳 Finansal Hesap Bilgileri</h3>
+                <h3 className="text-xl font-semibold text-orange-600 mb-3">2.6. Finansal Hesap Bilgileri</h3>
                 <p className="font-semibold mb-2">Toplanan Veri:</p>
                 <ul className="list-disc pl-6 space-y-1 mb-3">
                   <li>Ödeme yöntemi tercihleri (Nakit, Kart, IBAN)</li>
@@ -149,7 +149,7 @@ export default function PrivacyPolicyPage() {
                   <li>Ödeme geçmişi</li>
                 </ul>
                 <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mt-3 mb-3">
-                  <p className="font-semibold text-blue-900 mb-2">🏦 IBAN Tahsilat Bilgisi:</p>
+                  <p className="font-semibold text-blue-900 mb-2">IBAN Tahsilat Bilgisi:</p>
                   <p className="text-blue-800 text-sm">
                     Müşteriler IBAN ile ödeme yapmayı seçtiklerinde, ödeme şu hesaba yapılır:
                   </p>
@@ -197,11 +197,11 @@ export default function PrivacyPolicyPage() {
 
             <h3 className="text-xl font-semibold text-orange-600 mb-3">3.2. Güvenlik Önlemleri</h3>
             <ul className="list-disc pl-6 space-y-2">
-              <li>🔐 SSL/TLS şifreleme ile veri iletimi</li>
-              <li>🔒 Şifrelerin hash'lenerek saklanması</li>
-              <li>🛡️ Supabase güvenli veritabanı altyapısı</li>
-              <li>🔑 Row Level Security (RLS) ile veri izolasyonu</li>
-              <li>📊 Düzenli güvenlik denetimleri</li>
+              <li>SSL/TLS şifreleme ile veri iletimi</li>
+              <li>Şifrelerin hash'lenerek saklanması</li>
+              <li>Supabase güvenli veritabanı altyapısı</li>
+              <li>Row Level Security (RLS) ile veri izolasyonu</li>
+              <li>Düzenli güvenlik denetimleri</li>
             </ul>
           </section>
 
@@ -216,10 +216,10 @@ export default function PrivacyPolicyPage() {
             </ul>
             <p className="font-semibold mb-2">Verileriniz KİMLERLE paylaşılMAZ:</p>
             <ul className="list-disc pl-6 space-y-2">
-              <li>❌ Üçüncü taraf reklam şirketleri</li>
-              <li>❌ Veri aracıları</li>
-              <li>❌ Sosyal medya platformları</li>
-              <li>❌ Analitik şirketler (anonim istatistikler hariç)</li>
+              <li>Üçüncü taraf reklam şirketleri</li>
+              <li>Veri aracıları</li>
+              <li>Sosyal medya platformları</li>
+              <li>Analitik şirketler (anonim istatistikler hariç)</li>
             </ul>
           </section>
 
@@ -228,11 +228,11 @@ export default function PrivacyPolicyPage() {
             <h2 className="text-2xl font-bold text-orange-700 mb-4">5. Kullanıcı Hakları</h2>
             <p className="mb-3">KVKK (Kişisel Verilerin Korunması Kanunu) kapsamında haklarınız:</p>
             <ul className="list-disc pl-6 space-y-2">
-              <li>📋 <strong>Bilgi Talep Etme:</strong> Hangi verilerinizin toplandığını öğrenme</li>
-              <li>✏️ <strong>Düzeltme:</strong> Yanlış verilerin düzeltilmesini isteme</li>
-              <li>🗑️ <strong>Silme:</strong> Verilerinizin silinmesini talep etme</li>
-              <li>🚫 <strong>İtiraz:</strong> Veri işlemeye itiraz etme</li>
-              <li>📤 <strong>Taşınabilirlik:</strong> Verilerinizi başka bir platforma aktarma</li>
+              <li><strong>Bilgi Talep Etme:</strong> Hangi verilerinizin toplandığını öğrenme</li>
+              <li><strong>Düzeltme:</strong> Yanlış verilerin düzeltilmesini isteme</li>
+              <li><strong>Silme:</strong> Verilerinizin silinmesini talep etme</li>
+              <li><strong>İtiraz:</strong> Veri işlemeye itiraz etme</li>
+              <li><strong>Taşınabilirlik:</strong> Verilerinizi başka bir platforma aktarma</li>
             </ul>
           </section>
 
@@ -283,11 +283,11 @@ export default function PrivacyPolicyPage() {
           {/* Section 10 */}
           <section>
             <h2 className="text-2xl font-bold text-orange-700 mb-4">10. İletişim</h2>
-            <div className="bg-blue-50 rounded-lg p-6">
+            <div className="bg-blue-50 rounded-md p-6">
               <p className="mb-3">Gizlilik politikası hakkında sorularınız veya talepleriniz için:</p>
               <ul className="space-y-2">
-                <li>📧 <strong>E-posta:</strong> ozdemiribrahimokan@gmail.com</li>
-                <li>📱 <strong>Telefon:</strong> +90 505 059 16 29</li>
+                <li><strong>E-posta:</strong> ozdemiribrahimokan@gmail.com</li>
+                <li><strong>Telefon:</strong> +90 505 059 16 29</li>
               </ul>
               <p className="mt-3"><strong>Veri Sorumlusu:</strong> Mergen Kurye</p>
             </div>
@@ -298,9 +298,9 @@ export default function PrivacyPolicyPage() {
             <h2 className="text-2xl font-bold text-orange-700 mb-4">11. Yasal Uyum</h2>
             <p className="mb-3">Bu gizlilik politikası şu yasalara uygun olarak hazırlanmıştır:</p>
             <ul className="list-disc pl-6 space-y-2">
-              <li>🇹🇷 KVKK (Kişisel Verilerin Korunması Kanunu - 6698 sayılı kanun)</li>
-              <li>🇪🇺 GDPR (General Data Protection Regulation)</li>
-              <li>📱 Google Play Store Politikaları</li>
+              <li>KVKK (Kişisel Verilerin Korunması Kanunu - 6698 sayılı kanun)</li>
+              <li>GDPR (General Data Protection Regulation)</li>
+              <li>Google Play Store Politikaları</li>
             </ul>
           </section>
 
@@ -319,7 +319,7 @@ export default function PrivacyPolicyPage() {
           <div className="mt-6">
             <a 
               href="/"
-              className="inline-block px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors"
+              className="inline-block px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-md transition-colors"
             >
               ← Ana Sayfaya Dön
             </a>

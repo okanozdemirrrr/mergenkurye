@@ -4,6 +4,9 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/app/lib/supabase'
 import { useRestoran } from '../RestoranProvider'
 import { formatDeliveryAddress } from '@/app/lib/formatDeliveryAddress'
+import {
+  User, Search, MapPin, Package, Banknote, CreditCard, Building2, UtensilsCrossed, Loader2, Send
+} from 'lucide-react'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface Customer {
@@ -101,17 +104,18 @@ function NewCustomerModal({ darkMode, onClose, onSaved, restaurantId, prefillNam
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4">
-      <div className={`w-full max-w-md rounded-2xl shadow-2xl ${darkMode ? 'bg-slate-900 border border-slate-700' : 'bg-white border border-gray-200'}`}>
+      <div className={`w-full max-w-md rounded-md shadow-sm ${darkMode ? 'bg-slate-900 border border-slate-700' : 'bg-white border border-gray-200'}`}>
         {/* Header */}
         <div className={`flex items-center justify-between px-6 py-4 border-b ${darkMode ? 'border-slate-700' : 'border-gray-200'}`}>
-          <h3 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-            👤 Yeni Müşteri Ekle
+          <h3 className={`text-lg font-bold flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+            <User className="w-5 h-5 text-gray-400" strokeWidth={1.5} />
+            Yeni Müşteri Ekle
           </h3>
           <button onClick={onClose} className={`text-2xl leading-none ${darkMode ? 'text-slate-400 hover:text-white' : 'text-gray-400 hover:text-gray-900'}`}>×</button>
         </div>
 
         <form onSubmit={handleSave} className="p-6 space-y-4">
-          {err && <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">{err}</p>}
+          {err && <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/30 rounded-md px-3 py-2">{err}</p>}
 
           <div>
             <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>İsim Soyisim <span className="text-red-400">*</span></label>
@@ -121,7 +125,7 @@ function NewCustomerModal({ darkMode, onClose, onSaved, restaurantId, prefillNam
               value={form.full_name}
               onChange={e => setForm(p => ({ ...p, full_name: e.target.value }))}
               placeholder="Ahmet Yılmaz"
-              className={`w-full px-3 py-2.5 rounded-lg border outline-none transition-colors ${bg}`}
+              className={`w-full px-3 py-2.5 rounded-md border outline-none transition-colors ${bg}`}
             />
           </div>
 
@@ -132,7 +136,7 @@ function NewCustomerModal({ darkMode, onClose, onSaved, restaurantId, prefillNam
               value={form.phone}
               onChange={e => setForm(p => ({ ...p, phone: e.target.value }))}
               placeholder="05XX XXX XX XX"
-              className={`w-full px-3 py-2.5 rounded-lg border outline-none transition-colors ${bg}`}
+              className={`w-full px-3 py-2.5 rounded-md border outline-none transition-colors ${bg}`}
             />
           </div>
 
@@ -143,16 +147,18 @@ function NewCustomerModal({ darkMode, onClose, onSaved, restaurantId, prefillNam
               value={form.address}
               onChange={e => setForm(p => ({ ...p, address: e.target.value }))}
               placeholder="Atatürk Mah. İnönü Cad. No:12"
-              className={`w-full px-3 py-2.5 rounded-lg border outline-none transition-colors resize-none ${bg}`}
+              className={`w-full px-3 py-2.5 rounded-md border outline-none transition-colors resize-none ${bg}`}
             />
           </div>
 
           <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose} className={`flex-1 py-2.5 rounded-lg font-semibold transition-colors ${darkMode ? 'bg-slate-700 text-white hover:bg-slate-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
+            <button type="button" onClick={onClose} className={`flex-1 py-2.5 rounded-md font-semibold transition-colors ${darkMode ? 'bg-slate-700 text-white hover:bg-slate-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
               İptal
             </button>
-            <button type="submit" disabled={saving} className="flex-1 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-semibold transition-colors disabled:opacity-50">
-              {saving ? '⏳ Kaydediliyor...' : '✅ Kaydet'}
+            <button type="submit" disabled={saving} className="flex-1 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-md font-semibold transition-colors disabled:opacity-50">
+              {saving ? (
+                <span className="inline-flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" strokeWidth={1.5} />Kaydediliyor...</span>
+              ) : 'Kaydet'}
             </button>
           </div>
         </form>
@@ -327,7 +333,7 @@ export default function NewOrderModal({ onClose, onSuccess, restaurantId, darkMo
   }
 
   // ── Style Helpers ──
-  const input = `w-full px-3 py-2.5 rounded-lg border outline-none transition-colors ${
+  const input = `w-full px-3 py-2.5 rounded-md border outline-none transition-colors ${
     darkMode
       ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500 focus:border-orange-500'
       : 'bg-white border-gray-300 text-gray-900 focus:border-orange-500'
@@ -337,12 +343,15 @@ export default function NewOrderModal({ onClose, onSuccess, restaurantId, darkMo
   return (
     <>
       <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-        <div className={`rounded-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto ${darkMode ? 'bg-slate-900' : 'bg-white'}`}>
+        <div className={`rounded-md w-full max-w-2xl max-h-[92vh] overflow-y-auto ${darkMode ? 'bg-slate-900' : 'bg-white'}`}>
 
           {/* ── Header ── */}
           <div className={`flex items-center justify-between p-6 border-b sticky top-0 z-10 ${darkMode ? 'border-slate-800 bg-slate-900' : 'border-gray-200 bg-white'}`}>
             <div>
-              <h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>🍽️ Yeni Sipariş</h2>
+              <h2 className={`text-xl font-bold flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                <UtensilsCrossed className="w-5 h-5 text-gray-400" strokeWidth={1.5} />
+                Yeni Sipariş
+              </h2>
               <p className={`text-xs mt-0.5 ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>Müşteri ara veya bilgileri manuel gir</p>
             </div>
             <button 
@@ -359,9 +368,9 @@ export default function NewOrderModal({ onClose, onSuccess, restaurantId, darkMo
           <form onSubmit={handleSubmit} className="p-6 space-y-5">
 
             {/* ── BÖLÜM 1: MÜŞTERİ CRM ── */}
-            <div className={`rounded-xl border p-4 space-y-4 ${darkMode ? 'border-orange-500/30 bg-orange-500/5' : 'border-orange-200 bg-orange-50'}`}>
+            <div className={`rounded-md border p-4 space-y-4 ${darkMode ? 'border-orange-500/30 bg-orange-500/5' : 'border-orange-200 bg-orange-50'}`}>
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-orange-500 text-lg">👤</span>
+                <User className="w-4 h-4 text-gray-400" strokeWidth={1.5} />
                 <span className={`text-sm font-semibold ${darkMode ? 'text-orange-400' : 'text-orange-700'}`}>Müşteri Seçimi</span>
                 {selectedCustomer && (
                   <span className="ml-auto flex items-center gap-1 text-xs bg-green-500/20 text-green-400 border border-green-500/30 rounded-full px-2 py-0.5">
@@ -374,14 +383,14 @@ export default function NewOrderModal({ onClose, onSuccess, restaurantId, darkMo
               <div ref={searchRef} className="relative">
                 <div className="flex gap-2">
                   <div className="relative flex-1">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" strokeWidth={1.5} />
                     <input
                       type="text"
                       value={searchQuery}
                       onChange={handleSearchChange}
                       onFocus={() => searchResults.length > 0 && setShowDropdown(true)}
                       placeholder="İsim, telefon veya adres ara..."
-                      className={`w-full pl-9 pr-3 py-2.5 rounded-lg border outline-none transition-colors ${
+                      className={`w-full pl-9 pr-3 py-2.5 rounded-md border outline-none transition-colors ${
                         selectedCustomer
                           ? darkMode
                             ? 'bg-green-900/20 border-green-600 text-white'
@@ -404,7 +413,7 @@ export default function NewOrderModal({ onClose, onSuccess, restaurantId, darkMo
                     <button
                       type="button"
                       onClick={clearCustomer}
-                      className="px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors bg-red-500/10 border-red-500/40 text-red-400 hover:bg-red-500/20"
+                      className="px-3 py-2.5 rounded-md border text-sm font-medium transition-colors bg-red-500/10 border-red-500/40 text-red-400 hover:bg-red-500/20"
                     >
                       ✕
                     </button>
@@ -412,7 +421,7 @@ export default function NewOrderModal({ onClose, onSuccess, restaurantId, darkMo
                     <button
                       type="button"
                       onClick={() => setShowNewCustomerModal(true)}
-                      className="whitespace-nowrap px-3 py-2.5 rounded-lg border text-sm font-semibold transition-colors bg-orange-600 hover:bg-orange-700 text-white border-orange-600"
+                      className="whitespace-nowrap px-3 py-2.5 rounded-md border text-sm font-semibold transition-colors bg-orange-600 hover:bg-orange-700 text-white border-orange-600"
                     >
                       + Yeni
                     </button>
@@ -421,7 +430,7 @@ export default function NewOrderModal({ onClose, onSuccess, restaurantId, darkMo
 
                 {/* Dropdown */}
                 {showDropdown && (
-                  <div className={`absolute left-0 right-0 top-full mt-1 rounded-xl border shadow-2xl z-30 overflow-hidden ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+                  <div className={`absolute left-0 right-0 top-full mt-1 rounded-md border shadow-sm z-30 overflow-hidden ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
                     {searchResults.length === 0 ? (
                       <div className="px-4 py-3 text-center">
                         <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>Müşteri bulunamadı</p>
@@ -453,8 +462,9 @@ export default function NewOrderModal({ onClose, onSuccess, restaurantId, darkMo
                               <span className={`text-xs ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>{c.phone}</span>
                             </div>
                             {buildAddress(c) && (
-                              <p className={`text-xs mt-0.5 truncate ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
-                                📍 {buildAddress(c)}
+                              <p className={`text-xs mt-0.5 truncate flex items-center gap-1 ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                                <MapPin className="w-3 h-3 text-gray-400 shrink-0" strokeWidth={1.5} />
+                                {buildAddress(c)}
                               </p>
                             )}
                           </button>
@@ -519,9 +529,9 @@ export default function NewOrderModal({ onClose, onSuccess, restaurantId, darkMo
             </div>
 
             {/* ── BÖLÜM 2: SİPARİŞ DETAYLARI ── */}
-            <div className={`rounded-xl border p-4 space-y-4 ${darkMode ? 'border-slate-700' : 'border-gray-200'}`}>
+            <div className={`rounded-md border p-4 space-y-4 ${darkMode ? 'border-slate-700' : 'border-gray-200'}`}>
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-lg">📦</span>
+                <Package className="w-4 h-4 text-gray-400" strokeWidth={1.5} />
                 <span className={`text-sm font-semibold ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>Sipariş Detayları</span>
               </div>
 
@@ -560,13 +570,17 @@ export default function NewOrderModal({ onClose, onSuccess, restaurantId, darkMo
                 <div>
                   <label className={label}>Ödeme Yöntemi <span className="text-red-400">*</span></label>
                   <div className="grid grid-cols-3 gap-1.5 h-[42px]">
-                    {([['cash', '💵', 'Nakit'], ['card', '💳', 'Kart'], ['iban', '🏦', 'IBAN']] as const).map(([val, icon, lbl]) => (
+                    {([
+                      ['cash', Banknote, 'Nakit'],
+                      ['card', CreditCard, 'Kart'],
+                      ['iban', Building2, 'IBAN'],
+                    ] as const).map(([val, Icon, lbl]) => (
                       <button
                         key={val}
                         type="button"
                         onClick={() => setPaymentMethod(val)}
                         disabled={isSubmitting}
-                        className={`h-full rounded-lg border text-xs font-semibold transition-colors ${
+                        className={`h-full rounded-md border text-xs font-semibold transition-colors flex items-center justify-center gap-1 ${
                           paymentMethod === val
                             ? val === 'cash' ? 'bg-green-600 border-green-600 text-white'
                               : val === 'card' ? 'bg-blue-600 border-blue-600 text-white'
@@ -576,7 +590,8 @@ export default function NewOrderModal({ onClose, onSuccess, restaurantId, darkMo
                             : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
                         } disabled:opacity-50`}
                       >
-                        {icon} {lbl}
+                        <Icon className="w-3.5 h-3.5" strokeWidth={1.5} />
+                        {lbl}
                       </button>
                     ))}
                   </div>
@@ -586,7 +601,7 @@ export default function NewOrderModal({ onClose, onSuccess, restaurantId, darkMo
 
             {/* ── Hata ── */}
             {error && (
-              <div className="p-3 bg-red-500/20 border border-red-500/50 rounded-lg">
+              <div className="p-3 bg-red-500/20 border border-red-500/50 rounded-md">
                 <p className="text-red-400 text-sm">{error}</p>
               </div>
             )}
@@ -597,7 +612,7 @@ export default function NewOrderModal({ onClose, onSuccess, restaurantId, darkMo
                 type="button"
                 onClick={onClose}
                 disabled={isSubmitting}
-                className={`flex-1 py-3 rounded-xl font-semibold transition-colors ${
+                className={`flex-1 py-3 rounded-md font-semibold transition-colors ${
                   darkMode ? 'bg-slate-800 text-white hover:bg-slate-700' : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
                 } disabled:opacity-50`}
               >
@@ -606,9 +621,13 @@ export default function NewOrderModal({ onClose, onSuccess, restaurantId, darkMo
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex-2 flex-grow-[2] py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-bold transition-colors disabled:opacity-50"
+                className="flex-2 flex-grow-[2] py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-md font-bold transition-colors disabled:opacity-50"
               >
-                {isSubmitting ? '⏳ Kaydediliyor...' : '🚀 Sipariş Oluştur'}
+                {isSubmitting ? (
+                  <span className="inline-flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" strokeWidth={1.5} />Kaydediliyor...</span>
+                ) : (
+                  <span className="inline-flex items-center justify-center gap-2"><Send className="w-4 h-4" strokeWidth={1.5} />Sipariş Oluştur</span>
+                )}
               </button>
             </div>
           </form>

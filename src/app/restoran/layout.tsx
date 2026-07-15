@@ -11,6 +11,8 @@ import { App } from '@capacitor/app'
 import { supabase } from '../lib/supabase'
 import { RestoranProvider, useRestoran } from './RestoranProvider'
 import CallerIdListener from './components/CallerIdListener'
+import { Package, Store, BarChart3, CreditCard, Users, Star } from 'lucide-react'
+import { NotificationBell } from '@/components/NotificationBell'
 
 const LOGIN_STORAGE_KEY = 'restoran_logged_in'
 const LOGIN_RESTAURANT_ID_KEY = 'restoran_logged_restaurant_id'
@@ -153,13 +155,13 @@ export default function RestoranLayout({ children }: { children: React.ReactNode
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-        <form onSubmit={handleLogin} className="bg-slate-900 p-8 rounded-2xl border border-slate-800 w-full max-w-md">
+        <form onSubmit={handleLogin} className="bg-slate-900 p-8 rounded-md border border-slate-800 w-full max-w-md">
           <div className="text-center mb-8">
             <img src="/logo.png" alt="Logo" className="w-64 h-64 mx-auto mb-4" />
             <h1 className="text-2xl font-bold text-white mb-2">Restoran Girişi</h1>
           </div>
           <select
-            className="w-full p-3 mb-3 bg-slate-800 border border-slate-700 rounded-lg text-white outline-none focus:border-orange-500 transition-colors"
+            className="w-full p-3 mb-3 bg-slate-800 border border-slate-700 rounded-md text-white outline-none focus:border-orange-500 transition-colors"
             value={loginForm.username}
             onChange={e => setLoginForm({ ...loginForm, username: e.target.value })}
           >
@@ -171,11 +173,11 @@ export default function RestoranLayout({ children }: { children: React.ReactNode
           <input
             type="password"
             placeholder="Şifre"
-            className="w-full p-3 mb-4 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors"
+            className="w-full p-3 mb-4 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors"
             value={loginForm.password}
             onChange={e => setLoginForm({ ...loginForm, password: e.target.value })}
           />
-          <button className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-lg transition-colors">
+          <button className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-md transition-colors">
             Giriş Yap
           </button>
           <Link
@@ -205,6 +207,7 @@ export default function RestoranLayout({ children }: { children: React.ReactNode
 
 function RestoranContent({ children, pathname }: { children: React.ReactNode, pathname: string }) {
   const [showMenu, setShowMenu] = useState(false)
+  const { restaurantId } = useRestoran()
   
   const isActive = (path: string) => pathname === path
 
@@ -214,12 +217,18 @@ function RestoranContent({ children, pathname }: { children: React.ReactNode, pa
       {!showMenu && (
         <button
           onClick={() => setShowMenu(true)}
-          className="fixed top-4 left-4 z-[60] bg-slate-800 text-white p-3 rounded-lg shadow-lg hover:bg-slate-700 transition-colors"
+          className="fixed top-4 left-4 z-[60] bg-slate-800 text-white p-3 rounded-md shadow-sm hover:bg-slate-700 transition-colors"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
+      )}
+
+      {!showMenu && (
+        <div className="fixed top-4 right-4 z-[60]">
+          <NotificationBell userId={restaurantId} />
+        </div>
       )}
 
       <RestoranMessages />
@@ -238,12 +247,12 @@ function RestoranMessages() {
   return (
     <>
       {successMessage && (
-        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 bg-green-500/90 text-white px-6 py-3 rounded-lg shadow-lg">
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 bg-green-500/90 text-white px-6 py-3 rounded-md shadow-sm">
           {successMessage}
         </div>
       )}
       {errorMessage && (
-        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 bg-red-500/90 text-white px-6 py-3 rounded-lg shadow-lg">
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 bg-red-500/90 text-white px-6 py-3 rounded-md shadow-sm">
           {errorMessage}
         </div>
       )}
@@ -282,21 +291,21 @@ function MenuSidebar({ showMenu, setShowMenu, isActive }: { showMenu: boolean, s
   return (
     <div className="fixed inset-0 z-50 flex">
       <div className="fixed inset-0 bg-black/50" onClick={() => setShowMenu(false)} />
-      <div className="relative bg-slate-900 w-80 h-full overflow-y-auto p-6 shadow-2xl">
-        <div className="mb-8 text-center">
+      <div className="relative bg-slate-900 w-80 h-full overflow-y-auto p-6 shadow-sm border-r border-slate-800">
+        <div className="mb-8 text-center border-b border-slate-800 pb-6">
           <img src="/logo.png" alt="Logo" className="w-24 h-24 mx-auto mb-3" />
-          <h2 className="text-xl font-bold text-white">Restoran Panel</h2>
+          <h2 className="text-lg font-semibold text-white tracking-tight">Restoran Panel</h2>
         </div>
 
         <nav className="space-y-2">
           <Link
             href="/restoran"
             onClick={() => setShowMenu(false)}
-            className={`block w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${
+            className={`block w-full text-left px-4 py-3 rounded-md font-medium transition-all ${
               isActive('/restoran') ? 'bg-orange-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
             }`}
           >
-            <span className="mr-3">📦</span>
+            <Package className="inline w-4 h-4 mr-3 text-gray-400" strokeWidth={1.5} />
             Siparişler
           </Link>
 
@@ -304,12 +313,12 @@ function MenuSidebar({ showMenu, setShowMenu, isActive }: { showMenu: boolean, s
             <button
               type="button"
               onClick={() => setIsRestoranimOpen((open) => !open)}
-              className={`flex w-full items-center justify-between px-4 py-3 rounded-lg font-medium transition-all ${
+              className={`flex w-full items-center justify-between px-4 py-3 rounded-md font-medium transition-all ${
                 isOnRestoranim ? 'bg-orange-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
               }`}
             >
               <span>
-                <span className="mr-3">🏪</span>
+                <Store className="inline w-4 h-4 mr-3 text-gray-400" strokeWidth={1.5} />
                 Restoranım
               </span>
               <svg
@@ -327,7 +336,7 @@ function MenuSidebar({ showMenu, setShowMenu, isActive }: { showMenu: boolean, s
                 <Link
                   href="/restoran/restoranim?tab=kimlik"
                   onClick={() => setShowMenu(false)}
-                  className={`block w-full text-left pl-8 pr-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                  className={`block w-full text-left pl-8 pr-4 py-2.5 rounded-md text-sm font-medium transition-all ${
                     isOnRestoranim && activeRestoranimTab === 'kimlik'
                       ? 'bg-orange-500 text-white'
                       : 'text-slate-400 hover:bg-slate-800 hover:text-white'
@@ -338,7 +347,7 @@ function MenuSidebar({ showMenu, setShowMenu, isActive }: { showMenu: boolean, s
                 <Link
                   href="/restoran/restoranim?tab=menu"
                   onClick={() => setShowMenu(false)}
-                  className={`block w-full text-left pl-8 pr-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                  className={`block w-full text-left pl-8 pr-4 py-2.5 rounded-md text-sm font-medium transition-all ${
                     isOnRestoranim && activeRestoranimTab === 'menu'
                       ? 'bg-orange-500 text-white'
                       : 'text-slate-400 hover:bg-slate-800 hover:text-white'
@@ -349,7 +358,7 @@ function MenuSidebar({ showMenu, setShowMenu, isActive }: { showMenu: boolean, s
                 <Link
                   href="/restoran/restoranim?tab=yorumlar"
                   onClick={() => setShowMenu(false)}
-                  className={`block w-full text-left pl-8 pr-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                  className={`block w-full text-left pl-8 pr-4 py-2.5 rounded-md text-sm font-medium transition-all ${
                     isOnRestoranim && activeRestoranimTab === 'yorumlar'
                       ? 'bg-orange-500 text-white'
                       : 'text-slate-400 hover:bg-slate-800 hover:text-white'
@@ -364,41 +373,41 @@ function MenuSidebar({ showMenu, setShowMenu, isActive }: { showMenu: boolean, s
           <Link
             href="/restoran/istatistikler"
             onClick={() => setShowMenu(false)}
-            className={`block w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${
+            className={`block w-full text-left px-4 py-3 rounded-md font-medium transition-all ${
               isActive('/restoran/istatistikler') ? 'bg-orange-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
             }`}
           >
-            <span className="mr-3">📊</span>
+            <BarChart3 className="inline w-4 h-4 mr-3 text-gray-400" strokeWidth={1.5} />
             Paketlerim ve Cirom
           </Link>
 
           <Link
             href="/restoran/borc-durumu"
             onClick={() => setShowMenu(false)}
-            className={`block w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${
+            className={`block w-full text-left px-4 py-3 rounded-md font-medium transition-all ${
               isActive('/restoran/borc-durumu') ? 'bg-orange-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
             }`}
           >
-            <span className="mr-3">💳</span>
+            <CreditCard className="inline w-4 h-4 mr-3 text-gray-400" strokeWidth={1.5} />
             Paket Ücretim
           </Link>
 
           <Link
             href="/restoran/musterilerim"
             onClick={() => setShowMenu(false)}
-            className={`block w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${
+            className={`block w-full text-left px-4 py-3 rounded-md font-medium transition-all ${
               isActive('/restoran/musterilerim') ? 'bg-orange-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
             }`}
           >
-            <span className="mr-3">👥</span>
+            <Users className="inline w-4 h-4 mr-3 text-gray-400" strokeWidth={1.5} />
             Kayıtlı Müşterilerim
           </Link>
 
           <button
             onClick={handleCustomerSatisfaction}
-            className="w-full text-left px-4 py-3 rounded-lg font-medium transition-all text-slate-300 hover:bg-slate-800 hover:text-white"
+            className="w-full text-left px-4 py-3 rounded-md font-medium transition-all text-slate-300 hover:bg-slate-800 hover:text-white"
           >
-            <span className="mr-3">⭐</span>
+            <Star className="inline w-4 h-4 mr-3 text-gray-400" strokeWidth={1.5} />
             Müşteri Memnuniyeti
           </button>
         </nav>
@@ -419,7 +428,7 @@ function MenuSidebar({ showMenu, setShowMenu, isActive }: { showMenu: boolean, s
             // 3. Sayfayı tamamen yenileterek state'lerin sıfırlanmasını sağla
             window.location.href = '/'
           }}
-          className="w-full mt-8 bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-lg font-medium transition-colors"
+          className="w-full mt-8 bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-md font-medium transition-colors"
         >
           ← Çıkış Yap
         </button>

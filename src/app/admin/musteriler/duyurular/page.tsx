@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { supabase } from '@/app/lib/supabase'
-import { Send, Sparkles, Users, Bell } from 'lucide-react'
+import { Send, Sparkles, Users, Bell, Target, Clock, Gift } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 export default function DuyurularPage() {
@@ -42,7 +42,7 @@ export default function DuyurularPage() {
         throw functionError
       }
 
-      console.log('✅ Duyuru gönderildi! Etkilenen müşteri sayısı:', data)
+      console.log('Duyuru gönderildi! Etkilenen müşteri sayısı:', data)
       
       setSentCount(data || 0)
       setSuccess(true)
@@ -71,10 +71,10 @@ export default function DuyurularPage() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-8"
         >
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-orange-500 to-pink-500 rounded-2xl mb-4 shadow-2xl shadow-orange-500/50">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-orange-500 to-pink-500 rounded-md mb-4 shadow-sm shadow-orange-500/50">
             <Bell size={40} className="text-white" />
           </div>
-          <h1 className="text-4xl font-bold text-white mb-2 bg-gradient-to-r from-orange-400 to-pink-400 bg-clip-text text-transparent">
+          <h1 className="text-2xl font-bold text-white mb-2 bg-gradient-to-r from-orange-400 to-pink-400 bg-clip-text text-transparent">
             Toplu Duyuru Sistemi
           </h1>
           <p className="text-slate-400 text-lg">
@@ -89,7 +89,7 @@ export default function DuyurularPage() {
               initial={{ opacity: 0, scale: 0.9, y: -20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: -20 }}
-              className="mb-6 p-6 bg-gradient-to-r from-green-900/50 to-emerald-900/50 border-2 border-green-500 rounded-2xl backdrop-blur-sm"
+              className="mb-6 p-6 bg-gradient-to-r from-green-900/50 to-emerald-900/50 border-2 border-green-500 rounded-md backdrop-blur-sm"
             >
               <div className="flex items-center gap-4">
                 <div className="flex-shrink-0 w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
@@ -97,7 +97,7 @@ export default function DuyurularPage() {
                 </div>
                 <div className="flex-1">
                   <h3 className="text-xl font-bold text-green-300 mb-1">
-                    🎉 Duyuru Başarıyla Gönderildi!
+                    Duyuru Başarıyla Gönderildi!
                   </h3>
                   <p className="text-green-200">
                     <span className="font-bold text-2xl">{sentCount}</span> müşteriye bildirim ulaştı
@@ -113,9 +113,9 @@ export default function DuyurularPage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="mb-6 p-4 bg-red-900/50 border-2 border-red-500 rounded-xl text-red-300"
+            className="mb-6 p-4 bg-red-900/50 border-2 border-red-500 rounded-md text-red-300"
           >
-            ⚠️ {error}
+            {error}
           </motion.div>
         )}
 
@@ -124,15 +124,15 @@ export default function DuyurularPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="relative bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-8 border-2 border-orange-500/30 shadow-2xl shadow-orange-500/20 overflow-hidden"
+          className="relative bg-gradient-to-br from-slate-900 to-slate-800 rounded-md p-8 border-2 border-orange-500/30 shadow-sm shadow-orange-500/20 overflow-hidden"
         >
           <div className="absolute inset-0 bg-gradient-to-r from-orange-500/5 via-pink-500/5 to-purple-500/5 animate-pulse" />
-          <div className="absolute -inset-1 bg-gradient-to-r from-orange-500 via-pink-500 to-purple-500 rounded-3xl opacity-20 blur-xl animate-pulse" />
+          <div className="absolute -inset-1 bg-gradient-to-r from-orange-500 via-pink-500 to-purple-500 rounded-md opacity-20 blur-xl animate-pulse" />
 
           <div className="relative z-10">
             {/* Stats Bar */}
             <div className="grid grid-cols-2 gap-4 mb-8">
-              <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+              <div className="bg-slate-800/50 rounded-md p-4 border border-slate-700">
                 <div className="flex items-center gap-3">
                   <Users size={24} className="text-orange-400" />
                   <div>
@@ -141,7 +141,7 @@ export default function DuyurularPage() {
                   </div>
                 </div>
               </div>
-              <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+              <div className="bg-slate-800/50 rounded-md p-4 border border-slate-700">
                 <div className="flex items-center gap-3">
                   <Bell size={24} className="text-pink-400" />
                   <div>
@@ -162,9 +162,9 @@ export default function DuyurularPage() {
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Örn: 🎉 Özel Kampanya!"
+                placeholder="Örn: Özel Kampanya!"
                 maxLength={100}
-                className="w-full px-6 py-4 bg-slate-800 border-2 border-slate-700 rounded-xl text-white text-lg placeholder-slate-500 outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/20 transition-all"
+                className="w-full px-6 py-4 bg-slate-800 border-2 border-slate-700 rounded-md text-white text-lg placeholder-slate-500 outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/20 transition-all"
               />
               <p className="text-slate-500 text-sm mt-2">
                 {title.length}/100 karakter
@@ -183,7 +183,7 @@ export default function DuyurularPage() {
                 placeholder="Kampanya detaylarını buraya yazın... Müşterilerinizi heyecanlandırın!"
                 maxLength={500}
                 rows={6}
-                className="w-full px-6 py-4 bg-slate-800 border-2 border-slate-700 rounded-xl text-white text-lg placeholder-slate-500 outline-none focus:border-pink-500 focus:ring-4 focus:ring-pink-500/20 transition-all resize-none"
+                className="w-full px-6 py-4 bg-slate-800 border-2 border-slate-700 rounded-md text-white text-lg placeholder-slate-500 outline-none focus:border-pink-500 focus:ring-4 focus:ring-pink-500/20 transition-all resize-none"
               />
               <p className="text-slate-500 text-sm mt-2">
                 {message.length}/500 karakter
@@ -195,13 +195,13 @@ export default function DuyurularPage() {
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
-                className="mb-8 p-6 bg-gradient-to-br from-orange-900/30 to-pink-900/30 border-2 border-orange-500/50 rounded-2xl"
+                className="mb-8 p-6 bg-gradient-to-br from-orange-900/30 to-pink-900/30 border-2 border-orange-500/50 rounded-md"
               >
                 <p className="text-orange-300 text-sm font-semibold mb-3 flex items-center gap-2">
                   <Bell size={16} />
                   ÖNİZLEME - Müşteriler böyle görecek:
                 </p>
-                <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-700">
+                <div className="bg-slate-900/50 rounded-md p-4 border border-slate-700">
                   <h4 className="text-white font-bold text-lg mb-2">
                     {title || 'Başlık buraya gelecek...'}
                   </h4>
@@ -218,10 +218,10 @@ export default function DuyurularPage() {
               disabled={sending || !title.trim() || !message.trim()}
               whileHover={{ scale: sending ? 1 : 1.02 }}
               whileTap={{ scale: sending ? 1 : 0.98 }}
-              className={`w-full py-6 rounded-2xl font-bold text-xl transition-all relative overflow-hidden group ${
+              className={`w-full py-6 rounded-md font-bold text-xl transition-all relative overflow-hidden group ${
                 sending || !title.trim() || !message.trim()
                   ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-orange-500 via-pink-500 to-purple-500 text-white shadow-2xl shadow-orange-500/50 hover:shadow-orange-500/70'
+                  : 'bg-gradient-to-r from-orange-500 via-pink-500 to-purple-500 text-white shadow-sm shadow-orange-500/50 hover:shadow-orange-500/70'
               }`}
             >
               {!sending && title.trim() && message.trim() && (
@@ -245,9 +245,9 @@ export default function DuyurularPage() {
             </motion.button>
 
             {/* Info Box */}
-            <div className="mt-6 p-4 bg-blue-900/20 border border-blue-500/30 rounded-xl">
+            <div className="mt-6 p-4 bg-blue-900/20 border border-blue-500/30 rounded-md">
               <p className="text-blue-300 text-sm leading-relaxed">
-                <span className="font-semibold">💡 Bilgi:</span> Bu duyuru sistemdeki tüm müşterilere anlık olarak gönderilecektir. 
+                <span className="font-semibold">Bilgi:</span> Bu duyuru sistemdeki tüm müşterilere anlık olarak gönderilecektir. 
                 Bildirimler hem uygulama içinde hem de tarayıcı push notification olarak iletilir.
               </p>
             </div>
@@ -261,22 +261,22 @@ export default function DuyurularPage() {
           transition={{ delay: 0.2 }}
           className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4"
         >
-          <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4">
-            <div className="text-2xl mb-2">🎯</div>
+          <div className="bg-slate-900/50 border border-slate-800 rounded-md p-4">
+            <Target className="w-6 h-6 mb-2 text-gray-400" strokeWidth={1.5} />
             <h3 className="text-white font-semibold mb-1">Dikkat Çekici Olun</h3>
             <p className="text-slate-400 text-sm">
               Emoji kullanın ve kısa, öz mesajlar yazın
             </p>
           </div>
-          <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4">
-            <div className="text-2xl mb-2">⏰</div>
+          <div className="bg-slate-900/50 border border-slate-800 rounded-md p-4">
+            <Clock className="w-6 h-6 mb-2 text-gray-400" strokeWidth={1.5} />
             <h3 className="text-white font-semibold mb-1">Doğru Zamanlama</h3>
             <p className="text-slate-400 text-sm">
               Öğle ve akşam saatlerinde daha etkili
             </p>
           </div>
-          <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4">
-            <div className="text-2xl mb-2">🎁</div>
+          <div className="bg-slate-900/50 border border-slate-800 rounded-md p-4">
+            <Gift className="w-6 h-6 mb-2 text-gray-400" strokeWidth={1.5} />
             <h3 className="text-white font-semibold mb-1">Değer Sunun</h3>
             <p className="text-slate-400 text-sm">
               İndirim, kampanya gibi fırsatlar paylaşın

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/app/lib/supabase'
+import { Package, Banknote, Target, Info } from 'lucide-react'
 
 interface CommissionData {
   restaurant_id: number
@@ -93,7 +94,7 @@ export default function KomisyonPage() {
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
-            🌐 Web Platform Komisyon Raporu
+            Web Platform Komisyon Raporu
           </h1>
           <p className="text-slate-400 text-sm">
             Alda Gel platformundan gelen siparişlerin komisyon analizi
@@ -101,7 +102,7 @@ export default function KomisyonPage() {
         </div>
 
         {/* Filtreler */}
-        <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 mb-6 border border-slate-700/50">
+        <div className="bg-slate-800/50 backdrop-blur-sm rounded-md p-4 mb-6 border border-slate-700/50">
           <div className="flex flex-col sm:flex-row gap-3">
             {/* Hızlı Filtreler */}
             <div className="flex gap-2 flex-wrap">
@@ -109,27 +110,27 @@ export default function KomisyonPage() {
                 <button
                   key={filter}
                   onClick={() => setDateFilter(filter)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
                     dateFilter === filter
-                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30'
+                      ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/30'
                       : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700'
                   }`}
                 >
-                  {filter === 'today' && '📅 Bugün'}
-                  {filter === 'week' && '📊 Son 7 Gün'}
-                  {filter === 'month' && '📈 Son 30 Gün'}
-                  {filter === 'all' && '🌍 Tüm Zamanlar'}
+                  {filter === 'today' && 'Bugün'}
+                  {filter === 'week' && 'Son 7 Gün'}
+                  {filter === 'month' && 'Son 30 Gün'}
+                  {filter === 'all' && 'Tüm Zamanlar'}
                 </button>
               ))}
               <button
                 onClick={() => setDateFilter('custom')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
                   dateFilter === 'custom'
-                    ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/30'
+                    ? 'bg-purple-600 text-white shadow-sm shadow-purple-500/30'
                     : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700'
                 }`}
               >
-                🗓️ Özel Tarih
+                Özel Tarih
               </button>
             </div>
 
@@ -140,14 +141,14 @@ export default function KomisyonPage() {
                   type="date"
                   value={customStartDate}
                   onChange={(e) => setCustomStartDate(e.target.value)}
-                  className="px-3 py-2 bg-slate-700 text-white rounded-lg text-sm border border-slate-600 focus:border-purple-500 focus:outline-none"
+                  className="px-3 py-2 bg-slate-700 text-white rounded-md text-sm border border-slate-600 focus:border-purple-500 focus:outline-none"
                 />
                 <span className="text-slate-400">-</span>
                 <input
                   type="date"
                   value={customEndDate}
                   onChange={(e) => setCustomEndDate(e.target.value)}
-                  className="px-3 py-2 bg-slate-700 text-white rounded-lg text-sm border border-slate-600 focus:border-purple-500 focus:outline-none"
+                  className="px-3 py-2 bg-slate-700 text-white rounded-md text-sm border border-slate-600 focus:border-purple-500 focus:outline-none"
                 />
               </div>
             )}
@@ -156,28 +157,28 @@ export default function KomisyonPage() {
 
         {/* Özet Kartlar */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-          <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-5 shadow-xl">
+          <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-md p-5 shadow-sm">
             <div className="flex items-center justify-between mb-2">
               <span className="text-blue-100 text-sm font-medium">Toplam Sipariş</span>
-              <span className="text-2xl">📦</span>
+              <Package className="w-6 h-6 text-blue-100" strokeWidth={1.5} />
             </div>
             <p className="text-3xl font-bold text-white">{totalOrders}</p>
             <p className="text-blue-100 text-xs mt-1">Web platformundan</p>
           </div>
 
-          <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-xl p-5 shadow-xl">
+          <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-md p-5 shadow-sm">
             <div className="flex items-center justify-between mb-2">
               <span className="text-green-100 text-sm font-medium">Toplam Ciro</span>
-              <span className="text-2xl">💰</span>
+              <Banknote className="w-6 h-6 text-green-100" strokeWidth={1.5} />
             </div>
             <p className="text-3xl font-bold text-white">{totalRevenue.toFixed(2)}₺</p>
             <p className="text-green-100 text-xs mt-1">Teslim edilen siparişler</p>
           </div>
 
-          <div className="bg-gradient-to-br from-purple-600 to-purple-700 rounded-xl p-5 shadow-xl">
+          <div className="bg-gradient-to-br from-purple-600 to-purple-700 rounded-md p-5 shadow-sm">
             <div className="flex items-center justify-between mb-2">
               <span className="text-purple-100 text-sm font-medium">Toplam Komisyon</span>
-              <span className="text-2xl">🎯</span>
+              <Target className="w-6 h-6 text-purple-100" strokeWidth={1.5} />
             </div>
             <p className="text-3xl font-bold text-white">{totalCommission.toFixed(2)}₺</p>
             <p className="text-purple-100 text-xs mt-1">%10 komisyon oranı</p>
@@ -185,14 +186,14 @@ export default function KomisyonPage() {
         </div>
 
         {/* Tablo */}
-        <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700/50 overflow-hidden">
+        <div className="bg-slate-800/50 backdrop-blur-sm rounded-md border border-slate-700/50 overflow-hidden">
           {loading ? (
             <div className="flex items-center justify-center py-20">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
             </div>
           ) : data.length === 0 ? (
             <div className="text-center py-20">
-              <p className="text-slate-400 text-lg">📭 Seçilen tarih aralığında veri bulunamadı</p>
+              <p className="text-slate-400 text-lg"> Seçilen tarih aralığında veri bulunamadı</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -231,7 +232,7 @@ export default function KomisyonPage() {
                         </td>
                         <td className="px-6 py-4 text-center">
                           <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-sm font-semibold">
-                            📦 {item.total_web_orders}
+                            {item.total_web_orders}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-right">
@@ -255,7 +256,7 @@ export default function KomisyonPage() {
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded-full text-sm font-bold">
-                        📦 {totalOrders}
+                        {totalOrders}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
@@ -276,9 +277,9 @@ export default function KomisyonPage() {
         </div>
 
         {/* Bilgi Notu */}
-        <div className="mt-6 bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
+        <div className="mt-6 bg-blue-500/10 border border-blue-500/30 rounded-md p-4">
           <div className="flex items-start gap-3">
-            <span className="text-2xl">ℹ️</span>
+            <Info className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" strokeWidth={1.5} />
             <div>
               <p className="text-blue-300 font-semibold mb-1">Komisyon Hesaplama Kuralları</p>
               <ul className="text-blue-200 text-sm space-y-1">

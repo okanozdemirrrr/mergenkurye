@@ -13,6 +13,7 @@ import {
   reopenApplication 
 } from '@/services/applicationService'
 import type { Application } from '@/types/application'
+import { Bike, Utensils, Clock, XCircle, MapPin, CheckCircle2, RefreshCw } from 'lucide-react'
 
 interface ApplicationsTabProps {
   type: 'kurye' | 'restoran'
@@ -152,12 +153,13 @@ export function ApplicationsTab({ type, onSuccess, onError }: ApplicationsTabPro
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white">
-          {type === 'kurye' ? '🏍️ Kurye' : '🍽️ Restoran'} Başvuruları
+        <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+          {type === 'kurye' ? <Bike className="w-6 h-6 text-gray-400" strokeWidth={1.5} /> : <Utensils className="w-6 h-6 text-gray-400" strokeWidth={1.5} />}
+          {type === 'kurye' ? 'Kurye' : 'Restoran'} Başvuruları
         </h2>
         <button
           onClick={() => setShowRejected(!showRejected)}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+          className={`px-4 py-2 rounded-md font-medium transition-colors ${
             showRejected
               ? 'bg-slate-700 text-white hover:bg-slate-600'
               : `bg-${color}-600 text-white hover:bg-${color}-700`
@@ -169,15 +171,15 @@ export function ApplicationsTab({ type, onSuccess, onError }: ApplicationsTabPro
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-slate-800 p-4 rounded-lg">
+        <div className="bg-slate-800 p-4 rounded-md">
           <p className="text-slate-400 text-sm">Bekleyen</p>
           <p className="text-white text-2xl font-bold">{applications.length}</p>
         </div>
-        <div className="bg-slate-800 p-4 rounded-lg">
+        <div className="bg-slate-800 p-4 rounded-md">
           <p className="text-slate-400 text-sm">Reddedilen</p>
           <p className="text-white text-2xl font-bold">{rejectedApplications.length}</p>
         </div>
-        <div className="bg-slate-800 p-4 rounded-lg">
+        <div className="bg-slate-800 p-4 rounded-md">
           <p className="text-slate-400 text-sm">Toplam</p>
           <p className="text-white text-2xl font-bold">
             {applications.length + rejectedApplications.length}
@@ -187,7 +189,7 @@ export function ApplicationsTab({ type, onSuccess, onError }: ApplicationsTabPro
 
       {/* Applications List */}
       {displayList.length === 0 ? (
-        <div className="bg-slate-800 p-8 rounded-lg text-center">
+        <div className="bg-slate-800 p-8 rounded-md text-center">
           <p className="text-slate-400">
             {showRejected ? 'Reddedilen başvuru yok' : 'Bekleyen başvuru yok'}
           </p>
@@ -201,7 +203,7 @@ export function ApplicationsTab({ type, onSuccess, onError }: ApplicationsTabPro
             return (
               <div
                 key={app.id}
-                className="bg-slate-800 p-6 rounded-lg border border-slate-700"
+                className="bg-slate-800 p-6 rounded-md border border-slate-700"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div>
@@ -217,7 +219,11 @@ export function ApplicationsTab({ type, onSuccess, onError }: ApplicationsTabPro
                       ? 'bg-yellow-500/20 text-yellow-400'
                       : 'bg-red-500/20 text-red-400'
                   }`}>
-                    {app.status === 'beklemede' ? '⏳ Beklemede' : '❌ Reddedildi'}
+                    {app.status === 'beklemede' ? (
+                      <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" strokeWidth={1.5} /> Beklemede</span>
+                    ) : (
+                      <span className="flex items-center gap-1"><XCircle className="w-3.5 h-3.5" strokeWidth={1.5} /> Reddedildi</span>
+                    )}
                   </div>
                 </div>
 
@@ -256,8 +262,9 @@ export function ApplicationsTab({ type, onSuccess, onError }: ApplicationsTabPro
                       </div>
                       <div>
                         <p className="text-slate-400 text-sm">Koordinatlar</p>
-                        <p className="text-white">
-                          📍 {data.latitude}, {data.longitude}
+                        <p className="text-white flex items-center gap-1">
+                          <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" strokeWidth={1.5} />
+                          {data.latitude}, {data.longitude}
                         </p>
                       </div>
                     </>
@@ -269,7 +276,7 @@ export function ApplicationsTab({ type, onSuccess, onError }: ApplicationsTabPro
                 </div>
 
                 {app.rejection_reason && (
-                  <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                  <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-md">
                     <p className="text-red-400 text-sm">
                       <strong>Ret Nedeni:</strong> {app.rejection_reason}
                     </p>
@@ -282,25 +289,25 @@ export function ApplicationsTab({ type, onSuccess, onError }: ApplicationsTabPro
                       <button
                         onClick={() => handleApprove(app.id)}
                         disabled={isProcessing}
-                        className={`flex-1 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 text-white font-medium rounded-lg transition-colors disabled:cursor-not-allowed`}
+                        className={`flex-1 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 text-white font-medium rounded-md transition-colors disabled:cursor-not-allowed flex items-center justify-center gap-2`}
                       >
-                        {isProcessing ? 'İşleniyor...' : '✅ Onayla'}
+                        {isProcessing ? 'İşleniyor...' : <><CheckCircle2 className="w-4 h-4" strokeWidth={1.5} /> Onayla</>}
                       </button>
                       <button
                         onClick={() => handleReject(app.id)}
                         disabled={isProcessing}
-                        className="flex-1 py-2 bg-red-600 hover:bg-red-700 disabled:bg-slate-700 text-white font-medium rounded-lg transition-colors disabled:cursor-not-allowed"
+                        className="flex-1 py-2 bg-red-600 hover:bg-red-700 disabled:bg-slate-700 text-white font-medium rounded-md transition-colors disabled:cursor-not-allowed flex items-center justify-center gap-2"
                       >
-                        {isProcessing ? 'İşleniyor...' : '❌ Reddet'}
+                        {isProcessing ? 'İşleniyor...' : <><XCircle className="w-4 h-4" strokeWidth={1.5} /> Reddet</>}
                       </button>
                     </>
                   ) : (
                     <button
                       onClick={() => handleReopen(app.id)}
                       disabled={isProcessing}
-                      className={`flex-1 py-2 bg-${color}-600 hover:bg-${color}-700 disabled:bg-slate-700 text-white font-medium rounded-lg transition-colors disabled:cursor-not-allowed`}
+                      className={`flex-1 py-2 bg-${color}-600 hover:bg-${color}-700 disabled:bg-slate-700 text-white font-medium rounded-md transition-colors disabled:cursor-not-allowed flex items-center justify-center gap-2`}
                     >
-                      {isProcessing ? 'İşleniyor...' : '🔄 Tekrar Değerlendir'}
+                      {isProcessing ? 'İşleniyor...' : <><RefreshCw className="w-4 h-4" strokeWidth={1.5} /> Tekrar Değerlendir</>}
                     </button>
                   )}
                 </div>

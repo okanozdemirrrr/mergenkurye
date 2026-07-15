@@ -21,6 +21,10 @@ import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platfor
 import { formatTurkishTime } from '@/utils/dateHelpers'
 import { NightShiftIndicator } from './NightShiftIndicator'
 import Image from 'next/image'
+import {
+  Package as PackageIcon, Circle, ChefHat, CheckCircle2, User, Footprints, Car, Map,
+  Phone, MapPin, Bike, Loader2, Footprints, Car
+} from 'lucide-react'
 
 // Minimap - Lazy load
 const LiveMapComponent = dynamic(
@@ -81,14 +85,15 @@ export function LiveTrackingTab({
     }
 
     const getStatusIcon = (status: string) => {
+        const cls = 'w-3 h-3 inline'
         switch (status) {
-            case 'new_order': return '🔵'
-            case 'getting_ready': return '👨‍🍳'
-            case 'ready': return '✅'
-            case 'assigned': return '👤'
-            case 'picking_up': return '🏃'
-            case 'on_the_way': return '🚗'
-            default: return '📦'
+            case 'new_order': return <Circle className={`${cls} text-blue-400`} strokeWidth={1.5} />
+            case 'getting_ready': return <ChefHat className={`${cls} text-orange-400`} strokeWidth={1.5} />
+            case 'ready': return <CheckCircle2 className={`${cls} text-green-400`} strokeWidth={1.5} />
+            case 'assigned': return <User className={`${cls} text-purple-400`} strokeWidth={1.5} />
+            case 'picking_up': return <Footprints className={`${cls} text-orange-400`} strokeWidth={1.5} />
+            case 'on_the_way': return <Car className={`${cls} text-yellow-400`} strokeWidth={1.5} />
+            default: return <PackageIcon className={`${cls} text-gray-400`} strokeWidth={1.5} />
         }
     }
 
@@ -100,15 +105,15 @@ export function LiveTrackingTab({
                     package={transferPackage}
                     couriers={couriers}
                     onClose={() => setTransferPackage(null)}
-                    onSuccess={() => console.log('✅ Kurye devri başarılı')}
+                    onSuccess={() => console.log('Kurye devri başarılı')}
                 />
             )}
 
             {selectedPackage && (
                 <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-2" onClick={() => setSelectedPackage(null)}>
-                    <div className="bg-slate-900 rounded-lg p-4 max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-700" onClick={(e) => e.stopPropagation()}>
+                    <div className="bg-slate-900 rounded-md p-4 max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-700" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-between items-center mb-3 pb-2 border-b border-slate-700">
-                            <h3 className="text-lg font-bold text-white">📦 #{selectedPackage.order_number}</h3>
+                            <h3 className="text-lg font-bold text-white">#{selectedPackage.order_number}</h3>
                             <button onClick={() => setSelectedPackage(null)} className="text-slate-400 hover:text-white text-2xl">×</button>
                         </div>
                         <div className="space-y-2 text-sm">
@@ -125,7 +130,7 @@ export function LiveTrackingTab({
                             <div className="bg-slate-800 p-2 rounded">
                                 <p className="text-slate-400 text-xs">Müşteri</p>
                                 <p className="text-white">{selectedPackage.customer_name}</p>
-                                {selectedPackage.customer_phone && <p className="text-slate-300 text-xs">📞 {selectedPackage.customer_phone}</p>}
+                                {selectedPackage.customer_phone && <p className="text-slate-300 text-xs">{selectedPackage.customer_phone}</p>}
                             </div>
                             <div className="bg-slate-800 p-2 rounded">
                                 <p className="text-slate-400 text-xs">Adres</p>
@@ -163,9 +168,9 @@ export function LiveTrackingTab({
                     />
                     <h1 className="text-base font-bold text-white">Lojistik Kokpit</h1>
                     <div className="ml-auto flex items-center gap-4 text-xs">
-                        <span className="text-slate-400">📦 <span className="text-white font-bold">{unassignedPackages.length}</span></span>
-                        <span className="text-slate-400">🚚 <span className="text-orange-400 font-bold">{assignedPackages.length}</span></span>
-                        <span className="text-slate-400">✅ <span className="text-green-400 font-bold">{todayDeliveredCount}</span></span>
+                        <span className="text-slate-400"><span className="text-white font-bold">{unassignedPackages.length}</span></span>
+                        <span className="text-slate-400"><span className="text-orange-400 font-bold">{assignedPackages.length}</span></span>
+                        <span className="text-slate-400"><span className="text-green-400 font-bold">{todayDeliveredCount}</span></span>
                     </div>
                 </div>
 
@@ -174,9 +179,9 @@ export function LiveTrackingTab({
                     {/* SOL + ORTA: SİPARİŞLER (8 kolon = %67) */}
                     <div className="col-span-8 flex flex-col gap-2 overflow-hidden">
                         {/* Sipariş Grid - Compact Cards */}
-                        <div className="flex-1 bg-slate-900 rounded-lg border border-slate-800 overflow-hidden flex flex-col">
+                        <div className="flex-1 bg-slate-900 rounded-md border border-slate-800 overflow-hidden flex flex-col">
                             <div className="px-2 py-1.5 border-b border-slate-800 flex items-center justify-between">
-                                <h2 className="text-sm font-bold text-white">📦 Canlı Siparişler</h2>
+                                <h2 className="text-sm font-bold text-white">Canlı Siparişler</h2>
                                 <span className="text-xs text-slate-400">{unassignedPackages.length} sipariş</span>
                             </div>
                             <div className="flex-1 overflow-y-auto p-2">
@@ -211,7 +216,7 @@ export function LiveTrackingTab({
 
                                                     {/* Restoran + Tutar */}
                                                     <div className="flex items-center justify-between mb-1">
-                                                        <span className="text-[10px] text-orange-300 truncate">🍽️ {pkg.restaurant?.name}</span>
+                                                        <span className="text-[10px] text-orange-300 truncate">{pkg.restaurant?.name}</span>
                                                         <span className="text-xs font-bold text-green-400">{pkg.amount}₺</span>
                                                     </div>
 
@@ -228,10 +233,10 @@ export function LiveTrackingTab({
                                                     </div>
 
                                                     {/* Müşteri */}
-                                                    <p className="text-[10px] text-white truncate mb-1">👤 {pkg.customer_name}</p>
+                                                    <p className="text-[10px] text-white truncate mb-1">{pkg.customer_name}</p>
 
                                                     {/* Adres */}
-                                                    <p className="text-[9px] text-slate-400 line-clamp-2 mb-2">📍 {pkg.delivery_address}</p>
+                                                    <p className="text-[9px] text-slate-400 line-clamp-2 mb-2">{pkg.delivery_address}</p>
 
                                                     {/* Kurye Atama - Sadece ready durumunda */}
                                                     {!pkg.courier_id && pkg.status === 'ready' && (
@@ -254,7 +259,9 @@ export function LiveTrackingTab({
                                                                 disabled={!selectedCouriers[pkg.id] || assigningIds.has(pkg.id)}
                                                                 className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-slate-600 text-white px-2 py-1 rounded text-[10px] font-semibold"
                                                             >
-                                                                {assigningIds.has(pkg.id) ? '⏳' : '✅ Ata'}
+                                                                {assigningIds.has(pkg.id) ? (
+                                                                  <Loader2 className="w-3 h-3 animate-spin inline" strokeWidth={1.5} />
+                                                                ) : 'Ata'}
                                                             </button>
                                                         </div>
                                                     )}
@@ -263,7 +270,7 @@ export function LiveTrackingTab({
                                                     {pkg.courier_id && (
                                                         <div className="text-center">
                                                             <span className="text-[9px] bg-orange-900/50 text-orange-300 px-2 py-0.5 rounded">
-                                                                🚴 {couriers.find(c => c.id === pkg.courier_id)?.full_name}
+                                                                {couriers.find(c => c.id === pkg.courier_id)?.full_name}
                                                             </span>
                                                         </div>
                                                     )}
@@ -279,9 +286,9 @@ export function LiveTrackingTab({
                     {/* SAĞ: KURYE DURUMLARI + MİNİMAP (4 kolon = %33) */}
                     <div className="col-span-4 flex flex-col gap-2 overflow-hidden">
                         {/* KURYE DURUMLARI - Üstte */}
-                        <div className="h-1/2 bg-slate-900 rounded-lg border border-slate-800 overflow-hidden flex flex-col">
+                        <div className="h-1/2 bg-slate-900 rounded-md border border-slate-800 overflow-hidden flex flex-col">
                             <div className="px-2 py-1.5 border-b border-slate-800 flex items-center justify-between">
-                                <h2 className="text-sm font-bold text-white">🚴 Kuryeler</h2>
+                                <h2 className="text-sm font-bold text-white">Kuryeler</h2>
                                 <span className="text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full font-semibold">
                                     {couriers.filter(c => c.is_active).length} aktif
                                 </span>
@@ -297,8 +304,8 @@ export function LiveTrackingTab({
                                                     <span className="text-[11px] font-bold text-white truncate">{c.full_name}</span>
                                                 </div>
                                                 <div className="flex items-center gap-1">
-                                                    <span className="text-[9px] text-green-400">📦 {c.todayDeliveryCount || 0}</span>
-                                                    <span className="text-[9px] text-orange-400">🚚 {c.activePackageCount || 0}</span>
+                                                    <span className="text-[9px] text-green-400">{c.todayDeliveryCount || 0}</span>
+                                                    <span className="text-[9px] text-orange-400">{c.activePackageCount || 0}</span>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-1">
@@ -313,7 +320,13 @@ export function LiveTrackingTab({
                                                             onClick={() => setSelectedPackage(pkg)}
                                                             className="text-[9px] bg-slate-700 px-1.5 py-0.5 rounded cursor-pointer hover:bg-slate-600 truncate"
                                                         >
-                                                            {pkg.status === 'assigned' ? '👤' : pkg.status === 'picking_up' ? '🏃' : '🚗'} {pkg.delivery_address}
+                                                            {pkg.status === 'assigned' ? (
+                                                              <User className="w-2.5 h-2.5 inline text-purple-400" strokeWidth={1.5} />
+                                                            ) : pkg.status === 'picking_up' ? (
+                                                              <Footprints className="w-2.5 h-2.5 inline text-orange-400" strokeWidth={1.5} />
+                                                            ) : (
+                                                              <Car className="w-2.5 h-2.5 inline text-yellow-400" strokeWidth={1.5} />
+                                                            )} {pkg.delivery_address}
                                                         </div>
                                                     ))}
                                                     {courierPackages.length > 2 && (
@@ -328,9 +341,9 @@ export function LiveTrackingTab({
                         </div>
 
                         {/* MİNİMAP - Altta */}
-                        <div className="h-1/2 bg-slate-900 rounded-lg border border-slate-800 overflow-hidden flex flex-col">
+                        <div className="h-1/2 bg-slate-900 rounded-md border border-slate-800 overflow-hidden flex flex-col">
                             <div className="px-2 py-1.5 border-b border-slate-800">
-                                <h2 className="text-sm font-bold text-white">🗺️ Minimap</h2>
+                                <h2 className="text-sm font-bold text-white">Minimap</h2>
                             </div>
                             <div className="flex-1 relative">
                                 <LiveMapComponent packages={packages} couriers={couriers} restaurants={restaurants} />
