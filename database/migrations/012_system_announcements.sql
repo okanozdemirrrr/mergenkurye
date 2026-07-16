@@ -52,3 +52,6 @@ CREATE POLICY "read_announcements_insert_all"
 
 GRANT SELECT, INSERT ON system_announcements TO anon, authenticated;
 GRANT SELECT, INSERT ON read_announcements TO anon, authenticated;
+
+-- Realtime: yeni duyurular anında çan bileşenine düşer
+ALTER PUBLICATION supabase_realtime ADD TABLE system_announcements;

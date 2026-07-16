@@ -74,8 +74,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const adminUser = process.env.NEXT_PUBLIC_ADMIN_USERNAME || 'admin'
-    const adminPass = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'admin123'
+    const adminUser = 'admin'
+    const adminPass = 'admin12344'
 
     if (username !== adminUser || password !== adminPass) {
       return NextResponse.json(

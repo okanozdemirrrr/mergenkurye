@@ -40,7 +40,7 @@ export async function login(credentials: LoginCredentials): Promise<AuthResponse
 
     // Admin Girişi (Sabit)
     if (userType === 'admin') {
-      if (username === 'admin' && password === 'admin123') {
+      if (username === 'admin' && password === 'admin12344') {
         const authUser: AuthUser = {
           id: 'admin-123',
           companyId: '',

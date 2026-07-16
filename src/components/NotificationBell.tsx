@@ -9,6 +9,7 @@ import {
   type SystemAnnouncement,
 } from '@/services/announcementService'
 import { formatShortDateTime } from '@/utils/dateHelpers'
+import { supabase } from '@/app/lib/supabase'
 
 interface NotificationBellProps {
   userId: string | null
@@ -46,6 +47,36 @@ export function NotificationBell({ userId, variant = 'dark' }: NotificationBellP
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  // Realtime: yeni duyuru INSERT → state güncelle, kırmızı nokta anında görünsün
+  useEffect(() => {
+    if (!userId) return
+
+    const channel = supabase
+      .channel(`system-announcements-realtime-${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'system_announcements',
+        },
+        (payload) => {
+          const incoming = payload.new as SystemAnnouncement
+          if (!incoming?.id) return
+
+          setAnnouncements((prev) => {
+            if (prev.some((a) => a.id === incoming.id)) return prev
+            return [incoming, ...prev]
+          })
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [userId])
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
