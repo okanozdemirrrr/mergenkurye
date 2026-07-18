@@ -101,6 +101,7 @@ export interface Courier {
     payment_type?: 'paket_basi' | 'saatlik'
     package_rate?: number
     is_night_shift?: boolean
+    account_status?: 'active' | 'suspended' | 'terminated' | string | null
 }
 
 // ============================================

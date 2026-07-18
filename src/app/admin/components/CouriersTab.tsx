@@ -16,7 +16,7 @@ import { NightShiftConfirmModal } from './modals/NightShiftConfirmModal'
 import { useAdminData } from '../AdminDataProvider'
 import {
   Bike, BarChart3, TrendingUp, ClipboardList, Banknote, Package as PackageIcon,
-  Users, Ban, Calendar
+  Users, Ban, Calendar, UserX, ArrowLeft
 } from 'lucide-react'
 
 interface CouriersTabProps {
@@ -40,29 +40,64 @@ export function CouriersTab({
     const [selectedCourierForStatus, setSelectedCourierForStatus] = useState<Courier | null>(null)
     const [selectedCourierForNightShift, setSelectedCourierForNightShift] = useState<Courier | null>(null)
     const [refreshTrigger, setRefreshTrigger] = useState(0)
+    const [showTerminated, setShowTerminated] = useState(false)
 
     // Kurye Hesapları — BUSINESS DARK THEME
     if (courierSubTab === 'accounts') {
+        const terminatedCouriers = couriers.filter(c => c.account_status === 'terminated')
+        const activeListCouriers = couriers.filter(c => c.account_status !== 'terminated')
+        const visibleCouriers = showTerminated ? terminatedCouriers : activeListCouriers
+
         return (
             <div className="bg-slate-950 min-h-screen p-6">
                 {/* Başlık */}
-                <div className="mb-8">
-                    <h1 className="text-3xl font-black text-slate-100 tracking-tight mb-1">
-                        Kurye Yönetimi
-                    </h1>
-                    <p className="text-sm text-slate-500 tracking-tight">
-                        Aktif kurye hesapları ve günlük performans özeti
-                    </p>
+                <div className="mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                    <div>
+                        <h1 className="text-3xl font-black text-slate-100 tracking-tight mb-1">
+                            {showTerminated ? 'İşten Çıkarılanlar' : 'Kurye Yönetimi'}
+                        </h1>
+                        <p className="text-sm text-slate-500 tracking-tight">
+                            {showTerminated
+                                ? 'İşten çıkarılan kurye hesapları'
+                                : 'Aktif kurye hesapları ve günlük performans özeti'}
+                        </p>
+                    </div>
+                    {showTerminated ? (
+                        <button
+                            type="button"
+                            onClick={() => setShowTerminated(false)}
+                            className="inline-flex items-center gap-2 self-start sm:self-auto px-3 py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-medium rounded-md border border-slate-800 shadow-sm transition-colors tracking-tight"
+                        >
+                            <ArrowLeft className="w-3.5 h-3.5" strokeWidth={1.5} />
+                            Ana listeye dön
+                        </button>
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={() => setShowTerminated(true)}
+                            className="inline-flex items-center gap-2 self-start sm:self-auto px-3 py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-medium rounded-md border border-slate-800 shadow-sm transition-colors tracking-tight"
+                        >
+                            <UserX className="w-3.5 h-3.5" strokeWidth={1.5} />
+                            İşten Çıkarılanlar
+                            {terminatedCouriers.length > 0 && (
+                                <span className="text-[10px] font-semibold text-slate-400 bg-slate-800 border border-slate-700 px-1.5 py-0.5 rounded">
+                                    {terminatedCouriers.length}
+                                </span>
+                            )}
+                        </button>
+                    )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {couriers.length === 0 ? (
+                    {visibleCouriers.length === 0 ? (
                         <div className="col-span-full text-center py-16 text-slate-600">
                             <Bike className="w-8 h-8 mx-auto mb-3 opacity-30 text-gray-400" strokeWidth={1.5} />
-                            <p className="text-sm tracking-tight">Kurye bulunamadı</p>
+                            <p className="text-sm tracking-tight">
+                                {showTerminated ? 'İşten çıkarılan kurye yok' : 'Kurye bulunamadı'}
+                            </p>
                         </div>
                     ) : (
-                        couriers
+                        visibleCouriers
                             .sort((a, b) => (b.todayDeliveryCount || 0) - (a.todayDeliveryCount || 0))
                             .map(courier => (
                             <div
@@ -150,7 +185,7 @@ export function CouriersTab({
                                         Hesap Yönet
                                     </button>
                                 </div>
-                                {!courier.is_night_shift && (
+                                {!showTerminated && !courier.is_night_shift && (
                                     <button
                                         onClick={(e) => {
                                             e.stopPropagation()
@@ -172,7 +207,7 @@ export function CouriersTab({
                         onClose={() => setSelectedCourierForStatus(null)}
                         onSuccess={() => {
                             setRefreshTrigger(prev => prev + 1)
-                            window.location.reload() // Sayfayı yenile
+                            void fetchCouriers()
                         }}
                     />
                 )}
