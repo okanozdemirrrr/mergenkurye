@@ -31,7 +31,7 @@ import { authenticateCourier, getCourierAccountStatusError } from '@/services/co
 import {
   MapPin, AlertTriangle, Package, Wallet, Mic, Check, Flag, Store, Phone, Navigation,
   Lightbulb, Rocket, Banknote, CreditCard, Building2, UtensilsCrossed, MessageCircle,
-  X, Clock, ClipboardList, Bike, Lock, LogOut, User,
+  X, Clock, ClipboardList, Bike, Lock, LogOut, User, WifiOff,
 } from 'lucide-react'
 
 // ============================================
@@ -283,6 +283,10 @@ export default function KuryePage() {
   const [loginForm, setLoginForm] = useState({ username: '', password: '' })
   const [selectedCourierId, setSelectedCourierId] = useState<string | null>(null)
   const [packages, setPackages] = useState<Package[]>([])
+  const [isRealtimeConnected, setIsRealtimeConnected] = useState(true)
+  const [isNetworkOnline, setIsNetworkOnline] = useState(
+    typeof navigator !== 'undefined' ? navigator.onLine : true
+  )
   const [deliveredCount, setDeliveredCount] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
   const [isUpdating, setIsUpdating] = useState<Set<number>>(new Set())
@@ -2109,74 +2113,77 @@ export default function KuryePage() {
       console.log('🔴 Kurye Realtime dinleme başlatıldı - Canlı yayın modu aktif')
       console.log('📍 Dinlenen kurye ID:', courierId)
 
+      const ACTIVE_PACKAGE_STATUSES = ['new', 'preparing', 'ready', 'assigned', 'picking_up', 'on_the_way']
+
+      // Realtime satırını listeye anında yansıt (REST fetch başarısız olsa bile UI güncellenir)
+      const applyPackageRealtimeToState = (row: any) => {
+        if (!row?.id) return
+
+        const belongsToCourier = String(row.courier_id ?? '') === String(courierId)
+        const isActiveStatus = ACTIVE_PACKAGE_STATUSES.includes(row.status)
+
+        if (!belongsToCourier || !isActiveStatus) {
+          setPackages(prev => prev.filter(pkg => pkg.id !== row.id))
+          return
+        }
+
+        setPackages(prev => {
+          const existingIndex = prev.findIndex(pkg => pkg.id === row.id)
+          const merged = {
+            ...(existingIndex >= 0 ? prev[existingIndex] : {}),
+            ...row,
+            restaurant: row.restaurants ?? (existingIndex >= 0 ? (prev[existingIndex] as any).restaurant : undefined),
+          }
+
+          if (existingIndex === -1) {
+            return [merged as Package, ...prev]
+          }
+
+          const next = [...prev]
+          next[existingIndex] = merged as Package
+          return next
+        })
+      }
+
       // Realtime callback fonksiyonları - her zaman güncel state'e erişmek için burada tanımla
       const handlePackageChange = async (payload: any) => {
-        console.log('📦 Paket değişikliği algılandı:', payload.eventType, 'ID:', payload.new?.id || payload.old?.id)
-        console.log('📦 Old courier_id:', payload.old?.courier_id, 'New courier_id:', payload.new?.courier_id)
-        console.log('📦 Old status:', payload.old?.status, 'New status:', payload.new?.status)
+        const newRow = payload.new
+        const oldRow = payload.old
+        const sameCourier = (value: unknown) => String(value ?? '') === String(courierId)
 
         // ⚠️ ERKEN ÇIKIŞ 1: Teslim edilmiş veya iptal edilmiş paketleri atla
-        if (payload.new?.status === 'delivered' || payload.new?.status === 'cancelled') {
-          console.log('⏭️ Paket teslim edilmiş/iptal edilmiş, atlanıyor')
-          // ⚡ OPTİMİZE: Sadece gerekli fonksiyonları çağır
-          Promise.all([
-            fetchDailyStats(),
-            fetchUnpaidEarningsBadge(),
-            fetchAccountOpenPackages(),
-          ])
+        if (newRow?.status === 'delivered' || newRow?.status === 'cancelled') {
+          if (sameCourier(newRow?.courier_id) || sameCourier(oldRow?.courier_id)) {
+            setPackages(prev => prev.filter(pkg => pkg.id !== newRow.id))
+            Promise.all([
+              fetchDailyStats(),
+              fetchUnpaidEarningsBadge(),
+              fetchAccountOpenPackages(),
+            ])
+          }
           return
         }
 
         // ⚠️ ERKEN ÇIKIŞ 2: Bu paket bu kuryeyle alakalı değilse, işlem yapma
-        const isRelevantToThisCourier = (
-          payload.new?.courier_id === courierId || // Şu an bu kuryeye ait
-          payload.old?.courier_id === courierId    // Önceden bu kuryeye aitti
-        )
+        const isRelevantToThisCourier = sameCourier(newRow?.courier_id) || sameCourier(oldRow?.courier_id)
 
         if (!isRelevantToThisCourier) {
-          console.log('⏭️ Bu paket başka kuryeye ait, atlanıyor')
-          return // Gereksiz state güncellemesini önle
+          return
         }
 
-        // 1. Kuryenin kendi yaptığı işlemleri filtrele (assigned → picking_up → on_the_way → delivered)
-        const isSelfAction = (
-          payload.old?.courier_id === courierId && // Zaten bu kuryeye aitti
-          payload.new?.courier_id === courierId && // Hala bu kuryeye ait
-          payload.old?.status !== payload.new?.status // Sadece status değişti (kendi işlemi)
-        )
-
-        // 2. Yeni paket atandı mı kontrol et (courier_id DEĞİŞTİ - NULL/başka kuryeden bu kuryeye)
-        const isNewAssignment = (
-          payload.eventType === 'UPDATE' &&
-          payload.new?.courier_id === courierId && // Şimdi bu kuryeye ait
-          payload.old?.courier_id !== courierId && // Önceden bu kuryeye ait DEĞİLDİ (null veya başka kurye)
-          payload.new?.status !== 'delivered' && // Teslim edilmemiş
-          payload.new?.status !== 'cancelled' // İptal edilmemiş
-        )
-
-        console.log('📦 isSelfAction:', isSelfAction, '| isNewAssignment:', isNewAssignment)
-
-        // Self-action ise bildirim ÇALMA
-        if (isSelfAction) {
-          console.log('🔇 Kuryenin kendi işlemi (status: ' + payload.old?.status + ' → ' + payload.new?.status + ')')
-        }
-        // Yeni atama ise log kaydet
-        else if (isNewAssignment) {
-          console.log('🎯 Yeni paket atandı! Sipariş No:', payload.new?.order_number || 'Yeni', '- Tutar:', payload.new?.amount || 0, '₺')
-        }
-        // Diğer durumlar (başka güncelleme)
-        else {
-          console.log('ℹ️ Paket güncellendi ama yeni atama değil')
+        // Önce payload ile state'i güncelle, sonra sunucudan doğrula
+        if (newRow) {
+          applyPackageRealtimeToState(newRow)
+        } else if (payload.eventType === 'DELETE' && oldRow?.id) {
+          setPackages(prev => prev.filter(pkg => pkg.id !== oldRow.id))
         }
 
-        // State'i güncelle - ⚡ OPTİMİZE: Sadece gerekli fonksiyonları çağır
         Promise.all([
           fetchPackages(false),
           fetchDailyStats(),
           fetchUnpaidEarningsBadge(),
           fetchAccountOpenPackages(),
         ])
-        console.log('✅ Kurye state güncellendi (packages)')
       }
 
       const handleCourierStatusChange = async (payload: any) => {
@@ -2203,63 +2210,80 @@ export default function KuryePage() {
         }
       }
 
-      // 🔥 ÇELİK GİBİ REALTIME BAĞLANTI - SESSIZ YENİDEN BAĞLANMA
+      // Realtime kanalları — status değişince yeniden bağlan (sadece ilk subscribe değil)
       let packagesChannel: any = null
       let courierChannel: any = null
-      let reconnectTimers: NodeJS.Timeout[] = []
+      let settlementsChannel: any = null
+      let disposed = false
+      let intentionalClose = false
+      const reconnectTimers: ReturnType<typeof setTimeout>[] = []
+      const reconnectPending = { packages: false, courier: false, settlements: false }
 
-      const setupPackagesRealtimeWithRetry = async (retryCount = 0) => {
+      const scheduleReconnect = (key: keyof typeof reconnectPending, fn: () => void) => {
+        if (disposed || reconnectPending[key]) return
+        reconnectPending[key] = true
+        const timer = setTimeout(() => {
+          reconnectPending[key] = false
+          fn()
+        }, 3000)
+        reconnectTimers.push(timer)
+      }
+
+      const replaceChannel = async (
+        current: any,
+        setCurrent: (ch: any) => void
+      ) => {
+        if (!current) return
+        intentionalClose = true
         try {
+          await supabase.removeChannel(current)
+        } finally {
+          setCurrent(null)
+          intentionalClose = false
+        }
+      }
+
+      const setupPackagesRealtime = async () => {
+        if (disposed) return
+        try {
+          await replaceChannel(packagesChannel, ch => { packagesChannel = ch })
+
           packagesChannel = supabase
-            .channel(`courier-packages-${courierId}`, {
-              config: {
-                broadcast: { self: true }
-              }
-            })
+            .channel(`courier-packages-${courierId}`)
             .on(
               'postgres_changes',
               {
-                event: '*',
+                event: '*', // INSERT + UPDATE + DELETE
                 schema: 'public',
-                table: 'packages'
+                table: 'packages',
               },
               handlePackageChange
             )
 
-          const status = await new Promise<string>((resolve) => {
-            packagesChannel.subscribe((status: string) => {
-              resolve(status)
-            })
+          packagesChannel.subscribe((status: string) => {
+            if (disposed || intentionalClose) return
+            if (status === 'SUBSCRIBED') {
+              setIsRealtimeConnected(true)
+            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+              setIsRealtimeConnected(false)
+              scheduleReconnect('packages', () => {
+                void setupPackagesRealtime()
+              })
+            }
           })
-
-          if (status === 'SUBSCRIBED') {
-            console.log('✅ Kurye Paketler Realtime bağlandı')
-          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-            console.warn(`⚠️ Kurye Paketler Realtime hatası: ${status}`)
-            
-            const timer = setTimeout(() => {
-              console.log('🔄 Kurye Paketler Realtime yeniden bağlanılıyor...')
-              setupPackagesRealtimeWithRetry(retryCount + 1)
-            }, 3000)
-            
-            reconnectTimers.push(timer)
-          }
-        } catch (error) {
-          console.error('❌ Kurye Paketler Realtime subscription hatası:', error)
-          
-          if (retryCount < 10) {
-            const timer = setTimeout(() => {
-              console.log(`🔄 Hata sonrası yeniden bağlanılıyor (Deneme: ${retryCount + 1})`)
-              setupPackagesRealtimeWithRetry(retryCount + 1)
-            }, 3000)
-            
-            reconnectTimers.push(timer)
-          }
+        } catch {
+          setIsRealtimeConnected(false)
+          scheduleReconnect('packages', () => {
+            void setupPackagesRealtime()
+          })
         }
       }
 
-      const setupCourierRealtimeWithRetry = async (retryCount = 0) => {
+      const setupCourierRealtime = async () => {
+        if (disposed) return
         try {
+          await replaceChannel(courierChannel, ch => { courierChannel = ch })
+
           courierChannel = supabase
             .channel(`courier-status-${courierId}`)
             .on(
@@ -2268,58 +2292,42 @@ export default function KuryePage() {
                 event: 'UPDATE',
                 schema: 'public',
                 table: 'couriers',
-                filter: `id=eq.${courierId}`
+                filter: `id=eq.${courierId}`,
               },
               handleCourierStatusChange
             )
 
-          const status = await new Promise<string>((resolve) => {
-            courierChannel.subscribe((status: string) => {
-              resolve(status)
-            })
+          courierChannel.subscribe((status: string) => {
+            if (disposed || intentionalClose) return
+            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+              scheduleReconnect('courier', () => {
+                void setupCourierRealtime()
+              })
+            }
           })
-
-          if (status === 'SUBSCRIBED') {
-            console.log('✅ Kurye Durumu Realtime bağlandı')
-          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-            console.warn(`⚠️ Kurye Durumu Realtime hatası: ${status}`)
-            
-            const timer = setTimeout(() => {
-              console.log('🔄 Kurye Durumu Realtime yeniden bağlanılıyor...')
-              setupCourierRealtimeWithRetry(retryCount + 1)
-            }, 3000)
-            
-            reconnectTimers.push(timer)
-          }
-        } catch (error) {
-          console.error('❌ Kurye Durumu Realtime subscription hatası:', error)
-          
-          if (retryCount < 10) {
-            const timer = setTimeout(() => {
-              console.log(`🔄 Hata sonrası yeniden bağlanılıyor (Deneme: ${retryCount + 1})`)
-              setupCourierRealtimeWithRetry(retryCount + 1)
-            }, 3000)
-            
-            reconnectTimers.push(timer)
-          }
+        } catch {
+          scheduleReconnect('courier', () => {
+            void setupCourierRealtime()
+          })
         }
       }
 
-      // 🔥 CARİ HESAP REALTIME - courier_settlements tablosunu dinle
-      const setupSettlementsRealtimeWithRetry = async (retryCount = 0) => {
+      const setupSettlementsRealtime = async () => {
+        if (disposed) return
         try {
-          const settlementsChannel = supabase
+          await replaceChannel(settlementsChannel, ch => { settlementsChannel = ch })
+
+          settlementsChannel = supabase
             .channel(`courier-settlements-${courierId}`)
             .on(
               'postgres_changes',
               {
-                event: '*', // INSERT, UPDATE, DELETE
+                event: '*',
                 schema: 'public',
                 table: 'courier_settlements',
-                filter: `courier_id=eq.${courierId}`
+                filter: `courier_id=eq.${courierId}`,
               },
-              async (payload) => {
-                console.log('💰 Realtime: Gün sonu mutabakatı güncellendi:', payload)
+              async () => {
                 await fetchUnsettledAmount()
                 if (historyStartDate && historyEndDate) {
                   await filterPackagesByDateRange(historyStartDate, historyEndDate)
@@ -2327,54 +2335,64 @@ export default function KuryePage() {
               }
             )
 
-          const status = await new Promise<string>((resolve) => {
-            settlementsChannel.subscribe((status: string) => {
-              resolve(status)
-            })
+          settlementsChannel.subscribe((status: string) => {
+            if (disposed || intentionalClose) return
+            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+              scheduleReconnect('settlements', () => {
+                void setupSettlementsRealtime()
+              })
+            }
           })
-
-          if (status === 'SUBSCRIBED') {
-            console.log('✅ Kurye Settlements Realtime bağlandı')
-          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-            console.warn(`⚠️ Kurye Settlements Realtime hatası: ${status}`)
-            
-            const timer = setTimeout(() => {
-              console.log('🔄 Kurye Settlements Realtime yeniden bağlanılıyor...')
-              setupSettlementsRealtimeWithRetry(retryCount + 1)
-            }, 3000)
-            
-            reconnectTimers.push(timer)
-          }
-        } catch (error) {
-          console.error('❌ Kurye Settlements Realtime subscription hatası:', error)
-          
-          if (retryCount < 10) {
-            const timer = setTimeout(() => {
-              console.log(`🔄 Hata sonrası yeniden bağlanılıyor (Deneme: ${retryCount + 1})`)
-              setupSettlementsRealtimeWithRetry(retryCount + 1)
-            }, 3000)
-            
-            reconnectTimers.push(timer)
-          }
+        } catch {
+          scheduleReconnect('settlements', () => {
+            void setupSettlementsRealtime()
+          })
         }
       }
 
-      setupPackagesRealtimeWithRetry()
-      setupCourierRealtimeWithRetry()
-      setupSettlementsRealtimeWithRetry() // Cari Hesap Realtime
+      const resyncAfterNetworkRecovery = () => {
+        if (disposed) return
+        void setupPackagesRealtime()
+        void setupCourierRealtime()
+        void setupSettlementsRealtime()
+        void fetchPackages(false)
+      }
+
+      const handleOnline = () => {
+        setIsNetworkOnline(true)
+        resyncAfterNetworkRecovery()
+      }
+      const handleOffline = () => {
+        setIsNetworkOnline(false)
+        setIsRealtimeConnected(false)
+      }
+      const handleVisibility = () => {
+        if (document.visibilityState === 'visible') {
+          resyncAfterNetworkRecovery()
+        }
+      }
+
+      window.addEventListener('online', handleOnline)
+      window.addEventListener('offline', handleOffline)
+      document.addEventListener('visibilitychange', handleVisibility)
+
+      void setupPackagesRealtime()
+      void setupCourierRealtime()
+      void setupSettlementsRealtime()
 
       return () => {
-        console.log('🔴 Realtime dinleme durduruldu')
-        
-        // Tüm reconnect timer'larını temizle
+        disposed = true
         reconnectTimers.forEach(timer => clearTimeout(timer))
-        
-        // Kanalları temizle
+        window.removeEventListener('online', handleOnline)
+        window.removeEventListener('offline', handleOffline)
+        document.removeEventListener('visibilitychange', handleVisibility)
+
         if (packagesChannel) supabase.removeChannel(packagesChannel)
         if (courierChannel) supabase.removeChannel(courierChannel)
-        
+        if (settlementsChannel) supabase.removeChannel(settlementsChannel)
+
         clearInterval(locationInterval)
-        
+
         if (backgroundWatcherId) {
           stopBackgroundLocationTracking(backgroundWatcherId)
         }
@@ -2586,15 +2604,16 @@ export default function KuryePage() {
     {/* ANA CONTAINER - Fixed height, no scroll */}
     <div className={`h-screen flex flex-col overflow-hidden ${darkMode ? 'bg-slate-950 text-white' : 'bg-gray-100 text-gray-900'}`}>
 
-      {isLoggedIn && (
-        <div className="fixed top-4 right-4 z-[9999]">
-          <NotificationBell userId={selectedCourierId} />
+      {isLoggedIn && (!isNetworkOnline || !isRealtimeConnected) && (
+        <div className="fixed top-0 left-0 right-0 z-[10000] bg-red-700 text-white text-xs font-medium tracking-tight px-3 py-1.5 flex items-center justify-center gap-1.5 shadow-sm">
+          <WifiOff className="w-3.5 h-3.5" strokeWidth={1.5} />
+          {!isNetworkOnline ? 'Offline — internet bağlantısı yok' : 'Bağlantı Bekleniyor...'}
         </div>
       )}
       
       {/* HEADER - Fixed top */}
       {isLoggedIn && activeTab === 'packages' && (
-        <div className="fixed top-0 left-0 right-0 z-[9998] p-2">
+        <div className={`fixed left-0 right-0 z-[9998] p-2 ${!isNetworkOnline || !isRealtimeConnected ? 'top-7' : 'top-0'}`}>
           <div className="max-w-2xl mx-auto">
             <div className="bg-slate-900/95 backdrop-blur-sm rounded-md p-2 border border-white/5 shadow-sm">
               <div className="flex items-center justify-between gap-2">
@@ -3417,16 +3436,20 @@ export default function KuryePage() {
           </div>
         )}
 
-        {/* HESAP SEKMESİ */}
+        {/* HESAP / PROFİL SEKMESİ */}
         {activeTab === 'account' && (
-          <div className="space-y-3">
+          <div className="relative space-y-3">
+            <div className="absolute top-4 right-4 z-20">
+              <NotificationBell userId={selectedCourierId} />
+            </div>
+
             {/* Profil Bilgileri */}
             <div className="bg-slate-900 p-4 rounded-md border border-white/5">
-              <div className="flex items-center gap-4 mb-4">
+              <div className="flex items-center gap-4 mb-4 pr-14">
                 <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
                   <Bike size={28} strokeWidth={1.5} className="text-white" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   {courierNameLoading ? (
                     <div className="space-y-2">
                       <div className="h-6 w-32 bg-slate-700 rounded animate-pulse"></div>
@@ -3434,7 +3457,7 @@ export default function KuryePage() {
                     </div>
                   ) : (
                     <>
-                      <h2 className="text-xl font-bold text-white">{courierName || 'Kullanıcı'}</h2>
+                      <h2 className="text-xl font-bold text-white truncate">{courierName || 'Kullanıcı'}</h2>
                       <p className="text-sm text-slate-400">Kurye</p>
                     </>
                   )}

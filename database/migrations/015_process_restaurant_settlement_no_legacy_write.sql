@@ -1,7 +1,7 @@
 -- =============================================================================
--- ADIM 2/2 — process_restaurant_settlement RPC
--- Önce 010_restaurant_settlements_table.sql çalışmış olmalı.
--- Bu dosyada CREATE TABLE YOK (Supabase auto-RLS enjeksiyonunu önlemek için).
+-- 015 — process_restaurant_settlement: legacy dual-write KALDIRILDI
+-- Artık sadece restaurant_settlements + packages güncellenir.
+-- restaurant_payment_transactions'a INSERT YOK.
 -- =============================================================================
 
 CREATE OR REPLACE FUNCTION process_restaurant_settlement(
@@ -116,7 +116,8 @@ BEGIN
     restaurant_settlement_id = v_settlement_id
   WHERE id = ANY(v_affected_ids);
 
-  -- restaurant_payment_transactions dual-write kaldırıldı — tek kaynak: restaurant_settlements
+  -- NOT: restaurant_payment_transactions dual-write kaldırıldı (legacy).
+  -- Tek kaynak: restaurant_settlements.
 
   RETURN json_build_object(
     'success', true,

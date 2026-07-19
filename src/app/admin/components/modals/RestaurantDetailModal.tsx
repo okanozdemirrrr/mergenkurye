@@ -226,56 +226,33 @@ export function RestaurantDetailModal({
   const fetchDrawerOrders = useCallback(async (payment: any) => {
     setLoadingDrawerOrders(true)
     try {
-      // Ödemenin kapsadığı tarih aralığı
-      const start = payment.period_start 
-        ? new Date(payment.period_start) 
-        : new Date(new Date(payment.created_at).getTime() - 14 * 24 * 60 * 60 * 1000) // Fallback 14 gün öncesi
-      start.setHours(0, 0, 0, 0)
+      // Yeni sistem: fişe bağlı paketler (restaurant_settlement_id)
+      if (payment?.id) {
+        const { data, error } = await supabase
+          .from('packages')
+          .select('*, couriers!delivered_by_courier_id(full_name)')
+          .eq('restaurant_settlement_id', payment.id)
+          .order('delivered_at', { ascending: false })
 
-      const end = payment.period_end 
-        ? new Date(payment.period_end) 
-        : new Date(payment.created_at)
-      end.setHours(23, 59, 59, 999)
+        if (error) throw error
 
-      // Teslim edilen siparişler
-      const { data: deliveredData, error: delErr } = await supabase
-        .from('packages')
-        .select('*, couriers!delivered_by_courier_id(full_name)')
-        .eq('restaurant_id', restaurantId)
-        .eq('status', 'delivered')
-        .gte('delivered_at', start.toISOString())
-        .lte('delivered_at', end.toISOString())
+        const combined = (data || [])
+          .map((pkg: any) => ({
+            ...pkg,
+            courier_name: pkg.couriers?.full_name,
+            couriers: undefined,
+          }))
+          .sort(
+            (a, b) =>
+              new Date(b.delivered_at || b.created_at || 0).getTime() -
+              new Date(a.delivered_at || a.created_at || 0).getTime()
+          )
 
-      if (delErr) throw delErr
+        setDrawerOrders(combined)
+        return
+      }
 
-      // Ücretli iptal edilen siparişler
-      const { data: cancelledData, error: canErr } = await supabase
-        .from('packages')
-        .select('*, couriers!delivered_by_courier_id(full_name)')
-        .eq('restaurant_id', restaurantId)
-        .eq('status', 'cancelled')
-        .eq('is_chargeable_cancellation', true)
-        .gte('created_at', start.toISOString())
-        .lte('created_at', end.toISOString())
-
-      if (canErr) throw canErr
-
-      const combined = [
-        ...(deliveredData || []),
-        ...(cancelledData || []),
-      ]
-        .map((pkg: any) => ({
-          ...pkg,
-          courier_name: pkg.couriers?.full_name,
-          couriers: undefined,
-        }))
-        .sort(
-          (a, b) =>
-            new Date(b.delivered_at || b.created_at || 0).getTime() -
-            new Date(a.delivered_at || a.created_at || 0).getTime()
-        )
-
-      setDrawerOrders(combined)
+      setDrawerOrders([])
     } catch (err: any) {
       console.error('Drawer sipariş verisi hatası:', err.message)
       setDrawerOrders([])
@@ -358,15 +335,40 @@ export function RestaurantDetailModal({
 
   const fetchPaymentHistory = useCallback(async () => {
     try {
+      // Tek kaynak: restaurant_settlements (legacy restaurant_payment_transactions yok)
       const { data, error } = await supabase
-        .from('restaurant_payment_transactions')
-        .select('*')
+        .from('restaurant_settlements')
+        .select(
+          'id, created_at, start_date, end_date, total_revenue, courier_cost, commission_amount, net_paid, package_count, notes'
+        )
         .eq('restaurant_id', restaurantId)
         .order('created_at', { ascending: false })
-        .limit(50)
+        .limit(100)
 
       if (error) throw error
-      setPaymentHistory(data || [])
+
+      // UI-only: eksi orphan catch-up fişlerini gizle (DB silinmez)
+      const HIDDEN_SETTLEMENT_IDS = new Set([
+        'a1442255-d9bd-4905-b972-fbf2db22c3d4',
+        'd287dc53-a30f-4847-8a63-4531e4e511cc',
+      ])
+
+      const mapped = (data || [])
+        .filter((row: any) => !HIDDEN_SETTLEMENT_IDS.has(row.id))
+        .map((row: any) => ({
+          id: row.id,
+          created_at: row.created_at,
+          period_start: row.start_date,
+          period_end: row.end_date,
+          amount_paid: Number(row.net_paid) || 0,
+          package_count: row.package_count,
+          notes: row.notes,
+          total_revenue: row.total_revenue,
+          courier_cost: row.courier_cost,
+          commission_amount: row.commission_amount,
+        }))
+
+      setPaymentHistory(mapped)
     } catch (error: any) {
       console.error('Ödeme geçmişi hatası:', error.message)
       setPaymentHistory([])

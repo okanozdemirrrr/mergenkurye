@@ -9,6 +9,7 @@
  * - Ödeme: Supabase RPC (process_restaurant_settlement) ile atomik mutabakat
  */
 import { supabase } from '@/app/lib/supabase'
+import { parseFilterInputToUtcIso } from '@/utils/calculations'
 
 // ── TİP TANIMLARI ──────────────────────────────────────────────
 
@@ -43,15 +44,14 @@ export async function getRestaurantPeriodFinancials(
   endDate: string
 ): Promise<{ success: boolean; data?: PeriodFinancials; error?: string }> {
   try {
-    const start = new Date(startDate)
-    start.setHours(0, 0, 0, 0)
-    const end = new Date(endDate)
-    end.setHours(23, 59, 59, 999)
+    // Europe/Istanbul duvar saati → UTC (tarayıcı TZ / gece yarısı kayması yok)
+    const startIso = parseFilterInputToUtcIso(startDate, 'start')
+    const endIso = parseFilterInputToUtcIso(endDate, 'end')
 
     const { data, error } = await supabase.rpc('get_restaurant_period_financials', {
       p_restaurant_id: restaurantId,
-      p_start_date: start.toISOString(),
-      p_end_date: end.toISOString(),
+      p_start_date: startIso,
+      p_end_date: endIso,
     })
 
     if (error) {
@@ -78,14 +78,11 @@ export async function getAllRestaurantsUnpaidBalances(
 }> {
   try {
     // Tarih parametrelerini hazırla (boşsa null gönder → RPC tüm zamanları döner)
+    // Europe/Istanbul duvar saati → UTC
     const params: Record<string, any> = {}
     if (startDate && endDate) {
-      const start = new Date(startDate)
-      start.setHours(0, 0, 0, 0)
-      const end = new Date(endDate)
-      end.setHours(23, 59, 59, 999)
-      params.p_start_date = start.toISOString()
-      params.p_end_date = end.toISOString()
+      params.p_start_date = parseFilterInputToUtcIso(startDate, 'start')
+      params.p_end_date = parseFilterInputToUtcIso(endDate, 'end')
     }
 
     const { data, error } = await supabase.rpc('get_all_restaurants_unpaid_balances', params)
@@ -138,21 +135,20 @@ export async function processRestaurantPayment(
       return { success: false, error: 'Başlangıç ve bitiş tarihi zorunludur' }
     }
 
-    const start = new Date(startDate)
-    start.setHours(0, 0, 0, 0)
-    const end = new Date(endDate)
-    end.setHours(23, 59, 59, 999)
+    // Europe/Istanbul duvar saati → UTC (örn. 13 Temmuz 00:00 TR = 12 Temmuz 21:00 UTC)
+    const startIso = parseFilterInputToUtcIso(startDate, 'start')
+    const endIso = parseFilterInputToUtcIso(endDate, 'end')
 
     console.log('📤 Mutabakat RPC çağrılıyor:', {
       restaurant_id: restaurantId,
-      start: start.toISOString(),
-      end: end.toISOString(),
+      start: startIso,
+      end: endIso,
     })
 
     const { data, error } = await supabase.rpc('process_restaurant_settlement', {
       p_restaurant_id: restaurantId,
-      p_start_date: start.toISOString(),
-      p_end_date: end.toISOString(),
+      p_start_date: startIso,
+      p_end_date: endIso,
       p_notes: notes || null,
     })
 

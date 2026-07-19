@@ -104,11 +104,12 @@ export function useCourierRealtimeNotifications(
           const oldOrder = payload.old as any
           const newOrder = payload.new as any
 
-          // Yeni atama kontrolü: status 'assigned' oldu VE önceden bu kuryeye ait değildi
+          // Yeni atama: status assigned + bu kuryeye ait.
+          // old.courier_id REPLICA IDENTITY olmadan gelmeyebilir; o yüzden String ile güvenli karşılaştır.
           const isNewAssignment =
             newOrder.status === 'assigned' &&
-            String(newOrder.courier_id) === String(courierId) &&
-            String(oldOrder.courier_id) !== String(courierId)
+            String(newOrder.courier_id ?? '') === String(courierId) &&
+            String(oldOrder?.courier_id ?? '') !== String(courierId)
 
           if (isNewAssignment) {
             console.log('🔔 YENİ PAKET ATANDI (Kurye Foreground):', newOrder)

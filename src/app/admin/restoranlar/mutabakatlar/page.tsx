@@ -1,12 +1,18 @@
 /**
  * @file src/app/admin/restoranlar/mutabakatlar/page.tsx
  * @description Restoran mutabakat geçmişi (restaurant_settlements)
+ *
+ * Veri çekimi kuralları:
+ * 1) Supabase varsayılan satır limitini aşmak için sayfalı (range) fetch
+ * 2) Tarih filtreleri Europe/Istanbul duvar saati ile (gece yarısı kayması yok)
+ * 3) Restoran soft-delete / pasif olsa bile fişler gelsin → restaurants!left + ayrı isim yükleme
  */
 'use client'
 
 import { useEffect, useState, useCallback, useMemo, Fragment } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { supabase } from '@/app/lib/supabase'
+import { parseFilterInputToUtcIso } from '@/utils/calculations'
 
 type SettlementPackage = {
   order_number: string | null
@@ -26,12 +32,25 @@ type SettlementRow = {
   net_paid: number | null
   package_count: number | null
   restaurants: { name: string } | { name: string }[] | null
-  packages?: SettlementPackage | SettlementPackage[] | null
+  packages?: SettlementPackage[] | null
 }
 
 const COL_SPAN = 8
+/** PostgREST / Supabase varsayılan üst sınırı; sayfalama ile aşılır */
+const PAGE_SIZE = 1000
+const ISTANBUL_TZ = 'Europe/Istanbul'
 
-const SETTLEMENT_SELECT_WITH_PACKAGES_FKEY = `
+/**
+ * Sadece UI gizleme — DB/RPC/paket bağları dokunulmaz.
+ * Mayıs ücretli-iptal orphan catch-up fişleri (katıkdöner -90, ikramdöner -95).
+ */
+const HIDDEN_SETTLEMENT_IDS = new Set([
+  'a1442255-d9bd-4905-b972-fbf2db22c3d4',
+  'd287dc53-a30f-4847-8a63-4531e4e511cc',
+])
+
+/** Left join — pasif/silinmiş restoran fişlerini düşürmez */
+const SETTLEMENT_SELECT = `
   id,
   created_at,
   restaurant_id,
@@ -42,11 +61,10 @@ const SETTLEMENT_SELECT_WITH_PACKAGES_FKEY = `
   commission_amount,
   net_paid,
   package_count,
-  restaurants ( name ),
-  packages!packages_restaurant_settlement_id_fkey ( order_number, delivered_at, amount )
+  restaurants!left ( name )
 `
 
-const SETTLEMENT_SELECT_WITH_PACKAGES = `
+const SETTLEMENT_SELECT_PLAIN = `
   id,
   created_at,
   restaurant_id,
@@ -56,23 +74,7 @@ const SETTLEMENT_SELECT_WITH_PACKAGES = `
   courier_cost,
   commission_amount,
   net_paid,
-  package_count,
-  restaurants ( name ),
-  packages ( order_number, delivered_at, amount )
-`
-
-const SETTLEMENT_SELECT_BASE = `
-  id,
-  created_at,
-  restaurant_id,
-  start_date,
-  end_date,
-  total_revenue,
-  courier_cost,
-  commission_amount,
-  net_paid,
-  package_count,
-  restaurants ( name )
+  package_count
 `
 
 function formatMoney(value: number | null | undefined): string {
@@ -90,6 +92,7 @@ function formatDateTime(iso: string): string {
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: ISTANBUL_TZ,
   })
 }
 
@@ -101,6 +104,7 @@ function formatPeriodDate(iso: string | null | undefined): string {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
+    timeZone: ISTANBUL_TZ,
   })
 }
 
@@ -113,7 +117,20 @@ function formatDeliveredAt(iso: string | null | undefined): string {
     month: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: ISTANBUL_TZ,
   })
+}
+
+/** YYYY-MM-DD in Europe/Istanbul — tarayıcı TZ'sinden bağımsız */
+function istanbulDateKey(iso: string): string | null {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return null
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: ISTANBUL_TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d)
 }
 
 function restaurantNameFromRow(row: SettlementRow, nameById: Map<string, string>): string {
@@ -130,12 +147,60 @@ function restaurantNameFromRow(row: SettlementRow, nameById: Map<string, string>
 function packagesFromRow(row: SettlementRow): SettlementPackage[] {
   const raw = row.packages
   if (!raw) return []
-  const list = Array.isArray(raw) ? raw : [raw]
-  return [...list].sort((a, b) => {
+  return [...raw].sort((a, b) => {
     const ta = a.delivered_at ? new Date(a.delivered_at).getTime() : 0
     const tb = b.delivered_at ? new Date(b.delivered_at).getTime() : 0
     return tb - ta
   })
+}
+
+/**
+ * Tüm mutabakat fişlerini sayfalayarak çeker.
+ * Tarih boşsa filtre yok → DB'deki tüm kayıtlar.
+ * Paket embed yok (parent satır truncate riski); paketler satır açılınca yüklenir.
+ */
+async function fetchAllSettlements(
+  startDate: string,
+  endDate: string
+): Promise<{ rows: SettlementRow[]; usedPlainSelect: boolean }> {
+  const all: SettlementRow[] = []
+  let offset = 0
+  let usedPlainSelect = false
+
+  const startIso = startDate ? parseFilterInputToUtcIso(startDate, 'start') : null
+  const endIso = endDate ? parseFilterInputToUtcIso(endDate, 'end') : null
+
+  const runPage = async (select: string, from: number, to: number) => {
+    let q = supabase
+      .from('restaurant_settlements')
+      .select(select)
+      .order('created_at', { ascending: false })
+      .range(from, to)
+
+    if (startIso) q = q.gte('created_at', startIso)
+    if (endIso) q = q.lte('created_at', endIso)
+
+    return q
+  }
+
+  while (true) {
+    const to = offset + PAGE_SIZE - 1
+    let result = await runPage(SETTLEMENT_SELECT, offset, to)
+
+    if (result.error) {
+      result = await runPage(SETTLEMENT_SELECT_PLAIN, offset, to)
+      if (result.error) throw result.error
+      usedPlainSelect = true
+    }
+
+    const chunk = (result.data || []) as SettlementRow[]
+    all.push(...chunk)
+
+    if (chunk.length < PAGE_SIZE) break
+    offset += PAGE_SIZE
+  }
+
+  return { rows: all, usedPlainSelect }
 }
 
 export default function RestoranMutabakatlarPage() {
@@ -145,21 +210,18 @@ export default function RestoranMutabakatlarPage() {
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [joinWarning, setJoinWarning] = useState<string | null>(null)
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null)
+  const [packagesLoadingId, setPackagesLoadingId] = useState<string | null>(null)
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
 
   const filteredSettlements = useMemo(() => {
-    if (!startDate && !endDate) return rows
-
     return rows.filter((row) => {
-      const d = new Date(row.created_at)
-      if (Number.isNaN(d.getTime())) return false
+      if (HIDDEN_SETTLEMENT_IDS.has(row.id)) return false
 
-      const y = d.getFullYear()
-      const m = String(d.getMonth() + 1).padStart(2, '0')
-      const day = String(d.getDate()).padStart(2, '0')
-      const rowDate = `${y}-${m}-${day}`
+      if (!startDate && !endDate) return true
 
+      const rowDate = istanbulDateKey(row.created_at)
+      if (!rowDate) return false
       if (startDate && rowDate < startDate) return false
       if (endDate && rowDate > endDate) return false
       return true
@@ -170,17 +232,55 @@ export default function RestoranMutabakatlarPage() {
     const unique = [...new Set(ids.filter(Boolean))]
     if (unique.length === 0) return new Map<string, string>()
 
-    const { data, error } = await supabase
-      .from('restaurants')
-      .select('id, name')
-      .in('id', unique)
-
-    if (error) throw error
     const map = new Map<string, string>()
-    for (const r of data || []) {
-      if (r.id && r.name) map.set(r.id, r.name)
+    // is_active filtresi YOK — pasif restoran isimleri de gelsin
+    for (let i = 0; i < unique.length; i += PAGE_SIZE) {
+      const slice = unique.slice(i, i + PAGE_SIZE)
+      const { data, error } = await supabase
+        .from('restaurants')
+        .select('id, name')
+        .in('id', slice)
+
+      if (error) throw error
+      for (const r of data || []) {
+        if (r.id && r.name) map.set(r.id, r.name)
+      }
     }
     return map
+  }, [])
+
+  const loadPackagesForSettlement = useCallback(async (settlementId: string) => {
+    setPackagesLoadingId(settlementId)
+    try {
+      const pkgs: SettlementPackage[] = []
+      let offset = 0
+
+      while (true) {
+        const { data, error } = await supabase
+          .from('packages')
+          .select('order_number, delivered_at, amount')
+          .eq('restaurant_settlement_id', settlementId)
+          .order('delivered_at', { ascending: false })
+          .range(offset, offset + PAGE_SIZE - 1)
+
+        if (error) throw error
+        const chunk = (data || []) as SettlementPackage[]
+        pkgs.push(...chunk)
+        if (chunk.length < PAGE_SIZE) break
+        offset += PAGE_SIZE
+      }
+
+      setRows((prev) =>
+        prev.map((r) => (r.id === settlementId ? { ...r, packages: pkgs } : r))
+      )
+    } catch (err: unknown) {
+      console.error('Paket detayı yüklenemedi:', err)
+      setRows((prev) =>
+        prev.map((r) => (r.id === settlementId ? { ...r, packages: [] } : r))
+      )
+    } finally {
+      setPackagesLoadingId(null)
+    }
   }, [])
 
   const fetchSettlements = useCallback(async () => {
@@ -189,69 +289,17 @@ export default function RestoranMutabakatlarPage() {
     setJoinWarning(null)
     setExpandedRowId(null)
 
-    const warnings: string[] = []
-
-    const trySelect = async (select: string) => {
-      return supabase
-        .from('restaurant_settlements')
-        .select(select)
-        .order('created_at', { ascending: false })
-    }
-
     try {
-      let result = await trySelect(SETTLEMENT_SELECT_WITH_PACKAGES_FKEY)
+      // Tarih filtresi boş → tüm fişler (sayfalı, limit yok)
+      const { rows: list, usedPlainSelect } = await fetchAllSettlements('', '')
 
-      if (result.error) {
-        result = await trySelect(SETTLEMENT_SELECT_WITH_PACKAGES)
-        if (!result.error) {
-          warnings.push(
-            'Paket join: fkey adı kullanılamadı; varsayılan packages ilişkisi kullanıldı.'
-          )
-        }
-      }
-
-      if (result.error) {
-        result = await trySelect(SETTLEMENT_SELECT_BASE)
-        if (!result.error) {
-          warnings.push(
-            'Paket detayları join ile gelmedi; satır genişletmede liste boş görünebilir.'
-          )
-        }
-      }
-
-      if (result.error) {
-        const fallback = await supabase
-          .from('restaurant_settlements')
-          .select(
-            `
-            id,
-            created_at,
-            restaurant_id,
-            start_date,
-            end_date,
-            total_revenue,
-            courier_cost,
-            commission_amount,
-            net_paid,
-            package_count
-          `
-          )
-          .order('created_at', { ascending: false })
-
-        if (fallback.error) throw fallback.error
-
+      const warnings: string[] = []
+      if (usedPlainSelect) {
         warnings.push(
-          'Restoran adı join sorgusu başarısız; isimler restaurants tablosundan ayrı yüklendi.'
+          'Restoran adı left-join kullanılamadı; isimler restaurants tablosundan (aktif/pasif ayrımı olmadan) yüklendi.'
         )
-        const list = (fallback.data || []) as SettlementRow[]
-        const names = await loadRestaurantNames(list.map((r) => r.restaurant_id))
-        setRestaurantNames(names)
-        setRows(list)
-        setJoinWarning(warnings.length ? warnings.join(' ') : null)
-        return
       }
 
-      const list = (result.data || []) as SettlementRow[]
       const missingJoin = list.some((r) => {
         const j = r.restaurants
         if (!j) return true
@@ -259,12 +307,14 @@ export default function RestoranMutabakatlarPage() {
         return !j.name
       })
 
-      if (missingJoin && list.length > 0) {
+      if (list.length > 0) {
         const names = await loadRestaurantNames(list.map((r) => r.restaurant_id))
         setRestaurantNames(names)
-        warnings.push(
-          'Bazı kayıtlarda join ile restoran adı gelmedi; restaurants tablosundan tamamlandı.'
-        )
+        if (missingJoin && !usedPlainSelect) {
+          warnings.push(
+            'Bazı kayıtlarda join ile restoran adı gelmedi (pasif/silinmiş olabilir); isimler tamamlandı.'
+          )
+        }
       } else {
         setRestaurantNames(new Map())
       }
@@ -285,7 +335,16 @@ export default function RestoranMutabakatlarPage() {
   }, [fetchSettlements])
 
   const toggleRow = (id: string) => {
-    setExpandedRowId((prev) => (prev === id ? null : id))
+    setExpandedRowId((prev) => {
+      const next = prev === id ? null : id
+      if (next) {
+        const row = rows.find((r) => r.id === next)
+        if (row && row.packages === undefined) {
+          void loadPackagesForSettlement(next)
+        }
+      }
+      return next
+    })
   }
 
   return (
@@ -297,6 +356,9 @@ export default function RestoranMutabakatlarPage() {
           </h1>
           <p className="text-slate-400 text-sm mt-1">
             Hesap öde mutabakat fişleri — en yeni kayıtlar üstte
+            {!loading && filteredSettlements.length > 0 && (
+              <span className="ml-2 text-slate-500">({filteredSettlements.length} kayıt)</span>
+            )}
           </p>
         </div>
 
@@ -393,6 +455,7 @@ export default function RestoranMutabakatlarPage() {
                 {filteredSettlements.map((row) => {
                   const isExpanded = expandedRowId === row.id
                   const pkgs = packagesFromRow(row)
+                  const pkgsLoading = packagesLoadingId === row.id
 
                   return (
                     <Fragment key={row.id}>
@@ -424,12 +487,7 @@ export default function RestoranMutabakatlarPage() {
                         </td>
                         <td className="py-3.5 px-4 text-white font-medium">
                           {restaurantNameFromRow(row, restaurantNames)}
-                          {pkgs.length > 0 && (
-                            <span className="ml-2 text-xs font-normal text-slate-500">
-                              ({pkgs.length} paket)
-                            </span>
-                          )}
-                          {!pkgs.length && (row.package_count ?? 0) > 0 && (
+                          {(row.package_count ?? 0) > 0 && (
                             <span className="ml-2 text-xs font-normal text-slate-500">
                               ({row.package_count} paket)
                             </span>
@@ -454,7 +512,9 @@ export default function RestoranMutabakatlarPage() {
                       {isExpanded && (
                         <tr className="bg-slate-950/60">
                           <td colSpan={COL_SPAN} className="px-4 py-4">
-                            {pkgs.length === 0 ? (
+                            {pkgsLoading ? (
+                              <p className="text-sm text-slate-500">Paketler yükleniyor…</p>
+                            ) : pkgs.length === 0 ? (
                               <p className="text-sm text-slate-500">
                                 Bu mutabakata ait paket detayı bulunamadı.
                               </p>
