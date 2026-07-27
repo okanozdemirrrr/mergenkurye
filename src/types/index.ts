@@ -49,6 +49,7 @@ export interface Package {
     restaurant?: Restaurant | null
     platform?: Platform | string
     created_at?: string
+    updated_at?: string
     getting_ready_at?: string
     ready_at?: string
     assigned_at?: string

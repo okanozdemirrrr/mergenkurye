@@ -5,9 +5,34 @@
  */
 'use client'
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
-import { Package, Courier, Restaurant, CourierDebt, RestaurantDebt } from '@/types'
+import { Package, Courier, Restaurant } from '@/types'
+
+const ACTIVE_PACKAGE_STATUSES = [
+  'new_order',
+  'getting_ready',
+  'ready',
+  'assigned',
+  'picking_up',
+  'on_the_way',
+] as const
+
+const ACTIVE_PACKAGES_SELECT =
+  'id, order_number, status, amount, payment_method, customer_name, customer_phone, delivery_address, content, platform, created_at, updated_at, getting_ready_at, ready_at, assigned_at, picked_up_at, delivered_at, courier_id, restaurant_id, latitude, longitude, restaurants(id, name, phone)'
+
+const ACTIVE_PACKAGES_SELECT_NO_UPDATED_AT =
+  'id, order_number, status, amount, payment_method, customer_name, customer_phone, delivery_address, content, platform, created_at, getting_ready_at, ready_at, assigned_at, picked_up_at, delivered_at, courier_id, restaurant_id, latitude, longitude, restaurants(id, name, phone)'
+
+function transformActivePackages(data: any[] | null): Package[] {
+  return (data || []).map((pkg: any) => ({
+    ...pkg,
+    restaurant: Array.isArray(pkg.restaurants) && pkg.restaurants.length > 0
+      ? pkg.restaurants[0]
+      : pkg.restaurants || null,
+    restaurants: undefined,
+  }))
+}
 
 interface AdminDataContextType {
   // Data
@@ -54,43 +79,117 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
   const [selectedCourierId, setSelectedCourierId] = useState<string | null>(null)
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<number | string | null>(null)
 
+  // Realtime kopma → yeniden bağlanma sonrası tek seferlik full refetch için
+  const packagesRealtimeEverSubscribedRef = useRef(false)
+  const packagesRealtimeWasDownRef = useRef(false)
+  const packagesHasUpdatedAtRef = useRef(true)
+
   const fetchPackages = async () => {
     try {
-      // ⚡ EGRESS OPTİMİZASYONU: Sadece gerekli kolonlar + limit
-      const { data, error } = await supabase
+      const selectCols = packagesHasUpdatedAtRef.current
+        ? ACTIVE_PACKAGES_SELECT
+        : ACTIVE_PACKAGES_SELECT_NO_UPDATED_AT
+
+      let { data, error } = await supabase
         .from('packages')
-        .select('id, order_number, status, amount, payment_method, customer_name, customer_phone, delivery_address, content, platform, created_at, getting_ready_at, ready_at, assigned_at, picked_up_at, delivered_at, courier_id, restaurant_id, restaurants(id, name, phone)')
-        .in('status', ['new_order', 'getting_ready', 'ready', 'assigned', 'picking_up', 'on_the_way'])
+        .select(selectCols)
+        .in('status', [...ACTIVE_PACKAGE_STATUSES])
         .order('created_at', { ascending: false })
-        .limit(500) // ⚡ Maksimum 500 aktif sipariş
+        .limit(500)
+
+      // updated_at kolonu yoksa bir kez düşürüp tekrar dene
+      if (error && packagesHasUpdatedAtRef.current && /updated_at/i.test(error.message || '')) {
+        packagesHasUpdatedAtRef.current = false
+        const retry = await supabase
+          .from('packages')
+          .select(ACTIVE_PACKAGES_SELECT_NO_UPDATED_AT)
+          .in('status', [...ACTIVE_PACKAGE_STATUSES])
+          .order('created_at', { ascending: false })
+          .limit(500)
+        data = retry.data
+        error = retry.error
+      }
 
       if (error) throw error
 
-      console.log('📦 Admin Panel - Aktif siparişler:', {
+      console.log('📦 Admin Panel - Aktif siparişler (full):', {
         total: data?.length || 0,
-        byStatus: {
-          new_order: data?.filter(p => p.status === 'new_order').length || 0,
-          getting_ready: data?.filter(p => p.status === 'getting_ready').length || 0,
-          ready: data?.filter(p => p.status === 'ready').length || 0,
-          assigned: data?.filter(p => p.status === 'assigned').length || 0,
-          picking_up: data?.filter(p => p.status === 'picking_up').length || 0,
-          on_the_way: data?.filter(p => p.status === 'on_the_way').length || 0
-        }
       })
 
-      const transformedData = (data || []).map((pkg: any) => ({
-        ...pkg,
-        restaurant: Array.isArray(pkg.restaurants) && pkg.restaurants.length > 0
-          ? pkg.restaurants[0]
-          : pkg.restaurants || null,
-        restaurants: undefined
-      }))
-
-      setPackages(transformedData)
+      setPackages(transformActivePackages(data))
     } catch (error: any) {
       console.error('Siparişler yüklenirken hata:', error)
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  /** Smart Fallback Aşama 3: son 65 sn içinde oluşan/güncellenen aktif paketler — listeyi ezmeden merge */
+  const fetchActivePackagesDelta = async () => {
+    try {
+      const since = new Date(Date.now() - 65_000).toISOString()
+      const selectCols = packagesHasUpdatedAtRef.current
+        ? ACTIVE_PACKAGES_SELECT
+        : ACTIVE_PACKAGES_SELECT_NO_UPDATED_AT
+
+      const buildQuery = (cols: string, useUpdatedAt: boolean) => {
+        let q = supabase
+          .from('packages')
+          .select(cols)
+          .in('status', [...ACTIVE_PACKAGE_STATUSES])
+
+        if (useUpdatedAt) {
+          q = q.or(`created_at.gte.${since},updated_at.gte.${since}`)
+        } else {
+          // updated_at yoksa mevcut status timestamp'leriyle delta
+          q = q.or(
+            `created_at.gte.${since},getting_ready_at.gte.${since},ready_at.gte.${since},assigned_at.gte.${since},picked_up_at.gte.${since}`
+          )
+        }
+
+        return q.order('created_at', { ascending: false }).limit(100)
+      }
+
+      let { data, error } = await buildQuery(selectCols, packagesHasUpdatedAtRef.current)
+
+      if (error && packagesHasUpdatedAtRef.current && /updated_at/i.test(error.message || '')) {
+        packagesHasUpdatedAtRef.current = false
+        const retry = await buildQuery(ACTIVE_PACKAGES_SELECT_NO_UPDATED_AT, false)
+        data = retry.data
+        error = retry.error
+      }
+
+      if (error) throw error
+      if (!data?.length) return
+
+      const delta = transformActivePackages(data)
+      console.log('📦 Admin delta fetch:', delta.length, 'kayıt (son 65 sn)')
+
+      setPackages((prev) => {
+        const byId = new Map(prev.map((p) => [p.id, p]))
+
+        for (const row of delta) {
+          const existing = byId.get(row.id)
+          byId.set(row.id, {
+            ...(existing || {}),
+            ...row,
+            restaurant: row.restaurant ?? existing?.restaurant ?? null,
+          } as Package)
+        }
+
+        return Array.from(byId.values())
+          .filter((p) =>
+            ACTIVE_PACKAGE_STATUSES.includes(p.status as (typeof ACTIVE_PACKAGE_STATUSES)[number])
+          )
+          .sort((a, b) => {
+            const ta = a.created_at ? new Date(a.created_at).getTime() : 0
+            const tb = b.created_at ? new Date(b.created_at).getTime() : 0
+            return tb - ta
+          })
+          .slice(0, 500)
+      })
+    } catch (error: any) {
+      console.error('Aktif paket delta fetch hatası:', error)
     }
   }
 
@@ -295,171 +394,198 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
+    // Aşama 1: İlk mount — geçmiş dahil tüm başlangıç verisi 1 kez
     fetchPackages()
     fetchDeliveredPackages()
     fetchCouriers()
     fetchRestaurants()
     fetchTodayDeliveredCount()
 
-    // 🔥 ÇELİK GİBİ REALTIME BAĞLANTI - SESSIZ YENİDEN BAĞLANMA
-    let packagesChannel: any = null
-    let couriersChannel: any = null
-    let reconnectTimers: NodeJS.Timeout[] = []
+    let packagesChannel: ReturnType<typeof supabase.channel> | null = null
+    let couriersChannel: ReturnType<typeof supabase.channel> | null = null
+    const reconnectTimers: ReturnType<typeof setTimeout>[] = []
+    let packagesReconnectScheduled = false
+    let couriersReconnectScheduled = false
 
-    const setupRealtimeWithRetry = async (
-      channelName: string,
-      table: string,
-      callback: () => void,
-      retryCount = 0
-    ) => {
-      try {
-        const channel = supabase
-          .channel(channelName)
-          .on('postgres_changes', { event: '*', schema: 'public', table }, callback)
+    const markPackagesRealtimeDown = (status: string) => {
+      console.warn(`⚠️ Packages Realtime koptu: ${status}`)
+      packagesRealtimeWasDownRef.current = true
+    }
 
-        const status = await new Promise<string>((resolve) => {
-          channel.subscribe((status) => {
-            resolve(status)
-          })
-        })
-
-        if (status === 'SUBSCRIBED') {
-          console.log(`✅ Realtime bağlandı: ${channelName}`)
-          return channel
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-          console.warn(`⚠️ Realtime bağlantı hatası: ${channelName} - ${status}`)
-          
-          // Sessiz yeniden bağlanma (3 saniye sonra)
-          const timer = setTimeout(() => {
-            console.log(`🔄 Yeniden bağlanılıyor: ${channelName}`)
-            setupRealtimeWithRetry(channelName, table, callback, retryCount + 1)
-          }, 3000)
-          
-          reconnectTimers.push(timer)
-          return null
+    const handlePackagesRealtimeStatus = (status: string) => {
+      if (status === 'SUBSCRIBED') {
+        console.log('✅ Realtime bağlandı: packages-changes')
+        packagesReconnectScheduled = false
+        // Aşama 2: Kopma sonrası tekrar gelince sadece aktif siparişleri 1 kez full refetch
+        if (packagesRealtimeWasDownRef.current && packagesRealtimeEverSubscribedRef.current) {
+          console.log('🔄 Realtime geri geldi — aktif siparişler full refetch')
+          fetchPackages()
         }
+        packagesRealtimeEverSubscribedRef.current = true
+        packagesRealtimeWasDownRef.current = false
+        return
+      }
 
-        return channel
-      } catch (error) {
-        console.error(`❌ Realtime subscription hatası: ${channelName}`, error)
-        
-        // Hata durumunda da yeniden bağlanmayı dene (maksimum 10 deneme)
-        if (retryCount < 10) {
-          const timer = setTimeout(() => {
-            console.log(`🔄 Hata sonrası yeniden bağlanılıyor: ${channelName} (Deneme: ${retryCount + 1})`)
-            setupRealtimeWithRetry(channelName, table, callback, retryCount + 1)
-          }, 3000)
-          
-          reconnectTimers.push(timer)
-        } else {
-          console.error(`❌ Maksimum yeniden bağlanma denemesi aşıldı: ${channelName}`)
-        }
-        
-        return null
+      if (status === 'CLOSED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        markPackagesRealtimeDown(status)
       }
     }
 
-    // ⚡ REALTIME OPTİMİZASYONU: Full refetch yerine incremental update
-    setupRealtimeWithRetry('packages-changes', 'packages', async (payload: any) => {
-      console.log('📦 Realtime package event:', payload.eventType, payload.new?.id)
-      
-      if (payload.eventType === 'INSERT') {
-        // Yeni paket eklendi - restaurant bilgisini çek ve state'e ekle
-        const newPackage = payload.new
-        if (['new_order', 'getting_ready', 'ready', 'assigned', 'picking_up', 'on_the_way'].includes(newPackage.status)) {
-          // Restaurant bilgisini çek
-          const { data: restaurant } = await supabase
-            .from('restaurants')
-            .select('id, name, phone')
-            .eq('id', newPackage.restaurant_id)
-            .single()
-          
-          const packageWithRestaurant = {
-            ...newPackage,
-            restaurant: restaurant || null
-          }
-          
-          setPackages(prev => [packageWithRestaurant, ...prev].slice(0, 500))
-        }
-      } else if (payload.eventType === 'UPDATE') {
-        // Paket güncellendi - sadece bu paketi güncelle
-        const updatedPackage = payload.new
-        setPackages(prev => {
-          const index = prev.findIndex(p => p.id === updatedPackage.id)
-          if (index !== -1) {
-            const newList = [...prev]
-            // Mevcut restaurant bilgisini koru
-            newList[index] = { ...newList[index], ...updatedPackage }
-            return newList
-          }
-          return prev
-        })
-        
-        // Delivered/cancelled ise deliveredPackages'e ekle
-        if (['delivered', 'cancelled'].includes(updatedPackage.status)) {
-          // Restaurant bilgisini çek
-          const { data: restaurant } = await supabase
-            .from('restaurants')
-            .select('id, name')
-            .eq('id', updatedPackage.restaurant_id)
-            .single()
-          
-          const packageWithRestaurant = {
-            ...updatedPackage,
-            restaurant: restaurant || null
-          }
-          
-          setDeliveredPackages(prev => [packageWithRestaurant, ...prev].slice(0, 1000))
-          setPackages(prev => prev.filter(p => p.id !== updatedPackage.id))
-        }
-      } else if (payload.eventType === 'DELETE') {
-        // Paket silindi - state'den çıkar
-        setPackages(prev => prev.filter(p => p.id !== payload.old.id))
-        setDeliveredPackages(prev => prev.filter(p => p.id !== payload.old.id))
-      }
-      
-      // Count'u güncelle (hafif sorgu)
-      fetchTodayDeliveredCount()
-    }).then(channel => { packagesChannel = channel })
+    const setupPackagesRealtime = (retryCount = 0) => {
+      const channel = supabase
+        .channel(`packages-changes-${retryCount}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'packages' },
+          async (payload: any) => {
+            console.log('📦 Realtime package event:', payload.eventType, payload.new?.id)
 
-    // ⚡ REALTIME OPTİMİZASYONU: Courier değişikliklerinde incremental update
-    setupRealtimeWithRetry('couriers-changes', 'couriers', (payload: any) => {
-      console.log('👤 Realtime courier event:', payload.eventType, payload.new?.id)
-      
-      if (payload.eventType === 'UPDATE') {
-        setCouriers(prev => {
-          const index = prev.findIndex(c => c.id === payload.new.id)
-          if (index !== -1) {
-            const newList = [...prev]
-            newList[index] = { ...newList[index], ...payload.new }
-            return newList
-          }
-          return prev
-        })
-      } else {
-        // INSERT/DELETE durumunda full refetch (nadir)
-        fetchCouriers()
-      }
-    }).then(channel => { couriersChannel = channel })
+            if (payload.eventType === 'INSERT') {
+              const newPackage = payload.new
+              if (
+                ACTIVE_PACKAGE_STATUSES.includes(
+                  newPackage.status as (typeof ACTIVE_PACKAGE_STATUSES)[number]
+                )
+              ) {
+                const { data: restaurant } = await supabase
+                  .from('restaurants')
+                  .select('id, name, phone')
+                  .eq('id', newPackage.restaurant_id)
+                  .single()
 
-    // ⚡ POLLING OPTİMİZASYONU: 30 saniye yerine 60 saniye
-    const refreshInterval = setInterval(() => {
-      fetchPackages()
-      fetchDeliveredPackages()
-      fetchCouriers()
-      fetchRestaurants()
-      fetchTodayDeliveredCount()
-    }, 60000) // 60 saniye
+                const packageWithRestaurant = {
+                  ...newPackage,
+                  restaurant: restaurant || null,
+                }
+
+                setPackages((prev) => [packageWithRestaurant, ...prev].slice(0, 500))
+              }
+            } else if (payload.eventType === 'UPDATE') {
+              const updatedPackage = payload.new
+              setPackages((prev) => {
+                const index = prev.findIndex((p) => p.id === updatedPackage.id)
+                if (index !== -1) {
+                  const newList = [...prev]
+                  newList[index] = { ...newList[index], ...updatedPackage }
+                  return newList
+                }
+                if (
+                  ACTIVE_PACKAGE_STATUSES.includes(
+                    updatedPackage.status as (typeof ACTIVE_PACKAGE_STATUSES)[number]
+                  )
+                ) {
+                  return [updatedPackage, ...prev].slice(0, 500)
+                }
+                return prev
+              })
+
+              if (['delivered', 'cancelled'].includes(updatedPackage.status)) {
+                const { data: restaurant } = await supabase
+                  .from('restaurants')
+                  .select('id, name')
+                  .eq('id', updatedPackage.restaurant_id)
+                  .single()
+
+                const packageWithRestaurant = {
+                  ...updatedPackage,
+                  restaurant: restaurant || null,
+                }
+
+                setDeliveredPackages((prev) => [packageWithRestaurant, ...prev].slice(0, 1000))
+                setPackages((prev) => prev.filter((p) => p.id !== updatedPackage.id))
+              }
+            } else if (payload.eventType === 'DELETE') {
+              setPackages((prev) => prev.filter((p) => p.id !== payload.old.id))
+              setDeliveredPackages((prev) => prev.filter((p) => p.id !== payload.old.id))
+            }
+
+            fetchTodayDeliveredCount()
+          }
+        )
+
+      channel.subscribe((status) => {
+        handlePackagesRealtimeStatus(status)
+
+        if (
+          (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') &&
+          retryCount < 10 &&
+          !packagesReconnectScheduled
+        ) {
+          packagesReconnectScheduled = true
+          const timer = setTimeout(() => {
+            console.log(`🔄 Packages Realtime yeniden bağlanıyor (deneme ${retryCount + 1})`)
+            if (packagesChannel) supabase.removeChannel(packagesChannel)
+            packagesChannel = setupPackagesRealtime(retryCount + 1)
+          }, 3000)
+          reconnectTimers.push(timer)
+        }
+      })
+
+      return channel
+    }
+
+    const setupCouriersRealtime = (retryCount = 0) => {
+      const channel = supabase
+        .channel(`couriers-changes-${retryCount}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'couriers' },
+          (payload: any) => {
+            console.log('👤 Realtime courier event:', payload.eventType, payload.new?.id)
+
+            if (payload.eventType === 'UPDATE') {
+              setCouriers((prev) => {
+                const index = prev.findIndex((c) => c.id === payload.new.id)
+                if (index !== -1) {
+                  const newList = [...prev]
+                  newList[index] = { ...newList[index], ...payload.new }
+                  return newList
+                }
+                return prev
+              })
+            } else {
+              fetchCouriers()
+            }
+          }
+        )
+
+      channel.subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Realtime bağlandı: couriers-changes')
+          couriersReconnectScheduled = false
+        } else if (
+          (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') &&
+          retryCount < 10 &&
+          !couriersReconnectScheduled
+        ) {
+          console.warn(`⚠️ Couriers Realtime koptu: ${status}`)
+          couriersReconnectScheduled = true
+          const timer = setTimeout(() => {
+            if (couriersChannel) supabase.removeChannel(couriersChannel)
+            couriersChannel = setupCouriersRealtime(retryCount + 1)
+          }, 3000)
+          reconnectTimers.push(timer)
+        }
+      })
+
+      return channel
+    }
+
+    packagesChannel = setupPackagesRealtime()
+    couriersChannel = setupCouriersRealtime()
+
+    // Aşama 3: Ağır full polling YOK — sadece son 65 sn delta
+    const deltaInterval = setInterval(() => {
+      fetchActivePackagesDelta()
+    }, 60_000)
 
     return () => {
-      // Tüm reconnect timer'larını temizle
-      reconnectTimers.forEach(timer => clearTimeout(timer))
-      
-      // Kanalları temizle
+      reconnectTimers.forEach((timer) => clearTimeout(timer))
       if (packagesChannel) supabase.removeChannel(packagesChannel)
       if (couriersChannel) supabase.removeChannel(couriersChannel)
-      clearInterval(refreshInterval)
+      clearInterval(deltaInterval)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (

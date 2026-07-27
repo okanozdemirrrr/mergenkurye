@@ -20,6 +20,7 @@ import { useCourierLocationBroadcast } from '@/hooks/useCourierLocationBroadcast
 import PullToRefresh from '@/components/PullToRefresh'
 import ChangelogModal from '@/components/ChangelogModal'
 import { NotificationBell } from '@/components/NotificationBell'
+import SaveCustomerLocationModal from '@/components/SaveCustomerLocationModal'
 import { usePersistedDateRange } from '@/hooks/usePersistedDateRange'
 import {
   fetchCourierDeliveredPackages,
@@ -296,6 +297,10 @@ export default function KuryePage() {
   const [ibanPackageAmount, setIbanPackageAmount] = useState<number>(0)
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
+
+  // Müşteri konumu mühürleme (customer_locations)
+  const [locationModalPackage, setLocationModalPackage] = useState<Package | null>(null)
+  const [locationToast, setLocationToast] = useState('')
 
   // Ücretlendirilmiş İptal State'leri
   const [showCancelModal, setShowCancelModal] = useState(false)
@@ -2902,7 +2907,7 @@ export default function KuryePage() {
                                 <p className="text-xs text-slate-400 mb-2 flex items-center gap-1">
                                   <Phone size={12} strokeWidth={1.5} /> {pkg.customer_phone}
                                 </p>
-                                <div className={`grid gap-2 ${pkg.latitude && pkg.longitude && pkg.platform === 'web' ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                                <div className="grid gap-2 grid-cols-2">
                                   <a
                                     href={`tel:${pkg.customer_phone}`}
                                     className="inline-flex items-center justify-center gap-2 py-3 px-4 bg-green-500 hover:bg-green-600 active:bg-green-700 text-white text-sm font-bold rounded-md transition-all shadow-sm hover:shadow-sm"
@@ -2919,19 +2924,6 @@ export default function KuryePage() {
                                     <MessageCircle size={20} strokeWidth={1.5} />
                                     <span>WhatsApp</span>
                                   </a>
-                                  {/* 🗺️ KONUMA GİT BUTONU - Koşullu Görünüm */}
-                                  {pkg.latitude && pkg.longitude && pkg.platform === 'web' && (
-                                    <button
-                                      onClick={() => {
-                                        const url = `https://www.google.com/maps/dir/?api=1&destination=${pkg.latitude},${pkg.longitude}`
-                                        window.open(url, '_blank')
-                                      }}
-                                      className="inline-flex items-center justify-center gap-2 py-3 px-4 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white text-sm font-bold rounded-md transition-all shadow-sm hover:shadow-sm"
-                                    >
-                                      <Navigation size={20} strokeWidth={1.5} />
-                                      <span>Konuma Git</span>
-                                    </button>
-                                  )}
                                 </div>
                               </>
                             ) : (
@@ -3005,6 +2997,32 @@ export default function KuryePage() {
                     <div className="mb-2 p-2 bg-slate-800/50 rounded-md">
                       <p className="text-xs text-slate-300">{pkg.delivery_address}</p>
                     </div>
+
+                    {/* Siparişe mühürlenmiş GPS varsa — sadece yolda iken */}
+                    {pkg.status === 'on_the_way' && pkg.latitude != null && pkg.longitude != null && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const url = `https://www.google.com/maps/dir/?api=1&destination=${pkg.latitude},${pkg.longitude}`
+                          window.open(url, '_blank')
+                        }}
+                        className="w-full mb-2 inline-flex items-center justify-center gap-2 py-3 px-4 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white text-sm font-bold rounded-md transition-all shadow-sm"
+                      >
+                        <Navigation size={18} strokeWidth={1.5} />
+                        Konuma Git
+                      </button>
+                    )}
+
+                    {/* Müşteri konumunu mühürle — sadece yolda iken */}
+                    {pkg.status === 'on_the_way' && pkg.customer_phone && (
+                      <button
+                        onClick={() => setLocationModalPackage(pkg)}
+                        className="w-full mb-2 inline-flex items-center justify-center gap-2 py-3 px-4 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 border border-slate-700 text-white text-sm font-semibold rounded-md transition-colors"
+                      >
+                        <MapPin size={18} strokeWidth={1.5} className="text-gray-400" />
+                        Konumu Kaydet
+                      </button>
+                    )}
 
                     {/* Durum Badge */}
                     <div className="mb-3">
@@ -3677,6 +3695,30 @@ export default function KuryePage() {
           </div>
         )
       }
+
+      {/* MÜŞTERİ KONUMU KAYDETME MODALI */}
+      {locationModalPackage && (
+        <SaveCustomerLocationModal
+          phoneNumber={locationModalPackage.customer_phone || ''}
+          customerName={locationModalPackage.customer_name}
+          onClose={() => setLocationModalPackage(null)}
+          onSaved={(label) => {
+            setLocationModalPackage(null)
+            setLocationToast(`Konum başarıyla mühürlendi (${label})`)
+            setTimeout(() => setLocationToast(''), 3000)
+          }}
+        />
+      )}
+
+      {/* KONUM KAYDI TOAST */}
+      {locationToast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[10001] w-[calc(100%-1.5rem)] max-w-md">
+          <div className="flex items-center gap-2 px-4 py-3 bg-green-600 border border-green-500 rounded-md shadow-sm text-white text-sm font-semibold">
+            <Check size={18} strokeWidth={1.5} className="shrink-0" />
+            {locationToast}
+          </div>
+        </div>
+      )}
 
       {/* ÜCRET TAHSİL EDİLEREK İPTAL ONAY MODALI */}
       {showCancelModal && cancellingPackage && (

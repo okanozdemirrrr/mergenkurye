@@ -1,12 +1,24 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import dynamic from 'next/dynamic'
 import { supabase } from '@/app/lib/supabase'
 import { useRestoran } from '../RestoranProvider'
 import { formatDeliveryAddress } from '@/app/lib/formatDeliveryAddress'
+import { normalizePhoneTR } from '@/utils/normalizePhoneTR'
+import type { CustomerLocationPoint } from '@/components/CustomerMap'
 import {
-  User, Search, MapPin, Package, Banknote, CreditCard, Building2, UtensilsCrossed, Loader2, Send
+  User, Search, MapPin, Package, Banknote, CreditCard, Building2, UtensilsCrossed, Loader2, Send, CheckCircle2
 } from 'lucide-react'
+
+const CustomerMap = dynamic(() => import('@/components/CustomerMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-36 rounded-md border border-slate-700 bg-slate-800/50 flex items-center justify-center text-xs text-slate-400">
+      Konum kartları yükleniyor...
+    </div>
+  ),
+})
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface Customer {
@@ -205,6 +217,9 @@ export default function NewOrderModal({ onClose, onSuccess, restaurantId, darkMo
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'online' | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [savedLocations, setSavedLocations] = useState<CustomerLocationPoint[]>([])
+  const [selectedLocation, setSelectedLocation] = useState<CustomerLocationPoint | null>(null)
+  const [loadingLocations, setLoadingLocations] = useState(false)
 
   // ── Dropdown dışı tıklama ──
   useEffect(() => {
@@ -216,6 +231,80 @@ export default function NewOrderModal({ onClose, onSuccess, restaurantId, darkMo
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
+
+  // ── Telefon → kayıtlı konum geçmişi ──
+  useEffect(() => {
+    const normalized = normalizePhoneTR(formData.customerPhone)
+    const digits = formData.customerPhone.replace(/\D/g, '')
+
+    if (!normalized && digits.length < 10) {
+      setSavedLocations([])
+      setSelectedLocation(null)
+      return
+    }
+
+    let cancelled = false
+    // Eski dağınık kayıtlar için geçici last10 fallback
+    const last10 = (normalized ?? digits).slice(-10)
+
+    const fetchLocations = async () => {
+      setLoadingLocations(true)
+      try {
+        const filters = [
+          normalized ? `phone_number.eq.${normalized}` : null,
+          `phone_number.ilike.%${last10}`,
+        ]
+          .filter(Boolean)
+          .join(',')
+
+        const { data, error: locError } = await supabase
+          .from('customer_locations')
+          .select('id, phone_number, latitude, longitude, label, created_at')
+          .or(filters)
+          .order('created_at', { ascending: false })
+          .limit(20)
+
+        if (cancelled) return
+        if (locError) {
+          console.warn('customer_locations sorgu hatası:', locError.message)
+          setSavedLocations([])
+          return
+        }
+        setSavedLocations((data as CustomerLocationPoint[]) || [])
+        setSelectedLocation(null)
+      } catch (err) {
+        if (!cancelled) {
+          console.warn('customer_locations yüklenemedi:', err)
+          setSavedLocations([])
+        }
+      } finally {
+        if (!cancelled) setLoadingLocations(false)
+      }
+    }
+
+    const timer = setTimeout(fetchLocations, 300)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [formData.customerPhone])
+
+  const handleSelectLocation = (loc: CustomerLocationPoint) => {
+    // Aynı karta tekrar tıklanınca seçimi kaldır (opsiyonel mühür)
+    if (selectedLocation?.id === loc.id) {
+      setSelectedLocation(null)
+      return
+    }
+    setSelectedLocation(loc)
+    if (loc.label?.trim()) {
+      setFormData((prev) => ({
+        ...prev,
+        deliveryAddress: prev.deliveryAddress.trim()
+          ? prev.deliveryAddress
+          : loc.label,
+      }))
+    }
+  }
 
   // ── Müşteri Arama (debounced) ──
   const searchCustomers = useCallback(async (q: string) => {
@@ -283,6 +372,8 @@ export default function NewOrderModal({ onClose, onSuccess, restaurantId, darkMo
     setSelectedCustomer(null)
     setSearchQuery('')
     setCidCustomer(null)
+    setSelectedLocation(null)
+    setSavedLocations([])
     setFormData(prev => ({ ...prev, customerName: '', customerPhone: '', deliveryAddress: '' }))
   }
 
@@ -308,20 +399,27 @@ export default function NewOrderModal({ onClose, onSuccess, restaurantId, darkMo
       const appliedPrice = restaurantData?.package_fee || 100
 
       // 2. INSERT: applied_price ile birlikte kaydet
+      const insertPayload: Record<string, unknown> = {
+        customer_name: formData.customerName,
+        customer_phone: normalizePhoneTR(formData.customerPhone) ?? formData.customerPhone.trim(),
+        delivery_address: formData.deliveryAddress,
+        amount: parseFloat(formData.packageAmount),
+        content: formData.content,
+        status: 'new_order',
+        payment_method: paymentMethod,
+        restaurant_id: restaurantId,
+        applied_price: appliedPrice,
+        created_at: new Date().toISOString(),
+      }
+
+      if (selectedLocation) {
+        insertPayload.latitude = selectedLocation.latitude
+        insertPayload.longitude = selectedLocation.longitude
+      }
+
       const { error: insertError } = await supabase
         .from('packages')
-        .insert([{
-          customer_name: formData.customerName,
-          customer_phone: formData.customerPhone,
-          delivery_address: formData.deliveryAddress,
-          amount: parseFloat(formData.packageAmount),
-          content: formData.content,
-          status: 'new_order',
-          payment_method: paymentMethod,
-          restaurant_id: restaurantId,
-          applied_price: appliedPrice,
-          created_at: new Date().toISOString()
-        }])
+        .insert([insertPayload])
       if (insertError) throw insertError
       onSuccess()
       onClose()
@@ -511,6 +609,39 @@ export default function NewOrderModal({ onClose, onSuccess, restaurantId, darkMo
                   />
                 </div>
               </div>
+
+              {/* Kayıtlı konum haritası — Teslimat Adresi üstünde */}
+              {loadingLocations && formData.customerPhone.replace(/\D/g, '').length >= 10 && (
+                <div className={`text-xs px-2 py-1.5 rounded-md ${darkMode ? 'text-slate-400 bg-slate-800/50' : 'text-gray-500 bg-gray-50'}`}>
+                  Kayıtlı konumlar aranıyor...
+                </div>
+              )}
+
+              {savedLocations.length > 0 && (
+                <div className="space-y-2">
+                  <p className={`text-xs font-medium ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                    Bu numaraya ait {savedLocations.length} kayıtlı konum
+                    {selectedLocation
+                      ? ` · seçili: ${selectedLocation.label || 'Kayıtlı konum'}`
+                      : ' · bir kart seçebilir veya boş bırakabilirsiniz'}
+                  </p>
+                  <CustomerMap
+                    locations={savedLocations}
+                    selectedLocationId={selectedLocation?.id ?? null}
+                    onSelectLocation={handleSelectLocation}
+                    darkMode={darkMode}
+                  />
+                  {selectedLocation && (
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-green-500/15 border border-green-500/40 text-green-400 text-sm">
+                      <CheckCircle2 className="w-4 h-4 shrink-0" strokeWidth={1.5} />
+                      <span>
+                        Seçilen konum mühürlenecek:{' '}
+                        <strong>{selectedLocation.label || 'Kayıtlı konum'}</strong>
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Teslimat Adresi */}
               <div>

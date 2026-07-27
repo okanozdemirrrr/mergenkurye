@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
+import { ForceUpdateGate } from "@/components/ForceUpdateGate";
 import { CartProvider } from "@/app/context/CartContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 
@@ -89,6 +90,7 @@ export default function RootLayout({
           <CartProvider>
             {children}
             <PWAInstallPrompt />
+            <ForceUpdateGate />
           </CartProvider>
         </NotificationProvider>
       </body>

@@ -434,9 +434,16 @@ export function LiveTrackingTab({
                                                     </span>
                                                 )}
                                             </div>
-                                            <span className="text-xs text-white flex items-center gap-1">
-                                                {formatTurkishTime(pkg.created_at)}
-                                            </span>
+                                            <div className="flex items-center gap-1.5 shrink-0">
+                                                {pkg.latitude != null && pkg.longitude != null && (
+                                                    <span className="text-xs px-2 py-1 rounded-md bg-green-500/20 text-green-400 whitespace-nowrap">
+                                                        📍 Koordinatlı
+                                                    </span>
+                                                )}
+                                                <span className="text-xs text-white flex items-center gap-1">
+                                                    {formatTurkishTime(pkg.created_at)}
+                                                </span>
+                                            </div>
                                         </div>
                                         <div className="flex justify-between items-start mb-2 ml-8 relative z-10">
                                             <span className="bg-orange-900/50 text-orange-300 px-2 py-1 rounded text-sm font-bold">
