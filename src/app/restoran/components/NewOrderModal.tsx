@@ -295,15 +295,8 @@ export default function NewOrderModal({ onClose, onSuccess, restaurantId, darkMo
       setSelectedLocation(null)
       return
     }
+    // Sadece lat/lng mühürle; teslimat adresi inputuna label yazma
     setSelectedLocation(loc)
-    if (loc.label?.trim()) {
-      setFormData((prev) => ({
-        ...prev,
-        deliveryAddress: prev.deliveryAddress.trim()
-          ? prev.deliveryAddress
-          : loc.label,
-      }))
-    }
   }
 
   // ── Müşteri Arama (debounced) ──

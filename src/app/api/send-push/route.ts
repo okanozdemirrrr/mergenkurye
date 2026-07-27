@@ -15,6 +15,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/app/lib/supabase'
 import { firebaseAdmin } from '@/lib/firebaseAdmin'
+import { buildFcmMessage, looksLikeApnsDeviceToken } from '@/lib/fcmPushPayload'
 
 export async function POST(request: NextRequest) {
   try {
@@ -58,37 +59,38 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (looksLikeApnsDeviceToken(courier.fcm_token)) {
+      console.error(
+        '❌ iOS APNs device token kaydedilmiş; FCM token değil. AppDelegate Firebase Messaging düzeltmesi gerekli.',
+        { courierId, tokenPreview: courier.fcm_token.substring(0, 12) }
+      )
+      return NextResponse.json(
+        {
+          error:
+            'iOS cihaz APNs token kaydetmiş (FCM değil). App Store build Firebase Messaging + AppDelegate patch ile yeniden yayınlanmalı.',
+        },
+        { status: 422 }
+      )
+    }
+
     // 2. Trendyol tarzı bildirim formatı
     const title = 'YENİ SİPARİŞ 🚀'
     const messageBody = `${restaurantName || 'Restoran'} - ${deliveryAddress || customerName || 'Müşteri'}`
 
-    // 3. FCM ile bildirim gönder — High Priority / Notification Message standardı
-    const message = {
+    // 3. FCM ile bildirim gönder — Android + iOS (APNs)
+    const message = buildFcmMessage({
       token: courier.fcm_token,
-      notification: {
-        title: title,
-        body: messageBody
-      },
+      title,
+      body: messageBody,
       data: {
         type: 'new_assignment',
         courierId: courierId || '',
         restaurantName: restaurantName || '',
         deliveryAddress: deliveryAddress || '',
-        customerName: customerName || ''
+        customerName: customerName || '',
       },
-      android: {
-        priority: 'high' as const,        // FCM transport-level priority (arka plan için ŞART)
-        notification: {
-          channelId: 'mergen_high_priority', // Android 8+ kanal ID'si
-          sound: 'default',
-          defaultSound: true,
-          defaultVibrateTimings: true,
-          priority: 'max' as const,        // Heads-up (yukarıdan düşen) bildirim için ŞART
-          visibility: 'public' as const,   // Kilit ekranında da göster
-          tag: `order_${courierId}`        // Aynı kuryeye birden fazla bildirim gelirse üst üste yazmasın
-        }
-      }
-    }
+      androidTag: `order_${courierId}`,
+    })
 
     console.log('🔥 DEBUG: Firebase admin instance:', !!firebaseAdmin.apps.length)
     console.log('🔥 DEBUG: Firebase messaging available:', !!firebaseAdmin.messaging)
@@ -124,13 +126,16 @@ export async function POST(request: NextRequest) {
         error.code === 'messaging/registration-token-not-registered') {
       console.warn('⚠️ Geçersiz FCM token, veritabanından temizleniyor')
       
-      // Token geçersizse veritabanından temizle
-      const { courierId } = await request.json()
-      if (courierId) {
-        await supabase
-          .from('couriers')
-          .update({ fcm_token: null })
-          .eq('id', courierId)
+      try {
+        const retryBody = await request.clone().json()
+        if (retryBody?.courierId) {
+          await supabase
+            .from('couriers')
+            .update({ fcm_token: null })
+            .eq('id', retryBody.courierId)
+        }
+      } catch {
+        // body tekrar okunamazsa sessiz geç
       }
     }
 

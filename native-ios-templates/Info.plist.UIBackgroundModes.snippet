@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ŞABLON: ios/App/App/Info.plist içine UIBackgroundModes ekle / birleştir.
+  Xcode: Signing & Capabilities → Background Modes → Remote notifications
+  ile senkron olmalı.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+		<!-- Konum takibi zaten kullanılıyorsa location da kalabilir -->
+		<!-- <string>location</string> -->
+	</array>
+</dict>
+</plist>

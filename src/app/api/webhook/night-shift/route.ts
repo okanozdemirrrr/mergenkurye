@@ -19,6 +19,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { firebaseAdmin } from '@/lib/firebaseAdmin'
+import { buildFcmMessage } from '@/lib/fcmPushPayload'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseServiceKey = process.env.SERVICE_ROLE_KEY
@@ -143,12 +144,10 @@ export async function POST(request: NextRequest) {
     const title = 'Yeni Gece Paketi Atandı'
     const messageBody = `${restaurantName} - ${deliveryAddress}`
 
-    const message = {
+    const message = buildFcmMessage({
       token: courier.fcm_token,
-      notification: {
-        title,
-        body: messageBody,
-      },
+      title,
+      body: messageBody,
       data: {
         type: 'night_shift_assignment',
         courierId: String(courierId),
@@ -158,19 +157,8 @@ export async function POST(request: NextRequest) {
         deliveryAddress,
         customerName: (pkg.customer_name as string) || '',
       },
-      android: {
-        priority: 'high' as const,
-        notification: {
-          channelId: 'mergen_high_priority',
-          sound: 'default',
-          defaultSound: true,
-          defaultVibrateTimings: true,
-          priority: 'max' as const,
-          visibility: 'public' as const,
-          tag: `night_shift_${courierId}`,
-        },
-      },
-    }
+      androidTag: `night_shift_${courierId}`,
+    })
 
     const messageId = await firebaseAdmin.messaging().send(message)
 
