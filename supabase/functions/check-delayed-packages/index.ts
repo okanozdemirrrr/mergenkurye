@@ -96,12 +96,17 @@ Deno.serve(async () => {
         continue
       }
 
+      const title = '⚠️ Geciken Teslimat'
+      const body =
+        'Üzerinize atanan paketi 15 dakikadır teslim almadınız. Lütfen acilen restorana yönelin.'
+
+      // iOS: aps içinde alert YOKSA + sadece content-available varsa bildirim SESSİZ gider (banner çıkmaz).
       const messagePayload = {
         message: {
           token,
           notification: {
-            title: '⚠️ Geciken Teslimat',
-            body: 'Üzerinize atanan paketi 15 dakikadır teslim almadınız. Lütfen acilen restorana yönelin.',
+            title,
+            body,
           },
           data: {
             package_id: String(pkg.id),
@@ -109,11 +114,29 @@ Deno.serve(async () => {
           },
           android: {
             priority: 'high',
+            notification: {
+              channelId: 'mergen_high_priority',
+              sound: 'default',
+              defaultSound: true,
+              defaultVibrateTimings: true,
+              priority: 'max',
+              visibility: 'public',
+              tag: `delay_${pkg.id}`,
+            },
           },
           apns: {
+            headers: {
+              'apns-priority': '10',
+              'apns-push-type': 'alert',
+            },
             payload: {
               aps: {
+                alert: {
+                  title,
+                  body,
+                },
                 sound: 'default',
+                badge: 1,
                 'content-available': 1,
               },
             },
