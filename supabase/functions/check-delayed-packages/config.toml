@@ -1,0 +1,2 @@
+[functions.check-delayed-packages]
+verify_jwt = false

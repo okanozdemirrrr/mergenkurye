@@ -3017,9 +3017,9 @@ export default function KuryePage() {
                     {pkg.status === 'on_the_way' && pkg.customer_phone && (
                       <button
                         onClick={() => setLocationModalPackage(pkg)}
-                        className="w-full mb-2 inline-flex items-center justify-center gap-2 py-3 px-4 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 border border-slate-700 text-white text-sm font-semibold rounded-md transition-colors"
+                        className="animate-save-location-alert w-full mb-2 inline-flex items-center justify-center gap-2 py-3 px-4 bg-orange-600/90 hover:bg-orange-500 active:bg-orange-700 border border-orange-500 text-white text-sm font-semibold rounded-md"
                       >
-                        <MapPin size={18} strokeWidth={1.5} className="text-gray-400" />
+                        <MapPin size={18} strokeWidth={1.5} className="text-orange-100" />
                         Konumu Kaydet
                       </button>
                     )}

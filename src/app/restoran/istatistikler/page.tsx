@@ -3,16 +3,46 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRestoran } from '../RestoranProvider'
 import { supabase } from '@/app/lib/supabase'
+import { parseFilterInputToUtcIso } from '@/utils/calculations'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { BarChart3, Package, Wallet, Bike, Sparkles, Inbox, AlertTriangle } from 'lucide-react'
+
+const ISTANBUL_TZ = 'Europe/Istanbul'
+
+/** Admin mutabakat / RPC ile aynı: Europe/Istanbul takvim günü */
+function getIstanbulTodayStr(): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: ISTANBUL_TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date())
+}
+
+function formatIstanbulChartDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('tr-TR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    timeZone: ISTANBUL_TZ,
+  })
+}
+
+type StatsPackage = {
+  id: number
+  amount: number | null
+  delivered_at: string | null
+  created_at: string | null
+  status: string
+  is_chargeable_cancellation: boolean | null
+  applied_price: number | null
+}
 
 export default function IstatistiklerPage() {
   const { restaurantId, restaurant } = useRestoran()
   
-  const getTodayStr = () => new Date().toISOString().split('T')[0]
-  
-  const [startDate, setStartDate] = useState(getTodayStr())
-  const [endDate, setEndDate] = useState(getTodayStr())
+  const [startDate, setStartDate] = useState(getIstanbulTodayStr)
+  const [endDate, setEndDate] = useState(getIstanbulTodayStr)
   
   const [statisticsTab, setStatisticsTab] = useState<'packages' | 'revenue'>('packages')
   const [statisticsData, setStatisticsData] = useState<any[]>([])
@@ -25,27 +55,52 @@ export default function IstatistiklerPage() {
     netProfit: 0
   })
 
+  /**
+   * Admin process_restaurant_settlement / get_restaurant_period_financials ile birebir:
+   * - Tarih: Europe/Istanbul duvar saati → UTC (parseFilterInputToUtcIso)
+   * - delivered → delivered_at aralığı
+   * - ücretli iptal → created_at aralığı
+   * - Paket sayısı / kurye masrafı: ikisi de dahil
+   * - Ciro: yalnızca delivered
+   */
   const fetchStatisticsData = useCallback(async () => {
     if (!restaurantId) return
     setIsLoading(true)
 
     try {
-      const start = new Date(startDate)
-      start.setHours(0, 0, 0, 0)
-      
-      const end = new Date(endDate)
-      end.setHours(23, 59, 59, 999)
+      const startIso = parseFilterInputToUtcIso(startDate, 'start')
+      const endIso = parseFilterInputToUtcIso(endDate, 'end')
 
-      const { data, error } = await supabase
-        .from('packages')
-        .select('id, amount, delivered_at, status, is_chargeable_cancellation, applied_price')
-        .eq('restaurant_id', restaurantId)
-        .or('status.eq.delivered,and(status.eq.cancelled,is_chargeable_cancellation.eq.true)')
-        .gte('delivered_at', start.toISOString())
-        .lte('delivered_at', end.toISOString())
-        .order('delivered_at', { ascending: true })
+      const selectCols =
+        'id, amount, delivered_at, created_at, status, is_chargeable_cancellation, applied_price'
 
-      if (error) throw error
+      const [deliveredRes, cancelledRes] = await Promise.all([
+        supabase
+          .from('packages')
+          .select(selectCols)
+          .eq('restaurant_id', restaurantId)
+          .eq('status', 'delivered')
+          .gte('delivered_at', startIso)
+          .lte('delivered_at', endIso)
+          .order('delivered_at', { ascending: true }),
+        supabase
+          .from('packages')
+          .select(selectCols)
+          .eq('restaurant_id', restaurantId)
+          .eq('status', 'cancelled')
+          .eq('is_chargeable_cancellation', true)
+          .gte('created_at', startIso)
+          .lte('created_at', endIso)
+          .order('created_at', { ascending: true }),
+      ])
+
+      if (deliveredRes.error) throw deliveredRes.error
+      if (cancelledRes.error) throw cancelledRes.error
+
+      const data: StatsPackage[] = [
+        ...((deliveredRes.data || []) as StatsPackage[]),
+        ...((cancelledRes.data || []) as StatsPackage[]),
+      ]
 
       const groupedData: { [key: string]: { count: number; revenue: number } } = {}
       let totalP = 0
@@ -54,33 +109,41 @@ export default function IstatistiklerPage() {
 
       const packageFee = restaurant?.package_fee || 0
 
-      data?.forEach((pkg: any) => {
-        if (!pkg.delivered_at) return
+      data.forEach((pkg) => {
+        // Admin RPC: teslim → delivered_at, ücretli iptal → created_at
+        const eventAt =
+          pkg.status === 'delivered' ? pkg.delivered_at : pkg.created_at
+        if (!eventAt) return
 
-        const date = new Date(pkg.delivered_at)
-        const key = date.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+        const key = formatIstanbulChartDate(eventAt)
 
         if (!groupedData[key]) {
           groupedData[key] = { count: 0, revenue: 0 }
         }
 
+        // Mutabakat package_count = COUNT(*) (teslim + ücretli iptal)
+        groupedData[key].count++
+        totalP++
+
         if (pkg.status === 'delivered') {
-          groupedData[key].count++
           groupedData[key].revenue += pkg.amount || 0
-          
-          totalP++
           totalR += pkg.amount || 0
         }
-        
-        const singleFee = pkg.applied_price ?? packageFee
-        totalCourierCost += singleFee
+
+        totalCourierCost += pkg.applied_price ?? packageFee
       })
 
-      const chartData = Object.entries(groupedData).map(([date, d]) => ({
-        date,
-        paketSayisi: d.count,
-        ciro: d.revenue
-      }))
+      const chartData = Object.entries(groupedData)
+        .sort(([a], [b]) => {
+          const [da, ma, ya] = a.split('.').map(Number)
+          const [db, mb, yb] = b.split('.').map(Number)
+          return new Date(ya, ma - 1, da).getTime() - new Date(yb, mb - 1, db).getTime()
+        })
+        .map(([date, d]) => ({
+          date,
+          paketSayisi: d.count,
+          ciro: d.revenue,
+        }))
 
       const netProfit = totalR - totalCourierCost
 
