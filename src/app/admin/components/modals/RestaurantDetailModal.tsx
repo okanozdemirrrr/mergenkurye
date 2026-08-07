@@ -288,11 +288,13 @@ export function RestaurantDetailModal({
       const end = new Date(globalEndDate)
       end.setHours(23, 59, 59, 999)
 
+      // Sadece ödenmemiş paketler — is_paid_to_restaurant = true olanlar listeye gelmez
       const { data: deliveredData, error: delErr } = await supabase
         .from('packages')
         .select('*, couriers!delivered_by_courier_id(full_name)')
         .eq('restaurant_id', restaurantId)
         .eq('status', 'delivered')
+        .eq('is_paid_to_restaurant', false)
         .gte('delivered_at', start.toISOString())
         .lte('delivered_at', end.toISOString())
 
@@ -304,6 +306,7 @@ export function RestaurantDetailModal({
         .eq('restaurant_id', restaurantId)
         .eq('status', 'cancelled')
         .eq('is_chargeable_cancellation', true)
+        .eq('is_paid_to_restaurant', false)
         .gte('created_at', start.toISOString())
         .lte('created_at', end.toISOString())
 
@@ -551,8 +554,8 @@ export function RestaurantDetailModal({
 
                 {activeTab !== 'payments' ? (
                   <>
-                    {/* Dönem Finansal Özet Kartları (Paket Bazlı) */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+                    {/* Dönem Finansal Özet Kartları — yalnızca is_paid_to_restaurant = false */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                       <div className="bg-slate-900/50 border border-slate-800 rounded-md p-5">
                         <p className="text-xs font-bold text-slate-500 tracking-widest uppercase mb-1">Ödenmemiş Ciro</p>
                         <p className="text-2xl font-black text-slate-200">
@@ -591,14 +594,6 @@ export function RestaurantDetailModal({
                           {(financials?.net_payable ?? 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
                         </p>
                         <p className="text-xs text-emerald-500/50 mt-1">Ciro - Masraf - Komisyon</p>
-                      </div>
-
-                      <div className="bg-slate-900/50 border border-slate-800 rounded-md p-5">
-                        <p className="text-xs font-bold text-slate-500 tracking-widest uppercase mb-1">Ödenmiş</p>
-                        <p className="text-2xl font-black text-slate-500">
-                          {((financials?.paid_revenue ?? 0) - ((financials?.paid_package_count ?? 0) * (financials?.package_fee ?? 0))).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
-                        </p>
-                        <p className="text-xs text-slate-600 mt-1">{financials?.paid_package_count ?? 0} ödenmiş paket ✓</p>
                       </div>
                     </div>
 
