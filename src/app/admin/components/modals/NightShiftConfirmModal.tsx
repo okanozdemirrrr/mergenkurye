@@ -48,7 +48,8 @@ export function NightShiftConfirmModal({ courier, onClose, onSuccess }: NightShi
             vardiyacısı yapmak istediğinize emin misiniz?
           </p>
           <p className="text-sm text-amber-400/90 mt-3 leading-relaxed tracking-tight">
-            Gece 00:30 - 02:00 arası tüm paketler otomatik olarak bu kuryeye atanacaktır.
+            Ayarlar sayfasındaki otomatik atama saatleri arasında tüm paketler otomatik olarak bu
+            kuryeye atanacaktır.
           </p>
 
           {error && (

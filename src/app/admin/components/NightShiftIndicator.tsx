@@ -11,7 +11,7 @@ export function NightShiftIndicator({ isNightShift, className = '' }: NightShift
   return (
     <span
       className={`shrink-0 inline-flex items-center justify-center rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-400/40 w-5 h-5 leading-none shadow-[0_0_8px_rgba(99,102,241,0.3)] ${className}`}
-      title="Gece Vardiyacısı — 00:30-02:00 arası paketler otomatik atanır"
+      title="Gece Vardiyacısı — ayarlanan saat aralığında paketler otomatik atanır"
     >
       <Moon className="w-3 h-3" strokeWidth={1.5} />
     </span>

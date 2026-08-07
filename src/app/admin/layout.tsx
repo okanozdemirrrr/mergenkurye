@@ -14,7 +14,7 @@ import { AdminModals } from './AdminModals'
 import { NotificationProvider } from '@/contexts/NotificationContext'
 import {
   Package, ClipboardList, BarChart3, Users, Megaphone, ShoppingCart, Smartphone,
-  Bike, User, Receipt, Banknote, FileText, Utensils, CreditCard, ChevronDown, ChevronRight, LogOut, Bell
+  Bike, User, Receipt, Banknote, FileText, Utensils, CreditCard, ChevronDown, ChevronRight, LogOut, Bell, Settings
 } from 'lucide-react'
 import { NotificationBell } from '@/components/NotificationBell'
 
@@ -455,27 +455,42 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </div>
             </nav>
 
-            <button
-              onClick={async () => {
-                try {
-                  // 1. Supabase'den çıkış yap (Hard kill)
-                  await supabase.auth.signOut()
-                } catch (error) {
-                  console.error('SignOut hatası:', error)
-                }
-                
-                // 2. Tarayıcıda kalan tüm verileri yokederek cache'i temizle
-                localStorage.clear()
-                sessionStorage.clear()
-                
-                // 3. Sayfayı tamamen yenileterek state'lerin sıfırlanmasını sağla
-                window.location.href = '/'
-              }}
-              className="w-full mt-8 bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-md font-medium transition-colors flex items-center justify-center gap-2"
-            >
-              <LogOut className="w-4 h-4" strokeWidth={1.5} />
-              Çıkış Yap
-            </button>
+            <div className="mt-8 space-y-2">
+              <Link
+                href="/admin/ayarlar"
+                onClick={() => setShowMenu(false)}
+                className={`w-full px-4 py-3 rounded-md font-medium transition-colors flex items-center justify-center gap-2 border ${
+                  isActive('/admin/ayarlar')
+                    ? 'bg-orange-500 text-white border-orange-500'
+                    : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+                }`}
+              >
+                <Settings className="w-4 h-4" strokeWidth={1.5} />
+                Ayarlar
+              </Link>
+
+              <button
+                onClick={async () => {
+                  try {
+                    // 1. Supabase'den çıkış yap (Hard kill)
+                    await supabase.auth.signOut()
+                  } catch (error) {
+                    console.error('SignOut hatası:', error)
+                  }
+                  
+                  // 2. Tarayıcıda kalan tüm verileri yokederek cache'i temizle
+                  localStorage.clear()
+                  sessionStorage.clear()
+                  
+                  // 3. Sayfayı tamamen yenileterek state'lerin sıfırlanmasını sağla
+                  window.location.href = '/'
+                }}
+                className="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-md font-medium transition-colors flex items-center justify-center gap-2"
+              >
+                <LogOut className="w-4 h-4" strokeWidth={1.5} />
+                Çıkış Yap
+              </button>
+            </div>
           </div>
         </div>
       )}
