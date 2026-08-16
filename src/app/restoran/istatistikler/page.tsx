@@ -166,40 +166,40 @@ export default function IstatistiklerPage() {
   }, [fetchStatisticsData])
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto min-h-screen">
-      <div className="saas-card bg-slate-900 p-6 border border-slate-800 shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-          <h2 className="text-2xl font-black text-white flex items-center gap-2">
+    <div className="p-4 md:p-6 max-w-7xl mx-auto min-h-screen pt-[calc(5rem+env(safe-area-inset-top))] pb-[calc(1.5rem+env(safe-area-inset-bottom))] overflow-x-hidden">
+      <div className="saas-card bg-slate-900 p-4 sm:p-6 border border-slate-800 shadow-sm">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-8 gap-4">
+          <h2 className="text-xl lg:text-2xl font-black text-white flex items-center gap-2">
             <BarChart3 className="w-6 h-6 text-gray-400" strokeWidth={1.5} />
             Paketlerim ve Cirom
           </h2>
 
-          <div className="flex flex-wrap items-center gap-3 bg-slate-800/50 p-3 rounded-md border border-slate-700">
-            <div className="flex flex-col">
+          <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 bg-slate-800/50 p-3 rounded-md border border-slate-700 w-full lg:w-auto">
+            <div className="flex flex-col flex-1 min-w-0">
               <label className="text-[10px] uppercase font-bold text-slate-500 mb-1 ml-1">Başlangıç</label>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="bg-slate-900 border border-slate-700 text-white text-sm rounded-md px-3 py-2 outline-none focus:border-orange-500 transition-colors"
+                className="w-full bg-slate-900 border border-slate-700 text-white text-sm rounded-md px-3 py-2 outline-none focus:border-orange-500 transition-colors"
               />
             </div>
-            <div className="flex flex-col">
+            <div className="flex flex-col flex-1 min-w-0">
               <label className="text-[10px] uppercase font-bold text-slate-500 mb-1 ml-1">Bitiş</label>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="bg-slate-900 border border-slate-700 text-white text-sm rounded-md px-3 py-2 outline-none focus:border-orange-500 transition-colors"
+                className="w-full bg-slate-900 border border-slate-700 text-white text-sm rounded-md px-3 py-2 outline-none focus:border-orange-500 transition-colors"
               />
             </div>
           </div>
         </div>
 
-        <div className="flex gap-2 mb-8 bg-slate-800/30 p-1.5 rounded-md w-fit">
+        <div className="flex flex-col sm:flex-row gap-2 mb-8 bg-slate-800/30 p-1.5 rounded-md w-full sm:w-fit">
           <button
             onClick={() => setStatisticsTab('packages')}
-            className={`px-6 py-2.5 rounded-md font-bold text-sm transition-all flex items-center gap-2 ${
+            className={`w-full sm:w-auto px-6 py-2.5 rounded-md font-bold text-sm transition-all flex items-center justify-center gap-2 ${
               statisticsTab === 'packages'
                 ? 'bg-orange-600 text-white shadow-sm shadow-orange-900/20'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800'
@@ -210,7 +210,7 @@ export default function IstatistiklerPage() {
           </button>
           <button
             onClick={() => setStatisticsTab('revenue')}
-            className={`px-6 py-2.5 rounded-md font-bold text-sm transition-all flex items-center gap-2 ${
+            className={`w-full sm:w-auto px-6 py-2.5 rounded-md font-bold text-sm transition-all flex items-center justify-center gap-2 ${
               statisticsTab === 'revenue'
                 ? 'bg-orange-600 text-white shadow-sm shadow-orange-900/20'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800'
@@ -263,8 +263,9 @@ export default function IstatistiklerPage() {
           </div>
         </div>
 
-        <div className="bg-slate-800/50 p-6 rounded-md border border-slate-700">
-          <div className="h-[400px] w-full">
+        <div className="bg-slate-800/50 p-4 sm:p-6 rounded-md border border-slate-700">
+          <div className="w-full overflow-x-auto">
+          <div className="h-[400px] w-full min-w-[320px]">
             {isLoading ? (
               <div className="w-full h-full flex items-center justify-center text-slate-500 font-medium">
                 Veriler yükleniyor...
@@ -326,6 +327,7 @@ export default function IstatistiklerPage() {
                 </BarChart>
               </ResponsiveContainer>
             )}
+          </div>
           </div>
         </div>
       </div>

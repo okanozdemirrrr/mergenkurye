@@ -115,8 +115,8 @@ function NewCustomerModal({ darkMode, onClose, onSaved, restaurantId, prefillNam
   const bg = darkMode ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500 focus:border-orange-500' : 'bg-white border-gray-300 text-gray-900 focus:border-orange-500'
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4">
-      <div className={`w-full max-w-md rounded-md shadow-sm ${darkMode ? 'bg-slate-900 border border-slate-700' : 'bg-white border border-gray-200'}`}>
+    <div className="fixed inset-0 bg-black/80 flex items-stretch lg:items-center justify-center z-[60] p-0 lg:p-4">
+      <div className={`w-full h-full min-h-screen rounded-none overflow-y-auto lg:h-auto lg:min-h-0 lg:max-w-md lg:rounded-md shadow-sm ${darkMode ? 'bg-slate-900 border border-slate-700' : 'bg-white border border-gray-200'}`}>
         {/* Header */}
         <div className={`flex items-center justify-between px-6 py-4 border-b ${darkMode ? 'border-slate-700' : 'border-gray-200'}`}>
           <h3 className={`text-lg font-bold flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
@@ -433,8 +433,8 @@ export default function NewOrderModal({ onClose, onSuccess, restaurantId, darkMo
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-        <div className={`rounded-md w-full max-w-2xl max-h-[92vh] overflow-y-auto ${darkMode ? 'bg-slate-900' : 'bg-white'}`}>
+      <div className="fixed inset-0 bg-black/70 flex items-stretch lg:items-center justify-center z-50 p-0 lg:p-4">
+        <div className={`w-full h-full min-h-screen rounded-none lg:h-auto lg:min-h-0 lg:max-w-2xl lg:max-h-[92vh] lg:rounded-md overflow-y-auto ${darkMode ? 'bg-slate-900' : 'bg-white'}`}>
 
           {/* ── Header ── */}
           <div className={`flex items-center justify-between p-6 border-b sticky top-0 z-10 ${darkMode ? 'border-slate-800 bg-slate-900' : 'border-gray-200 bg-white'}`}>
@@ -574,7 +574,7 @@ export default function NewOrderModal({ onClose, onSuccess, restaurantId, darkMo
               </div>
 
               {/* Müşteri Adı + Telefon */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <label className={label}>Müşteri Adı <span className="text-red-400">*</span></label>
                   <input
@@ -675,7 +675,7 @@ export default function NewOrderModal({ onClose, onSuccess, restaurantId, darkMo
               </div>
 
               {/* Tutar + Ödeme */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <label className={label}>Tutar (₺) <span className="text-red-400">*</span></label>
                   <input

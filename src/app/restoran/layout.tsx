@@ -217,7 +217,7 @@ function RestoranContent({ children, pathname }: { children: React.ReactNode, pa
       {!showMenu && (
         <button
           onClick={() => setShowMenu(true)}
-          className="fixed top-4 left-4 z-[60] bg-slate-800 text-white p-3 rounded-md shadow-sm hover:bg-slate-700 transition-colors"
+          className="fixed top-[max(1rem,env(safe-area-inset-top))] left-[max(1rem,env(safe-area-inset-left))] z-[60] bg-slate-800 text-white p-3 rounded-md shadow-sm hover:bg-slate-700 transition-colors"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -226,7 +226,7 @@ function RestoranContent({ children, pathname }: { children: React.ReactNode, pa
       )}
 
       {!showMenu && (
-        <div className="fixed top-4 right-4 z-[60]">
+        <div className="fixed top-[max(1rem,env(safe-area-inset-top))] right-[max(1rem,env(safe-area-inset-right))] z-[60]">
           <NotificationBell userId={restaurantId} />
         </div>
       )}
@@ -291,7 +291,7 @@ function MenuSidebar({ showMenu, setShowMenu, isActive }: { showMenu: boolean, s
   return (
     <div className="fixed inset-0 z-50 flex">
       <div className="fixed inset-0 bg-black/50" onClick={() => setShowMenu(false)} />
-      <div className="relative bg-slate-900 w-80 h-full overflow-y-auto p-6 shadow-sm border-r border-slate-800">
+      <div className="relative bg-slate-900 w-full max-w-[20rem] lg:w-80 h-full overflow-y-auto overflow-x-hidden p-6 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-sm border-r border-slate-800">
         <div className="mb-8 text-center border-b border-slate-800 pb-6">
           <img src="/logo.png" alt="Logo" className="w-24 h-24 mx-auto mb-3" />
           <h2 className="text-lg font-semibold text-white tracking-tight">Restoran Panel</h2>

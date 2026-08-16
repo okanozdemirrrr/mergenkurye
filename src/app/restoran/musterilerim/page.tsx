@@ -96,8 +96,8 @@ function CustomerFormModal({ customer, restaurantId, onClose, onSaved }: Custome
   const lbl = 'block text-sm font-medium mb-1 text-slate-300'
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60] p-4">
-      <div className="w-full max-w-md rounded-md bg-slate-900 border border-slate-700 shadow-sm">
+    <div className="fixed inset-0 bg-black/70 flex items-stretch lg:items-center justify-center z-[60] p-0 lg:p-4">
+      <div className="w-full h-full min-h-screen rounded-none overflow-y-auto lg:h-auto lg:min-h-0 lg:max-w-md lg:rounded-md bg-slate-900 border border-slate-700 shadow-sm">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700">
           <h3 className="text-lg font-bold text-white flex items-center gap-2">
             {isEdit ? (
@@ -263,17 +263,17 @@ export default function MusterilerimPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 px-4 py-8 pt-20">
+    <div className="min-h-screen bg-slate-950 px-4 py-8 pt-[calc(5rem+env(safe-area-inset-top))] pb-[calc(2rem+env(safe-area-inset-bottom))] overflow-x-hidden">
       {/* Toast */}
       {toast && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[70] bg-slate-800 border border-slate-600 text-white px-5 py-3 rounded-md shadow-sm text-sm font-medium">
+        <div className="fixed top-[max(1.5rem,env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-[70] bg-slate-800 border border-slate-600 text-white px-5 py-3 rounded-md shadow-sm text-sm font-medium">
           {toast}
         </div>
       )}
 
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-6 gap-3">
           <div>
             <h1 className="text-2xl font-black text-white flex items-center gap-2">
               <Users className="w-6 h-6 text-gray-400" strokeWidth={1.5} />
@@ -285,7 +285,7 @@ export default function MusterilerimPage() {
           </div>
           <button
             onClick={() => { setEditingCustomer(null); setShowModal(true) }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-md font-semibold transition-colors"
+            className="w-full lg:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-md font-semibold transition-colors"
           >
             <span className="text-lg">+</span>
             Yeni Müşteri Ekle
@@ -312,78 +312,100 @@ export default function MusterilerimPage() {
           )}
         </div>
 
-        {/* Tablo */}
-        <div className="rounded-md border border-slate-800 overflow-hidden bg-slate-900">
-          {/* Tablo Başlığı */}
-          <div className="grid grid-cols-[1fr_140px_1fr_80px] gap-4 px-4 py-3 bg-slate-800/60 border-b border-slate-700">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">İsim</span>
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Telefon</span>
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Adres</span>
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider text-right">İşlem</span>
+        {/* Liste: mobil kart / masaüstü tablo */}
+        {loading ? (
+          <div className="rounded-md border border-slate-800 bg-slate-900 py-16 text-center">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-500 mx-auto" />
+            <p className="text-slate-400 text-sm mt-4">Yükleniyor...</p>
           </div>
-
-          {/* Satırlar */}
-          {loading ? (
-            <div className="py-16 text-center">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-500 mx-auto" />
-              <p className="text-slate-400 text-sm mt-4">Yükleniyor...</p>
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="py-16 text-center">
-              <User className="w-8 h-8 mx-auto mb-3 text-gray-400" strokeWidth={1.5} />
-              <p className="text-slate-400 text-sm">
-                {search ? 'Arama sonucu bulunamadı' : 'Henüz kayıtlı müşteri yok'}
-              </p>
-              {!search && (
-                <button
-                  onClick={() => { setEditingCustomer(null); setShowModal(true) }}
-                  className="mt-4 text-orange-500 hover:text-orange-400 text-sm font-medium"
-                >
-                  + İlk müşteriyi ekle
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-800">
+        ) : filtered.length === 0 ? (
+          <div className="rounded-md border border-slate-800 bg-slate-900 py-16 text-center">
+            <User className="w-8 h-8 mx-auto mb-3 text-gray-400" strokeWidth={1.5} />
+            <p className="text-slate-400 text-sm">
+              {search ? 'Arama sonucu bulunamadı' : 'Henüz kayıtlı müşteri yok'}
+            </p>
+            {!search && (
+              <button
+                onClick={() => { setEditingCustomer(null); setShowModal(true) }}
+                className="mt-4 text-orange-500 hover:text-orange-400 text-sm font-medium"
+              >
+                + İlk müşteriyi ekle
+              </button>
+            )}
+          </div>
+        ) : (
+          <>
+            {/* Mobil kartlar */}
+            <div className="lg:hidden space-y-3">
               {filtered.map(c => (
                 <div
                   key={c.id}
-                  className="grid grid-cols-[1fr_140px_1fr_80px] gap-4 px-4 py-3.5 hover:bg-slate-800/40 transition-colors items-center"
+                  className="p-3 rounded-md border border-slate-800 bg-slate-900"
                 >
-                  {/* İsim */}
-                  <div>
-                    <p className="text-white font-semibold text-sm">{c.full_name}</p>
-                    {c.created_at && (
-                      <p className="text-slate-500 text-xs mt-0.5">
-                        {new Date(c.created_at).toLocaleDateString('tr-TR')}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Telefon */}
-                  <p className="text-slate-300 text-sm font-mono">{c.phone || '—'}</p>
-
-                  {/* Adres */}
-                  <p className="text-slate-400 text-sm truncate" title={c.address}>{c.address || '—'}</p>
-
-                  {/* Aksiyonlar */}
-                  <div className="flex items-center justify-end">
-                    {/* Düzenle */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-white font-semibold text-sm truncate">{c.full_name}</p>
+                      {c.created_at && (
+                        <p className="text-slate-500 text-[10px] mt-0.5">
+                          {new Date(c.created_at).toLocaleDateString('tr-TR')}
+                        </p>
+                      )}
+                    </div>
                     <button
                       onClick={() => { setEditingCustomer(c); setShowModal(true) }}
                       title="Düzenle"
-                      className="p-2 rounded-md text-slate-400 hover:text-orange-400 hover:bg-orange-400/10 transition-colors"
+                      className="shrink-0 p-2 rounded-md text-slate-400 hover:text-orange-400 hover:bg-orange-400/10 transition-colors"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                      </svg>
+                      <Pencil className="w-4 h-4" strokeWidth={1.5} />
                     </button>
                   </div>
+                  <p className="mt-2 text-sm text-slate-300 font-mono">{c.phone || '—'}</p>
+                  <p className="mt-1.5 text-xs text-slate-400 line-clamp-2 break-words">
+                    {c.address || 'Adres yok'}
+                  </p>
                 </div>
               ))}
             </div>
-          )}
-        </div>
+
+            {/* Masaüstü tablo */}
+            <div className="hidden lg:block rounded-md border border-slate-800 overflow-hidden bg-slate-900">
+              <div className="grid grid-cols-[1fr_140px_1fr_80px] gap-4 px-4 py-3 bg-slate-800/60 border-b border-slate-700">
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">İsim</span>
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Telefon</span>
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Adres</span>
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider text-right">İşlem</span>
+              </div>
+              <div className="divide-y divide-slate-800">
+                {filtered.map(c => (
+                  <div
+                    key={c.id}
+                    className="grid grid-cols-[1fr_140px_1fr_80px] gap-4 px-4 py-3.5 hover:bg-slate-800/40 transition-colors items-center"
+                  >
+                    <div>
+                      <p className="text-white font-semibold text-sm">{c.full_name}</p>
+                      {c.created_at && (
+                        <p className="text-slate-500 text-xs mt-0.5">
+                          {new Date(c.created_at).toLocaleDateString('tr-TR')}
+                        </p>
+                      )}
+                    </div>
+                    <p className="text-slate-300 text-sm font-mono">{c.phone || '—'}</p>
+                    <p className="text-slate-400 text-sm truncate" title={c.address}>{c.address || '—'}</p>
+                    <div className="flex items-center justify-end">
+                      <button
+                        onClick={() => { setEditingCustomer(c); setShowModal(true) }}
+                        title="Düzenle"
+                        className="p-2 rounded-md text-slate-400 hover:text-orange-400 hover:bg-orange-400/10 transition-colors"
+                      >
+                        <Pencil className="w-4 h-4" strokeWidth={1.5} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Sonuç sayısı */}
         {search && filtered.length > 0 && (

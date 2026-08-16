@@ -300,13 +300,53 @@ export function HistoryTab({
         }
     }
 
+    const getHistoryStatusLabel = (pkg: Package) => {
+        if (pkg.status === 'delivered') return 'Teslim Edildi'
+        if (pkg.status === 'cancelled' && pkg.is_chargeable_cancellation) return 'Ücretli İptal'
+        if (pkg.status === 'cancelled') return 'Ücretsiz İptal'
+        return pkg.status
+    }
+
+    const getHistoryStatusClass = (pkg: Package) => {
+        if (pkg.status === 'delivered') return 'bg-green-950/60 text-green-400 border border-green-900/30'
+        if (pkg.status === 'cancelled' && pkg.is_chargeable_cancellation) return 'bg-orange-950/60 text-orange-400 border border-orange-900/30'
+        if (pkg.status === 'cancelled') return 'bg-slate-700/60 text-slate-400 border border-slate-600/30'
+        return 'bg-slate-800 text-slate-300'
+    }
+
+    const getPaymentLabel = (method?: string | null) => {
+        if (method === 'cash') return 'Nakit'
+        if (method === 'iban') return 'IBAN'
+        return 'Kart'
+    }
+
+    const getPaymentClass = (method?: string | null) => {
+        if (method === 'cash') return 'bg-green-950/60 text-green-400 border border-green-900/30'
+        if (method === 'iban') return 'bg-purple-950/60 text-purple-400 border border-purple-900/30'
+        return 'bg-orange-950/60 text-orange-400 border border-orange-900/30'
+    }
+
+    const getPackageEventTime = (pkg: Package) => {
+        if (pkg.status === 'cancelled') return formatTurkishTime(pkg.cancelled_at || undefined)
+        return formatTurkishTime(pkg.delivered_at)
+    }
+
+    const emptyHistoryMessage =
+        startDate && endDate
+            ? 'Bu tarih aralığında sipariş bulunamadı.'
+            : statusFilter === 'delivered'
+                ? 'Henüz teslim edilen sipariş yok.'
+                : statusFilter === 'cancelled'
+                    ? 'Henüz iptal edilen sipariş yok.'
+                    : 'Henüz sipariş yok.'
+
     return (
         <>
             {/* DETAY MODAL */}
             {selectedPackage && (
-                <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4" onClick={() => setSelectedPackage(null)}>
-                    <div className="bg-slate-900 rounded-md p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-700 shadow-sm" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex justify-between items-center mb-4 sticky top-0 bg-slate-900 pb-4 border-b border-slate-700 z-10">
+                <div className="fixed inset-0 bg-black/80 z-[100] flex items-stretch lg:items-center justify-center p-0 lg:p-4" onClick={() => setSelectedPackage(null)}>
+                    <div className="bg-slate-900 w-full h-full min-h-screen rounded-none p-4 sm:p-6 overflow-y-auto lg:h-auto lg:min-h-0 lg:max-w-2xl lg:max-h-[90vh] lg:rounded-md border border-slate-700 shadow-sm" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-between items-center mb-4 sticky top-0 bg-slate-900 pb-4 border-b border-slate-700 z-10 pt-[env(safe-area-inset-top)]">
                             <h3 className="text-xl font-bold text-white">Sipariş Detayları</h3>
                             <button
                                 onClick={() => setSelectedPackage(null)}
@@ -478,18 +518,18 @@ export function HistoryTab({
                 </div>
             )}
 
-            <div id="history-container" className="bg-slate-900 shadow-sm rounded-md border border-slate-800 p-6">
+            <div id="history-container" className="bg-slate-900 shadow-sm rounded-md border border-slate-800 p-4 lg:p-6 overflow-x-hidden">
                 <div className="flex flex-col gap-4 mb-6">
                     {/* Başlık ve Kategorik Filtre */}
-                    <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-4">
-                            <h2 className="text-2xl font-bold">Geçmiş Siparişler</h2>
+                    <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full">
+                            <h2 className="text-xl lg:text-2xl font-bold text-white">Geçmiş Siparişler</h2>
                             
                             {/* Kategorik Filtre Butonları */}
-                            <div className="flex gap-2">
+                            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                                 <button
                                     onClick={() => handleFilterChange('all')}
-                                    className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${statusFilter === 'all'
+                                    className={`flex-1 sm:flex-none px-4 py-2 rounded-md text-sm font-semibold transition-all ${statusFilter === 'all'
                                         ? 'bg-orange-600 text-white shadow-sm'
                                         : 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700 hover:text-white'
                                         }`}
@@ -498,7 +538,7 @@ export function HistoryTab({
                                 </button>
                                 <button
                                     onClick={() => handleFilterChange('delivered')}
-                                    className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${statusFilter === 'delivered'
+                                    className={`flex-1 sm:flex-none px-4 py-2 rounded-md text-sm font-semibold transition-all ${statusFilter === 'delivered'
                                         ? 'bg-green-600 text-white shadow-sm'
                                         : 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700 hover:text-white'
                                         }`}
@@ -507,25 +547,25 @@ export function HistoryTab({
                                 </button>
                                 <button
                                     onClick={() => handleFilterChange('cancelled')}
-                                    className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${statusFilter === 'cancelled'
+                                    className={`flex-1 sm:flex-none px-4 py-2 rounded-md text-sm font-semibold transition-all ${statusFilter === 'cancelled'
                                         ? 'bg-red-600 text-white shadow-sm'
                                         : 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700 hover:text-white'
                                         }`}
                                 >
-                                    <span className="inline-flex items-center gap-1"><Ban className="w-3.5 h-3.5" strokeWidth={1.5} /> İptal Edilen</span>
+                                    <span className="inline-flex items-center justify-center gap-1"><Ban className="w-3.5 h-3.5" strokeWidth={1.5} /> İptal Edilen</span>
                                 </button>
                             </div>
                         </div>
                     </div>
 
                     {/* Tarih Aralığı Filtresi */}
-                    <div className="flex items-center gap-3 flex-wrap">
-                        <label className="text-sm font-medium text-slate-300">
+                    <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+                        <label className="text-sm font-medium text-slate-300 shrink-0">
                             Tarih Aralığı:
                         </label>
                         
                         {/* Hızlı Tarih Seçim Butonları */}
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                             <button
                                 onClick={() => {
                                     const now = new Date()
@@ -563,27 +603,29 @@ export function HistoryTab({
                             </button>
                         </div>
                         
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full lg:w-auto">
                         <input
                             type="date"
                             value={startDate || ''}
                             onChange={(e) => handleDateFilterChange(e.target.value || null, endDate)}
-                            className="px-3 py-2 bg-slate-850 border border-slate-700 rounded-md text-sm text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
+                            className="w-full sm:w-auto px-3 py-2 bg-slate-850 border border-slate-700 rounded-md text-sm text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
                             placeholder="Başlangıç"
                         />
-                        <span className="text-slate-500">-</span>
+                        <span className="hidden sm:inline text-slate-500">-</span>
                         <input
                             type="date"
                             value={endDate || ''}
                             onChange={(e) => handleDateFilterChange(startDate, e.target.value || null)}
-                            className="px-3 py-2 bg-slate-850 border border-slate-700 rounded-md text-sm text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
+                            className="w-full sm:w-auto px-3 py-2 bg-slate-850 border border-slate-700 rounded-md text-sm text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
                             placeholder="Bitiş"
                         />
                         <button
                             onClick={() => handleDateFilterChange(null, null)}
-                            className="px-3 py-2 bg-slate-800 text-white border border-slate-700 rounded-md text-sm font-medium hover:bg-slate-700 transition-colors"
+                            className="w-full sm:w-auto px-3 py-2 bg-slate-800 text-white border border-slate-700 rounded-md text-sm font-medium hover:bg-slate-700 transition-colors"
                         >
                             Tüm Tarihler
                         </button>
+                        </div>
                     </div>
                 </div>
 
@@ -611,7 +653,91 @@ export function HistoryTab({
                     </div>
                 </div>
 
-                <div className="overflow-x-auto admin-scrollbar">
+                {/* Mobil kart listesi */}
+                <div className="lg:hidden space-y-3">
+                    {isLoading ? (
+                        <div className="flex flex-col items-center justify-center gap-3 py-16 text-slate-400">
+                            <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+                            <span className="text-sm font-medium">Sipariş geçmişi yükleniyor...</span>
+                        </div>
+                    ) : packagesList.length === 0 ? (
+                        <div className="text-center py-12 text-slate-500 text-sm">{emptyHistoryMessage}</div>
+                    ) : (
+                        packagesList.map(pkg => (
+                            <div
+                                key={pkg.id}
+                                onClick={() => setSelectedPackage(pkg)}
+                                className={`relative p-3 rounded-md border cursor-pointer transition-colors active:scale-[0.99] ${
+                                    pkg.status === 'cancelled'
+                                        ? 'bg-red-950/20 border-red-900/40 opacity-90'
+                                        : 'bg-slate-800 border-slate-700 hover:bg-slate-750'
+                                }`}
+                            >
+                                <div className="absolute top-2 left-2 z-10" onClick={(e) => e.stopPropagation()}>
+                                    <OrderActionMenu
+                                        package={pkg}
+                                        isOpen={openDropdownId === pkg.id}
+                                        onToggle={() => setOpenDropdownId(openDropdownId === pkg.id ? null : pkg.id)}
+                                        onUpdateAmount={openAmountModal}
+                                        onCancel={handleCancelWrapper}
+                                    />
+                                </div>
+
+                                {/* Üst: Sipariş No | Tutar + Ödeme */}
+                                <div className="flex items-start justify-between gap-3 pl-8">
+                                    <div className="min-w-0">
+                                        <p className="font-bold text-orange-400 text-sm truncate">
+                                            {pkg.order_number || '......'}
+                                        </p>
+                                        {pkg.platform && (
+                                            <span className={`inline-block mt-1 text-[10px] py-0.5 px-1.5 rounded ${getPlatformBadgeClass(pkg.platform)}`}>
+                                                {getPlatformDisplayName(pkg.platform)}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="text-right shrink-0">
+                                        <p className={`font-bold text-base ${
+                                            pkg.status === 'cancelled' ? 'text-slate-500 line-through' : 'text-green-400'
+                                        }`}>
+                                            {pkg.amount}₺
+                                        </p>
+                                        {pkg.status !== 'cancelled' && (
+                                            <span className={`inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-medium ${getPaymentClass(pkg.payment_method)}`}>
+                                                {getPaymentLabel(pkg.payment_method)}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Orta: Restoran + Kurye */}
+                                <div className="mt-2 space-y-0.5 min-w-0">
+                                    <p className="text-sm text-white font-medium truncate">
+                                        {pkg.restaurant?.name || 'Bilinmeyen restoran'}
+                                    </p>
+                                    <p className="text-xs text-slate-400 truncate">
+                                        {pkg.status === 'cancelled'
+                                            ? 'Kurye: —'
+                                            : `Kurye: ${pkg.courier_name || 'Bilinmeyen'}`}
+                                    </p>
+                                </div>
+
+                                {/* Alt: Saat + Durum */}
+                                <div className="mt-2.5 flex items-center justify-between gap-2">
+                                    <span className="text-xs text-slate-400 flex items-center gap-1 min-w-0">
+                                        <Clock className="w-3 h-3 shrink-0 text-gray-500" strokeWidth={1.5} />
+                                        <span className="truncate">{getPackageEventTime(pkg)}</span>
+                                    </span>
+                                    <span className={`shrink-0 px-2 py-1 rounded text-[10px] font-semibold ${getHistoryStatusClass(pkg)}`}>
+                                        {getHistoryStatusLabel(pkg)}
+                                    </span>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+
+                {/* Masaüstü tablo */}
+                <div className="hidden lg:block overflow-x-auto admin-scrollbar">
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="border-b border-slate-750 text-slate-400">
@@ -639,14 +765,7 @@ export function HistoryTab({
                             ) : packagesList.length === 0 ? (
                                 <tr>
                                     <td colSpan={9} className="text-center py-12 text-slate-500">
-                                        {startDate && endDate 
-                                            ? 'Bu tarih aralığında sipariş bulunamadı.'
-                                            : statusFilter === 'delivered'
-                                                ? 'Henüz teslim edilen sipariş yok.'
-                                                : statusFilter === 'cancelled'
-                                                    ? 'Henüz iptal edilen sipariş yok.'
-                                                    : 'Henüz sipariş yok.'
-                                        }
+                                        {emptyHistoryMessage}
                                     </td>
                                 </tr>
                             ) : (
@@ -722,21 +841,8 @@ export function HistoryTab({
                                             )}
                                         </td>
                                         <td className="py-3 px-4">
-                                            <span className={`px-2 py-1 rounded text-xs font-semibold ${pkg.status === 'delivered'
-                                                ? 'bg-green-950/60 text-green-400 border border-green-900/30'
-                                                : pkg.status === 'cancelled' && pkg.is_chargeable_cancellation
-                                                    ? 'bg-orange-950/60 text-orange-400 border border-orange-900/30'
-                                                    : pkg.status === 'cancelled'
-                                                        ? 'bg-slate-700/60 text-slate-400 border border-slate-600/30'
-                                                        : 'bg-slate-800 text-slate-300'
-                                                }`}>
-                                                {pkg.status === 'delivered'
-                                                    ? 'Teslim Edildi'
-                                                    : pkg.status === 'cancelled' && pkg.is_chargeable_cancellation
-                                                        ? 'Ücretli İptal'
-                                                        : pkg.status === 'cancelled'
-                                                            ? 'Ücretsiz İptal'
-                                                            : pkg.status}
+                                            <span className={`px-2 py-1 rounded text-xs font-semibold ${getHistoryStatusClass(pkg)}`}>
+                                                {getHistoryStatusLabel(pkg)}
                                             </span>
                                         </td>
                                         <td className="py-3 px-4">
@@ -751,13 +857,8 @@ export function HistoryTab({
                                             {pkg.status === 'cancelled' ? (
                                                 <span className="text-xs text-slate-500 italic">İptal</span>
                                             ) : (
-                                                <span className={`px-2 py-1 rounded text-xs font-medium ${pkg.payment_method === 'cash'
-                                                    ? 'bg-green-950/60 text-green-400 border border-green-900/30'
-                                                    : pkg.payment_method === 'iban'
-                                                    ? 'bg-purple-950/60 text-purple-400 border border-purple-900/30'
-                                                    : 'bg-orange-950/60 text-orange-400 border border-orange-900/30'
-                                                    }`}>
-                                                    {pkg.payment_method === 'cash' ? 'Nakit' : pkg.payment_method === 'iban' ? 'IBAN' : 'Kart'}
+                                                <span className={`px-2 py-1 rounded text-xs font-medium ${getPaymentClass(pkg.payment_method)}`}>
+                                                    {getPaymentLabel(pkg.payment_method)}
                                                 </span>
                                             )}
                                         </td>
@@ -770,7 +871,7 @@ export function HistoryTab({
                 
                 {/* Sayfalama */}
                 {!isLoading && totalPages > 1 && (
-                    <div className="flex justify-center items-center gap-2 mt-6">
+                    <div className="flex flex-wrap justify-center items-center gap-2 mt-6">
                         {/* Önceki Sayfa */}
                         <button
                             onClick={() => handlePageChange(currentPage - 1)}
@@ -836,11 +937,11 @@ export function HistoryTab({
 
             {amountModalPackage && (
                 <div
-                    className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4"
+                    className="fixed inset-0 bg-black/70 z-[100] flex items-stretch lg:items-center justify-center p-0 lg:p-4"
                     onClick={closeAmountModal}
                 >
                     <div
-                        className="bg-slate-900 border border-slate-700 rounded-md p-6 max-w-md w-full shadow-sm"
+                        className="bg-slate-900 border border-slate-700 w-full h-full min-h-screen rounded-none p-6 overflow-y-auto lg:h-auto lg:min-h-0 lg:max-w-md lg:rounded-md shadow-sm"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <h3 className="text-xl font-bold text-white mb-4">Sipariş Tutarı Değiştir</h3>

@@ -129,7 +129,7 @@ export function CourierDailyRoutes({ couriers }: CourierDailyRoutesProps) {
   }
 
   return (
-    <div className="bg-slate-900 shadow-sm rounded-md border border-slate-800 p-2 h-full flex flex-col lg:sticky lg:top-4">
+    <div className="bg-slate-900 shadow-sm rounded-md border border-slate-800 p-2 h-full flex flex-col lg:sticky lg:top-4 overflow-x-hidden">
       <div className="flex items-center gap-2 mb-2 px-1">
         <button
           type="button"

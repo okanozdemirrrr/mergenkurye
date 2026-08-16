@@ -405,8 +405,8 @@ export default function KanbanBoard({
         const { address: displayAddress, tarif: addressTarif } = parseDeliveryAddress(pkg.delivery_address)
 
         return (
-        <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4" onClick={() => setSelectedPackage(null)}>
-          <div className={`rounded-md p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto border shadow-sm ${
+        <div className="fixed inset-0 bg-black/80 z-[100] flex items-stretch lg:items-center justify-center p-0 lg:p-4" onClick={() => setSelectedPackage(null)}>
+          <div className={`w-full h-full min-h-screen rounded-none p-4 sm:p-6 lg:h-auto lg:min-h-0 lg:max-w-2xl lg:max-h-[90vh] lg:rounded-md overflow-y-auto border shadow-sm ${
             darkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'
           }`} onClick={(e) => e.stopPropagation()}>
             {/* Başlık ve Kapat Butonu */}

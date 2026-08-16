@@ -365,7 +365,7 @@ function RestoranimPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 py-6 px-4">
+    <div className="min-h-screen bg-slate-950 pt-[calc(5rem+env(safe-area-inset-top))] pb-[calc(1.5rem+env(safe-area-inset-bottom))] px-4 overflow-x-hidden">
       {/* Success/Error Messages */}
       <AnimatePresence>
         {successMessage && (
@@ -962,12 +962,12 @@ function MenuTab({ categories, setCategories, products, toggleProductAvailabilit
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && deletingProduct && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[70] p-4">
+        <div className="fixed inset-0 bg-black/70 flex items-stretch lg:items-center justify-center z-[70] p-0 lg:p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-slate-900 rounded-md w-full max-w-md border border-slate-800"
+            className="bg-slate-900 w-full h-full min-h-screen rounded-none overflow-y-auto lg:h-auto lg:min-h-0 lg:max-w-md lg:rounded-md border border-slate-800"
           >
             {/* Header */}
             <div className="p-6 border-b border-slate-800">
@@ -1168,12 +1168,12 @@ function ProductAddModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60] p-4">
+    <div className="fixed inset-0 bg-black/70 flex items-stretch lg:items-center justify-center z-[60] p-0 lg:p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-slate-900 rounded-md w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-slate-800"
+        className="bg-slate-900 w-full h-full min-h-screen rounded-none lg:h-auto lg:min-h-0 lg:max-w-2xl lg:max-h-[90vh] lg:rounded-md overflow-y-auto border border-slate-800"
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-800 sticky top-0 bg-slate-900 z-10">
@@ -1498,12 +1498,12 @@ function ProductEditModal({ product, onClose, onSuccess }: { product: Product; o
   }
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60] p-4">
+    <div className="fixed inset-0 bg-black/70 flex items-stretch lg:items-center justify-center z-[60] p-0 lg:p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-slate-900 rounded-md w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-slate-800"
+        className="bg-slate-900 w-full h-full min-h-screen rounded-none lg:h-auto lg:min-h-0 lg:max-w-2xl lg:max-h-[90vh] lg:rounded-md overflow-y-auto border border-slate-800"
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-800 sticky top-0 bg-slate-900 z-10">
@@ -1782,12 +1782,12 @@ function UpsellModal({ product, allProducts, onClose, onSuccess }: {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[70] p-4">
+    <div className="fixed inset-0 bg-black/70 flex items-stretch lg:items-center justify-center z-[70] p-0 lg:p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-slate-900 rounded-md w-full max-w-3xl max-h-[90vh] overflow-hidden border border-slate-800"
+        className="bg-slate-900 w-full h-full min-h-screen rounded-none overflow-y-auto lg:h-auto lg:min-h-0 lg:max-w-3xl lg:max-h-[90vh] lg:rounded-md lg:overflow-hidden border border-slate-800"
       >
         {/* Header */}
         <div className="p-6 border-b border-slate-800 sticky top-0 bg-slate-900 z-10">

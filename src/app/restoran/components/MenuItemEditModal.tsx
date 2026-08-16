@@ -69,8 +69,8 @@ export default function MenuItemEditModal({ item, onClose, onSuccess, darkMode }
   }
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-      <div className={`rounded-md w-full max-w-2xl max-h-[90vh] overflow-y-auto ${
+    <div className="fixed inset-0 bg-black/70 flex items-stretch lg:items-center justify-center z-50 p-0 lg:p-4">
+      <div className={`w-full h-full min-h-screen rounded-none lg:h-auto lg:min-h-0 lg:max-w-2xl lg:max-h-[90vh] lg:rounded-md overflow-y-auto ${
         darkMode ? 'bg-slate-900' : 'bg-white'
       }`}>
         {/* Header */}

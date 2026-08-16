@@ -180,11 +180,11 @@ export default function CancelOrderModal({
 
   return (
     <div 
-      className="fixed inset-0 bg-black/80 z-[200] flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/80 z-[200] flex items-stretch lg:items-center justify-center p-0 lg:p-4"
       onClick={onClose}
     >
       <div 
-        className={`rounded-md p-6 max-w-md w-full shadow-sm ${
+        className={`w-full h-full min-h-screen rounded-none p-6 overflow-y-auto lg:h-auto lg:min-h-0 lg:max-w-md lg:rounded-md shadow-sm ${
           darkMode ? 'bg-slate-900 border border-slate-700' : 'bg-white'
         }`}
         onClick={(e) => e.stopPropagation()}

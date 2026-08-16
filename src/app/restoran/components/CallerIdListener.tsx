@@ -130,7 +130,7 @@ export default function CallerIdListener() {
   return (
     <AnimatePresence>
       {activeCall && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[9999] flex items-stretch lg:items-center justify-center p-0 lg:p-4">
           {/* Backdrop */}
           <motion.div 
             initial={{ opacity: 0 }}
@@ -145,7 +145,7 @@ export default function CallerIdListener() {
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-md shadow-sm overflow-hidden"
+            className="relative w-full h-full min-h-screen rounded-none overflow-y-auto lg:h-auto lg:min-h-0 lg:max-w-lg lg:rounded-md bg-slate-900 border border-slate-800 shadow-sm"
           >
             {/* Header Animasyonu (Radar Efekti) */}
             <div className="bg-orange-600 p-8 text-center relative overflow-hidden">

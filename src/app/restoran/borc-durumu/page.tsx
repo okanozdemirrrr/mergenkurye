@@ -77,9 +77,9 @@ export default function BorcDurumuPage() {
   }, 0)
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto">
-      <div className="bg-slate-900 rounded-md p-6 border border-slate-800">
-        <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+    <div className="p-4 md:p-6 max-w-7xl mx-auto pt-[calc(5rem+env(safe-area-inset-top))] pb-[calc(1.5rem+env(safe-area-inset-bottom))] overflow-x-hidden">
+      <div className="bg-slate-900 rounded-md p-4 sm:p-6 border border-slate-800">
+        <h2 className="text-xl lg:text-2xl font-bold text-white mb-6 flex items-center gap-2">
           <CreditCard className="w-6 h-6 text-gray-400" strokeWidth={1.5} />
           Paket Ücretim (Borç Durumu)
         </h2>
@@ -188,17 +188,17 @@ export default function BorcDurumuPage() {
           ) : (
             filteredPackages.map((pkg) => (
               <div key={pkg.id} className="bg-slate-800 p-4 rounded-md border border-slate-700">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <div className="font-bold text-white">{pkg.customer_name}</div>
-                    <div className="text-sm text-slate-400">{pkg.delivery_address}</div>
+                <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
+                  <div className="min-w-0 w-full">
+                    <div className="font-bold text-white text-sm">{pkg.customer_name}</div>
+                    <div className="text-xs text-slate-400 break-words">{pkg.delivery_address}</div>
                     {pkg.delivered_at && (
                       <div className="text-xs text-slate-500 mt-1">
                         {new Date(pkg.delivered_at).toLocaleString('tr-TR')}
                       </div>
                     )}
                   </div>
-                  <div className="text-right">
+                  <div className="text-left sm:text-right shrink-0">
                     <div className="text-xl font-bold text-orange-400">{pkg.amount}₺</div>
                     <div className="text-sm text-red-400">
                       Borç: {(pkg as any).applied_price ?? fallbackFee}₺

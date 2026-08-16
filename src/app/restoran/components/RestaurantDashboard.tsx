@@ -58,6 +58,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
   // 🎯 Manuel Filtreleme için Temporary State
   const [tempStartDate, setTempStartDate] = useState(getTodayString)
   const [tempEndDate, setTempEndDate] = useState(getTodayString)
+  const [expandedHistoryId, setExpandedHistoryId] = useState<number | null>(null)
   
   // Günlük finansal özet state'leri
   const [todayStats, setTodayStats] = useState({
@@ -574,7 +575,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
       {/* Floating Action Button - Yeni Sipariş */}
       <button
         onClick={() => setShowNewOrderModal(true)}
-        className="fixed bottom-6 left-6 p-4 bg-orange-600 hover:bg-orange-700 text-white rounded-full shadow-sm transition-all z-[9999] group"
+        className="fixed bottom-[max(1.5rem,env(safe-area-inset-bottom))] left-[max(1.5rem,env(safe-area-inset-left))] p-4 bg-orange-600 hover:bg-orange-700 text-white rounded-full shadow-sm transition-all z-[9999] group"
         title="Yeni Sipariş"
       >
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -587,7 +588,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
       </button>
 
       <PullToRefresh onRefresh={handleRefresh} darkMode={darkMode}>
-        <div className={`min-h-screen py-6 px-4 ${darkMode ? 'bg-slate-950' : 'bg-gray-100'}`}>
+        <div className={`min-h-screen pt-[calc(5rem+env(safe-area-inset-top))] pb-[calc(6rem+env(safe-area-inset-bottom))] px-4 overflow-x-hidden ${darkMode ? 'bg-slate-950' : 'bg-gray-100'}`}>
 
       <div className="max-w-7xl mx-auto">
         {/* Header */}
@@ -756,8 +757,8 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
           <div className={`rounded-md border ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'}`}>
             {/* Tarih Filtreleri */}
             <div className={`p-4 border-b ${darkMode ? 'border-slate-800' : 'border-gray-200'}`}>
-              <div className="flex flex-wrap gap-4 items-end">
-                <div className="flex-1 min-w-[200px]">
+              <div className="flex flex-col lg:flex-row flex-wrap gap-4 items-stretch lg:items-end">
+                <div className="w-full lg:flex-1 lg:min-w-[200px]">
                   <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
                     Başlangıç Tarihi
                   </label>
@@ -772,7 +773,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                     }`}
                   />
                 </div>
-                <div className="flex-1 min-w-[200px]">
+                <div className="w-full lg:flex-1 lg:min-w-[200px]">
                   <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
                     Bitiş Tarihi
                   </label>
@@ -802,10 +803,10 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                   </p>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
                   <button
                     onClick={handleApplyFilter}
-                    className={`px-6 py-2 rounded-md font-semibold transition-all flex items-center gap-2 ${
+                    className={`w-full sm:w-auto px-6 py-2 rounded-md font-semibold transition-all flex items-center justify-center gap-2 ${
                       darkMode
                         ? 'bg-blue-600 hover:bg-blue-700 text-white'
                         : 'bg-blue-500 hover:bg-blue-600 text-white'
@@ -816,7 +817,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                   </button>
                   <button
                     onClick={handleClearFilter}
-                    className={`px-4 py-2 rounded-md font-medium transition-colors ${
+                    className={`w-full sm:w-auto px-4 py-2 rounded-md font-medium transition-colors ${
                       darkMode
                         ? 'bg-slate-700 hover:bg-slate-600 text-white'
                         : 'bg-gray-200 hover:bg-gray-300 text-gray-900'
@@ -854,18 +855,93 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                   </div>
 
                   <div className="space-y-3">
-                  {deliveredPackages.map((pkg: any) => (
+                  {deliveredPackages.map((pkg: any) => {
+                    const isExpanded = expandedHistoryId === pkg.id
+                    const paymentLabel =
+                      pkg.payment_method === 'cash' ? 'Nakit' : pkg.payment_method === 'iban' ? 'IBAN' : 'Kart'
+                    const paymentClass =
+                      pkg.payment_method === 'cash'
+                        ? 'bg-green-900/50 text-green-300'
+                        : pkg.payment_method === 'iban'
+                          ? 'bg-purple-900/50 text-purple-300'
+                          : 'bg-orange-900/50 text-orange-300'
+
+                    return (
                     <div
                       key={pkg.id}
-                      className={`p-4 rounded-md border ${
+                      className={`p-3 sm:p-4 rounded-md border overflow-hidden ${
                         darkMode 
-                          ? 'bg-slate-800 border-slate-700 hover:bg-slate-750' 
-                          : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                          ? 'bg-slate-800 border-slate-700' 
+                          : 'bg-gray-50 border-gray-200'
                       } transition-colors`}
                     >
-                      <div className="flex flex-wrap gap-4 items-start justify-between">
-                        {/* Sol Taraf - Sipariş Bilgileri */}
-                        <div className="flex-1 min-w-[250px]">
+                      {/* Mobil özet kart */}
+                      <button
+                        type="button"
+                        onClick={() => setExpandedHistoryId(isExpanded ? null : pkg.id)}
+                        className="w-full text-left lg:hidden"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className={`font-bold text-sm truncate ${darkMode ? 'text-orange-400' : 'text-orange-600'}`}>
+                              {pkg.order_number || '......'}
+                            </p>
+                            {pkg.platform && (
+                              <span className={`inline-block mt-1 text-[10px] py-0.5 px-1.5 rounded ${getPlatformBadgeClass(pkg.platform)}`}>
+                                {getPlatformDisplayName(pkg.platform)}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className={`font-bold text-base ${darkMode ? 'text-green-400' : 'text-green-600'}`}>
+                              {pkg.amount}₺
+                            </p>
+                            <span className={`inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-medium ${paymentClass}`}>
+                              {paymentLabel}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="mt-2 space-y-0.5 min-w-0">
+                          <p className={`text-sm font-medium truncate ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                            {pkg.customer_name}
+                          </p>
+                          <p className={`text-xs truncate ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                            Kurye: {pkg.courier?.full_name || 'Bilinmeyen'}
+                          </p>
+                        </div>
+                        <div className="mt-2.5 flex items-center justify-between gap-2">
+                          <span className={`text-xs truncate ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                            {pkg.delivered_at ? formatShortDateTime(pkg.delivered_at) : formatShortDateTime(pkg.created_at)}
+                          </span>
+                          <span className={`shrink-0 px-2 py-1 rounded text-[10px] font-semibold ${
+                            darkMode ? 'bg-green-900/50 text-green-300' : 'bg-green-100 text-green-700'
+                          }`}>
+                            Teslim Edildi
+                          </span>
+                        </div>
+                        <p className={`mt-2 text-[10px] ${darkMode ? 'text-slate-500' : 'text-gray-400'}`}>
+                          {isExpanded ? '▲ Detayı gizle' : '▼ Adres ve detaylar'}
+                        </p>
+                      </button>
+
+                      {isExpanded && (
+                        <div className={`lg:hidden mt-3 pt-3 border-t space-y-1.5 text-xs ${
+                          darkMode ? 'border-slate-700 text-slate-300' : 'border-gray-200 text-gray-700'
+                        }`}>
+                          {pkg.customer_phone && (
+                            <p className="flex items-center gap-1.5"><Phone className="w-3 h-3 text-gray-400 shrink-0" strokeWidth={1.5} />{pkg.customer_phone}</p>
+                          )}
+                          <p className="flex items-start gap-1.5"><MapPin className="w-3 h-3 text-gray-400 shrink-0 mt-0.5" strokeWidth={1.5} />{pkg.delivery_address}</p>
+                          {pkg.content && (
+                            <p className="flex items-start gap-1.5"><FileText className="w-3 h-3 text-gray-400 shrink-0 mt-0.5" strokeWidth={1.5} />{pkg.content}</p>
+                          )}
+                          <p className="flex items-center gap-1"><Clock className="w-3 h-3 text-gray-400 shrink-0" strokeWidth={1.5} />Oluşturulma: {formatShortDateTime(pkg.created_at)}</p>
+                        </div>
+                      )}
+
+                      {/* Masaüstü çok kolonlu kart */}
+                      <div className="hidden lg:flex flex-wrap gap-4 items-start justify-between">
+                        <div className="w-full min-w-0 lg:flex-1 lg:min-w-[250px]">
                           <div className="flex items-center gap-2 mb-2">
                             <span className={`text-sm font-bold px-2 py-1 rounded ${
                               darkMode ? 'bg-orange-900/50 text-orange-300' : 'bg-orange-100 text-orange-700'
@@ -893,8 +969,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                           </div>
                         </div>
 
-                        {/* Orta - Kurye ve Ödeme */}
-                        <div className="flex-1 min-w-[200px]">
+                        <div className="w-full min-w-0 lg:flex-1 lg:min-w-[200px]">
                           <div className={`space-y-2 text-sm ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
                             <div>
                               <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>Kurye</p>
@@ -902,13 +977,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                             </div>
                             <div>
                               <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>Ödeme</p>
-                              <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                                pkg.payment_method === 'cash'
-                                  ? 'bg-green-900/50 text-green-300'
-                                  : pkg.payment_method === 'iban'
-                                  ? 'bg-purple-900/50 text-purple-300'
-                                  : 'bg-orange-900/50 text-orange-300'
-                              }`}>
+                              <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${paymentClass}`}>
                                 {pkg.payment_method === 'cash' ? (
                                   <span className="inline-flex items-center gap-1"><Banknote className="w-3 h-3" strokeWidth={1.5} />Nakit</span>
                                 ) : pkg.payment_method === 'iban' ? (
@@ -921,8 +990,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                           </div>
                         </div>
 
-                        {/* Sağ Taraf - Tutar ve Tarih */}
-                        <div className="text-right min-w-[160px] flex flex-col justify-between">
+                        <div className="w-full text-left lg:text-right lg:min-w-[160px] flex flex-col justify-between">
                           <p className={`text-2xl font-bold mb-2 ${darkMode ? 'text-green-400' : 'text-green-600'}`}>
                             {pkg.amount}₺
                           </p>
@@ -935,8 +1003,9 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
+                    )
+                  })}
+                  </div>
 
                 {/* 🎯 Sayfalama ve Limit Seçici Buton Grubu */}
                   <div className="flex flex-col items-center justify-center mt-8 pt-6 border-t border-dashed border-slate-700/30">
@@ -1023,30 +1092,30 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
         {/* İptal Edilenler Listesi */}
         {activeTab === 'cancelled' && (
           <div className={`rounded-md p-6 border ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'} shadow-sm`}>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className={`text-2xl font-bold flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+            <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center mb-6 gap-4">
+              <h2 className={`text-xl lg:text-2xl font-bold flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                 <XCircle className="w-6 h-6 text-gray-400" strokeWidth={1.5} />
                 İptal Edilen Siparişler
               </h2>
               
               {/* Tarih Filtreleri */}
-              <div className="flex gap-2 items-center">
+              <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center w-full lg:w-auto">
                 <input
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className={`px-3 py-2 rounded-md border text-sm ${
+                  className={`w-full sm:w-auto px-3 py-2 rounded-md border text-sm ${
                     darkMode 
                       ? 'bg-slate-800 border-slate-700 text-white' 
                       : 'bg-white border-gray-300 text-gray-900'
                   }`}
                 />
-                <span className={darkMode ? 'text-slate-400' : 'text-gray-600'}>-</span>
+                <span className={`hidden sm:inline ${darkMode ? 'text-slate-400' : 'text-gray-600'}`}>-</span>
                 <input
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className={`px-3 py-2 rounded-md border text-sm ${
+                  className={`w-full sm:w-auto px-3 py-2 rounded-md border text-sm ${
                     darkMode 
                       ? 'bg-slate-800 border-slate-700 text-white' 
                       : 'bg-white border-gray-300 text-gray-900'
@@ -1067,18 +1136,90 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {cancelledPackages.map((pkg: any) => (
+                  {cancelledPackages.map((pkg: any) => {
+                    const isExpanded = expandedHistoryId === pkg.id
+                    const statusLabel = pkg.is_chargeable_cancellation ? 'Ücretli İptal' : 'Ücretsiz İptal'
+                    const statusClass = pkg.is_chargeable_cancellation
+                      ? (darkMode ? 'bg-yellow-900/50 text-yellow-300 border border-yellow-700' : 'bg-yellow-100 text-yellow-800 border border-yellow-300')
+                      : (darkMode ? 'bg-green-900/50 text-green-300' : 'bg-green-100 text-green-700')
+                    const paymentClass =
+                      pkg.payment_method === 'cash'
+                        ? 'bg-green-900/50 text-green-300'
+                        : pkg.payment_method === 'iban'
+                          ? 'bg-purple-900/50 text-purple-300'
+                          : 'bg-orange-900/50 text-orange-300'
+
+                    return (
                     <div
                       key={pkg.id}
-                      className={`p-4 rounded-md border ${
+                      className={`p-3 sm:p-4 rounded-md border overflow-hidden ${
                         darkMode 
-                          ? 'bg-slate-800 border-slate-700 hover:bg-slate-750' 
-                          : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                          ? 'bg-slate-800 border-slate-700' 
+                          : 'bg-gray-50 border-gray-200'
                       } transition-colors`}
                     >
-                      <div className="flex flex-wrap gap-4 items-start justify-between">
-                        {/* Sol Taraf - Sipariş Bilgileri */}
-                        <div className="flex-1 min-w-[250px]">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedHistoryId(isExpanded ? null : pkg.id)}
+                        className="w-full text-left lg:hidden"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className={`font-bold text-sm truncate ${darkMode ? 'text-orange-400' : 'text-orange-600'}`}>
+                              {pkg.order_number || '......'}
+                            </p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className={`font-bold text-base line-through ${darkMode ? 'text-red-400' : 'text-red-600'}`}>
+                              {pkg.amount}₺
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-2 space-y-0.5 min-w-0">
+                          <p className={`text-sm font-medium truncate ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                            {pkg.customer_name}
+                          </p>
+                          <p className={`text-xs truncate ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                            Kurye: {pkg.courier?.full_name || '—'}
+                          </p>
+                        </div>
+                        <div className="mt-2.5 flex items-center justify-between gap-2">
+                          <span className={`text-xs truncate ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                            {pkg.cancelled_at ? formatShortDateTime(pkg.cancelled_at) : formatShortDateTime(pkg.created_at)}
+                          </span>
+                          <span className={`shrink-0 px-2 py-1 rounded text-[10px] font-semibold ${statusClass}`}>
+                            {statusLabel}
+                          </span>
+                        </div>
+                        <p className={`mt-2 text-[10px] ${darkMode ? 'text-slate-500' : 'text-gray-400'}`}>
+                          {isExpanded ? '▲ Detayı gizle' : '▼ Adres ve detaylar'}
+                        </p>
+                      </button>
+
+                      {isExpanded && (
+                        <div className={`lg:hidden mt-3 pt-3 border-t space-y-1.5 text-xs ${
+                          darkMode ? 'border-slate-700 text-slate-300' : 'border-gray-200 text-gray-700'
+                        }`}>
+                          {pkg.customer_phone && (
+                            <p className="flex items-center gap-1.5"><Phone className="w-3 h-3 text-gray-400 shrink-0" strokeWidth={1.5} />{pkg.customer_phone}</p>
+                          )}
+                          <p className="flex items-start gap-1.5"><MapPin className="w-3 h-3 text-gray-400 shrink-0 mt-0.5" strokeWidth={1.5} />{pkg.delivery_address}</p>
+                          {pkg.content && (
+                            <p className="flex items-start gap-1.5"><FileText className="w-3 h-3 text-gray-400 shrink-0 mt-0.5" strokeWidth={1.5} />{pkg.content}</p>
+                          )}
+                          {pkg.cancellation_reason && (
+                            <p className={`p-2 rounded flex items-start gap-1.5 ${
+                              darkMode ? 'bg-red-900/20 text-red-300' : 'bg-red-50 text-red-700'
+                            }`}>
+                              <AlertTriangle className="w-3 h-3 text-gray-400 shrink-0 mt-0.5" strokeWidth={1.5} />
+                              İptal Nedeni: {pkg.cancellation_reason}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="hidden lg:flex flex-wrap gap-4 items-start justify-between">
+                        <div className="w-full min-w-0 lg:flex-1 lg:min-w-[250px]">
                           <div className="flex items-center gap-2 mb-2 flex-wrap">
                             <span className={`text-sm font-bold px-2 py-1 rounded ${
                               darkMode ? 'bg-orange-900/50 text-orange-300' : 'bg-orange-100 text-orange-700'
@@ -1096,8 +1237,6 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                               <XCircle className="w-3 h-3" strokeWidth={1.5} />
                               İptal Edildi
                             </span>
-                            
-                            {/* Ücretli/Ücretsiz İptal Badge */}
                             {pkg.is_chargeable_cancellation ? (
                               <span className={`text-xs px-2 py-1 rounded font-bold flex items-center gap-1 ${
                                 darkMode ? 'bg-yellow-900/50 text-yellow-300 border border-yellow-700' : 'bg-yellow-100 text-yellow-800 border border-yellow-300'
@@ -1131,8 +1270,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                           </div>
                         </div>
 
-                        {/* Orta - Kurye ve Ödeme */}
-                        <div className="flex-1 min-w-[200px]">
+                        <div className="w-full min-w-0 lg:flex-1 lg:min-w-[200px]">
                           <div className={`space-y-2 text-sm ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
                             {pkg.courier?.full_name && (
                               <div>
@@ -1142,13 +1280,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                             )}
                             <div>
                               <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>Ödeme</p>
-                              <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                                pkg.payment_method === 'cash'
-                                  ? 'bg-green-900/50 text-green-300'
-                                  : pkg.payment_method === 'iban'
-                                  ? 'bg-purple-900/50 text-purple-300'
-                                  : 'bg-orange-900/50 text-orange-300'
-                              }`}>
+                              <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${paymentClass}`}>
                                 {pkg.payment_method === 'cash' ? (
                                   <span className="inline-flex items-center gap-1"><Banknote className="w-3 h-3" strokeWidth={1.5} />Nakit</span>
                                 ) : pkg.payment_method === 'iban' ? (
@@ -1161,8 +1293,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                           </div>
                         </div>
 
-                        {/* Sağ Taraf - Tutar ve Tarih */}
-                        <div className="text-right min-w-[160px] flex flex-col justify-between">
+                        <div className="w-full text-left lg:text-right lg:min-w-[160px] flex flex-col justify-between">
                           <p className={`text-2xl font-bold mb-2 ${darkMode ? 'text-red-400' : 'text-red-600'}`}>
                             {pkg.amount}₺
                           </p>
@@ -1175,7 +1306,8 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                         </div>
                       </div>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>

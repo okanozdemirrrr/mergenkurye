@@ -320,9 +320,9 @@ export function LiveTrackingTab({
             
             <div className="space-y-2">
             {/* CANLI HARİTA + KURYE DURUMLARI - YAN YANA (Desktop) / DİKEY (Mobile) */}
-            <div className="flex flex-row w-full gap-4 items-start">
+            <div className="flex flex-col lg:flex-row w-full gap-4 items-start overflow-x-hidden">
                 {/* Sol kolon — Harita + Canlı Sipariş Takibi */}
-                <div className="flex-1 flex flex-col gap-4 min-w-[500px] w-full">
+                <div className="flex-1 flex flex-col gap-4 min-w-0 lg:min-w-[500px] w-full">
                     <div className="bg-slate-900 shadow-sm rounded-md border border-slate-800 p-2 w-full" style={{ position: 'relative', zIndex: 1 }}>
                         {/* Başlık ve İstatistikler - Yatay */}
                         <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
@@ -367,7 +367,7 @@ export function LiveTrackingTab({
                                 </div>
                             </div>
                         </div>
-                        <div className="w-full h-[500px] rounded-md overflow-hidden">
+                        <div className="w-full h-[40vh] lg:h-[500px] rounded-md overflow-hidden">
                             <LiveMapComponent 
                                 packages={packages} 
                                 couriers={couriers} 
@@ -553,16 +553,16 @@ export function LiveTrackingTab({
                 </div>
 
                 {/* Sağ blok — Durumlar + Rota yapışık */}
-                <div className="flex flex-row gap-4 shrink-0">
-                <div className="w-[320px] shrink-0">
-                    <div className="bg-slate-900 shadow-sm rounded-md border border-slate-800 p-2 sticky top-4 w-[320px] shrink-0">
+                <div className="flex flex-col lg:flex-row gap-4 w-full lg:w-auto lg:shrink-0 overflow-x-hidden">
+                <div className="w-full lg:w-[320px] lg:shrink-0 overflow-x-hidden">
+                    <div className="bg-slate-900 shadow-sm rounded-md border border-slate-800 p-2 sticky top-4 w-full lg:w-[320px] lg:shrink-0 overflow-x-hidden">
                         <div className="flex justify-between items-center mb-2">
                             <h2 className="text-sm font-bold text-white">Kurye Durumları</h2>
                             <span className="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-sm font-semibold">
                                 {todayDeliveredCount} bugün
                             </span>
                         </div>
-                        <div className="space-y-2 max-h-[668px] overflow-y-auto overflow-x-auto">
+                        <div className="space-y-2 max-h-[668px] overflow-y-auto overflow-x-hidden">
                             {couriers.filter(c => c.is_active).map(c => {
                                 const courierPackages = assignedPackages.filter(pkg => pkg.courier_id === c.id)
 
@@ -650,7 +650,7 @@ export function LiveTrackingTab({
                     </div>
                 </div>
 
-                <div className="w-[350px] shrink-0">
+                <div className="w-full lg:w-[350px] lg:shrink-0 overflow-x-hidden">
                     <CourierDailyRoutes couriers={couriers} />
                 </div>
                 </div>
