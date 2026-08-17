@@ -124,6 +124,39 @@ async function getFirebaseAccessToken(serviceAccountJson: string): Promise<strin
   return tokenJson.access_token as string
 }
 
+async function logCourierDelayIfNeeded(
+  supabase: SupabaseClient,
+  courierId: string,
+  orderId: number | string,
+) {
+  const { data: existing, error: checkError } = await supabase
+    .from('courier_delay_logs')
+    .select('id')
+    .eq('order_id', orderId)
+    .maybeSingle()
+
+  if (checkError) {
+    console.error('courier_delay_logs kontrol hatası:', checkError.message)
+    return
+  }
+
+  if (existing) return
+
+  const { error: insertError } = await supabase
+    .from('courier_delay_logs')
+    .insert({
+      courier_id: courierId,
+      order_id: orderId,
+    })
+
+  if (insertError) {
+    // 23505: unique(order_id) — eşzamanlı cron yarışı, spam değil
+    if (insertError.code !== '23505') {
+      console.error('courier_delay_logs insert hatası:', insertError.message)
+    }
+  }
+}
+
 function buildFcmPayload(token: string, packageId: number | string, tier: WarningTier) {
   return {
     message: {
@@ -231,6 +264,11 @@ async function processTier(
       const errText = await sendRes.text()
       failed.push({ packageId: pkg.id, reason: `FCM ${sendRes.status}: ${errText}` })
       continue
+    }
+
+    // 10 dk FCM bildirimi gönderildi — aynı sipariş için tekrar log atma
+    if (tier.minutes === 10) {
+      await logCourierDelayIfNeeded(supabase, pkg.courier_id, pkg.id)
     }
 
     successfulPackageIds.push(pkg.id)

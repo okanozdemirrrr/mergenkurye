@@ -11,6 +11,12 @@ import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platfor
 import { useRestaurantReminder } from '@/hooks/useRestaurantReminder'
 import { playRestaurantAlert } from '@/hooks/useRestaurantRealtimeNotifications'
 import { useRestoran } from '../RestoranProvider'
+import { COUNTED_PACKAGE_OR_FILTER } from '@/utils/calculations'
+import {
+  deliveredPeriodBounds,
+  fetchRestaurantStats,
+  istanbulTodayYmd,
+} from '@/services/restaurantStats'
 import {
   Package as PackageIcon, CheckCircle, XCircle, Banknote, Wallet, Search, Lightbulb, Inbox,
   User, Phone, MapPin, FileText, Bike, CreditCard, Building2, Clock, AlertTriangle,
@@ -34,6 +40,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null)
   const [packages, setPackages] = useState<Package[]>([])
   const [deliveredPackages, setDeliveredPackages] = useState<Package[]>([])
+  const [deliveredTotalCount, setDeliveredTotalCount] = useState(0)
   const [couriers, setCouriers] = useState<Courier[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const { showNewOrderModal, setShowNewOrderModal } = useRestoran()
@@ -41,23 +48,14 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
   const [activeTab, setActiveTab] = useState<'active' | 'delivered' | 'cancelled'>('active')
   const [displayLimit, setDisplayLimit] = useState(50) // 🎯 Teslim edilenler listesi gösterim limiti
   const [currentPage, setCurrentPage] = useState(0) // 🎯 Teslim edilenler listesi sayfa numarası (0'dan başlar)
-  // Bugünün tarihini YYYY-MM-DD formatında al (varsayılan filtre)
-  const getTodayString = () => {
-    const now = new Date()
-    const y = now.getFullYear()
-    const m = String(now.getMonth() + 1).padStart(2, '0')
-    const d = String(now.getDate()).padStart(2, '0')
-    return `${y}-${m}-${d}`
-  }
-
-  const [startDate, setStartDate] = useState(getTodayString)
-  const [endDate, setEndDate] = useState(getTodayString)
+  const [startDate, setStartDate] = useState(istanbulTodayYmd)
+  const [endDate, setEndDate] = useState(istanbulTodayYmd)
   const [cancelledPackages, setCancelledPackages] = useState<Package[]>([])
   const printReceiptRef = useRef<(orderData: Package) => void>(() => {})
   
   // 🎯 Manuel Filtreleme için Temporary State
-  const [tempStartDate, setTempStartDate] = useState(getTodayString)
-  const [tempEndDate, setTempEndDate] = useState(getTodayString)
+  const [tempStartDate, setTempStartDate] = useState(istanbulTodayYmd)
+  const [tempEndDate, setTempEndDate] = useState(istanbulTodayYmd)
   const [expandedHistoryId, setExpandedHistoryId] = useState<number | null>(null)
   
   // Günlük finansal özet state'leri
@@ -206,46 +204,37 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
         if (error) throw error
         setPackages(data || [])
       } else if (activeTab === 'delivered') {
-        // Teslim edilen siparişler - MANUEL FİLTRELEME (sadece startDate/endDate değiştiğinde)
-        let query = supabase
-          .from('packages')
-          .select(`
-            *,
-            courier:couriers!packages_courier_id_fkey(full_name)
-          `)
-          .eq('restaurant_id', restaurantId)
-          .eq('status', 'delivered')
-          .order('delivered_at', { ascending: false })
+        const effectiveStart = startDate || istanbulTodayYmd()
+        const effectiveEnd = endDate || istanbulTodayYmd()
+        const { startIso, endIso } = deliveredPeriodBounds(effectiveStart, effectiveEnd)
 
-        // ✅ KESİN DÜZELTME: new Date() UTC offset'i bozar.
-        // "YYYY-MM-DD" → doğrudan string olarak gönder, Supabase local time olarak işler.
-        const effectiveStart = startDate || getTodayString()
-        const effectiveEnd = endDate || getTodayString()
-
-        console.log('🔍 [DEBUG] Giden Parametreler (delivered):', {
-          restaurantId,
-          effectiveStart,
-          effectiveEnd,
-          startISO: `${effectiveStart}T00:00:00`,
-          endISO: `${effectiveEnd}T23:59:59`,
-          currentPage,
-          displayLimit
-        })
-
-        query = query.gte('delivered_at', `${effectiveStart}T00:00:00`)
-        query = query.lte('delivered_at', `${effectiveEnd}T23:59:59`)
-
-        // Sayfalama optimizasyonu - SQL seviyesinde kısıtlama (range)
         const fromOffset = currentPage * displayLimit
         const toOffset = (currentPage + 1) * displayLimit - 1
-        query = query.range(fromOffset, toOffset)
 
-        const { data, error } = await query
+        const [listRes, stats] = await Promise.all([
+          supabase
+            .from('packages')
+            .select(`
+              *,
+              courier:couriers!packages_courier_id_fkey(full_name)
+            `)
+            .eq('restaurant_id', restaurantId)
+            .or(COUNTED_PACKAGE_OR_FILTER)
+            .gte('created_at', startIso)
+            .lte('created_at', endIso)
+            .order('created_at', { ascending: false })
+            .range(fromOffset, toOffset),
+          fetchRestaurantStats(
+            restaurantId,
+            effectiveStart,
+            effectiveEnd,
+            restaurant?.package_fee ?? 0,
+          ),
+        ])
 
-        console.log('🔍 [DEBUG] Supabase Yanıtı (delivered):', { data, error, count: data?.length })
-
-        if (error) throw error
-        setDeliveredPackages(data || [])
+        if (listRes.error) throw listRes.error
+        setDeliveredPackages(listRes.data || [])
+        setDeliveredTotalCount(stats.packageCount)
       } else if (activeTab === 'cancelled') {
         // İptal edilen siparişler
         let query = supabase
@@ -258,20 +247,15 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
           .eq('status', 'cancelled')
           .order('cancelled_at', { ascending: false })
 
-        // ✅ KESİN DÜZELTME: new Date() UTC offset'i bozar.
-        const effectiveCancelStart = startDate || getTodayString()
-        const effectiveCancelEnd = endDate || getTodayString()
-
-        console.log('🔍 [DEBUG] Giden Parametreler (cancelled):', {
-          restaurantId,
+        const effectiveCancelStart = startDate || istanbulTodayYmd()
+        const effectiveCancelEnd = endDate || istanbulTodayYmd()
+        const { startIso: cancelStartIso, endIso: cancelEndIso } = deliveredPeriodBounds(
           effectiveCancelStart,
           effectiveCancelEnd,
-          startISO: `${effectiveCancelStart}T00:00:00`,
-          endISO: `${effectiveCancelEnd}T23:59:59`
-        })
+        )
 
-        query = query.gte('cancelled_at', `${effectiveCancelStart}T00:00:00`)
-        query = query.lte('cancelled_at', `${effectiveCancelEnd}T23:59:59`)
+        query = query.gte('cancelled_at', cancelStartIso)
+        query = query.lte('cancelled_at', cancelEndIso)
 
         const { data, error } = await query
 
@@ -287,7 +271,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
         setIsLoading(false)
       }
     }
-  }, [restaurantId, activeTab, startDate, endDate, packages.length, displayLimit, currentPage])
+  }, [restaurantId, activeTab, startDate, endDate, packages.length, displayLimit, currentPage, restaurant?.package_fee])
 
   const fetchCouriers = useCallback(async () => {
     try {
@@ -305,64 +289,18 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
 
   const fetchTodayStats = useCallback(async () => {
     try {
-      const todayStart = new Date()
-      todayStart.setHours(0, 0, 0, 0)
-      const todayEnd = new Date()
-      todayEnd.setHours(23, 59, 59, 999)
-      const rangeStart = todayStart.getTime()
-      const rangeEnd = todayEnd.getTime()
+      const today = istanbulTodayYmd()
       const fallbackFee = restaurant?.package_fee ?? 0
-
-      const { data: pkgs, error } = await supabase
-        .from('packages')
-        .select(
-          'amount, status, delivered_at, created_at, is_chargeable_cancellation, applied_price, commission_amount'
-        )
-        .eq('restaurant_id', restaurantId)
-        .eq('is_paid_to_restaurant', false)
-        .or('status.eq.delivered,and(status.eq.cancelled,is_chargeable_cancellation.eq.true)')
-
-      if (error) throw error
-
-      let packageCount = 0
-      let totalRevenue = 0
-      let totalCommission = 0
-      let totalPackageCost = 0
-
-      for (const pkg of pkgs || []) {
-        let inRange = false
-        if (pkg.status === 'delivered' && pkg.delivered_at) {
-          const t = new Date(pkg.delivered_at).getTime()
-          inRange = t >= rangeStart && t <= rangeEnd
-        } else if (
-          pkg.status === 'cancelled' &&
-          pkg.is_chargeable_cancellation &&
-          pkg.created_at
-        ) {
-          const t = new Date(pkg.created_at).getTime()
-          inRange = t >= rangeStart && t <= rangeEnd
-        }
-        if (!inRange) continue
-
-        packageCount++
-        totalPackageCost += Number(pkg.applied_price ?? fallbackFee)
-
-        if (pkg.status === 'delivered') {
-          totalRevenue += Number(pkg.amount ?? 0)
-          totalCommission += Number(pkg.commission_amount ?? 0)
-        }
-      }
-
-      const netRevenue = totalRevenue - totalPackageCost - totalCommission
+      const stats = await fetchRestaurantStats(restaurantId, today, today, fallbackFee)
 
       setTodayStats({
-        packageCount,
-        chargeableCount: packageCount,
-        unitPackageFee: 0,
-        totalPackageCost,
-        totalRevenue,
-        totalCommission,
-        netRevenue,
+        packageCount: stats.packageCount,
+        chargeableCount: stats.packageCount,
+        unitPackageFee: fallbackFee,
+        totalPackageCost: stats.courierCost,
+        totalRevenue: stats.revenue,
+        totalCommission: stats.commission,
+        netRevenue: stats.netProfit - stats.commission,
         isLoading: false,
       })
     } catch (error) {
@@ -399,11 +337,12 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
   }, [tempStartDate, tempEndDate])
 
   const handleClearFilter = useCallback(() => {
-    setTempStartDate('')
-    setTempEndDate('')
-    setStartDate('')
-    setEndDate('')
-    setCurrentPage(0) // Filtre temizlendiğinde sayfayı sıfırla
+    const today = istanbulTodayYmd()
+    setTempStartDate(today)
+    setTempEndDate(today)
+    setStartDate(today)
+    setEndDate(today)
+    setCurrentPage(0)
   }, [])
 
   const printReceipt = useCallback((orderData: any) => {
@@ -676,7 +615,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                     </p>
                   )}
                   <p className={`text-xs mt-0.5 ${darkMode ? 'text-slate-500' : 'text-gray-500'}`}>
-                    Teslim edildi + Ücretli iptal
+                    Teslim edildi + ücretli iptal
                   </p>
                 </div>
                 <PackageIcon className="w-8 h-8 text-gray-400 opacity-40" strokeWidth={1.5} />
@@ -799,7 +738,10 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                     Toplam Paket
                   </p>
                   <p className={`text-2xl font-black ${darkMode ? 'text-blue-400' : 'text-blue-700'}`}>
-                    {deliveredPackages.length}
+                    {deliveredTotalCount}
+                  </p>
+                  <p className={`text-[10px] ${darkMode ? 'text-slate-500' : 'text-blue-500/80'}`}>
+                    Teslim + ücretli iptal
                   </p>
                 </div>
 
@@ -857,6 +799,11 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                   <div className="space-y-3">
                   {deliveredPackages.map((pkg: any) => {
                     const isExpanded = expandedHistoryId === pkg.id
+                    const isChargeableCancel = pkg.status === 'cancelled' && pkg.is_chargeable_cancellation
+                    const statusBadgeLabel = isChargeableCancel ? 'Ücretli İptal' : 'Teslim Edildi'
+                    const statusBadgeClass = isChargeableCancel
+                      ? darkMode ? 'bg-rose-900/50 text-rose-300' : 'bg-rose-100 text-rose-700'
+                      : darkMode ? 'bg-green-900/50 text-green-300' : 'bg-green-100 text-green-700'
                     const paymentLabel =
                       pkg.payment_method === 'cash' ? 'Nakit' : pkg.payment_method === 'iban' ? 'IBAN' : 'Kart'
                     const paymentClass =
@@ -913,10 +860,8 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                           <span className={`text-xs truncate ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
                             {pkg.delivered_at ? formatShortDateTime(pkg.delivered_at) : formatShortDateTime(pkg.created_at)}
                           </span>
-                          <span className={`shrink-0 px-2 py-1 rounded text-[10px] font-semibold ${
-                            darkMode ? 'bg-green-900/50 text-green-300' : 'bg-green-100 text-green-700'
-                          }`}>
-                            Teslim Edildi
+                          <span className={`shrink-0 px-2 py-1 rounded text-[10px] font-semibold ${statusBadgeClass}`}>
+                            {statusBadgeLabel}
                           </span>
                         </div>
                         <p className={`mt-2 text-[10px] ${darkMode ? 'text-slate-500' : 'text-gray-400'}`}>
@@ -953,11 +898,11 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                                 {getPlatformDisplayName(pkg.platform)}
                               </span>
                             )}
-                            <span className={`text-xs px-2 py-1 rounded flex items-center gap-1 ${
-                              darkMode ? 'bg-green-900/50 text-green-300' : 'bg-green-100 text-green-700'
-                            }`}>
-                              <CheckCircle className="w-3 h-3" strokeWidth={1.5} />
-                              Teslim Edildi
+                            <span className={`text-xs px-2 py-1 rounded flex items-center gap-1 ${statusBadgeClass}`}>
+                              {isChargeableCancel
+                                ? <XCircle className="w-3 h-3" strokeWidth={1.5} />
+                                : <CheckCircle className="w-3 h-3" strokeWidth={1.5} />}
+                              {statusBadgeLabel}
                             </span>
                           </div>
                           
@@ -1060,9 +1005,9 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                       {/* Sağ Yön Tuşu */}
                       <button
                         onClick={() => setCurrentPage(prev => prev + 1)}
-                        disabled={deliveredPackages.length < displayLimit}
+                        disabled={(currentPage + 1) * displayLimit >= deliveredTotalCount}
                         className={`p-2.5 rounded-md border transition-all duration-200 ${
-                          deliveredPackages.length < displayLimit
+                          (currentPage + 1) * displayLimit >= deliveredTotalCount
                             ? 'opacity-40 cursor-not-allowed border-slate-800 text-slate-500'
                             : darkMode
                             ? 'bg-slate-800 hover:bg-slate-750 text-white border-slate-700'
@@ -1079,7 +1024,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                     {/* Gösterilen Aralık Bilgisi */}
                     {deliveredPackages.length > 0 && (
                       <p className={`text-xs mt-3 font-semibold ${darkMode ? 'text-slate-500' : 'text-gray-500'}`}>
-                        Gösterilen: {currentPage * displayLimit + 1} - {currentPage * displayLimit + deliveredPackages.length} arası siparişler
+                        Gösterilen: {currentPage * displayLimit + 1} - {currentPage * displayLimit + deliveredPackages.length} / {deliveredTotalCount} sipariş
                       </p>
                     )}
                   </div>

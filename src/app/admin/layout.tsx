@@ -14,7 +14,8 @@ import { AdminModals } from './AdminModals'
 import { NotificationProvider } from '@/contexts/NotificationContext'
 import {
   Package, ClipboardList, BarChart3, Users, Megaphone, ShoppingCart, Smartphone,
-  Bike, User, Receipt, Banknote, FileText, Utensils, CreditCard, ChevronDown, ChevronRight, LogOut, Bell, Settings
+  Bike, User, Receipt, Banknote, FileText, Utensils, CreditCard, Clock,
+  ChevronDown, ChevronRight, LogOut, Bell, Settings
 } from 'lucide-react'
 import { NotificationBell } from '@/components/NotificationBell'
 
@@ -370,6 +371,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     >
                       <FileText className="inline mr-2 w-3.5 h-3.5" strokeWidth={1.5} />
                       Kurye Başvuruları
+                    </Link>
+                    <Link
+                      href="/admin/kuryeler/gecikmeler"
+                      onClick={() => setShowMenu(false)}
+                      className={`block w-full text-left px-4 py-2 rounded-md text-sm transition-all ${
+                        isActive('/admin/kuryeler/gecikmeler') ? 'bg-orange-500 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                      }`}
+                    >
+                      <Clock className="inline mr-2 w-3.5 h-3.5" strokeWidth={1.5} />
+                      Kurye Gecikmeleri
                     </Link>
                   </div>
                 )}

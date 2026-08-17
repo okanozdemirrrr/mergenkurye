@@ -12,6 +12,7 @@ import { Restaurant, Package } from '@/types'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { supabase } from '@/app/lib/supabase'
 import { getAllRestaurantsUnpaidBalances } from '@/services/restaurantService'
+import { fetchAllRestaurantsDeliveredStats } from '@/services/restaurantStats'
 import {
   BarChart3, Package as PackageIcon, Inbox, Banknote, Search, Store, Phone, MapPin,
   Pencil, Loader2, CheckCircle2, TrendingDown, FileText, Lightbulb, ClipboardList, CreditCard
@@ -391,11 +392,31 @@ export function RestaurantsTab({
             const fetchStats = async () => {
                 setIsLoadingStats(true)
                 try {
-                    // Tarih filtresi varsa gönder, yoksa global ödenmemiş bakiyeler
-                    const result = await getAllRestaurantsUnpaidBalances(
-                        startDate || undefined,
-                        endDate || undefined
-                    )
+                    if (startDate && endDate) {
+                        const statsMap = await fetchAllRestaurantsDeliveredStats(startDate, endDate)
+                        setRestaurantsWithStats(
+                            restaurants.map((r) => {
+                                const s = statsMap.get(String(r.id))
+                                const packageFee = r.package_fee || 0
+                                return {
+                                    id: r.id,
+                                    name: r.name,
+                                    package_fee: packageFee,
+                                    unpaid_revenue: s?.revenue ?? 0,
+                                    unpaid_package_count: s?.packageCount ?? 0,
+                                    unpaid_cost: s?.courierCost ?? 0,
+                                    unpaid_commission: s?.commission ?? 0,
+                                    current_balance: s
+                                        ? s.revenue - s.courierCost - s.commission
+                                        : 0,
+                                    totalOrders: s?.packageCount ?? 0,
+                                }
+                            })
+                        )
+                        return
+                    }
+
+                    const result = await getAllRestaurantsUnpaidBalances()
                     if (result.success && result.data) {
                         setRestaurantsWithStats(result.data)
                     } else {
@@ -409,7 +430,7 @@ export function RestaurantsTab({
             }
             
             fetchStats()
-        }, [startDate, endDate])
+        }, [startDate, endDate, restaurants])
 
         const hasDateFilter = !!(startDate && endDate)
         const filterLabel = hasDateFilter ? `${startDate} — ${endDate}` : 'Tüm Zamanlar'
@@ -497,7 +518,7 @@ export function RestaurantsTab({
                         <div className="flex items-start justify-between mb-3">
                             <div>
                                 <p className="text-xs font-medium text-slate-500 tracking-tight uppercase mb-1">
-                                    {hasDateFilter ? 'Ödenmemiş Ciro (Filtreli)' : 'Ödenmemiş Ciro'}
+                                    {hasDateFilter ? 'Ciro' : 'Ödenmemiş Ciro'}
                                 </p>
                                 <p className="text-3xl font-black text-slate-100 tracking-tight">
                                     {grandTotalRevenue.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
@@ -506,7 +527,7 @@ export function RestaurantsTab({
                             <Banknote className="text-slate-700 w-8 h-8" strokeWidth={1.5} />
                         </div>
                         <p className="text-xs text-slate-600 tracking-tight">
-                            {hasDateFilter ? `Seçili dönem: ${filterLabel}` : 'Ödenmemiş paketlerin toplamı'}
+                            {hasDateFilter ? `Teslim edilen siparişler · ${filterLabel}` : 'Ödenmemiş paketlerin toplamı'}
                         </p>
                     </div>
 
@@ -572,7 +593,7 @@ export function RestaurantsTab({
                             <PackageIcon className="text-slate-700 w-8 h-8" strokeWidth={1.5} />
                         </div>
                         <p className="text-xs text-slate-600 tracking-tight">
-                            {hasDateFilter ? `Dönem: ${filterLabel}` : 'Ödenmemiş paketler'}
+                            {hasDateFilter ? `Teslim edilen paketler · ${filterLabel}` : 'Ödenmemiş paketler'}
                         </p>
                     </div>
                 </div>
@@ -581,7 +602,7 @@ export function RestaurantsTab({
                 <div className="mt-6 px-4 py-3 bg-slate-900 border border-slate-800 rounded-md">
                     <p className="text-xs text-slate-600 tracking-tight">
                         <span className="font-semibold text-slate-500">Not:</span> {hasDateFilter 
-                            ? <><span className="text-amber-400">Filtre aktif ({filterLabel})</span>. Rakamlar sadece seçili dönemdeki <span className="text-slate-200">ödenmemiş</span> paketleri gösterir.</>
+                            ? <><span className="text-amber-400">Filtre aktif ({filterLabel})</span>. Paket sayısı: teslim + ücretli iptal. Ciro: yalnızca teslim. Tarih: <span className="text-slate-200">created_at</span> (TR 00:00–23:59).</>
                             : <><span className="text-slate-200">Bakiye</span> kolonu daima <span className="text-amber-400">ödenmemiş paketlerin</span> net durumunu gösterir (is_paid_to_restaurant = false). Ödeme yapıldığında paketler ödendi olarak işaretlenir.</>}
                     </p>
                 </div>
@@ -621,14 +642,16 @@ export function RestaurantsTab({
                                                 {r.name}
                                             </button>
                                             <p className="text-xs text-slate-600 mt-1 tracking-tight whitespace-nowrap shrink-0">
-                                                {r.unpaid_package_count || 0} ödenmemiş paket × {r.package_fee || 0}₺
+                                                {hasDateFilter
+                                                    ? `${r.unpaid_package_count || 0} teslim paket`
+                                                    : `${r.unpaid_package_count || 0} ödenmemiş paket × ${r.package_fee || 0}₺`}
                                             </p>
                                         </div>
 
                                         {/* Orta: Finansal Metrikler */}
                                         <div className="flex items-center gap-6 mr-8 shrink-0">
                                             <div className="text-right shrink-0">
-                                                <p className="text-xs text-slate-600 tracking-tight">Ödenmemiş Ciro</p>
+                                                <p className="text-xs text-slate-600 tracking-tight">{hasDateFilter ? 'Ciro' : 'Ödenmemiş Ciro'}</p>
                                                 <p className="text-sm font-bold text-slate-300 tracking-tight whitespace-nowrap shrink-0">
                                                     {(r.unpaid_revenue || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
                                                 </p>
@@ -664,9 +687,9 @@ export function RestaurantsTab({
                                                     // Tarihleri URL'ye eklemek için özel handler kullan
                                                     onRestaurantClick(r.id, startDate, endDate)
                                                 }}
-                                                disabled={!startDate || !endDate || r.totalOrders === 0}
-                                                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded border border-slate-700 transition-colors tracking-tight disabled:opacity-50 disabled:cursor-not-allowed"
-                                                title={!startDate || !endDate ? 'Önce tarih seçip filtreleyin' : r.totalOrders === 0 ? 'Bu tarih aralığında sipariş yok' : 'Detaylı rapor ve ödeme'}
+                                                    disabled={!startDate || !endDate || !(r.unpaid_package_count || r.totalOrders)}
+                                                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded border border-slate-700 transition-colors tracking-tight disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    title={!startDate || !endDate ? 'Önce tarih seçip filtreleyin' : !(r.unpaid_package_count || r.totalOrders) ? 'Bu tarih aralığında sipariş yok' : 'Detaylı rapor ve ödeme'}
                                             >
                                                 Gün Sonu Al
                                             </button>
@@ -681,8 +704,7 @@ export function RestaurantsTab({
                 {/* FOOTER NOT */}
                 <div className="mt-6 px-4 py-3 bg-slate-900 border border-slate-800 rounded-md">
                     <p className="text-xs text-slate-600 tracking-tight">
-                        <span className="font-semibold text-slate-500">Not:</span> Sayfa ilk açıldığında bugünün (Business Day: 05:00 - 05:00) verileri gösterilir. 
-                        Servis bedeli, her paket için dinamik ücret (applied_price) üzerinden hesaplanır. Ücretli iptaller (is_chargeable_cancellation = true) hesaplamalara dahildir.
+                        <span className="font-semibold text-slate-500">Not:</span> Tarih filtresi uygulandığında paket sayısı teslim + ücretli iptal, ciro yalnızca teslim edilenlerdir (created_at, TR 00:00–23:59). Tarih seçilmezse ödenmemiş bakiye (is_paid_to_restaurant = false) gösterilir.
                     </p>
                 </div>
             </div>
