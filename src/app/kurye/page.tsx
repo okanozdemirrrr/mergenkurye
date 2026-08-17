@@ -25,9 +25,12 @@ import { usePersistedDateRange } from '@/hooks/usePersistedDateRange'
 import {
   fetchCourierDeliveredPackages,
   fetchCourierLifetimeDebt,
+  queryCourierTodayCountedPackages,
+  calculateTodayCourierEarnings,
   type PaymentTotals,
 } from '@/utils/courierAccount'
 import { fetchCourierLedgerPeriodAccount } from '@/utils/courierLedger'
+import { isCollectionEligible } from '@/utils/calculations'
 import { authenticateCourier, getCourierAccountStatusError } from '@/services/courierLoginService'
 import {
   MapPin, AlertTriangle, Package, Wallet, Mic, Check, Flag, Store, Phone, Navigation,
@@ -327,7 +330,6 @@ export default function KuryePage() {
   const [currentPage, setCurrentPage] = useState(1) // Mevcut sayfa
   const [totalPages, setTotalPages] = useState(1) // Toplam sayfa sayısı
   const [unsettledAmount, setUnsettledAmount] = useState(0) // Tüm zamanlar cari borç
-  const [unpaidEarningsAmount, setUnpaidEarningsAmount] = useState(0) // is_courier_earned_paid=false bazlı rozet
   const [periodAccount, setPeriodAccount] = useState<PaymentTotals & { payableDebt: number }>({
     cash: 0,
     card: 0,
@@ -385,9 +387,8 @@ export default function KuryePage() {
   const handleRefresh = async () => {
     await Promise.all([
       fetchPackages(false),
-      fetchDeliveredCount(),
+      fetchDailyStats(),
       fetchTodayDeliveredPackages(),
-      fetchUnpaidEarningsBadge(),
       fetchAccountOpenPackages(),
     ])
   }
@@ -664,23 +665,20 @@ export default function KuryePage() {
     if (!courierId) return
 
     try {
-      const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
-
-      const { data, error } = await supabase
-        .from('packages')
-        .select('amount, payment_method, status')
-        .eq('delivered_by_courier_id', courierId)  // courier_id yerine delivered_by_courier_id
-        .eq('status', 'delivered')
-        .gte('delivered_at', todayStart.toISOString())
+      const { data, error } = await queryCourierTodayCountedPackages(
+        supabase,
+        courierId,
+        'amount, payment_method, status, is_chargeable_cancellation'
+      )
 
       if (error) throw error
 
       if (data) {
         setDeliveredCount(data.length)
-        setCashTotal(data.filter(p => p.payment_method === 'cash').reduce((sum, p) => {
+        setCashTotal(data.filter(p => isCollectionEligible(p) && p.payment_method === 'cash').reduce((sum, p) => {
           return sum + (p.amount || 0)
         }, 0))
-        setCardTotal(data.filter(p => p.payment_method === 'card').reduce((sum, p) => {
+        setCardTotal(data.filter(p => isCollectionEligible(p) && p.payment_method === 'card').reduce((sum, p) => {
           return sum + (p.amount || 0)
         }, 0))
       }
@@ -703,46 +701,19 @@ export default function KuryePage() {
     }
   }
 
-  // Üst bar "Kazanç" rozeti: is_courier_earned_paid = false paket sayısı * package_rate
-  const fetchUnpaidEarningsBadge = async () => {
-    const courierId = localStorage.getItem(STORAGE_KEYS.COURIER_ID)
-    if (!courierId) return
-
-    try {
-      const { count, error } = await supabase
-        .from('packages')
-        .select('id', { count: 'exact', head: true })
-        .eq('delivered_by_courier_id', courierId)
-        .or('status.eq.delivered,and(status.eq.cancelled,is_chargeable_cancellation.eq.true)')
-        .or('is_courier_earned_paid.is.null,is_courier_earned_paid.eq.false')
-
-      if (error) throw error
-
-      const pkgCount = count || 0
-      setUnpaidEarningsAmount(pkgCount * (courierPackageRate || 0))
-    } catch (error: any) {
-      console.error('❌ Kazanç rozeti hesaplanamadı:', error)
-    }
-  }
-
   // Bugünkü teslim edilen paketleri çek
   const fetchTodayDeliveredPackages = async () => {
     const courierId = localStorage.getItem(STORAGE_KEYS.COURIER_ID)
     if (!courierId) return
 
     try {
-      const todayStart = new Date()
-      todayStart.setHours(0, 0, 0, 0)
-
-      // ⚡ OPTİMİZE: Sadece gerekli kolonları çek + LIMIT
-      const { data, error } = await supabase
-        .from('packages')
-        .select('id, order_number, customer_name, delivery_address, amount, payment_method, status, delivered_at, restaurant_id, restaurants(name)')
-        .eq('delivered_by_courier_id', courierId)  // courier_id yerine delivered_by_courier_id
-        .or('status.eq.delivered,and(status.eq.cancelled,is_chargeable_cancellation.eq.true)')
-        .gte('created_at', todayStart.toISOString())
-        .order('created_at', { ascending: false })
-        .limit(100) // ⚡ LIMIT ekle
+      const { data, error } = await queryCourierTodayCountedPackages(
+        supabase,
+        courierId,
+        'id, order_number, customer_name, delivery_address, amount, payment_method, status, delivered_at, restaurant_id, is_chargeable_cancellation, restaurants(name)'
+      )
+        .order('delivered_at', { ascending: false })
+        .limit(100)
 
       if (error) throw error
 
@@ -1525,11 +1496,6 @@ export default function KuryePage() {
     fetchAccountOpenPackages()
   }, [activeTab, isLoggedIn, courierPackageRate])
 
-  useEffect(() => {
-    if (!isLoggedIn || !selectedCourierId) return
-    fetchUnpaidEarningsBadge()
-  }, [courierPackageRate, isLoggedIn, selectedCourierId])
-
   const handleAcceptPackage = async (packageId: number) => {
     setIsUpdating(prev => new Set(prev).add(packageId))
 
@@ -1682,22 +1648,10 @@ export default function KuryePage() {
       // Yerel state'i anında güncelle - paketi listeden çıkar
       setPackages(prev => prev.filter(pkg => pkg.id !== packageId))
 
-      // İstatistikleri güncelle
-      setDeliveredCount(prev => prev + 1)
-      const pkg = packages.find(p => p.id === packageId)
-      if (pkg) {
-        if (paymentMethod === 'cash') {
-          setCashTotal(prev => prev + pkg.amount)
-        } else {
-          setCardTotal(prev => prev + pkg.amount)
-        }
-      }
-
       setSuccessMessage('Paket teslim edildi!')
       setTimeout(() => setSuccessMessage(''), 2000)
 
-      // Arka planda yenile
-      fetchTodayDeliveredPackages()
+      await Promise.all([fetchDailyStats(), fetchTodayDeliveredPackages()])
 
     } catch (error: any) {
       console.error('Teslim hatası:', error)
@@ -1746,8 +1700,7 @@ export default function KuryePage() {
       // Yerel state'i anında güncelle - paketi listeden çıkar
       setPackages(prev => prev.filter(pkg => pkg.id !== ibanPackageId))
 
-      // İstatistikleri güncelle
-      setDeliveredCount(prev => prev + 1)
+      await Promise.all([fetchDailyStats(), fetchTodayDeliveredPackages()])
 
       setSuccessMessage('IBAN ödemesi kaydedildi, paket teslim edildi!')
       setTimeout(() => setSuccessMessage(''), 2000)
@@ -2084,7 +2037,6 @@ export default function KuryePage() {
         fetchPackages(true),
         fetchDailyStats(),
         fetchCourierStatus(),
-        fetchUnpaidEarningsBadge(),
       ]).then(() => {
         // İkincil yüklemeler - daha az kritik
         fetchTodayDeliveredPackages()
@@ -2162,7 +2114,6 @@ export default function KuryePage() {
             setPackages(prev => prev.filter(pkg => pkg.id !== newRow.id))
             Promise.all([
               fetchDailyStats(),
-              fetchUnpaidEarningsBadge(),
               fetchAccountOpenPackages(),
             ])
           }
@@ -2186,7 +2137,6 @@ export default function KuryePage() {
         Promise.all([
           fetchPackages(false),
           fetchDailyStats(),
-          fetchUnpaidEarningsBadge(),
           fetchAccountOpenPackages(),
         ])
       }
@@ -2444,21 +2394,8 @@ export default function KuryePage() {
 
       // Yerel state'i anında güncelle
       if (nextStatus === 'delivered') {
-        // Teslim edilenler listeden çıkar
         setPackages(prev => prev.filter(pkg => pkg.id !== packageId))
-        setDeliveredCount(prev => prev + 1)
-
-        // İstatistikleri güncelle
-        const pkg = packages.find(p => p.id === packageId)
-        if (pkg && additionalData.payment_method) {
-          if (additionalData.payment_method === 'cash') {
-            setCashTotal(prev => prev + pkg.amount)
-          } else if (additionalData.payment_method === 'card') {
-            setCardTotal(prev => prev + pkg.amount)
-          }
-        }
-
-        fetchTodayDeliveredPackages()
+        await Promise.all([fetchDailyStats(), fetchTodayDeliveredPackages()])
       } else {
         setPackages(prev => prev.map(pkg =>
           pkg.id === packageId
@@ -2543,6 +2480,8 @@ export default function KuryePage() {
       </div>
     )
   }
+
+  const todayEarnings = calculateTodayCourierEarnings(deliveredCount, courierPackageRate)
 
   return (
     <>
@@ -2662,7 +2601,7 @@ export default function KuryePage() {
                     <Wallet size={10} strokeWidth={1.5} /> Kazanç
                   </p>
                   <p className="text-sm font-bold text-green-100">
-                    {unpaidEarningsAmount.toFixed(0)}₺
+                    {todayEarnings.toFixed(0)}₺
                   </p>
                 </div>
               </div>
@@ -3535,7 +3474,7 @@ export default function KuryePage() {
                 </div>
                 <div className="bg-slate-800/50 px-2 py-2 rounded-md col-span-3">
                   <p className="text-[10px] text-slate-400 mb-1">Toplam Kazanç</p>
-                  <p className="text-base font-bold text-blue-400">{(courierPackageRate || 0) * deliveredCount}₺</p>
+                  <p className="text-base font-bold text-blue-400">{todayEarnings.toFixed(0)}₺</p>
                 </div>
               </div>
             </div>
@@ -4005,12 +3944,8 @@ function SummaryList({ courierId, calculateDuration }: { courierId: string, calc
 
   useEffect(() => {
     const fetchHistory = async () => {
-      const { data } = await supabase
-        .from('packages')
-        .select('*')
-        .eq('courier_id', courierId)
-        .eq('status', 'delivered')
-        .gte('created_at', new Date(new Date().setHours(0, 0, 0, 0)).toISOString());
+      const { data } = await queryCourierTodayCountedPackages(supabase, courierId, '*')
+        .order('delivered_at', { ascending: false })
       setHistory(data || []);
     };
     fetchHistory();

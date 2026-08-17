@@ -3,7 +3,9 @@ import {
   calculateCourierCollectionTotals,
   calculatePeriodAccount,
   calculateSettlementsPaid,
+  COUNTED_PACKAGE_OR_FILTER,
   getBusinessDayDateTimeLocal,
+  getBusinessDayRangeIso,
   parseFilterInputToUtcIso,
   resolveFilterUtcRange,
   settlementPaidAmount,
@@ -15,7 +17,9 @@ import {
 } from '@/utils/calculations'
 
 export {
+  calculateTodayCourierEarnings,
   getBusinessDayDateTimeLocal,
+  getBusinessDayRangeIso,
   parseFilterInputToUtcIso,
   resolveFilterUtcRange,
   settlementPaidAmount,
@@ -37,6 +41,25 @@ function applyCourierDeliveryFilter(query: any, courierId: string) {
   return query.or(
     `delivered_by_courier_id.eq.${courierId},and(courier_id.eq.${courierId},delivered_by_courier_id.is.null)`
   )
+}
+
+/**
+ * Navbar Bugün + Kazanç ve admin kurye hesapları "Bugün" sayacı:
+ * teslim + ücretli iptal, iş günü [05:00, ertesi 05:00)
+ */
+export function queryCourierTodayCountedPackages(
+  supabase: SupabaseClient,
+  courierId: string,
+  select: string
+) {
+  const { startIso, endIso } = getBusinessDayRangeIso()
+  return supabase
+    .from('packages')
+    .select(select)
+    .eq('delivered_by_courier_id', courierId)
+    .or(COUNTED_PACKAGE_OR_FILTER)
+    .gte('delivered_at', startIso)
+    .lt('delivered_at', endIso)
 }
 
 export async function fetchCourierCollectionPackages(

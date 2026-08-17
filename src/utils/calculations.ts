@@ -134,6 +134,10 @@ export function toDateTimeLocalValue(d: Date): string {
   return `${y}-${m}-${day}T${h}:${min}`
 }
 
+/** Teslim + ücretli iptal — admin kurye hesapları ve kurye paneli aynı filtreyi kullanır */
+export const COUNTED_PACKAGE_OR_FILTER =
+  'status.eq.delivered,and(status.eq.cancelled,is_chargeable_cancellation.eq.true)'
+
 /** İş günü 05:00 — ertesi gün 04:59 (GMT+3 duvar saati) */
 export function getBusinessDayDateTimeLocal(now = new Date()) {
   const trNow = new Date(now.getTime() + APP_TIMEZONE_OFFSET_HOURS * 60 * 60 * 1000)
@@ -153,6 +157,44 @@ export function getBusinessDayDateTimeLocal(now = new Date()) {
     start: toDateTimeLocalValue(new Date(start.getTime() - APP_TIMEZONE_OFFSET_HOURS * 60 * 60 * 1000)),
     end: toDateTimeLocalValue(new Date(end.getTime() - APP_TIMEZONE_OFFSET_HOURS * 60 * 60 * 1000)),
   }
+}
+
+/** İş günü başlangıcı (TR 05:00) — admin + kurye paneli paket sayısı bu tarihi kullanır */
+export function getBusinessDayStart(now = new Date()): Date {
+  return new Date(parseFilterInputToUtcIso(getBusinessDayDateTimeLocal(now).start, 'start'))
+}
+
+/** İş günü aralığı: [TR 05:00, ertesi gün TR 05:00) */
+export function getBusinessDayRange(now = new Date()): { start: Date; end: Date } {
+  const start = getBusinessDayStart(now)
+  return {
+    start,
+    end: new Date(start.getTime() + 24 * 60 * 60 * 1000),
+  }
+}
+
+export function getBusinessDayRangeIso(now = new Date()): { startIso: string; endIso: string } {
+  const { start, end } = getBusinessDayRange(now)
+  return {
+    startIso: start.toISOString(),
+    endIso: end.toISOString(),
+  }
+}
+
+/** Bugünkü kurye kazancı = paket sayısı × paket başı hakediş */
+export function calculateTodayCourierEarnings(packageCount: number, packageRate: number): number {
+  return (packageCount || 0) * (packageRate || 0)
+}
+
+/** İş haftası başlangıcı (Pazartesi TR 05:00) — admin kurye hesapları "Bu Hafta" ile aynı */
+export function getBusinessWeekStart(now = new Date()): Date {
+  const dayStart = getBusinessDayStart(now)
+  const tr = new Date(dayStart.getTime() + APP_TIMEZONE_OFFSET_HOURS * 60 * 60 * 1000)
+  const dayOfWeek = tr.getUTCDay()
+  const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+  tr.setUTCDate(tr.getUTCDate() - diffToMonday)
+  tr.setUTCHours(5, 0, 0, 0)
+  return new Date(tr.getTime() - APP_TIMEZONE_OFFSET_HOURS * 60 * 60 * 1000)
 }
 
 export function resolveFilterUtcRange(startInput: string, endInput: string) {

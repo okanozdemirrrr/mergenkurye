@@ -8,6 +8,12 @@
 import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
 import { Package, Courier, Restaurant } from '@/types'
+import {
+  COUNTED_PACKAGE_OR_FILTER,
+  getBusinessDayRangeIso,
+  getBusinessWeekStart,
+} from '@/utils/calculations'
+import { queryCourierTodayCountedPackages } from '@/utils/courierAccount'
 
 const ACTIVE_PACKAGE_STATUSES = [
   'new_order',
@@ -265,18 +271,8 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
 
       if (error) throw error
 
-      // BUSINESS DAY LOGIC: İş günü sabah 05:00'da başlar
-      const now = new Date()
-      const currentHour = now.getHours()
-      
-      const todayStart = new Date(now)
-      if (currentHour < 5) {
-        // Gece yarısından sonra, dün sabah 05:00
-        todayStart.setDate(todayStart.getDate() - 1)
-      }
-      todayStart.setHours(5, 0, 0, 0)
-
-      console.log('📅 Admin Panel - Business Day Start:', todayStart.toISOString())
+      const { startIso: todayStartIso, endIso: todayEndIso } = getBusinessDayRangeIso()
+      console.log('📅 Admin Panel - Business Day:', todayStartIso, '→', todayEndIso)
 
       // Her kurye için borç ve teslimat bilgilerini çek
       const couriersWithData = await Promise.all(
@@ -284,13 +280,11 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
           // Legacy courier_debts devre dışı. Tek kaynak ledger.
           const totalDebt = 0
 
-          // Bugün teslim edilen paketleri çek (delivered + ücretli iptaller)
-          const { data: todayDeliveries } = await supabase
-            .from('packages')
-            .select('id, status, is_chargeable_cancellation')
-            .eq('delivered_by_courier_id', courier.id)
-            .or('status.eq.delivered,and(status.eq.cancelled,is_chargeable_cancellation.eq.true)')
-            .gte('delivered_at', todayStart.toISOString())
+          const { data: todayDeliveries } = await queryCourierTodayCountedPackages(
+            supabase,
+            courier.id,
+            'id, status, is_chargeable_cancellation'
+          )
 
           const todayDeliveryCount = (todayDeliveries || []).length
 
@@ -303,23 +297,13 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
 
           const activePackageCount = (activePackages || []).length
 
-          // Bu haftanın teslimat sayısı (Pazartesi 05:00'den itibaren, delivered + ücretli iptaller)
-          const now2 = new Date()
-          const dayOfWeek = now2.getDay() // 0=Pazar, 1=Pazartesi...
-          const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
-          const weekStart = new Date(now2)
-          weekStart.setDate(weekStart.getDate() - diffToMonday)
-          weekStart.setHours(5, 0, 0, 0)
-          // Eğer şu an Pazartesi 05:00'den önceyse, geçen haftanın Pazartesisini al
-          if (now2 < weekStart) {
-            weekStart.setDate(weekStart.getDate() - 7)
-          }
+          const weekStart = getBusinessWeekStart()
 
           const { data: weeklyDeliveries } = await supabase
             .from('packages')
             .select('id')
             .eq('delivered_by_courier_id', courier.id)
-            .or('status.eq.delivered,and(status.eq.cancelled,is_chargeable_cancellation.eq.true)')
+            .or(COUNTED_PACKAGE_OR_FILTER)
             .gte('delivered_at', weekStart.toISOString())
 
           const weeklyDeliveryCount = (weeklyDeliveries || []).length
@@ -364,25 +348,17 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
 
   const fetchTodayDeliveredCount = async () => {
     try {
-      // BUSINESS DAY LOGIC: İş günü sabah 05:00'da başlar
-      const now = new Date()
-      const currentHour = now.getHours()
-      
-      const todayStart = new Date(now)
-      if (currentHour < 5) {
-        todayStart.setDate(todayStart.getDate() - 1)
-      }
-      todayStart.setHours(5, 0, 0, 0)
-
-      console.log('📅 Admin Panel - Today Delivered Count Start:', todayStart.toISOString())
+      const { startIso, endIso } = getBusinessDayRangeIso()
+      console.log('📅 Admin Panel - Today Delivered Count:', startIso, '→', endIso)
 
       // ⚡ EGRESS OPTİMİZASYONU: head: true ile sadece count çek, veri çekme!
       // Delivered + Ücretli İptaller
       const { count, error } = await supabase
         .from('packages')
         .select('id', { count: 'exact', head: true })
-        .or('status.eq.delivered,and(status.eq.cancelled,is_chargeable_cancellation.eq.true)')
-        .gte('delivered_at', todayStart.toISOString())
+        .or(COUNTED_PACKAGE_OR_FILTER)
+        .gte('delivered_at', startIso)
+        .lt('delivered_at', endIso)
 
       if (error) throw error
       console.log('📊 Bugün teslim edilen toplam (delivered + ücretli iptaller):', count)
