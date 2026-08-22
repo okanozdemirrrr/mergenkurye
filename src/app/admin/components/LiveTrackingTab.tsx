@@ -17,7 +17,7 @@ import { CourierTransferModal } from './CourierTransferModal'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
 import { formatTurkishTime } from '@/utils/dateHelpers'
 import { CourierDailyRoutes } from './CourierDailyRoutes'
-import { NightShiftIndicator } from './NightShiftIndicator'
+import { SortableCourierStatusList } from './SortableCourierStatusList'
 import {
   Package as PackageIcon, Map, Circle, ChefHat, CheckCircle2, User, Footprints, Car,
   PartyPopper, Ban, Clock, Utensils, Phone, MapPin, FileText, Banknote, CreditCard,
@@ -45,6 +45,7 @@ interface LiveTrackingTabProps {
     handleAssignCourier: (packageId: number) => void
     handleCancelOrder: (id: number, details: string) => void
     todayDeliveredCount: number
+    onCouriersOrderChange: (couriers: Courier[]) => void
 }
 
 export function LiveTrackingTab({
@@ -61,7 +62,8 @@ export function LiveTrackingTab({
     handleLongDistanceChange,
     handleAssignCourier,
     handleCancelOrder,
-    todayDeliveredCount
+    todayDeliveredCount,
+    onCouriersOrderChange
 }: LiveTrackingTabProps) {
     const [selectedPackage, setSelectedPackage] = useState<Package | null>(null)
     const [transferPackage, setTransferPackage] = useState<Package | null>(null)
@@ -594,89 +596,13 @@ export function LiveTrackingTab({
                             </span>
                         </div>
                         <div className="space-y-2 max-h-[668px] overflow-y-auto overflow-x-hidden">
-                            {couriers.filter(c => c.is_active).map(c => {
-                                const courierPackages = assignedPackages.filter(pkg => pkg.courier_id === c.id)
-
-                                return (
-                                    <div
-                                        key={c.id}
-                                        className="p-2 bg-slate-800 rounded-md border border-slate-700"
-                                    >
-                                        <div className="flex justify-between items-center mb-1.5">
-                                            <div className="flex items-center gap-1.5 min-w-0">
-                                                <NightShiftIndicator isNightShift={c.is_night_shift} />
-                                                <span className="font-bold text-xs text-white truncate">{c.full_name}</span>
-                                            </div>
-                                            <div className="text-right">
-                                                <span className="text-[10px] text-green-400 block font-semibold">
-                                                    {c.todayDeliveryCount || 0} bugün
-                                                </span>
-                                                <span className="text-[10px] text-orange-400 block font-semibold">
-                                                    {c.activePackageCount || 0} üzerinde
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        <div className="mb-1.5">
-                                            {!c.is_active && <span className="text-[9px] bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded font-bold">AKTİF DEĞİL</span>}
-                                            {c.is_active && <span className="text-[9px] bg-green-900/50 text-green-300 px-1.5 py-0.5 rounded font-bold">AKTİF</span>}
-                                        </div>
-
-                                        {courierPackages.length > 0 && (
-                                            <div className="mt-1.5 space-y-1">
-                                                {courierPackages.map(pkg => {
-                                                    const restoranAdi =
-                                                        pkg.restaurant?.name ??
-                                                        restaurants.find(
-                                                            (r: { id?: number | string }) =>
-                                                                String(r.id) === String(pkg.restaurant_id)
-                                                        )?.name ??
-                                                        'Restoran'
-                                                    const adres = pkg.delivery_address || '—'
-
-                                                    return (
-                                                        <div
-                                                            key={pkg.id}
-                                                            onClick={() => setSelectedPackage(pkg)}
-                                                            className="w-full overflow-hidden cursor-pointer hover:bg-slate-700/80 py-1 px-1.5 rounded transition-colors"
-                                                        >
-                                                            <div className="flex flex-col gap-0.5 min-w-0">
-                                                                <div className="flex items-center gap-1.5 min-w-0">
-                                                                    <span
-                                                                        className={`shrink-0 px-1.5 py-0.5 rounded-full font-semibold text-[10px] ${
-                                                                            pkg.status === 'waiting'
-                                                                                ? 'bg-yellow-900/50 text-yellow-300'
-                                                                                : pkg.status === 'assigned'
-                                                                                  ? 'bg-orange-900/50 text-orange-300'
-                                                                                  : pkg.status === 'picking_up'
-                                                                                    ? 'bg-orange-900/50 text-orange-300'
-                                                                                    : 'bg-red-900/50 text-red-300'
-                                                                        }`}
-                                                                    >
-                                                                        {pkg.status === 'waiting'
-                                                                            ? 'Bekliyor'
-                                                                            : pkg.status === 'assigned'
-                                                                              ? 'Atandı'
-                                                                              : pkg.status === 'picking_up'
-                                                                                ? 'Alıyor'
-                                                                                : 'Yolda'}
-                                                                    </span>
-                                                                    <span className="font-semibold text-orange-400 text-[11px] truncate min-w-0">
-                                                                        {restoranAdi}
-                                                                    </span>
-                                                                </div>
-                                                                <span className="text-gray-400 text-[11px] truncate block pl-0">
-                                                                    {adres}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    )
-                                                })}
-                                            </div>
-                                        )}
-                                    </div>
-                                )
-                            })}
+                            <SortableCourierStatusList
+                                couriers={couriers}
+                                assignedPackages={assignedPackages}
+                                restaurants={restaurants}
+                                onCouriersOrderChange={onCouriersOrderChange}
+                                onPackageClick={setSelectedPackage}
+                            />
                         </div>
                     </div>
                 </div>

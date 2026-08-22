@@ -90,6 +90,7 @@ export interface CourierLocation {
 
 export interface Courier {
     id: string
+    sort_order?: number
     full_name?: string
     phone?: string
     deliveryCount?: number

@@ -13,7 +13,7 @@ import { useReadyPackageNotification } from '@/hooks/useReadyPackageNotification
 import ChangelogModal from '@/components/ChangelogModal'
 
 export default function AdminPage() {
-  const { packages, couriers, restaurants, isLoading, setSuccessMessage, setErrorMessage, fetchPackages, todayDeliveredCount } = useAdminData()
+  const { packages, couriers, restaurants, isLoading, setSuccessMessage, setErrorMessage, fetchPackages, todayDeliveredCount, setCouriers } = useAdminData()
   const [selectedCouriers, setSelectedCouriers] = useState<{ [key: number]: string }>({})
   const [longDistancePackages, setLongDistancePackages] = useState<{ [key: number]: boolean }>({})
   const [assigningIds, setAssigningIds] = useState<Set<number>>(new Set())
@@ -96,6 +96,7 @@ export default function AdminPage() {
       handleAssignCourier={handleAssignCourier}
       handleCancelOrder={handleCancelOrder}
       todayDeliveredCount={todayDeliveredCount}
+      onCouriersOrderChange={setCouriers}
     />
   )
 }

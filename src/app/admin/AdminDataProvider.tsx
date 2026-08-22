@@ -71,6 +71,7 @@ interface AdminDataContextType {
   fetchCouriers: () => Promise<void>
   fetchRestaurants: () => Promise<void>
   fetchTodayDeliveredCount: () => Promise<void>
+  setCouriers: React.Dispatch<React.SetStateAction<Courier[]>>
 }
 
 const AdminDataContext = createContext<AdminDataContextType | undefined>(undefined)
@@ -268,7 +269,8 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
       // ⚡ EGRESS OPTİMİZASYONU: Sadece gerekli courier kolonları (last_location dahil)
       const { data, error } = await supabase
         .from('couriers')
-        .select('id, username, full_name, is_active, is_night_shift, package_rate, long_distance_fee, payment_type, account_status, last_location')
+        .select('id, username, full_name, is_active, is_night_shift, package_rate, long_distance_fee, payment_type, account_status, last_location, sort_order')
+        .order('sort_order', { ascending: true })
         .order('full_name', { ascending: true })
 
       if (error) throw error
@@ -593,7 +595,8 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
         fetchDeliveredPackages,
         fetchCouriers,
         fetchRestaurants,
-        fetchTodayDeliveredCount
+        fetchTodayDeliveredCount,
+        setCouriers
       }}
     >
       {children}
