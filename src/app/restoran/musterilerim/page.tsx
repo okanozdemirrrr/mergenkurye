@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/app/lib/supabase'
-import { Users, Search, User, Pencil, Loader2 } from 'lucide-react'
+import { Users, Search, User, Pencil, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
 
 const LOGIN_RESTAURANT_ID_KEY = 'restoran_logged_restaurant_id'
+const ITEMS_PER_PAGE = 100
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface Customer {
@@ -14,6 +15,17 @@ interface Customer {
   address: string
   restaurant_id: string
   created_at?: string
+}
+
+type CustomerQuery = ReturnType<ReturnType<typeof supabase.from>['select']>
+
+function applyCustomerFilters(query: CustomerQuery, rid: string, searchTerm: string) {
+  let q = query.eq('restaurant_id', rid).not('restaurant_id', 'is', null)
+  const term = searchTerm.trim()
+  if (term) {
+    q = q.or(`full_name.ilike.%${term}%,phone.ilike.%${term}%,address.ilike.%${term}%`)
+  }
+  return q
 }
 
 // ─── Customer Form Modal (Create & Edit) ─────────────────────────────────────
@@ -45,7 +57,6 @@ function CustomerFormModal({ customer, restaurantId, onClose, onSaved }: Custome
 
     try {
       if (isEdit) {
-        // UPDATE — sadece bu restoranın kaydını güncelle
         const { error } = await supabase
           .from('customers')
           .update({
@@ -56,11 +67,10 @@ function CustomerFormModal({ customer, restaurantId, onClose, onSaved }: Custome
             address: form.address.trim(),
           })
           .eq('id', customer!.id)
-          .eq('restaurant_id', restaurantId) // ⚠️ güvenlik filtresi
+          .eq('restaurant_id', restaurantId)
 
         if (error) throw error
       } else {
-        // INSERT — restaurant_id KESİNLİKLE zorunlu, eksikse kayıt atma
         if (!restaurantId) {
           setErr('Restoran kimliği bulunamadı. Lütfen tekrar giriş yapın.')
           return
@@ -72,7 +82,7 @@ function CustomerFormModal({ customer, restaurantId, onClose, onSaved }: Custome
           surname: form.full_name.trim().split(' ').slice(1).join(' ') || '',
           phone: form.phone.trim(),
           address: form.address.trim(),
-          restaurant_id: restaurantId,   // zorunlu — eksikse insert yapma
+          restaurant_id: restaurantId,
         }])
 
         if (error) throw error
@@ -176,75 +186,98 @@ function CustomerFormModal({ customer, restaurantId, onClose, onSaved }: Custome
 export default function MusterilerimPage() {
   const [restaurantId, setRestaurantId] = useState<string | null>(null)
   const [customers, setCustomers] = useState<Customer[]>([])
-  const [loading, setLoading] = useState(false)   // false — restaurantId gelmeden fetch YOK
-  const [idReady, setIdReady] = useState(false)   // restaurantId localStorage'dan alındı mı?
+  const [totalCustomers, setTotalCustomers] = useState(0)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [loading, setLoading] = useState(false)
+  const [idReady, setIdReady] = useState(false)
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
   const [toast, setToast] = useState('')
 
-  // restaurantId'yi localStorage'dan al — hazır olduğunda idReady=true
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const id = localStorage.getItem(LOGIN_RESTAURANT_ID_KEY)
-      setRestaurantId(id)   // null veya geçerli UUID
-      setIdReady(true)      // artık biliyoruz: ya var ya yok
+      setRestaurantId(id)
+      setIdReady(true)
     }
   }, [])
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300)
+    return () => clearTimeout(timer)
+  }, [search])
 
   const showToast = (msg: string) => {
     setToast(msg)
     setTimeout(() => setToast(''), 3000)
   }
 
-  // ── READ ──
-  const fetchCustomers = useCallback(async (rid: string) => {
+  const loadCustomers = useCallback(async (rid: string, page: number, searchTerm: string) => {
     setLoading(true)
     try {
-      // KESİN İZOLASYON: restaurant_id eşleşmeli VE null olmamalı
-      const { data, error } = await supabase
-        .from('customers')
-        .select('id, full_name, phone, address, restaurant_id, created_at')
-        .eq('restaurant_id', rid)           // sadece bu restoranın müşterileri
-        .not('restaurant_id', 'is', null)   // null kayıtları kesinlikle dışla
-        .order('created_at', { ascending: false })
+      const from = (page - 1) * ITEMS_PER_PAGE
+      const to = page * ITEMS_PER_PAGE - 1
 
-      if (error) {
-        // Schema cache hatası → boş liste göster, ASLA filtresiz çekme
-        console.warn('fetchCustomers error:', error.message)
+      const countQuery = applyCustomerFilters(
+        supabase.from('customers').select('id', { count: 'exact', head: true }),
+        rid,
+        searchTerm
+      )
+
+      const dataQuery = applyCustomerFilters(
+        supabase.from('customers').select('id, full_name, phone, address, restaurant_id, created_at'),
+        rid,
+        searchTerm
+      )
+        .order('created_at', { ascending: false })
+        .range(from, to)
+
+      const [countResult, dataResult] = await Promise.all([countQuery, dataQuery])
+
+      if (countResult.error) {
+        console.warn('loadCustomers count error:', countResult.error.message)
+        setTotalCustomers(0)
+      } else {
+        setTotalCustomers(countResult.count ?? 0)
+      }
+
+      if (dataResult.error) {
+        console.warn('loadCustomers data error:', dataResult.error.message)
         setCustomers([])
         return
       }
 
-      setCustomers(data || [])
+      setCustomers(dataResult.data || [])
     } catch (e) {
-      console.error('fetchCustomers exception:', e)
+      console.error('loadCustomers exception:', e)
+      setTotalCustomers(0)
       setCustomers([])
     } finally {
       setLoading(false)
     }
   }, [])
 
-  // idReady=true OLMADAN fetch tetiklenmez (race condition önlemi)
   useEffect(() => {
-    if (!idReady) return              // localStorage henüz okunmadı
-    if (!restaurantId) return        // giriş yok
-    fetchCustomers(restaurantId)     // sadece bu restoran için
-  }, [idReady, restaurantId, fetchCustomers])
+    if (!idReady || !restaurantId) return
+    loadCustomers(restaurantId, currentPage, debouncedSearch)
+  }, [idReady, restaurantId, currentPage, debouncedSearch, loadCustomers])
 
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearch(e.target.value)
+    setCurrentPage(1)
+  }
 
+  const handleClearSearch = () => {
+    setSearch('')
+    setCurrentPage(1)
+  }
 
-  // ── Arama Filtresi ──
-  const filtered = customers.filter(c => {
-    const q = search.toLowerCase()
-    return (
-      c.full_name?.toLowerCase().includes(q) ||
-      c.phone?.toLowerCase().includes(q) ||
-      c.address?.toLowerCase().includes(q)
-    )
-  })
+  const totalPages = Math.max(1, Math.ceil(totalCustomers / ITEMS_PER_PAGE))
+  const isPrevDisabled = currentPage <= 1
+  const isNextDisabled = currentPage * ITEMS_PER_PAGE >= totalCustomers
 
-  // restaurantId henüz localStorage'dan alınmadıysa spinner göster
   if (!idReady) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -253,7 +286,6 @@ export default function MusterilerimPage() {
     )
   }
 
-  // Giriş yapılmamış
   if (!restaurantId) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -264,7 +296,6 @@ export default function MusterilerimPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 px-4 py-8 pt-[calc(5rem+env(safe-area-inset-top))] pb-[calc(2rem+env(safe-area-inset-bottom))] overflow-x-hidden">
-      {/* Toast */}
       {toast && (
         <div className="fixed top-[max(1.5rem,env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-[70] bg-slate-800 border border-slate-600 text-white px-5 py-3 rounded-md shadow-sm text-sm font-medium">
           {toast}
@@ -272,7 +303,6 @@ export default function MusterilerimPage() {
       )}
 
       <div className="max-w-4xl mx-auto">
-        {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-6 gap-3">
           <div>
             <h1 className="text-2xl font-black text-white flex items-center gap-2">
@@ -280,7 +310,7 @@ export default function MusterilerimPage() {
               Kayıtlı Müşterilerim
             </h1>
             <p className="text-slate-400 text-sm mt-1">
-              {customers.length} müşteri kayıtlı
+              {totalCustomers} müşteri kayıtlı
             </p>
           </div>
           <button
@@ -292,19 +322,18 @@ export default function MusterilerimPage() {
           </button>
         </div>
 
-        {/* Arama */}
         <div className="relative mb-4">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" strokeWidth={1.5} />
           <input
             type="text"
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={handleSearchChange}
             placeholder="İsim, telefon veya adres ara..."
             className="w-full pl-9 pr-4 py-3 bg-slate-900 border border-slate-700 rounded-md text-white placeholder-slate-500 outline-none focus:border-orange-500 transition-colors"
           />
           {search && (
             <button
-              onClick={() => setSearch('')}
+              onClick={handleClearSearch}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
             >
               ×
@@ -312,13 +341,12 @@ export default function MusterilerimPage() {
           )}
         </div>
 
-        {/* Liste: mobil kart / masaüstü tablo */}
         {loading ? (
           <div className="rounded-md border border-slate-800 bg-slate-900 py-16 text-center">
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-500 mx-auto" />
             <p className="text-slate-400 text-sm mt-4">Yükleniyor...</p>
           </div>
-        ) : filtered.length === 0 ? (
+        ) : customers.length === 0 ? (
           <div className="rounded-md border border-slate-800 bg-slate-900 py-16 text-center">
             <User className="w-8 h-8 mx-auto mb-3 text-gray-400" strokeWidth={1.5} />
             <p className="text-slate-400 text-sm">
@@ -335,9 +363,8 @@ export default function MusterilerimPage() {
           </div>
         ) : (
           <>
-            {/* Mobil kartlar */}
             <div className="lg:hidden space-y-3">
-              {filtered.map(c => (
+              {customers.map(c => (
                 <div
                   key={c.id}
                   className="p-3 rounded-md border border-slate-800 bg-slate-900"
@@ -367,7 +394,6 @@ export default function MusterilerimPage() {
               ))}
             </div>
 
-            {/* Masaüstü tablo */}
             <div className="hidden lg:block rounded-md border border-slate-800 overflow-hidden bg-slate-900">
               <div className="grid grid-cols-[1fr_140px_1fr_80px] gap-4 px-4 py-3 bg-slate-800/60 border-b border-slate-700">
                 <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">İsim</span>
@@ -376,7 +402,7 @@ export default function MusterilerimPage() {
                 <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider text-right">İşlem</span>
               </div>
               <div className="divide-y divide-slate-800">
-                {filtered.map(c => (
+                {customers.map(c => (
                   <div
                     key={c.id}
                     className="grid grid-cols-[1fr_140px_1fr_80px] gap-4 px-4 py-3.5 hover:bg-slate-800/40 transition-colors items-center"
@@ -404,30 +430,47 @@ export default function MusterilerimPage() {
                 ))}
               </div>
             </div>
-          </>
-        )}
 
-        {/* Sonuç sayısı */}
-        {search && filtered.length > 0 && (
-          <p className="text-slate-500 text-xs mt-3 text-center">
-            {filtered.length} / {customers.length} müşteri gösteriliyor
-          </p>
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 px-1">
+              <button
+                type="button"
+                onClick={() => setCurrentPage(p => p - 1)}
+                disabled={isPrevDisabled}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md font-semibold text-sm bg-slate-800 border border-slate-700 text-white hover:bg-slate-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-slate-800"
+              >
+                <ChevronLeft className="w-4 h-4" strokeWidth={1.5} />
+                Önceki Sayfa
+              </button>
+
+              <span className="text-slate-400 text-sm font-medium whitespace-nowrap">
+                Sayfa {currentPage} / {totalPages}
+              </span>
+
+              <button
+                type="button"
+                onClick={() => setCurrentPage(p => p + 1)}
+                disabled={isNextDisabled}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md font-semibold text-sm bg-slate-800 border border-slate-700 text-white hover:bg-slate-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-slate-800"
+              >
+                Sonraki Sayfa
+                <ChevronRight className="w-4 h-4" strokeWidth={1.5} />
+              </button>
+            </div>
+          </>
         )}
       </div>
 
-      {/* Ekle / Düzenle Modal */}
       {showModal && (
         <CustomerFormModal
           customer={editingCustomer}
           restaurantId={restaurantId}
           onClose={() => { setShowModal(false); setEditingCustomer(null) }}
           onSaved={() => {
-            fetchCustomers(restaurantId)   // restaurantId parametreli çağrı
+            loadCustomers(restaurantId, currentPage, debouncedSearch)
             showToast(editingCustomer ? 'Müşteri güncellendi' : 'Müşteri eklendi')
           }}
         />
       )}
-
     </div>
   )
 }
