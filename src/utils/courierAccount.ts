@@ -138,7 +138,7 @@ export async function fetchCourierPeriodAccount(
   courierId: string,
   startDate: string,
   endDate: string,
-  packageRate = 0
+  rates: CourierEarningRates | number = 0
 ): Promise<PeriodAccountTotals> {
   const { data: packages, error: packagesError } = await fetchCourierCollectionPackages(
     supabase,
@@ -159,7 +159,7 @@ export async function fetchCourierPeriodAccount(
   return calculatePeriodAccount(
     (packages || []) as PackageLike[],
     (settlements || []) as SettlementLike[],
-    packageRate
+    rates
   )
 }
 

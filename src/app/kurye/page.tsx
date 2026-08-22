@@ -30,7 +30,8 @@ import {
   type PaymentTotals,
 } from '@/utils/courierAccount'
 import { fetchCourierLedgerPeriodAccount } from '@/utils/courierLedger'
-import { isCollectionEligible } from '@/utils/calculations'
+import { isCollectionEligible, courierToEarningRates } from '@/utils/calculations'
+import { LongDistanceBadge } from '@/components/ui/LongDistanceBadge'
 import { authenticateCourier, getCourierAccountStatusError } from '@/services/courierLoginService'
 import {
   MapPin, AlertTriangle, Package, Wallet, Mic, Check, Flag, Store, Phone, Navigation,
@@ -325,6 +326,8 @@ export default function KuryePage() {
   // YENİ: Ödeme sistemi state'leri
   const [courierPaymentType, setCourierPaymentType] = useState<'paket_basi' | 'saatlik'>('paket_basi')
   const [courierPackageRate, setCourierPackageRate] = useState<number>(0)
+  const [courierLongDistanceFee, setCourierLongDistanceFee] = useState<number>(0)
+  const [todayCountedPackages, setTodayCountedPackages] = useState<Package[]>([])
   const [todayDeliveredPackages, setTodayDeliveredPackages] = useState<Package[]>([]) // Bugünkü teslim edilenler
   const [filteredPackages, setFilteredPackages] = useState<Package[]>([]) // Filtrelenmiş paketler
   const [currentPage, setCurrentPage] = useState(1) // Mevcut sayfa
@@ -668,12 +671,13 @@ export default function KuryePage() {
       const { data, error } = await queryCourierTodayCountedPackages(
         supabase,
         courierId,
-        'amount, payment_method, status, is_chargeable_cancellation'
+        'amount, payment_method, status, is_chargeable_cancellation, is_long_distance, courier_earned_fee'
       )
 
       if (error) throw error
 
       if (data) {
+        setTodayCountedPackages(data as Package[])
         setDeliveredCount(data.length)
         setCashTotal(data.filter(p => isCollectionEligible(p) && p.payment_method === 'cash').reduce((sum, p) => {
           return sum + (p.amount || 0)
@@ -751,7 +755,7 @@ export default function KuryePage() {
       
       const { data, error } = await supabase
         .from('couriers')
-        .select('status, is_active, full_name, payment_type, package_rate')
+        .select('status, is_active, full_name, payment_type, package_rate, long_distance_fee')
         .eq('id', courierId)
         .maybeSingle()
 
@@ -764,6 +768,9 @@ export default function KuryePage() {
         // YENİ: Ödeme bilgilerini state'e kaydet
         setCourierPaymentType(data.payment_type || 'paket_basi')
         setCourierPackageRate(data.package_rate || 0)
+        setCourierLongDistanceFee(
+          data.long_distance_fee ?? data.package_rate ?? 0
+        )
       }
     } catch (error: any) {
       // ⚡ Timeout hatası için özel mesaj
@@ -1359,7 +1366,10 @@ export default function KuryePage() {
           courierId,
           start,
           end,
-          courierPackageRate
+          courierToEarningRates({
+            package_rate: courierPackageRate,
+            long_distance_fee: courierLongDistanceFee,
+          })
         ),
       ])
 
@@ -1494,7 +1504,7 @@ export default function KuryePage() {
   useEffect(() => {
     if (!isLoggedIn || activeTab !== 'earnings') return
     fetchAccountOpenPackages()
-  }, [activeTab, isLoggedIn, courierPackageRate])
+  }, [activeTab, isLoggedIn, courierPackageRate, courierLongDistanceFee])
 
   const handleAcceptPackage = async (packageId: number) => {
     setIsUpdating(prev => new Set(prev).add(packageId))
@@ -2481,7 +2491,13 @@ export default function KuryePage() {
     )
   }
 
-  const todayEarnings = calculateTodayCourierEarnings(deliveredCount, courierPackageRate)
+  const todayEarnings = calculateTodayCourierEarnings(
+    todayCountedPackages,
+    courierToEarningRates({
+      package_rate: courierPackageRate,
+      long_distance_fee: courierLongDistanceFee,
+    })
+  )
 
   return (
     <>
@@ -3159,6 +3175,9 @@ export default function KuryePage() {
                               {getPlatformDisplayName(pkg.platform)}
                             </span>
                           )}
+                          {pkg.is_long_distance && (
+                            <LongDistanceBadge className="bg-purple-500/20 text-purple-300 border border-purple-500/30" />
+                          )}
                           <span className={`text-xs px-2 py-0.5 rounded ${
                             pkg.status === 'delivered' 
                               ? 'bg-green-500/20 text-green-400' 
@@ -3299,6 +3318,9 @@ export default function KuryePage() {
                               <span className={`text-xs font-bold px-2 py-0.5 rounded ${getPlatformBadgeClass(pkg.platform)}`}>
                                 {getPlatformDisplayName(pkg.platform)}
                               </span>
+                            )}
+                            {pkg.is_long_distance && (
+                              <LongDistanceBadge className="bg-purple-500/20 text-purple-300 border border-purple-500/30" />
                             )}
                           </div>
                           <p className="font-medium text-sm text-white">{pkg.customer_name}</p>

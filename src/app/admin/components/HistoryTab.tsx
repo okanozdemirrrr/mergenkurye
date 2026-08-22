@@ -13,6 +13,7 @@ import { OrderActionMenu } from '@/components/ui/OrderActionMenu'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
 import { formatTurkishTime } from '@/utils/dateHelpers'
 import { useAdminData } from '../AdminDataProvider'
+import { LongDistanceBadge } from '@/components/ui/LongDistanceBadge'
 import { ClipboardList, Package as PackageIcon, Ban, Clock } from 'lucide-react'
 
 interface HistoryTabProps {
@@ -94,6 +95,7 @@ export function HistoryTab({
                             delivered_at, 
                             cancelled_at, 
                             is_chargeable_cancellation,
+                            is_long_distance,
                             courier_id, 
                             restaurant_id, 
                             applied_price, 
@@ -694,6 +696,11 @@ export function HistoryTab({
                                                 {getPlatformDisplayName(pkg.platform)}
                                             </span>
                                         )}
+                                        {pkg.is_long_distance && (
+                                            <span className="inline-block mt-1 ml-1">
+                                                <LongDistanceBadge />
+                                            </span>
+                                        )}
                                     </div>
                                     <div className="text-right shrink-0">
                                         <p className={`font-bold text-base ${
@@ -799,6 +806,7 @@ export function HistoryTab({
                                                         {getPlatformDisplayName(pkg.platform)}
                                                     </span>
                                                 )}
+                                                {pkg.is_long_distance && <LongDistanceBadge className="text-[10px] py-0.5 px-1.5" />}
                                                 {pkg.status === 'cancelled' && (
                                                     <span className={`text-xs py-0.5 px-2 rounded font-semibold ${
                                                         pkg.is_chargeable_cancellation

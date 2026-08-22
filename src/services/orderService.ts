@@ -92,8 +92,14 @@ export async function cancelOrder(packageId: number, details: string = 'Sipariş
  * 3. Kurye'nin FCM token'ı alınır
  * 4. Push notification gönderilir: "YENİ SİPARİŞ 🚀" - "[Restoran Adı] - [Teslimat Adresi]"
  */
-export async function assignCourier(packageId: number, courierId: string) {
+export async function assignCourier(
+    packageId: number,
+    courierId: string,
+    options?: { isLongDistance?: boolean }
+) {
     try {
+        const isLongDistance = options?.isLongDistance ?? false
+
         // 1. Paket bilgilerini al (bildirim için gerekli + durum kontrolü)
         const { data: packageData, error: packageError } = await supabase
             .from('packages')
@@ -110,13 +116,30 @@ export async function assignCourier(packageId: number, courierId: string) {
             return { success: false, error: 'Paket kurye tarafından alındı, atanamaz' }
         }
 
+        // Kurye tarifesini al — hakediş snapshot için
+        const { data: courierData, error: courierError } = await supabase
+            .from('couriers')
+            .select('package_rate, long_distance_fee')
+            .eq('id', courierId)
+            .single()
+
+        if (courierError) throw courierError
+
+        const standardFee = Number(courierData.package_rate || 0)
+        const longDistanceFee = Number(
+            courierData.long_distance_fee ?? courierData.package_rate ?? 0
+        )
+        const courierEarnedFee = isLongDistance ? longDistanceFee : standardFee
+
         // 2. Kurye ata
         const { error } = await supabase
             .from('packages')
             .update({
                 courier_id: courierId,
                 status: 'assigned',
-                assigned_at: new Date().toISOString()
+                assigned_at: new Date().toISOString(),
+                is_long_distance: isLongDistance,
+                courier_earned_fee: courierEarnedFee,
             })
             .eq('id', packageId)
 

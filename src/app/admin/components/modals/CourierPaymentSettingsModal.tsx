@@ -23,6 +23,7 @@ export function CourierPaymentSettingsModal({
 }: CourierPaymentSettingsModalProps) {
   const [paymentType, setPaymentType] = useState<'paket_basi' | 'saatlik'>('paket_basi')
   const [packageRate, setPackageRate] = useState<string>('')
+  const [longDistanceFee, setLongDistanceFee] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -34,11 +35,22 @@ export function CourierPaymentSettingsModal({
     if (courier.package_rate) {
       setPackageRate(courier.package_rate.toString())
     }
+    if (courier.long_distance_fee != null) {
+      setLongDistanceFee(courier.long_distance_fee.toString())
+    } else {
+      setLongDistanceFee('')
+    }
   }, [courier])
 
   const handleSave = async () => {
     if (!packageRate || isNaN(Number(packageRate)) || Number(packageRate) <= 0) {
       setError('Geçerli bir ücret giriniz')
+      return
+    }
+
+    const parsedLongDistance = longDistanceFee.trim() === '' ? 0 : Number(longDistanceFee)
+    if (longDistanceFee.trim() !== '' && (isNaN(parsedLongDistance) || parsedLongDistance < 0)) {
+      setError('Geçerli bir uzak mesafe ücreti giriniz')
       return
     }
 
@@ -50,7 +62,8 @@ export function CourierPaymentSettingsModal({
         .from('couriers')
         .update({
           payment_type: paymentType,
-          package_rate: Number(packageRate)
+          package_rate: Number(packageRate),
+          long_distance_fee: parsedLongDistance,
         })
         .eq('id', courier.id)
 
@@ -145,6 +158,25 @@ export function CourierPaymentSettingsModal({
               * Sabit maaş ayrıca manuel takip edilir, burada sadece paket başı ek ücret girilir
             </p>
           )}
+        </div>
+
+        {/* Uzak Mesafe Ücreti */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-slate-700 mb-2">
+            Uzak Mesafe Ücreti (TL)
+          </label>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            value={longDistanceFee}
+            onChange={(e) => setLongDistanceFee(e.target.value)}
+            placeholder="Örn: 85.00"
+            className="w-full px-4 py-3 border border-slate-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+          />
+          <p className="text-xs text-slate-600 mt-1">
+            * Uzak mesafe olarak işaretlenen paketlerde kurye bu ücreti alır. Restoran tarifesi değişmez.
+          </p>
         </div>
 
         {/* Hata Mesajı */}

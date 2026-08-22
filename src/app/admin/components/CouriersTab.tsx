@@ -15,6 +15,10 @@ import { CourierAccountStatusModal } from './modals/CourierAccountStatusModal'
 import { NightShiftConfirmModal } from './modals/NightShiftConfirmModal'
 import { useAdminData } from '../AdminDataProvider'
 import {
+  calculateCourierEarnings,
+  courierToEarningRates,
+} from '@/utils/calculations'
+import {
   Bike, BarChart3, TrendingUp, ClipboardList, Banknote, Package as PackageIcon,
   Users, Ban, Calendar, UserX, ArrowLeft
 } from 'lucide-react'
@@ -144,7 +148,7 @@ export function CouriersTab({
                                     <div className="bg-slate-800/50 border border-slate-800 p-3 rounded">
                                         <div className="text-xs text-slate-500 tracking-tight mb-1">Bugünkü Kazanç</div>
                                         <div className="text-lg font-bold text-emerald-500 tracking-tight">
-                                            {((courier.todayDeliveryCount || 0) * (courier.package_rate || 0)).toFixed(0)}₺
+                                            {(courier.todayEarningsAmount ?? ((courier.todayDeliveryCount || 0) * (courier.package_rate || 0))).toFixed(0)}₺
                                         </div>
                                     </div>
                                     <div className="bg-slate-800/50 border border-slate-800 p-3 rounded">
@@ -480,16 +484,16 @@ export function CouriersTab({
 
         const courierEarnings = couriers.map(courier => {
             const startDate = getStartDate()
+            const earningRates = courierToEarningRates(courier)
 
-            const deliveredCount = deliveredPackages.filter(pkg =>
+            const periodPackages = deliveredPackages.filter(pkg =>
                 pkg.courier_id === courier.id &&
                 pkg.delivered_at &&
                 new Date(pkg.delivered_at) >= startDate
-            ).length
+            )
 
-            const earnings = courier.package_rate 
-                ? deliveredCount * courier.package_rate
-                : 0
+            const deliveredCount = periodPackages.length
+            const earnings = calculateCourierEarnings(periodPackages, earningRates).amount
 
             return {
                 ...courier,
@@ -585,7 +589,10 @@ export function CouriersTab({
                                                 )}
                                             </h4>
                                             <p className="text-sm text-slate-500">
-                                                {courier.deliveredCount} paket × {courier.package_rate || 0}₺
+                                                {courier.deliveredCount} paket
+                                                {courier.long_distance_fee
+                                                    ? ` · standart ${courier.package_rate || 0}₺ / uzak ${courier.long_distance_fee}₺`
+                                                    : ` × ${courier.package_rate || 0}₺`}
                                             </p>
                                         </div>
                                     </div>

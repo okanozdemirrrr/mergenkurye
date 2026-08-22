@@ -10,6 +10,8 @@ import { supabase } from '../lib/supabase'
 import { Package, Courier, Restaurant } from '@/types'
 import {
   COUNTED_PACKAGE_OR_FILTER,
+  calculateCourierEarnings,
+  courierToEarningRates,
   getBusinessDayRangeIso,
   getBusinessWeekStart,
 } from '@/utils/calculations'
@@ -266,7 +268,7 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
       // ⚡ EGRESS OPTİMİZASYONU: Sadece gerekli courier kolonları (last_location dahil)
       const { data, error } = await supabase
         .from('couriers')
-        .select('id, username, full_name, is_active, is_night_shift, package_rate, payment_type, account_status, last_location')
+        .select('id, username, full_name, is_active, is_night_shift, package_rate, long_distance_fee, payment_type, account_status, last_location')
         .order('full_name', { ascending: true })
 
       if (error) throw error
@@ -283,10 +285,15 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
           const { data: todayDeliveries } = await queryCourierTodayCountedPackages(
             supabase,
             courier.id,
-            'id, status, is_chargeable_cancellation'
+            'id, status, is_chargeable_cancellation, is_long_distance, courier_earned_fee'
           )
 
           const todayDeliveryCount = (todayDeliveries || []).length
+          const earningRates = courierToEarningRates(courier)
+          const todayEarningsAmount = calculateCourierEarnings(
+            todayDeliveries || [],
+            earningRates
+          ).amount
 
           // Aktif paketleri çek (assigned, picking_up, on_the_way)
           const { data: activePackages } = await supabase
@@ -317,6 +324,7 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
             deliveryCount: weeklyDeliveryCount, // Geriye uyumluluk için
             weeklyDeliveryCount,
             todayDeliveryCount,
+            todayEarningsAmount,
             activePackageCount,
             totalDebt
           }

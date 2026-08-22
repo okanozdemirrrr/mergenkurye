@@ -72,6 +72,8 @@ export interface Package {
     is_courier_earned_paid?: boolean
     is_paid_to_restaurant?: boolean
     is_chargeable_cancellation?: boolean
+    is_long_distance?: boolean
+    courier_earned_fee?: number | null
 }
 
 // ============================================
@@ -101,6 +103,8 @@ export interface Courier {
     // YENİ: Ödeme sistemi alanları
     payment_type?: 'paket_basi' | 'saatlik'
     package_rate?: number
+    long_distance_fee?: number
+    todayEarningsAmount?: number
     is_night_shift?: boolean
     account_status?: 'active' | 'suspended' | 'terminated' | string | null
 }

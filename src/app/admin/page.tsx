@@ -15,6 +15,7 @@ import ChangelogModal from '@/components/ChangelogModal'
 export default function AdminPage() {
   const { packages, couriers, restaurants, isLoading, setSuccessMessage, setErrorMessage, fetchPackages, todayDeliveredCount } = useAdminData()
   const [selectedCouriers, setSelectedCouriers] = useState<{ [key: number]: string }>({})
+  const [longDistancePackages, setLongDistancePackages] = useState<{ [key: number]: boolean }>({})
   const [assigningIds, setAssigningIds] = useState<Set<number>>(new Set())
   const [openDropdownId, setOpenDropdownId] = useState<number | null>(null)
 
@@ -24,6 +25,10 @@ export default function AdminPage() {
 
   const handleCourierChange = (packageId: number, courierId: string) => {
     setSelectedCouriers(prev => ({ ...prev, [packageId]: courierId }))
+  }
+
+  const handleLongDistanceChange = (packageId: number, isLongDistance: boolean) => {
+    setLongDistancePackages(prev => ({ ...prev, [packageId]: isLongDistance }))
   }
 
   const handleAssignCourier = async (packageId: number) => {
@@ -37,9 +42,16 @@ export default function AdminPage() {
     setAssigningIds(prev => new Set(prev).add(packageId))
 
     try {
-      await assignCourier(packageId, courierId)
+      await assignCourier(packageId, courierId, {
+        isLongDistance: longDistancePackages[packageId] ?? false,
+      })
       setSuccessMessage('Kurye atandı!')
       setTimeout(() => setSuccessMessage(''), 2000)
+      setLongDistancePackages(prev => {
+        const next = { ...prev }
+        delete next[packageId]
+        return next
+      })
       await fetchPackages()
     } catch (error: any) {
       setErrorMessage(error.message)
@@ -75,10 +87,12 @@ export default function AdminPage() {
       restaurants={restaurants}
       isLoading={isLoading}
       selectedCouriers={selectedCouriers}
+      longDistancePackages={longDistancePackages}
       assigningIds={assigningIds}
       openDropdownId={openDropdownId}
       setOpenDropdownId={setOpenDropdownId}
       handleCourierChange={handleCourierChange}
+      handleLongDistanceChange={handleLongDistanceChange}
       handleAssignCourier={handleAssignCourier}
       handleCancelOrder={handleCancelOrder}
       todayDeliveredCount={todayDeliveredCount}

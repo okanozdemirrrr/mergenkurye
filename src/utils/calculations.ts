@@ -11,6 +11,55 @@ export type PackageLike = {
   payment_method?: string | null
   status?: string | null
   is_chargeable_cancellation?: boolean | null
+  is_long_distance?: boolean | null
+  courier_earned_fee?: number | null
+}
+
+export type CourierEarningRates = {
+  standardFee: number
+  longDistanceFee: number
+}
+
+export function normalizeCourierEarningRates(
+  rates: CourierEarningRates | number
+): CourierEarningRates {
+  if (typeof rates === 'number') {
+    return { standardFee: rates, longDistanceFee: rates }
+  }
+  return rates
+}
+
+export function courierToEarningRates(courier: {
+  package_rate?: number | null
+  long_distance_fee?: number | null
+}): CourierEarningRates {
+  return {
+    standardFee: Number(courier.package_rate || 0),
+    longDistanceFee: Number(
+      courier.long_distance_fee ?? courier.package_rate ?? 0
+    ),
+  }
+}
+
+/** Paket başına kurye hakediş ücreti (snapshot öncelikli) */
+export function getPackageEarningFee(
+  pkg: PackageLike,
+  rates: CourierEarningRates | number
+): number {
+  const normalized = normalizeCourierEarningRates(rates)
+
+  if (
+    pkg.courier_earned_fee != null &&
+    Number.isFinite(Number(pkg.courier_earned_fee))
+  ) {
+    return Number(pkg.courier_earned_fee)
+  }
+
+  if (pkg.is_long_distance) {
+    return normalized.longDistanceFee
+  }
+
+  return normalized.standardFee
 }
 
 export type SettlementLike = {
@@ -181,9 +230,17 @@ export function getBusinessDayRangeIso(now = new Date()): { startIso: string; en
   }
 }
 
-/** Bugünkü kurye kazancı = paket sayısı × paket başı hakediş */
-export function calculateTodayCourierEarnings(packageCount: number, packageRate: number): number {
-  return (packageCount || 0) * (packageRate || 0)
+/** Bugünkü kurye kazancı — paket listesi varsa uzak mesafe dahil hesaplar */
+export function calculateTodayCourierEarnings(
+  packagesOrCount: PackageLike[] | number,
+  ratesOrPackageRate: CourierEarningRates | number
+): number {
+  if (Array.isArray(packagesOrCount)) {
+    return calculateCourierEarnings(packagesOrCount, ratesOrPackageRate).amount
+  }
+
+  const rates = normalizeCourierEarningRates(ratesOrPackageRate)
+  return (packagesOrCount || 0) * (rates.standardFee || 0)
 }
 
 /** İş haftası başlangıcı (Pazartesi TR 05:00) — admin kurye hesapları "Bu Hafta" ile aynı */
@@ -246,22 +303,26 @@ export function calculateCourierCollectionTotals(
   return { cash, card, iban, count, total: cash + card + iban }
 }
 
-/** Hakediş: teslim + ücretli iptal × paket ücreti */
+/** Hakediş: teslim + ücretli iptal, paket bazında ücret (uzak mesafe dahil) */
 export function calculateCourierEarnings(
   packages: PackageLike[],
-  packageRate: number
+  rates: CourierEarningRates | number
 ): { count: number; amount: number } {
-  const rate = assertFiniteNumber(packageRate, 'packageRate', 'earnings')
+  normalizeCourierEarningRates(rates)
   if (!Array.isArray(packages)) {
     throw new Error('[calculations] packages dizisi değil (earnings)')
   }
 
   let count = 0
+  let amount = 0
   for (let i = 0; i < packages.length; i++) {
-    if (isEarningsEligible(packages[i])) count += 1
+    const pkg = packages[i]
+    if (!isEarningsEligible(pkg)) continue
+    count += 1
+    amount += getPackageEarningFee(pkg, rates)
   }
 
-  return { count, amount: count * rate }
+  return { count, amount }
 }
 
 export function calculateSettlementsPaid(settlements: SettlementLike[]): number {
@@ -284,11 +345,11 @@ export function calculateSettlementsPaid(settlements: SettlementLike[]): number 
 export function calculatePeriodAccount(
   collectionPackages: PackageLike[],
   settlements: SettlementLike[],
-  packageRate = 0
+  rates: CourierEarningRates | number = 0
 ): PeriodAccountTotals {
   const collection = calculateCourierCollectionTotals(collectionPackages)
   const settlementsPaid = calculateSettlementsPaid(settlements)
-  const earnings = calculateCourierEarnings(collectionPackages, packageRate)
+  const earnings = calculateCourierEarnings(collectionPackages, rates)
 
   const payableDebt = Math.max(0, collection.total - settlementsPaid)
 

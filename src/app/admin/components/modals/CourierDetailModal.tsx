@@ -8,6 +8,10 @@ import { NightShiftConfirmModal } from './NightShiftConfirmModal'
 import { supabase } from '@/app/lib/supabase'
 import { useAdminData } from '../../AdminDataProvider'
 import { CheckCircle2, Package as PackageIcon } from 'lucide-react'
+import {
+  calculateCourierEarnings,
+  courierToEarningRates,
+} from '@/utils/calculations'
 
 interface CourierDetailModalProps {
   show: boolean
@@ -120,9 +124,12 @@ export function CourierDetailModal({
     }
   }, [openSettlementPackages])
 
+  const earningRates = courierToEarningRates(courier || {})
   const earningsPackageCount = unpaidEarningsPackages.length
-  const packageRate = Number(courier?.package_rate || 0)
-  const earningsAmount = earningsPackageCount * packageRate
+  const earningsAmount = calculateCourierEarnings(
+    unpaidEarningsPackages,
+    earningRates
+  ).amount
   const personalDebt = courierDebts.reduce((sum, d) => sum + Number(d.remaining_amount || 0), 0)
 
   const handleGunSonuAl = async () => {
@@ -210,9 +217,7 @@ export function CourierDetailModal({
 
       await fetchUnpaidEarningsPackages()
       alert(
-        `Hakediş ödendi olarak işaretlendi.\nPaket: ${packageIds.length}\nToplam: ${(
-          packageIds.length * packageRate
-        ).toFixed(2)} ₺`
+        `Hakediş ödendi olarak işaretlendi.\nPaket: ${packageIds.length}\nToplam: ${earningsAmount.toFixed(2)} ₺`
       )
     } catch (err: any) {
       console.error('Hakediş ödeme hatası:', err)
@@ -334,7 +339,7 @@ export function CourierDetailModal({
                       {loadingPackages ? '...' : earningsAmount.toFixed(0)}₺
                     </div>
                     <div className="text-xs text-slate-500 mt-1 tracking-tight">
-                      {earningsPackageCount} × {packageRate}₺
+                      {earningsPackageCount} paket · toplam hakediş
                     </div>
                   </div>
                 </div>
@@ -401,8 +406,8 @@ export function CourierDetailModal({
                   <div className="text-xs text-slate-500 tracking-tight mb-2">HAKEDİŞ</div>
                   <div className="text-2xl font-bold text-emerald-500 tracking-tight">{earningsAmount.toFixed(0)}₺</div>
                   <div className="text-xs text-slate-600 mt-1 tracking-tight">
-                    {packageRate > 0
-                      ? `${earningsPackageCount} Paket × ${packageRate}₺`
+                    {earningRates.standardFee > 0 || earningRates.longDistanceFee > 0
+                      ? `${earningsPackageCount} paket · standart ${earningRates.standardFee}₺ / uzak ${earningRates.longDistanceFee}₺`
                       : 'Paket başı ücret belirlenmedi'}
                   </div>
                 </div>

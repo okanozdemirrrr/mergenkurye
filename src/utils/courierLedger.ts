@@ -3,6 +3,7 @@ import {
   calculateCourierCollectionTotals,
   calculateCourierEarnings,
   resolveFilterUtcRange,
+  type CourierEarningRates,
   type PackageLike,
 } from '@/utils/calculations'
 
@@ -36,7 +37,7 @@ export type SettlementInsertPayload = {
 export function fetchCourierOpenLedgerPackages(
   supabase: SupabaseClient,
   courierId: string,
-  select = 'id, amount, payment_method, status, is_chargeable_cancellation, delivered_at, order_number'
+  select = 'id, amount, payment_method, status, is_chargeable_cancellation, is_long_distance, courier_earned_fee, delivered_at, order_number'
 ) {
   if (!courierId) {
     throw new Error('[courierLedger] courierId eksik')
@@ -57,7 +58,7 @@ export function fetchCourierOpenLedgerPackagesInRange(
   courierId: string,
   startDate: string,
   endDate: string,
-  select = 'id, amount, payment_method, status, is_chargeable_cancellation, delivered_at, order_number'
+  select = 'id, amount, payment_method, status, is_chargeable_cancellation, is_long_distance, courier_earned_fee, delivered_at, order_number'
 ) {
   if (!courierId) {
     throw new Error('[courierLedger] courierId eksik')
@@ -74,7 +75,7 @@ export function fetchCourierOpenLedgerPackagesInRange(
 export function fetchCourierUnpaidEarningsPackages(
   supabase: SupabaseClient,
   courierId: string,
-  select = 'id, amount, payment_method, status, is_chargeable_cancellation, delivered_at, order_number'
+  select = 'id, amount, payment_method, status, is_chargeable_cancellation, is_long_distance, courier_earned_fee, delivered_at, order_number'
 ) {
   if (!courierId) {
     throw new Error('[courierLedger] courierId eksik')
@@ -92,12 +93,12 @@ export function fetchCourierUnpaidEarningsPackages(
 export async function fetchCourierLedgerAccount(
   supabase: SupabaseClient,
   courierId: string,
-  packageRate: number
+  rates: CourierEarningRates | number
 ): Promise<LedgerAccount> {
   const { data: packages, error } = await fetchCourierOpenLedgerPackages(
     supabase,
     courierId,
-    'amount, payment_method, status, is_chargeable_cancellation'
+    'amount, payment_method, status, is_chargeable_cancellation, is_long_distance, courier_earned_fee'
   )
 
   if (error) {
@@ -109,7 +110,7 @@ export async function fetchCourierLedgerAccount(
   }
 
   const collection = calculateCourierCollectionTotals(packages as PackageLike[])
-  const earnings = calculateCourierEarnings(packages as PackageLike[], packageRate)
+  const earnings = calculateCourierEarnings(packages as PackageLike[], rates)
 
   return {
     ...collection,
@@ -124,7 +125,7 @@ export async function fetchCourierLedgerPeriodAccount(
   courierId: string,
   startDate: string,
   endDate: string,
-  packageRate: number
+  rates: CourierEarningRates | number
 ): Promise<LedgerAccount> {
   void startDate
   void endDate
@@ -132,7 +133,7 @@ export async function fetchCourierLedgerPeriodAccount(
   const { data: packages, error } = await fetchCourierOpenLedgerPackages(
     supabase,
     courierId,
-    'amount, payment_method, status, is_chargeable_cancellation'
+    'amount, payment_method, status, is_chargeable_cancellation, is_long_distance, courier_earned_fee'
   )
 
   if (error) {
@@ -149,7 +150,7 @@ export async function fetchCourierLedgerPeriodAccount(
     await fetchCourierUnpaidEarningsPackages(
       supabase,
       courierId,
-      'amount, payment_method, status, is_chargeable_cancellation'
+      'amount, payment_method, status, is_chargeable_cancellation, is_long_distance, courier_earned_fee'
     )
   if (earningsError) {
     throw new Error(
@@ -163,7 +164,7 @@ export async function fetchCourierLedgerPeriodAccount(
   const collection = calculateCourierCollectionTotals(packages as PackageLike[])
   const earnings = calculateCourierEarnings(
     earningsPackages as PackageLike[],
-    packageRate
+    rates
   )
 
   return {
