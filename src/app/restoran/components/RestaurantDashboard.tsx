@@ -13,6 +13,15 @@ import { playRestaurantAlert } from '@/hooks/useRestaurantRealtimeNotifications'
 import { useRestoran } from '../RestoranProvider'
 import { COUNTED_PACKAGE_OR_FILTER } from '@/utils/calculations'
 import {
+  OrderAmountDisplay,
+  isChargeableCancellation,
+  sortChargeableCancelsLast,
+  CHARGEABLE_CANCEL_BADGE_CLASS,
+  CHARGEABLE_CANCEL_BADGE_CLASS_LIGHT,
+  CHARGEABLE_CANCEL_ROW_CLASS,
+  CHARGEABLE_CANCEL_ROW_CLASS_LIGHT,
+} from '@/components/ui/OrderAmountDisplay'
+import {
   deliveredPeriodBounds,
   fetchRestaurantStats,
   istanbulTodayYmd,
@@ -233,7 +242,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
         ])
 
         if (listRes.error) throw listRes.error
-        setDeliveredPackages(listRes.data || [])
+        setDeliveredPackages(sortChargeableCancelsLast(listRes.data || []))
         setDeliveredTotalCount(stats.packageCount)
       } else if (activeTab === 'cancelled') {
         // İptal edilen siparişler
@@ -799,10 +808,12 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                   <div className="space-y-3">
                   {deliveredPackages.map((pkg: any) => {
                     const isExpanded = expandedHistoryId === pkg.id
-                    const isChargeableCancel = pkg.status === 'cancelled' && pkg.is_chargeable_cancellation
+                    const isChargeableCancel = isChargeableCancellation(pkg)
                     const statusBadgeLabel = isChargeableCancel ? 'Ücretli İptal' : 'Teslim Edildi'
                     const statusBadgeClass = isChargeableCancel
-                      ? darkMode ? 'bg-rose-900/50 text-rose-300' : 'bg-rose-100 text-rose-700'
+                      ? darkMode
+                        ? CHARGEABLE_CANCEL_BADGE_CLASS
+                        : CHARGEABLE_CANCEL_BADGE_CLASS_LIGHT
                       : darkMode ? 'bg-green-900/50 text-green-300' : 'bg-green-100 text-green-700'
                     const paymentLabel =
                       pkg.payment_method === 'cash' ? 'Nakit' : pkg.payment_method === 'iban' ? 'IBAN' : 'Kart'
@@ -817,9 +828,13 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                     <div
                       key={pkg.id}
                       className={`p-3 sm:p-4 rounded-md border overflow-hidden ${
-                        darkMode 
-                          ? 'bg-slate-800 border-slate-700' 
-                          : 'bg-gray-50 border-gray-200'
+                        isChargeableCancel
+                          ? darkMode
+                            ? CHARGEABLE_CANCEL_ROW_CLASS
+                            : CHARGEABLE_CANCEL_ROW_CLASS_LIGHT
+                          : darkMode
+                            ? 'bg-slate-800 border-slate-700'
+                            : 'bg-gray-50 border-gray-200'
                       } transition-colors`}
                     >
                       {/* Mobil özet kart */}
@@ -840,12 +855,23 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                             )}
                           </div>
                           <div className="text-right shrink-0">
-                            <p className={`font-bold text-base ${darkMode ? 'text-green-400' : 'text-green-600'}`}>
-                              {pkg.amount}₺
-                            </p>
-                            <span className={`inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-medium ${paymentClass}`}>
-                              {paymentLabel}
-                            </span>
+                            {isChargeableCancel ? (
+                              <OrderAmountDisplay
+                                amount={pkg.amount}
+                                isChargeableCancel
+                                size="md"
+                                successClassName={darkMode ? 'text-green-400 font-bold' : 'text-green-600 font-bold'}
+                              />
+                            ) : (
+                              <p className={`font-bold text-base ${darkMode ? 'text-green-400' : 'text-green-600'}`}>
+                                {pkg.amount}₺
+                              </p>
+                            )}
+                            {!isChargeableCancel && (
+                              <span className={`inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-medium ${paymentClass}`}>
+                                {paymentLabel}
+                              </span>
+                            )}
                           </div>
                         </div>
                         <div className="mt-2 space-y-0.5 min-w-0">
@@ -861,7 +887,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                             {pkg.delivered_at ? formatShortDateTime(pkg.delivered_at) : formatShortDateTime(pkg.created_at)}
                           </span>
                           <span className={`shrink-0 px-2 py-1 rounded text-[10px] font-semibold ${statusBadgeClass}`}>
-                            {statusBadgeLabel}
+                            {isChargeableCancel ? 'Ücretli İptal' : statusBadgeLabel}
                           </span>
                         </div>
                         <p className={`mt-2 text-[10px] ${darkMode ? 'text-slate-500' : 'text-gray-400'}`}>
@@ -936,13 +962,26 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                         </div>
 
                         <div className="w-full text-left lg:text-right lg:min-w-[160px] flex flex-col justify-between">
-                          <p className={`text-2xl font-bold mb-2 ${darkMode ? 'text-green-400' : 'text-green-600'}`}>
-                            {pkg.amount}₺
-                          </p>
+                          {isChargeableCancel ? (
+                            <div className="mb-2">
+                              <OrderAmountDisplay
+                                amount={pkg.amount}
+                                isChargeableCancel
+                                size="lg"
+                              />
+                            </div>
+                          ) : (
+                            <p className={`text-2xl font-bold mb-2 ${darkMode ? 'text-green-400' : 'text-green-600'}`}>
+                              {pkg.amount}₺
+                            </p>
+                          )}
                           <div className={`text-[10px] sm:text-xs space-y-1 font-medium ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
                             <p className="whitespace-nowrap flex items-center gap-1"><Clock className="w-3 h-3 text-gray-400 shrink-0" strokeWidth={1.5} />Oluşturulma: {formatShortDateTime(pkg.created_at)}</p>
-                            {pkg.delivered_at && (
+                            {pkg.delivered_at && !isChargeableCancel && (
                               <p className="whitespace-nowrap font-bold text-green-500/80 flex items-center gap-1"><CheckCircle className="w-3 h-3 shrink-0" strokeWidth={1.5} />Teslim: {formatShortDateTime(pkg.delivered_at)}</p>
+                            )}
+                            {isChargeableCancel && (
+                              <p className="whitespace-nowrap font-medium text-slate-500 flex items-center gap-1"><XCircle className="w-3 h-3 shrink-0" strokeWidth={1.5} />Ücretli iptal</p>
                             )}
                           </div>
                         </div>
@@ -1083,10 +1122,11 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                 <div className="space-y-3">
                   {cancelledPackages.map((pkg: any) => {
                     const isExpanded = expandedHistoryId === pkg.id
-                    const statusLabel = pkg.is_chargeable_cancellation ? 'Ücretli İptal' : 'Ücretsiz İptal'
-                    const statusClass = pkg.is_chargeable_cancellation
-                      ? (darkMode ? 'bg-yellow-900/50 text-yellow-300 border border-yellow-700' : 'bg-yellow-100 text-yellow-800 border border-yellow-300')
-                      : (darkMode ? 'bg-green-900/50 text-green-300' : 'bg-green-100 text-green-700')
+                    const isChargeableCancel = Boolean(pkg.is_chargeable_cancellation)
+                    const statusLabel = isChargeableCancel ? 'Ücretli İptal' : 'Ücretsiz İptal'
+                    const statusClass = isChargeableCancel
+                      ? (darkMode ? CHARGEABLE_CANCEL_BADGE_CLASS : CHARGEABLE_CANCEL_BADGE_CLASS_LIGHT)
+                      : (darkMode ? 'bg-slate-700/60 text-slate-400' : 'bg-gray-200 text-gray-500')
                     const paymentClass =
                       pkg.payment_method === 'cash'
                         ? 'bg-green-900/50 text-green-300'
@@ -1098,9 +1138,13 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                     <div
                       key={pkg.id}
                       className={`p-3 sm:p-4 rounded-md border overflow-hidden ${
-                        darkMode 
-                          ? 'bg-slate-800 border-slate-700' 
-                          : 'bg-gray-50 border-gray-200'
+                        isChargeableCancel
+                          ? darkMode
+                            ? CHARGEABLE_CANCEL_ROW_CLASS
+                            : CHARGEABLE_CANCEL_ROW_CLASS_LIGHT
+                          : darkMode
+                            ? 'bg-slate-800 border-slate-700'
+                            : 'bg-gray-50 border-gray-200'
                       } transition-colors`}
                     >
                       <button
@@ -1115,9 +1159,13 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                             </p>
                           </div>
                           <div className="text-right shrink-0">
-                            <p className={`font-bold text-base line-through ${darkMode ? 'text-red-400' : 'text-red-600'}`}>
-                              {pkg.amount}₺
-                            </p>
+                            {isChargeableCancel ? (
+                              <OrderAmountDisplay amount={pkg.amount} isChargeableCancel size="md" />
+                            ) : (
+                              <p className={`font-bold text-base line-through opacity-50 ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                                {pkg.amount}₺
+                              </p>
+                            )}
                           </div>
                         </div>
                         <div className="mt-2 space-y-0.5 min-w-0">
@@ -1184,14 +1232,14 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                             </span>
                             {pkg.is_chargeable_cancellation ? (
                               <span className={`text-xs px-2 py-1 rounded font-bold flex items-center gap-1 ${
-                                darkMode ? 'bg-yellow-900/50 text-yellow-300 border border-yellow-700' : 'bg-yellow-100 text-yellow-800 border border-yellow-300'
+                                darkMode ? CHARGEABLE_CANCEL_BADGE_CLASS : CHARGEABLE_CANCEL_BADGE_CLASS_LIGHT
                               }`}>
                                 <CircleDollarSign className="w-3 h-3" strokeWidth={1.5} />
                                 Ücretlendirildi
                               </span>
                             ) : (
                               <span className={`text-xs px-2 py-1 rounded flex items-center gap-1 ${
-                                darkMode ? 'bg-green-900/50 text-green-300' : 'bg-green-100 text-green-700'
+                                darkMode ? 'bg-slate-700/60 text-slate-400' : 'bg-gray-200 text-gray-500'
                               }`}>
                                 <Gift className="w-3 h-3" strokeWidth={1.5} />
                                 Ücretsiz İptal
@@ -1239,13 +1287,19 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                         </div>
 
                         <div className="w-full text-left lg:text-right lg:min-w-[160px] flex flex-col justify-between">
-                          <p className={`text-2xl font-bold mb-2 ${darkMode ? 'text-red-400' : 'text-red-600'}`}>
-                            {pkg.amount}₺
-                          </p>
+                          {isChargeableCancel ? (
+                            <div className="mb-2">
+                              <OrderAmountDisplay amount={pkg.amount} isChargeableCancel size="lg" />
+                            </div>
+                          ) : (
+                            <p className={`text-2xl font-bold mb-2 line-through opacity-50 ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                              {pkg.amount}₺
+                            </p>
+                          )}
                           <div className={`text-[10px] sm:text-xs space-y-1 font-medium ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
                             <p className="whitespace-nowrap flex items-center gap-1"><Clock className="w-3 h-3 text-gray-400 shrink-0" strokeWidth={1.5} />Oluşturulma: {formatShortDateTime(pkg.created_at)}</p>
                             {pkg.cancelled_at && (
-                              <p className="whitespace-nowrap font-bold text-red-500/80 flex items-center gap-1"><XCircle className="w-3 h-3 shrink-0" strokeWidth={1.5} />İptal: {formatShortDateTime(pkg.cancelled_at)}</p>
+                              <p className="whitespace-nowrap font-bold text-slate-500 flex items-center gap-1"><XCircle className="w-3 h-3 shrink-0" strokeWidth={1.5} />İptal: {formatShortDateTime(pkg.cancelled_at)}</p>
                             )}
                           </div>
                         </div>

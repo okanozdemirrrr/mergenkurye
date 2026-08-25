@@ -6,6 +6,8 @@
  * 1) Supabase varsayılan satır limitini aşmak için sayfalı (range) fetch
  * 2) Tarih filtreleri Europe/Istanbul duvar saati ile (gece yarısı kayması yok)
  * 3) Restoran soft-delete / pasif olsa bile fişler gelsin → restaurants!left + ayrı isim yükleme
+ * 4) Tek kaynak: paketler yalnızca restaurant_settlement_id ile; ciro = yalnızca delivered amount
+ *    (process_restaurant_settlement ile aynı kural — ücretli iptal masrafa girer, ciroya girmez)
  */
 'use client'
 
@@ -13,11 +15,20 @@ import { useEffect, useState, useCallback, useMemo, Fragment } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { supabase } from '@/app/lib/supabase'
 import { parseFilterInputToUtcIso } from '@/utils/calculations'
+import {
+  OrderAmountDisplay,
+  CHARGEABLE_CANCEL_CHIP_CLASS,
+  isChargeableCancellation,
+  sortChargeableCancelsLast,
+} from '@/components/ui/OrderAmountDisplay'
 
 type SettlementPackage = {
   order_number: string | null
   delivered_at: string | null
+  created_at: string | null
   amount?: number | null
+  status: string | null
+  is_chargeable_cancellation?: boolean | null
 }
 
 type SettlementRow = {
@@ -147,11 +158,41 @@ function restaurantNameFromRow(row: SettlementRow, nameById: Map<string, string>
 function packagesFromRow(row: SettlementRow): SettlementPackage[] {
   const raw = row.packages
   if (!raw) return []
-  return [...raw].sort((a, b) => {
-    const ta = a.delivered_at ? new Date(a.delivered_at).getTime() : 0
-    const tb = b.delivered_at ? new Date(b.delivered_at).getTime() : 0
+  const sorted = [...raw].sort((a, b) => {
+    const ta = a.delivered_at
+      ? new Date(a.delivered_at).getTime()
+      : a.created_at
+        ? new Date(a.created_at).getTime()
+        : 0
+    const tb = b.delivered_at
+      ? new Date(b.delivered_at).getTime()
+      : b.created_at
+        ? new Date(b.created_at).getTime()
+        : 0
     return tb - ta
   })
+  return sortChargeableCancelsLast(sorted)
+}
+
+/** RPC ile aynı: ciroya yalnızca teslim edilen paket tutarı girer */
+function packageRevenueAmount(pkg: SettlementPackage): number {
+  if (pkg.status !== 'delivered') return 0
+  const n = Number(pkg.amount)
+  return Number.isFinite(n) ? n : 0
+}
+
+/** Listedeki geçerli paketlerden ciro — üst satır ile tek kaynak */
+function sumPackagesRevenue(pkgs: SettlementPackage[]): number {
+  return pkgs.reduce((sum, pkg) => sum + packageRevenueAmount(pkg), 0)
+}
+
+/** Paketler yüklendiyse listedeki reduce; değilse fişteki snapshot */
+function displayTotalRevenue(row: SettlementRow): number {
+  if (row.packages !== undefined && row.packages !== null) {
+    return sumPackagesRevenue(row.packages)
+  }
+  const n = Number(row.total_revenue)
+  return Number.isFinite(n) ? n : 0
 }
 
 /**
@@ -255,10 +296,13 @@ export default function RestoranMutabakatlarPage() {
       const pkgs: SettlementPackage[] = []
       let offset = 0
 
+      // Tek kaynak: sadece bu mutabakat fişine bağlı paketler (tarih aralığı yeniden çekilmez)
       while (true) {
         const { data, error } = await supabase
           .from('packages')
-          .select('order_number, delivered_at, amount')
+          .select(
+            'order_number, delivered_at, created_at, amount, status, is_chargeable_cancellation'
+          )
           .eq('restaurant_settlement_id', settlementId)
           .order('delivered_at', { ascending: false })
           .range(offset, offset + PAGE_SIZE - 1)
@@ -455,7 +499,12 @@ export default function RestoranMutabakatlarPage() {
                 {filteredSettlements.map((row) => {
                   const isExpanded = expandedRowId === row.id
                   const pkgs = packagesFromRow(row)
+                  const pkgsLoaded = row.packages !== undefined && row.packages !== null
                   const pkgsLoading = packagesLoadingId === row.id
+                  const listRevenue = pkgsLoaded ? sumPackagesRevenue(pkgs) : null
+                  const packageCountLabel = pkgsLoaded
+                    ? pkgs.length
+                    : (row.package_count ?? 0)
 
                   return (
                     <Fragment key={row.id}>
@@ -487,9 +536,9 @@ export default function RestoranMutabakatlarPage() {
                         </td>
                         <td className="py-3.5 px-4 text-white font-medium">
                           {restaurantNameFromRow(row, restaurantNames)}
-                          {(row.package_count ?? 0) > 0 && (
+                          {packageCountLabel > 0 && (
                             <span className="ml-2 text-xs font-normal text-slate-500">
-                              ({row.package_count} paket)
+                              ({packageCountLabel} paket)
                             </span>
                           )}
                         </td>
@@ -497,7 +546,7 @@ export default function RestoranMutabakatlarPage() {
                           {formatPeriodDate(row.start_date)} — {formatPeriodDate(row.end_date)}
                         </td>
                         <td className="py-3.5 px-4 text-right text-slate-300 tabular-nums">
-                          {formatMoney(row.total_revenue)}
+                          {formatMoney(displayTotalRevenue(row))}
                         </td>
                         <td className="py-3.5 px-4 text-right text-rose-300/90 tabular-nums">
                           {formatMoney(row.courier_cost)}
@@ -519,25 +568,52 @@ export default function RestoranMutabakatlarPage() {
                                 Bu mutabakata ait paket detayı bulunamadı.
                               </p>
                             ) : (
-                              <div className="flex flex-wrap gap-2">
-                                {pkgs.map((pkg, idx) => (
-                                  <span
-                                    key={`${row.id}-${pkg.order_number ?? idx}-${pkg.delivered_at ?? idx}`}
-                                    className="inline-flex items-center gap-2 rounded-full border border-slate-600/80 bg-slate-800/80 px-3 py-1.5 text-xs text-slate-200"
-                                  >
-                                    <span className="font-semibold text-white">
-                                      {pkg.order_number?.trim() || '—'}
+                              <div className="space-y-3">
+                                <div className="flex flex-wrap gap-2">
+                                  {pkgs.map((pkg, idx) => {
+                                    const cancel = isChargeableCancellation(pkg)
+                                    return (
+                                      <span
+                                        key={`${row.id}-${pkg.order_number ?? idx}-${pkg.delivered_at ?? pkg.created_at ?? idx}`}
+                                        className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs ${
+                                          cancel
+                                            ? CHARGEABLE_CANCEL_CHIP_CLASS
+                                            : 'border-slate-600/80 bg-slate-800/80 text-slate-200'
+                                        }`}
+                                      >
+                                        <span
+                                          className={`font-semibold ${
+                                            cancel ? 'text-slate-400' : 'text-white'
+                                          }`}
+                                        >
+                                          {pkg.order_number?.trim() || '—'}
+                                        </span>
+                                        <span className="text-slate-500">
+                                          {formatDeliveredAt(pkg.delivered_at || pkg.created_at)}
+                                        </span>
+                                        <OrderAmountDisplay
+                                          amount={pkg.amount}
+                                          isChargeableCancel={cancel}
+                                          size="sm"
+                                          successClassName="text-emerald-400 font-medium"
+                                        />
+                                      </span>
+                                    )
+                                  })}
+                                </div>
+                                {listRevenue != null && (
+                                  <p className="text-xs text-slate-500 tabular-nums">
+                                    Liste ciro toplamı (yalnızca teslim):{' '}
+                                    <span className="text-slate-300 font-medium">
+                                      {formatMoney(listRevenue)}
                                     </span>
-                                    <span className="text-slate-400">
-                                      {formatDeliveredAt(pkg.delivered_at)}
-                                    </span>
-                                    {pkg.amount != null && (
-                                      <span className="text-emerald-400 font-medium">
-                                        {formatMoney(pkg.amount)}
+                                    {pkgs.some(isChargeableCancellation) && (
+                                      <span className="ml-2 text-slate-500">
+                                        · ücretli iptaller listenin sonunda · ciroya dahil değil
                                       </span>
                                     )}
-                                  </span>
-                                ))}
+                                  </p>
+                                )}
                               </div>
                             )}
                           </td>

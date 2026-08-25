@@ -31,6 +31,13 @@ import {
 } from '@/utils/courierAccount'
 import { fetchCourierLedgerPeriodAccount } from '@/utils/courierLedger'
 import { isCollectionEligible, courierToEarningRates } from '@/utils/calculations'
+import {
+  OrderAmountDisplay,
+  ChargeableCancelBadge,
+  isChargeableCancellation,
+  sortChargeableCancelsLast,
+  CHARGEABLE_CANCEL_ROW_CLASS,
+} from '@/components/ui/OrderAmountDisplay'
 import { LongDistanceBadge } from '@/components/ui/LongDistanceBadge'
 import { authenticateCourier, getCourierAccountStatusError } from '@/services/courierLoginService'
 import {
@@ -1380,7 +1387,7 @@ export default function KuryePage() {
         restaurant: pkg.restaurants,
       }))
 
-      setFilteredPackages(transformed)
+      setFilteredPackages(sortChargeableCancelsLast(transformed))
       setTotalPages(Math.ceil((listResult.count || 0) / ITEMS_PER_PAGE))
       setCurrentPage(1)
       setPeriodAccount({
@@ -1427,7 +1434,7 @@ export default function KuryePage() {
         .filter((p: any) => p.payment_method === 'iban')
         .reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0)
 
-      setFilteredPackages(list)
+      setFilteredPackages(sortChargeableCancelsLast(list))
       setTotalPages(Math.max(1, Math.ceil(list.length / ITEMS_PER_PAGE)))
       setCurrentPage(1)
       setPeriodAccount({
@@ -3161,13 +3168,26 @@ export default function KuryePage() {
                 </div>
 
                 {/* Teslim Edilen Paket Listesi */}
-                {filteredPackages.map((pkg, index) => (
-                  <div key={pkg.id} className="bg-slate-900 p-3 sm:p-4 rounded-md border border-white/5">
+                {sortChargeableCancelsLast(filteredPackages).map((pkg, index) => {
+                  const isCancel = isChargeableCancellation(pkg)
+                  return (
+                  <div
+                    key={pkg.id}
+                    className={`p-3 sm:p-4 rounded-md border ${
+                      isCancel
+                        ? `${CHARGEABLE_CANCEL_ROW_CLASS} border-white/5`
+                        : 'bg-slate-900 border-white/5'
+                    }`}
+                  >
                     {/* Üst Kısım */}
                     <div className="flex justify-between items-start mb-2 sm:mb-3">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs font-bold text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded">
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded ${
+                            isCancel
+                              ? 'text-slate-400 bg-slate-700/40'
+                              : 'text-blue-400 bg-blue-500/20'
+                          }`}>
                             {pkg.order_number || '......'}
                           </span>
                           {pkg.platform && (
@@ -3178,18 +3198,21 @@ export default function KuryePage() {
                           {pkg.is_long_distance && (
                             <LongDistanceBadge className="bg-purple-500/20 text-purple-300 border border-purple-500/30" />
                           )}
-                          <span className={`text-xs px-2 py-0.5 rounded ${
-                            pkg.status === 'delivered' 
-                              ? 'bg-green-500/20 text-green-400' 
-                              : pkg.status === 'cancelled'
-                              ? 'bg-red-500/20 text-red-400'
-                              : 'bg-gray-500/20 text-gray-400'
-                          }`}>
-                            {pkg.status === 'delivered' && 'Teslim Edildi'}
-                            {pkg.status === 'cancelled' && '✕ Ücretli İptal'}
-                          </span>
+                          {isCancel ? (
+                            <ChargeableCancelBadge />
+                          ) : (
+                            <span className={`text-xs px-2 py-0.5 rounded ${
+                              pkg.status === 'delivered'
+                                ? 'bg-green-500/20 text-green-400'
+                                : 'bg-gray-500/20 text-gray-400'
+                            }`}>
+                              {pkg.status === 'delivered' && 'Teslim Edildi'}
+                            </span>
+                          )}
                         </div>
-                        <p className="font-medium text-sm sm:text-base text-white">{pkg.customer_name}</p>
+                        <p className={`font-medium text-sm sm:text-base ${isCancel ? 'text-slate-400' : 'text-white'}`}>
+                          {pkg.customer_name}
+                        </p>
 
                         {/* Müşteri Telefonu - Maskelenmiş */}
                         {pkg.customer_phone && (
@@ -3207,10 +3230,17 @@ export default function KuryePage() {
                         )}
                       </div>
                       <div className="text-right">
-                        <p className="text-xl font-bold text-green-400">{pkg.amount}₺</p>
-                        <p className="text-xs text-slate-500">
-                          {pkg.payment_method === 'cash' ? 'Nakit' : pkg.payment_method === 'iban' ? 'IBAN' : 'Kart'}
-                        </p>
+                        <OrderAmountDisplay
+                          amount={pkg.amount}
+                          isChargeableCancel={isCancel}
+                          size="lg"
+                          successClassName="text-xl font-bold text-green-400"
+                        />
+                        {!isCancel && (
+                          <p className="text-xs text-slate-500">
+                            {pkg.payment_method === 'cash' ? 'Nakit' : pkg.payment_method === 'iban' ? 'IBAN' : 'Kart'}
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -3267,7 +3297,8 @@ export default function KuryePage() {
                       </div>
                     )}
                   </div>
-                ))}
+                  )
+                })}
               </>
             )}
           </div>

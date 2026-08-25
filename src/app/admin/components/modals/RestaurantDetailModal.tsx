@@ -11,6 +11,14 @@ import { formatTurkishTime } from '@/utils/dateHelpers'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
 import { getRestaurantPeriodFinancials, PeriodFinancials } from '@/services/restaurantService'
 import { Clock } from 'lucide-react'
+import {
+  OrderAmountDisplay,
+  ChargeableCancelBadge,
+  isChargeableCancellation,
+  sortChargeableCancelsLast,
+  CHARGEABLE_CANCEL_BADGE_CLASS,
+  CHARGEABLE_CANCEL_ROW_CLASS,
+} from '@/components/ui/OrderAmountDisplay'
 
 function DrawerOrderRow({ pkg }: { pkg: Package }) {
   const [isExpanded, setIsExpanded] = useState(false)
@@ -147,27 +155,36 @@ function DrawerOrderRow({ pkg }: { pkg: Package }) {
   }
 
   return (
-    <div className="bg-slate-900 border border-slate-800/80 rounded-md overflow-hidden transition-all duration-200">
+    <div className={`border rounded-md overflow-hidden transition-all duration-200 ${
+      isChargeableCancellation(pkg)
+        ? `${CHARGEABLE_CANCEL_ROW_CLASS} border-slate-700/60`
+        : 'bg-slate-900 border-slate-800/80'
+    }`}>
       {/* Kart Başlığı (Accordion Toggle) */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full p-4 flex items-center justify-between hover:bg-slate-800/40 transition-colors text-left"
       >
         <div className="flex items-center gap-3">
-          <span className="text-sm font-bold text-slate-300">
-            #{pkg?.order_number || pkg?.id}
+          <span className={`text-sm font-bold ${isChargeableCancellation(pkg) ? 'text-slate-400' : 'text-slate-300'}`}>
+            #{pkg?.order_number?.trim() || '......'}
           </span>
           <span className="text-xs text-slate-500 font-medium">
             {safeFormatHeaderDate(pkg?.created_at)}
           </span>
         </div>
         <div className="flex items-center gap-4">
-          <span className="font-extrabold text-slate-200 text-sm">
-            {(pkg?.amount ?? 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
-          </span>
-          {pkg?.status === 'cancelled' ? (
-            <span className="px-2 py-0.5 bg-rose-500/10 text-rose-400 rounded text-[10px] font-bold border border-rose-500/20 uppercase tracking-wider">
-              İptal (Ücretli)
+          <OrderAmountDisplay
+            amount={pkg?.amount}
+            pkg={pkg}
+            size="sm"
+            successClassName="font-extrabold text-slate-200"
+          />
+          {isChargeableCancellation(pkg) ? (
+            <ChargeableCancelBadge label="İptal (Ücretli)" />
+          ) : pkg?.status === 'cancelled' ? (
+            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${CHARGEABLE_CANCEL_BADGE_CLASS}`}>
+              İptal
             </span>
           ) : (
             <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded text-[10px] font-bold border border-emerald-500/20 uppercase tracking-wider">
@@ -248,7 +265,7 @@ export function RestaurantDetailModal({
               new Date(a.delivered_at || a.created_at || 0).getTime()
           )
 
-        setDrawerOrders(combined)
+        setDrawerOrders(sortChargeableCancelsLast(combined))
         return
       }
 
@@ -618,7 +635,7 @@ export function RestaurantDetailModal({
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-800/50">
-                              {filteredOrders.map((order) => (
+                              {sortChargeableCancelsLast(filteredOrders).map((order) => (
                                 <tr
                                   key={order.id}
                                   onClick={(e) => {
@@ -626,9 +643,11 @@ export function RestaurantDetailModal({
                                     e.stopPropagation()
                                     setSelectedOrder(order)
                                   }}
-                                  className="cursor-pointer hover:bg-gray-800/50 transition-colors"
+                                  className={`cursor-pointer hover:bg-gray-800/50 transition-colors ${
+                                    isChargeableCancellation(order) ? CHARGEABLE_CANCEL_ROW_CLASS : ''
+                                  }`}
                                 >
-                                  <td className="px-6 py-4 font-medium text-slate-300">
+                                  <td className={`px-6 py-4 font-medium ${isChargeableCancellation(order) ? 'text-slate-500' : 'text-slate-300'}`}>
                                     {order.order_number || '......'}
                                   </td>
                                   <td className="px-6 py-4 text-slate-400">
@@ -636,7 +655,14 @@ export function RestaurantDetailModal({
                                   </td>
                                   <td className="px-6 py-4 text-slate-400 truncate max-w-[120px]">{order.customer_name}</td>
                                   <td className="px-6 py-4 text-slate-500">{order.courier_name || '-'}</td>
-                                  <td className="px-6 py-4 font-bold text-slate-300 whitespace-nowrap">{order.amount} ₺</td>
+                                  <td className="px-6 py-4 whitespace-nowrap">
+                                    <OrderAmountDisplay
+                                      amount={order.amount}
+                                      pkg={order}
+                                      size="sm"
+                                      successClassName="font-bold text-slate-300"
+                                    />
+                                  </td>
                                   <td className="px-6 py-4 text-slate-400 whitespace-nowrap">
                                     {order.delivered_at 
                                       ? new Date(order.delivered_at).toLocaleString('tr-TR', {
@@ -649,9 +675,11 @@ export function RestaurantDetailModal({
                                       : '-'}
                                   </td>
                                   <td className="px-6 py-4 text-right">
-                                    {order.status === 'cancelled' ? (
-                                      <span className="px-2 py-1 bg-rose-500/10 text-rose-400 rounded text-xs font-bold border border-rose-500/20">
-                                        İptal (Ücretli)
+                                    {isChargeableCancellation(order) ? (
+                                      <ChargeableCancelBadge label="İptal (Ücretli)" />
+                                    ) : order.status === 'cancelled' ? (
+                                      <span className={`px-2 py-1 rounded text-xs font-bold ${CHARGEABLE_CANCEL_BADGE_CLASS}`}>
+                                        İptal
                                       </span>
                                     ) : (
                                       <span className="px-2 py-1 bg-emerald-500/10 text-emerald-400 rounded text-xs font-bold border border-emerald-500/20">

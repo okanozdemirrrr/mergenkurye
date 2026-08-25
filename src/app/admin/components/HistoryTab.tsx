@@ -14,6 +14,14 @@ import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platfor
 import { formatTurkishTime } from '@/utils/dateHelpers'
 import { useAdminData } from '../AdminDataProvider'
 import { LongDistanceBadge } from '@/components/ui/LongDistanceBadge'
+import {
+  OrderAmountDisplay,
+  ChargeableCancelBadge,
+  isChargeableCancellation,
+  sortChargeableCancelsLast,
+  CHARGEABLE_CANCEL_BADGE_CLASS,
+  CHARGEABLE_CANCEL_ROW_CLASS,
+} from '@/components/ui/OrderAmountDisplay'
 import { ClipboardList, Package as PackageIcon, Ban, Clock } from 'lucide-react'
 
 interface HistoryTabProps {
@@ -190,7 +198,7 @@ export function HistoryTab({
                     return dateB - dateA
                 })
 
-                setPackagesList(transformedData)
+                setPackagesList(sortChargeableCancelsLast(transformedData))
 
                 // RPC'den gelen veriyi parse etme ve state'e yazma
                 const summary = statsResult.data && statsResult.data.length > 0
@@ -311,7 +319,7 @@ export function HistoryTab({
 
     const getHistoryStatusClass = (pkg: Package) => {
         if (pkg.status === 'delivered') return 'bg-green-950/60 text-green-400 border border-green-900/30'
-        if (pkg.status === 'cancelled' && pkg.is_chargeable_cancellation) return 'bg-orange-950/60 text-orange-400 border border-orange-900/30'
+        if (isChargeableCancellation(pkg)) return CHARGEABLE_CANCEL_BADGE_CLASS
         if (pkg.status === 'cancelled') return 'bg-slate-700/60 text-slate-400 border border-slate-600/30'
         return 'bg-slate-800 text-slate-300'
     }
@@ -374,7 +382,7 @@ export function HistoryTab({
                                 <div className="flex items-center justify-between">
                                     <span className="text-slate-400 text-sm">Durum:</span>
                                     <span className={`px-3 py-1.5 rounded-full text-sm font-semibold ${
-                                        selectedPackage.status === 'cancelled' && selectedPackage.is_chargeable_cancellation ? 'bg-orange-900/50 text-orange-300' :
+                                        isChargeableCancellation(selectedPackage) ? CHARGEABLE_CANCEL_BADGE_CLASS :
                                         selectedPackage.status === 'cancelled' ? 'bg-slate-600/50 text-slate-300' :
                                         selectedPackage.status === 'assigned' ? 'bg-orange-900/50 text-orange-300' :
                                         selectedPackage.status === 'picking_up' ? 'bg-orange-900/50 text-orange-300' :
@@ -382,7 +390,7 @@ export function HistoryTab({
                                         'bg-green-900/50 text-green-300'
                                     }`}>
                                         {selectedPackage.status === 'cancelled'
-                                            ? (selectedPackage.is_chargeable_cancellation ? 'Ücretli İptal' : 'Ücretsiz İptal')
+                                            ? (isChargeableCancellation(selectedPackage) ? 'Ücretli İptal' : 'Ücretsiz İptal')
                                             : getStatusText(selectedPackage.status)}
                                     </span>
                                 </div>
@@ -395,7 +403,12 @@ export function HistoryTab({
                                 </div>
                                 <div className="bg-slate-800 p-4 rounded-md">
                                     <p className="text-slate-400 text-xs mb-1">Tutar</p>
-                                    <p className="text-green-400 font-bold text-xl">{selectedPackage.amount}₺</p>
+                                    <OrderAmountDisplay
+                                      amount={selectedPackage.amount}
+                                      pkg={selectedPackage}
+                                      size="lg"
+                                      successClassName="text-green-400 font-bold"
+                                    />
                                 </div>
                             </div>
 
@@ -703,11 +716,21 @@ export function HistoryTab({
                                         )}
                                     </div>
                                     <div className="text-right shrink-0">
-                                        <p className={`font-bold text-base ${
-                                            pkg.status === 'cancelled' ? 'text-slate-500 line-through' : 'text-green-400'
-                                        }`}>
-                                            {pkg.amount}₺
-                                        </p>
+                                        {isChargeableCancellation(pkg) ? (
+                                            <OrderAmountDisplay
+                                              amount={pkg.amount}
+                                              isChargeableCancel
+                                              size="md"
+                                            />
+                                        ) : pkg.status === 'cancelled' ? (
+                                            <p className="font-bold text-base text-slate-500 line-through opacity-50">
+                                                {pkg.amount}₺
+                                            </p>
+                                        ) : (
+                                            <p className="font-bold text-base text-green-400">
+                                                {pkg.amount}₺
+                                            </p>
+                                        )}
                                         {pkg.status !== 'cancelled' && (
                                             <span className={`inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-medium ${getPaymentClass(pkg.payment_method)}`}>
                                                 {getPaymentLabel(pkg.payment_method)}
@@ -780,9 +803,12 @@ export function HistoryTab({
                                     <tr 
                                         key={pkg.id} 
                                         onClick={() => setSelectedPackage(pkg)}
-                                        className={`border-b border-slate-800/80 hover:bg-slate-800/60 cursor-pointer transition-colors ${pkg.status === 'cancelled'
-                                        ? 'opacity-60 bg-red-900/10'
-                                        : ''
+                                        className={`border-b border-slate-800/80 hover:bg-slate-800/60 cursor-pointer transition-colors ${
+                                          isChargeableCancellation(pkg)
+                                            ? CHARGEABLE_CANCEL_ROW_CLASS
+                                            : pkg.status === 'cancelled'
+                                              ? 'opacity-60 bg-red-900/10'
+                                              : ''
                                         }`}
                                     >
                                         <td className="py-3 px-4 w-10" onClick={(e) => e.stopPropagation()}>
@@ -808,13 +834,13 @@ export function HistoryTab({
                                                 )}
                                                 {pkg.is_long_distance && <LongDistanceBadge className="text-[10px] py-0.5 px-1.5" />}
                                                 {pkg.status === 'cancelled' && (
-                                                    <span className={`text-xs py-0.5 px-2 rounded font-semibold ${
-                                                        pkg.is_chargeable_cancellation
-                                                            ? 'bg-orange-900/40 text-orange-300'
-                                                            : 'bg-slate-700/60 text-slate-400'
-                                                    }`}>
-                                                        {pkg.is_chargeable_cancellation ? 'ÜCRETLİ İPTAL' : 'İPTAL'}
-                                                    </span>
+                                                    isChargeableCancellation(pkg) ? (
+                                                        <ChargeableCancelBadge label="ÜCRETLİ İPTAL" />
+                                                    ) : (
+                                                        <span className="text-xs py-0.5 px-2 rounded font-semibold bg-slate-700/60 text-slate-400">
+                                                            İPTAL
+                                                        </span>
+                                                    )
                                                 )}
                                             </div>
                                         </td>
@@ -854,12 +880,20 @@ export function HistoryTab({
                                             </span>
                                         </td>
                                         <td className="py-3 px-4">
-                                            <span className={`font-bold ${pkg.status === 'cancelled'
-                                                ? 'text-slate-500 line-through'
-                                                : 'text-green-400 font-extrabold text-base'
-                                                }`}>
-                                                {pkg.amount}₺
-                                            </span>
+                                            {isChargeableCancellation(pkg) ? (
+                                                <OrderAmountDisplay
+                                                  amount={pkg.amount}
+                                                  isChargeableCancel
+                                                  size="sm"
+                                                />
+                                            ) : (
+                                                <span className={`font-bold ${pkg.status === 'cancelled'
+                                                    ? 'text-slate-500 line-through opacity-50'
+                                                    : 'text-green-400 font-extrabold text-base'
+                                                    }`}>
+                                                    {pkg.amount}₺
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="py-3 px-4">
                                             {pkg.status === 'cancelled' ? (
@@ -957,7 +991,7 @@ export function HistoryTab({
                         <div className="mb-4 p-3 rounded-md bg-slate-800">
                             <p className="text-sm text-slate-400">Sipariş / Müşteri</p>
                             <p className="font-bold text-orange-400">
-                                {amountModalPackage.order_number || `#${amountModalPackage.id}`}
+                                {amountModalPackage.order_number?.trim() || '......'}
                             </p>
                             <p className="text-white mt-1">{amountModalPackage.customer_name}</p>
                         </div>

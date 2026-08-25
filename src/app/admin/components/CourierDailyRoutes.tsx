@@ -221,7 +221,7 @@ export function CourierDailyRoutes({ couriers }: CourierDailyRoutesProps) {
           <ul className="divide-y divide-slate-800/80">
             {filteredPackages.map((pkg) => {
               const open = expandedId === pkg.id
-              const code = pkg.order_number || `#${pkg.id}`
+              const code = pkg.order_number?.trim() || '......'
               return (
                 <li key={pkg.id}>
                   <button

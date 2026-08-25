@@ -7,10 +7,19 @@
 import { useEffect, useState, useCallback, useMemo, Fragment } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { supabase } from '@/app/lib/supabase'
+import {
+  OrderAmountDisplay,
+  isChargeableCancellation,
+  sortChargeableCancelsLast,
+  CHARGEABLE_CANCEL_CHIP_CLASS,
+} from '@/components/ui/OrderAmountDisplay'
 
 type SettlementPackage = {
   order_number: string | null
   delivered_at: string | null
+  amount?: number | null
+  status?: string | null
+  is_chargeable_cancellation?: boolean | null
 }
 
 type SettlementRow = {
@@ -40,7 +49,7 @@ const SETTLEMENT_SELECT_WITH_PACKAGES_FKEY = `
   received_amount,
   amount_paid,
   couriers ( full_name ),
-  packages!packages_courier_settlement_id_fkey ( order_number, delivered_at )
+  packages!packages_courier_settlement_id_fkey ( order_number, delivered_at, amount, status, is_chargeable_cancellation )
 `
 
 const SETTLEMENT_SELECT_WITH_PACKAGES = `
@@ -54,7 +63,7 @@ const SETTLEMENT_SELECT_WITH_PACKAGES = `
   received_amount,
   amount_paid,
   couriers ( full_name ),
-  packages ( order_number, delivered_at )
+  packages ( order_number, delivered_at, amount, status, is_chargeable_cancellation )
 `
 
 const SETTLEMENT_SELECT_BASE = `
@@ -115,11 +124,12 @@ function packagesFromRow(row: SettlementRow): SettlementPackage[] {
   const raw = row.packages
   if (!raw) return []
   const list = Array.isArray(raw) ? raw : [raw]
-  return [...list].sort((a, b) => {
+  const sorted = [...list].sort((a, b) => {
     const ta = a.delivered_at ? new Date(a.delivered_at).getTime() : 0
     const tb = b.delivered_at ? new Date(b.delivered_at).getTime() : 0
     return tb - ta
   })
+  return sortChargeableCancelsLast(sorted)
 }
 
 function netReceived(row: SettlementRow): number {
@@ -445,19 +455,34 @@ export default function KuryeMutabakatlarPage() {
                               </p>
                             ) : (
                               <div className="flex flex-wrap gap-2">
-                                {pkgs.map((pkg, idx) => (
-                                  <span
-                                    key={`${row.id}-${pkg.order_number ?? idx}-${pkg.delivered_at ?? idx}`}
-                                    className="inline-flex items-center gap-2 rounded-full border border-slate-600/80 bg-slate-800/80 px-3 py-1.5 text-xs text-slate-200"
-                                  >
-                                    <span className="font-semibold text-white">
-                                      {pkg.order_number?.trim() || '—'}
+                                {pkgs.map((pkg, idx) => {
+                                  const cancel = isChargeableCancellation(pkg)
+                                  return (
+                                    <span
+                                      key={`${row.id}-${pkg.order_number ?? idx}-${pkg.delivered_at ?? idx}`}
+                                      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs ${
+                                        cancel
+                                          ? CHARGEABLE_CANCEL_CHIP_CLASS
+                                          : 'border-slate-600/80 bg-slate-800/80 text-slate-200'
+                                      }`}
+                                    >
+                                      <span className={`font-semibold ${cancel ? 'text-slate-400' : 'text-white'}`}>
+                                        {pkg.order_number?.trim() || '—'}
+                                      </span>
+                                      <span className="text-slate-500">
+                                        {formatDeliveredAt(pkg.delivered_at)}
+                                      </span>
+                                      {pkg.amount != null && (
+                                        <OrderAmountDisplay
+                                          amount={pkg.amount}
+                                          isChargeableCancel={cancel}
+                                          size="sm"
+                                          successClassName="text-emerald-400 font-medium"
+                                        />
+                                      )}
                                     </span>
-                                    <span className="text-slate-400">
-                                      {formatDeliveredAt(pkg.delivered_at)}
-                                    </span>
-                                  </span>
-                                ))}
+                                  )
+                                })}
                               </div>
                             )}
                           </td>

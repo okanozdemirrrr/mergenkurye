@@ -524,7 +524,7 @@ export function LiveMapComponent({
                           <div className="mt-1 space-y-1">
                             {restaurantPackages.map(pkg => (
                               <div key={pkg.id} className="text-[10px] bg-slate-100 p-1 rounded">
-                                {pkg.order_number || `#${pkg.id}`} - {
+                                {pkg.order_number?.trim() || '......'} - {
                                   pkg.status === 'waiting' ? 'Bekliyor' :
                                   pkg.status === 'assigned' ? 'Atandı' :
                                   pkg.status === 'picking_up' ? 'Alınıyor' :
@@ -550,7 +550,7 @@ export function LiveMapComponent({
               >
                 <Popup>
                   <div className="text-sm">
-                    <div className="font-bold text-orange-600">{pkg.order_number || `#${pkg.id}`}</div>
+                    <div className="font-bold text-orange-600">{pkg.order_number?.trim() || '......'}</div>
                     <div className="text-xs mt-1">
                       <div><strong>Restoran:</strong> {pkg.restaurant?.name || 'Bilinmiyor'}</div>
                       <div><strong>Müşteri:</strong> {pkg.customer_name}</div>
@@ -613,7 +613,7 @@ export function LiveMapComponent({
                           <div className="mt-1 space-y-1">
                             {courierPackages.map(pkg => (
                               <div key={pkg.id} className="text-[10px] bg-slate-100 p-1 rounded">
-                                {pkg.order_number || `#${pkg.id}`} - {
+                                {pkg.order_number?.trim() || '......'} - {
                                   pkg.status === 'assigned' ? 'Atandı' :
                                   pkg.status === 'picking_up' ? 'Alıyor' :
                                   pkg.status === 'on_the_way' ? 'Yolda' : pkg.status

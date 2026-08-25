@@ -105,11 +105,32 @@ export function isExcludedCancellation(pkg: PackageLike): boolean {
   )
 }
 
+/** Ücretli iptal (kurye aldıktan sonra iptal) — UI ayrımı ve sıralama için */
+export function isChargeableCancellation(pkg: PackageLike): boolean {
+  return pkg.status === 'cancelled' && pkg.is_chargeable_cancellation === true
+}
+
+/**
+ * Ücretli iptalleri listenin sonuna alır; diğer sırayı korur.
+ * Mutabakat / geçmiş kart akışını bozmamak için.
+ */
+export function sortChargeableCancelsLast<T extends PackageLike>(items: T[]): T[] {
+  if (!items.length) return items
+  const normal: T[] = []
+  const cancels: T[] = []
+  for (const item of items) {
+    if (isChargeableCancellation(item)) cancels.push(item)
+    else normal.push(item)
+  }
+  if (cancels.length === 0) return items
+  return [...normal, ...cancels]
+}
+
 /** Hakediş: teslim + ücretli iptal */
 export function isEarningsEligible(pkg: PackageLike): boolean {
   if (isExcludedCancellation(pkg)) return false
   if (pkg.status === 'delivered') return true
-  return pkg.status === 'cancelled' && pkg.is_chargeable_cancellation === true
+  return isChargeableCancellation(pkg)
 }
 
 /** Tahsilat (mutabakat): sadece teslim, iptal hariç */

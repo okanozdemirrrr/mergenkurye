@@ -12,6 +12,12 @@ import {
   calculateCourierEarnings,
   courierToEarningRates,
 } from '@/utils/calculations'
+import {
+  OrderAmountDisplay,
+  isChargeableCancellation,
+  sortChargeableCancelsLast,
+  CHARGEABLE_CANCEL_ROW_CLASS,
+} from '@/components/ui/OrderAmountDisplay'
 
 interface CourierDetailModalProps {
   show: boolean
@@ -372,18 +378,36 @@ export function CourierDetailModal({
                         </tr>
                       </thead>
                       <tbody>
-                        {unpaidEarningsPackages.map((pkg, i) => (
+                        {sortChargeableCancelsLast(unpaidEarningsPackages).map((pkg, i) => {
+                          const cancel = isChargeableCancellation(pkg)
+                          return (
                           <tr
                             key={pkg.id}
-                            className={`border-b border-slate-800/50 ${i % 2 === 0 ? 'bg-slate-900/30' : ''}`}
+                            className={`border-b border-slate-800/50 ${
+                              cancel
+                                ? CHARGEABLE_CANCEL_ROW_CLASS
+                                : i % 2 === 0
+                                  ? 'bg-slate-900/30'
+                                  : ''
+                            }`}
                           >
-                            <td className="py-2 px-4 text-xs text-slate-200 tracking-tight">{pkg.order_number || '—'}</td>
+                            <td className={`py-2 px-4 text-xs tracking-tight ${cancel ? 'text-slate-500' : 'text-slate-200'}`}>
+                              {pkg.order_number || '—'}
+                            </td>
                             <td className="py-2 px-4 text-xs text-slate-400 tracking-tight">{formatTurkishTime(pkg.delivered_at)}</td>
                             <td className="py-2 px-4 text-xs text-slate-400 tracking-tight">{pkg.restaurant?.name || '—'}</td>
                             <td className="py-2 px-4 text-xs text-slate-300 tracking-tight">{pkg.customer_name}</td>
-                            <td className="py-2 px-4 text-right text-xs font-medium text-emerald-500 tracking-tight">{pkg.amount}₺</td>
+                            <td className="py-2 px-4 text-right text-xs tracking-tight">
+                              <OrderAmountDisplay
+                                amount={pkg.amount}
+                                isChargeableCancel={cancel}
+                                size="sm"
+                                successClassName="font-medium text-emerald-500"
+                              />
+                            </td>
                           </tr>
-                        ))}
+                          )
+                        })}
                       </tbody>
                     </table>
                   </div>
