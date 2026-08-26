@@ -27,9 +27,7 @@ import {
   fetchCourierLifetimeDebt,
   queryCourierTodayCountedPackages,
   calculateTodayCourierEarnings,
-  type PaymentTotals,
 } from '@/utils/courierAccount'
-import { fetchCourierLedgerPeriodAccount } from '@/utils/courierLedger'
 import { isCollectionEligible, courierToEarningRates } from '@/utils/calculations'
 import {
   OrderAmountDisplay,
@@ -339,16 +337,17 @@ export default function KuryePage() {
   const [filteredPackages, setFilteredPackages] = useState<Package[]>([]) // Filtrelenmiş paketler
   const [currentPage, setCurrentPage] = useState(1) // Mevcut sayfa
   const [totalPages, setTotalPages] = useState(1) // Toplam sayfa sayısı
+  const [historyCurrentPage, setHistoryCurrentPage] = useState(1)
+  const [historyTotalPages, setHistoryTotalPages] = useState(1)
   const [unsettledAmount, setUnsettledAmount] = useState(0) // Tüm zamanlar cari borç
-  const [periodAccount, setPeriodAccount] = useState<PaymentTotals & { payableDebt: number }>({
-    cash: 0,
-    card: 0,
-    iban: 0,
-    count: 0,
-    total: 0,
-    payableDebt: 0,
+  const [historySummary, setHistorySummary] = useState({
+    packageCount: 0,
+    totalRevenue: 0,
+    longDistanceCount: 0,
+    normalTariffCount: 0,
   })
-  const ITEMS_PER_PAGE = 30 // Sayfa başına öğe sayısı
+  const ITEMS_PER_PAGE = 30 // Hesap sekmesi: sayfa başına öğe sayısı
+  const HISTORY_ITEMS_PER_PAGE = 50 // Geçmişim sekmesi: sayfa başına öğe sayısı
 
   // Realtime bildirimler + FCM Token kaydı (UPDATE event'leri + Push)
   useCourierRealtimeNotifications(selectedCourierId, isLoggedIn)
@@ -1366,20 +1365,7 @@ export default function KuryePage() {
     if (!courierId) return
 
     try {
-      const [listResult, account] = await Promise.all([
-        fetchCourierDeliveredPackages(supabase, courierId, start, end),
-        fetchCourierLedgerPeriodAccount(
-          supabase,
-          courierId,
-          start,
-          end,
-          courierToEarningRates({
-            package_rate: courierPackageRate,
-            long_distance_fee: courierLongDistanceFee,
-          })
-        ),
-      ])
-
+      const listResult = await fetchCourierDeliveredPackages(supabase, courierId, start, end)
       if (listResult.error) throw listResult.error
 
       const transformed = (listResult.data || []).map((pkg: any) => ({
@@ -1387,17 +1373,18 @@ export default function KuryePage() {
         restaurant: pkg.restaurants,
       }))
 
+      const packageCount = transformed.length
+      const longDistanceCount = transformed.filter((pkg: any) => pkg.is_long_distance === true).length
+      const normalTariffCount = packageCount - longDistanceCount
+      const totalRevenue = transformed.reduce((sum: number, pkg: any) => {
+        if (pkg.status !== 'delivered') return sum
+        return sum + Number(pkg.amount || 0)
+      }, 0)
+
       setFilteredPackages(sortChargeableCancelsLast(transformed))
-      setTotalPages(Math.ceil((listResult.count || 0) / ITEMS_PER_PAGE))
-      setCurrentPage(1)
-      setPeriodAccount({
-        cash: account.cash,
-        card: account.card,
-        iban: account.iban,
-        count: account.count,
-        total: account.total,
-        payableDebt: account.payableDebt,
-      })
+      setHistoryTotalPages(Math.max(1, Math.ceil(packageCount / HISTORY_ITEMS_PER_PAGE)))
+      setHistoryCurrentPage(1)
+      setHistorySummary({ packageCount, totalRevenue, longDistanceCount, normalTariffCount })
     } catch (error: any) {
       console.error('❌ Paket filtreleme hatası:', error)
     }
@@ -1424,27 +1411,9 @@ export default function KuryePage() {
         restaurant: pkg.restaurants,
       }))
 
-      const cash = list
-        .filter((p: any) => p.payment_method === 'cash')
-        .reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0)
-      const card = list
-        .filter((p: any) => p.payment_method === 'card')
-        .reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0)
-      const iban = list
-        .filter((p: any) => p.payment_method === 'iban')
-        .reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0)
-
       setFilteredPackages(sortChargeableCancelsLast(list))
       setTotalPages(Math.max(1, Math.ceil(list.length / ITEMS_PER_PAGE)))
       setCurrentPage(1)
-      setPeriodAccount({
-        cash,
-        card,
-        iban,
-        count: list.length,
-        total: cash + card + iban,
-        payableDebt: cash + card + iban,
-      })
     } catch (error: any) {
       console.error('❌ Hesap sekmesi verileri alınamadı:', error)
     }
@@ -1467,6 +1436,12 @@ export default function KuryePage() {
   const getCurrentPagePackages = () => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
     const endIndex = startIndex + ITEMS_PER_PAGE
+    return filteredPackages.slice(startIndex, endIndex)
+  }
+
+  const getCurrentPageHistoryPackages = () => {
+    const startIndex = (historyCurrentPage - 1) * HISTORY_ITEMS_PER_PAGE
+    const endIndex = startIndex + HISTORY_ITEMS_PER_PAGE
     return filteredPackages.slice(startIndex, endIndex)
   }
 
@@ -3115,41 +3090,29 @@ export default function KuryePage() {
               </div>
             </div>
 
-            {/* Özet Bilgiler - Kompakt Grid */}
-            {filteredPackages.length > 0 && (
-              <div className="bg-slate-900 p-3 rounded-md border border-white/5">
-                <p className="text-[10px] text-slate-500 mb-2 text-center">
-                  Özet: mutabakat bekleyen · Liste: dönemdeki tüm teslimler ({filteredPackages.length})
-                </p>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="bg-slate-800/50 px-2 py-2 rounded-md">
-                    <p className="text-[10px] text-slate-400 mb-1 flex items-center gap-1"><Package size={10} strokeWidth={1.5} /> Mutabakat</p>
-                    <p className="text-base font-bold text-blue-400">{periodAccount.count}</p>
-                  </div>
-                  <div className="bg-slate-800/50 px-2 py-2 rounded-md">
-                    <p className="text-[10px] text-slate-400 mb-1 flex items-center gap-1"><Banknote size={10} strokeWidth={1.5} /> Nakit</p>
-                    <p className="text-base font-bold text-green-400">{periodAccount.cash.toFixed(0)}₺</p>
-                  </div>
-                  <div className="bg-slate-800/50 px-2 py-2 rounded-md">
-                    <p className="text-[10px] text-slate-400 mb-1 flex items-center gap-1"><CreditCard size={10} strokeWidth={1.5} /> Kart</p>
-                    <p className="text-base font-bold text-blue-400">{periodAccount.card.toFixed(0)}₺</p>
-                  </div>
-                  <div className="bg-slate-800/50 px-2 py-2 rounded-md">
-                    <p className="text-[10px] text-slate-400 mb-1 flex items-center gap-1"><Building2 size={10} strokeWidth={1.5} /> IBAN</p>
-                    <p className="text-base font-bold text-orange-400">{periodAccount.iban.toFixed(0)}₺</p>
-                  </div>
-                  <div className="bg-gradient-to-br from-orange-900/50 to-red-900/50 border-2 border-orange-500/50 px-3 py-2 rounded-md col-span-2 shadow-sm">
-                    <p className="text-[10px] font-bold text-orange-200 mb-1 flex items-center gap-1"><Wallet size={10} strokeWidth={1.5} /> Bu dönem ödenecek</p>
-                    <p className="text-lg font-black text-orange-100">
-                      {periodAccount.payableDebt.toFixed(2)}₺
-                    </p>
-                    <p className="text-[8px] text-orange-300 mt-0.5">
-                      Seçili dönemde courier_settlement_id boş paketler (admin ile aynı)
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
+            <div className="bg-slate-900 p-2.5 sm:p-3 rounded-md border border-white/5">
+              <p className="text-xs sm:text-sm text-slate-300 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span>
+                  Seçili Tarihteki Toplam Paket:{' '}
+                  <span className="font-bold text-white">{historySummary.packageCount}</span>
+                </span>
+                <span className="text-slate-600 hidden sm:inline">|</span>
+                <span>
+                  Normal Tarife:{' '}
+                  <span className="font-bold text-blue-300">{historySummary.normalTariffCount}</span>
+                </span>
+                <span className="text-slate-600 hidden sm:inline">|</span>
+                <span>
+                  Uzak Mesafe:{' '}
+                  <span className="font-bold text-purple-300">{historySummary.longDistanceCount}</span>
+                </span>
+                <span className="text-slate-600 hidden sm:inline">|</span>
+                <span>
+                  Seçili Tarihteki Toplam Ciro:{' '}
+                  <span className="font-bold text-emerald-400">{historySummary.totalRevenue.toFixed(2)} ₺</span>
+                </span>
+              </p>
+            </div>
 
             {filteredPackages.length === 0 ? (
               <div className="text-center py-8 sm:py-12 text-slate-500">
@@ -3163,12 +3126,12 @@ export default function KuryePage() {
                 {/* Paket Sayısı Göstergesi */}
                 <div className="bg-slate-900 p-2 sm:p-3 rounded-md border border-white/5">
                   <p className="text-xs sm:text-sm text-slate-400">
-                    <span className="font-bold text-white">{filteredPackages.length}</span> paket bulundu
+                    <span className="font-bold text-white">{filteredPackages.length}</span> paket bulundu · sayfa başına en fazla {HISTORY_ITEMS_PER_PAGE}
                   </p>
                 </div>
 
                 {/* Teslim Edilen Paket Listesi */}
-                {sortChargeableCancelsLast(filteredPackages).map((pkg, index) => {
+                {getCurrentPageHistoryPackages().map((pkg) => {
                   const isCancel = isChargeableCancellation(pkg)
                   return (
                   <div
@@ -3299,6 +3262,31 @@ export default function KuryePage() {
                   </div>
                   )
                 })}
+
+                {/* Geçmişim Sayfalama */}
+                {historyTotalPages > 1 && (
+                  <div className="mt-4 flex items-center justify-center gap-2 flex-wrap">
+                    <button
+                      onClick={() => setHistoryCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={historyCurrentPage === 1}
+                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 text-white text-xs rounded transition-colors"
+                    >
+                      ‹ Önceki
+                    </button>
+
+                    <span className="text-xs text-slate-400 px-2">
+                      Sayfa {historyCurrentPage} / {historyTotalPages}
+                    </span>
+
+                    <button
+                      onClick={() => setHistoryCurrentPage(prev => Math.min(historyTotalPages, prev + 1))}
+                      disabled={historyCurrentPage === historyTotalPages}
+                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 text-white text-xs rounded transition-colors"
+                    >
+                      Sonraki ›
+                    </button>
+                  </div>
+                )}
               </>
             )}
           </div>
