@@ -4,7 +4,7 @@
  * 
  * SENARYO:
  * - Supabase Realtime ile packages tablosunu dinle (UPDATE)
- * - Şart: status === 'assigned' && courier_id === kendi ID'si
+ * - Şart: courier_id yeni atandı + status assigned/ready/getting_ready/preparing
  * - Aksiyon: Toast + Audio (uygulama açıkken native push düşmeyebilir)
  * - Initial load koruması (useRef)
  * 
@@ -104,12 +104,11 @@ export function useCourierRealtimeNotifications(
           const oldOrder = payload.old as any
           const newOrder = payload.new as any
 
-          // Yeni atama: status assigned + bu kuryeye ait.
-          // old.courier_id REPLICA IDENTITY olmadan gelmeyebilir; o yüzden String ile güvenli karşılaştır.
+          // Yeni atama: bu kuryeye yeni bağlandı (status assigned veya erken atamada getting_ready/preparing olabilir)
           const isNewAssignment =
-            newOrder.status === 'assigned' &&
             String(newOrder.courier_id ?? '') === String(courierId) &&
-            String(oldOrder?.courier_id ?? '') !== String(courierId)
+            String(oldOrder?.courier_id ?? '') !== String(courierId) &&
+            ['assigned', 'ready', 'getting_ready', 'preparing'].includes(newOrder.status)
 
           if (isNewAssignment) {
             console.log('🔔 YENİ PAKET ATANDI (Kurye Foreground):', newOrder)

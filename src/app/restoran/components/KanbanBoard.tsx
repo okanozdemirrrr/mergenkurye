@@ -94,12 +94,16 @@ export default function KanbanBoard({
     
     try {
       const timestampField = newStatus === 'getting_ready' ? 'getting_ready_at' : 'ready_at'
+      const currentPkg = packages.find(p => p.id === packageId)
+      // Erken kurye ataması varsa "Hazır" deyince assigned'a geç (ready_at set edilir)
+      const finalStatus =
+        newStatus === 'ready' && currentPkg?.courier_id ? 'assigned' : newStatus
       
       // Durumu güncelle
       const { error } = await supabase
         .from('packages')
         .update({ 
-          status: newStatus,
+          status: finalStatus,
           [timestampField]: new Date().toISOString()
         })
         .eq('id', packageId)
@@ -117,7 +121,7 @@ export default function KanbanBoard({
     } finally {
       setLoading(null)
     }
-  }, [onRefresh])
+  }, [onRefresh, packages])
 
   const formatTime = (dateString?: string) => {
     if (!dateString) return '-'

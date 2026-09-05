@@ -110,7 +110,7 @@ interface Package {
   customer_phone?: string
   delivery_address: string
   amount: number
-  status: 'new' | 'preparing' | 'ready' | 'assigned' | 'picking_up' | 'on_the_way' | 'delivered' | 'cancelled' | 'waiting'
+  status: 'new' | 'new_order' | 'preparing' | 'getting_ready' | 'ready' | 'assigned' | 'picking_up' | 'on_the_way' | 'delivered' | 'cancelled' | 'waiting'
   content?: string
   courier_id?: string | null
   payment_method?: 'cash' | 'card' | 'iban' | null
@@ -635,7 +635,7 @@ export default function KuryePage() {
         .from('packages')
         .select('id, order_number, customer_name, customer_phone, delivery_address, amount, status, payment_method, content, created_at, assigned_at, ready_at, picked_up_at, restaurant_id, platform, latitude, longitude, restaurants(name, phone, address)')
         .eq('courier_id', courierId)
-        .in('status', ['new', 'preparing', 'ready', 'assigned', 'picking_up', 'on_the_way'])
+        .in('status', ['new', 'new_order', 'preparing', 'getting_ready', 'ready', 'assigned', 'picking_up', 'on_the_way'])
         .order('created_at', { ascending: false })
         .limit(50)
 
@@ -2062,7 +2062,7 @@ export default function KuryePage() {
       console.log('🔴 Kurye Realtime dinleme başlatıldı - Canlı yayın modu aktif')
       console.log('📍 Dinlenen kurye ID:', courierId)
 
-      const ACTIVE_PACKAGE_STATUSES = ['new', 'preparing', 'ready', 'assigned', 'picking_up', 'on_the_way']
+      const ACTIVE_PACKAGE_STATUSES = ['new', 'new_order', 'preparing', 'getting_ready', 'ready', 'assigned', 'picking_up', 'on_the_way']
 
       // Realtime satırını listeye anında yansıt (REST fetch başarısız olsa bile UI güncellenir)
       const applyPackageRealtimeToState = (row: any) => {
@@ -2961,37 +2961,72 @@ export default function KuryePage() {
                       </button>
                     )}
 
-                    {/* Durum Badge */}
-                    <div className="mb-3">
-                      <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                        pkg.status === 'new' ? 'bg-slate-500/20 text-slate-400' :
-                        pkg.status === 'preparing' ? 'bg-amber-500/20 text-amber-400' :
-                        pkg.status === 'ready' || pkg.status === 'assigned' ? 'bg-blue-500/20 text-blue-400' :
-                        pkg.status === 'picking_up' ? 'bg-yellow-500/20 text-yellow-400' :
-                        'bg-red-500/20 text-red-400'
-                      }`}>
-                        {pkg.status === 'new' ? 'Paket Bekleniyor' :
-                         pkg.status === 'preparing' ? 'Hazırlanıyor' :
-                         (pkg.status === 'ready' || pkg.status === 'assigned') ? 'Yeni Paket (Hazır)' :
-                         pkg.status === 'picking_up' ? 'Almaya Git' :
-                         'Teslimatta'}
-                      </span>
-                    </div>
+                    {/* Durum Badge — mutfak durumuna göre dinamik */}
+                    {(() => {
+                      const isKitchenPreparing =
+                        pkg.status === 'preparing' ||
+                        pkg.status === 'getting_ready' ||
+                        (pkg.status === 'assigned' && !pkg.ready_at)
+                      const isKitchenReady =
+                        pkg.status === 'ready' ||
+                        (pkg.status === 'assigned' && !!pkg.ready_at)
+
+                      let badgeClass = 'bg-red-500/20 text-red-400'
+                      let badgeLabel = 'Teslimatta'
+                      if (pkg.status === 'new' || pkg.status === 'new_order') {
+                        badgeClass = 'bg-slate-500/20 text-slate-400'
+                        badgeLabel = 'Paket Bekleniyor'
+                      } else if (isKitchenPreparing) {
+                        badgeClass = 'bg-orange-500/20 text-orange-400'
+                        badgeLabel = 'Yeni Paket (Hazırlanıyor)'
+                      } else if (isKitchenReady) {
+                        badgeClass = 'bg-green-500/20 text-green-400'
+                        badgeLabel = 'Yeni Paket (Hazır)'
+                      } else if (pkg.status === 'picking_up') {
+                        badgeClass = 'bg-yellow-500/20 text-yellow-400'
+                        badgeLabel = 'Almaya Git'
+                      }
+
+                      return (
+                        <div className="mb-3">
+                          <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${badgeClass}`}>
+                            {badgeLabel}
+                          </span>
+                        </div>
+                      )
+                    })()}
 
                     {/* Aksiyon Butonları - Mobil Responsive */}
-                    {(pkg.status === 'new' || pkg.status === 'preparing' || pkg.status === 'ready' || pkg.status === 'assigned') && (
+                    {(pkg.status === 'new' || pkg.status === 'new_order' || pkg.status === 'preparing' || pkg.status === 'getting_ready' || pkg.status === 'ready' || pkg.status === 'assigned') && (
                       <button
-                        disabled={isUpdating.has(pkg.id) || pkg.status === 'new' || pkg.status === 'preparing'}
+                        disabled={
+                          isUpdating.has(pkg.id) ||
+                          pkg.status === 'new' ||
+                          pkg.status === 'new_order' ||
+                          pkg.status === 'preparing' ||
+                          pkg.status === 'getting_ready' ||
+                          (pkg.status === 'assigned' && !pkg.ready_at)
+                        }
                         onClick={() => handleUpdateStatus(pkg.id, 'picking_up')}
                         className={`w-full py-2 sm:py-2.5 text-white text-sm sm:text-base font-bold rounded-md transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm ${
-                          (pkg.status === 'new' || pkg.status === 'preparing')
+                          (
+                            pkg.status === 'new' ||
+                            pkg.status === 'new_order' ||
+                            pkg.status === 'preparing' ||
+                            pkg.status === 'getting_ready' ||
+                            (pkg.status === 'assigned' && !pkg.ready_at)
+                          )
                             ? 'bg-slate-700 grayscale cursor-not-allowed'
                             : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'
                         }`}
                       >
-                        {isUpdating.has(pkg.id) ? 'İşleniyor...' : 
-                         pkg.status === 'new' ? 'Paket Bekleniyor...' :
-                         pkg.status === 'preparing' ? 'Hazırlanıyor...' :
+                        {isUpdating.has(pkg.id) ? 'İşleniyor...' :
+                         (pkg.status === 'new' || pkg.status === 'new_order') ? 'Paket Bekleniyor...' :
+                         (
+                           pkg.status === 'preparing' ||
+                           pkg.status === 'getting_ready' ||
+                           (pkg.status === 'assigned' && !pkg.ready_at)
+                         ) ? 'Hazırlanıyor...' :
                          'Kabul Et'}
                       </button>
                     )}

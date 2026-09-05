@@ -568,7 +568,7 @@ export function LiveTrackingTab({
                                                 </button>
                                             </div>
                                         )}
-                                        {pkg.courier_id && (pkg.status === 'assigned' || pkg.status === 'picking_up' || pkg.status === 'on_the_way') && (
+                                        {pkg.courier_id && (pkg.status === 'getting_ready' || pkg.status === 'preparing' || pkg.status === 'ready' || pkg.status === 'assigned' || pkg.status === 'picking_up' || pkg.status === 'on_the_way') && (
                                             <div className="border-t border-slate-700 pt-2 relative z-10">
                                                 <div className="flex items-center justify-center">
                                                     <span className="bg-orange-900/50 text-orange-300 px-2 py-1 rounded text-xs font-medium">

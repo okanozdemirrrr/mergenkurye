@@ -132,11 +132,17 @@ export async function assignCourier(
         const courierEarnedFee = isLongDistance ? longDistanceFee : standardFee
 
         // 2. Kurye ata
+        // Hazırlanıyor (getting_ready/preparing) iken mutfak durumunu koru;
+        // restoran "Hazır" dediğinde status güncellenir. Hazır paketlerde assigned'a geç.
+        const currentStatus = (packageData as any).status as string
+        const keepKitchenStatus =
+            currentStatus === 'getting_ready' || currentStatus === 'preparing'
+
         const { error } = await supabase
             .from('packages')
             .update({
                 courier_id: courierId,
-                status: 'assigned',
+                ...(keepKitchenStatus ? {} : { status: 'assigned' }),
                 assigned_at: new Date().toISOString(),
                 is_long_distance: isLongDistance,
                 courier_earned_fee: courierEarnedFee,
