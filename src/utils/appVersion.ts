@@ -5,7 +5,7 @@
 
 /** APK build ile senkron tutulmalı (android versionName / package.json) */
 export const BAKED_APP_VERSION =
-  process.env.NEXT_PUBLIC_APP_VERSION?.trim() || '1.4.17'
+  process.env.NEXT_PUBLIC_APP_VERSION?.trim() || '1.4.18'
 
 export const PLAY_STORE_URL =
   'https://play.google.com/store/apps/details?id=com.aldagel.mergen'

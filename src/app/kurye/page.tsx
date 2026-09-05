@@ -2961,7 +2961,7 @@ export default function KuryePage() {
                       </button>
                     )}
 
-                    {/* Durum Badge — mutfak durumuna göre dinamik */}
+                    {/* Durum Badge — mutfak durumuna göre dinamik (bilgi amaçlı; aksiyonu kilitlemez) */}
                     {(() => {
                       const isKitchenPreparing =
                         pkg.status === 'preparing' ||
@@ -2996,7 +2996,8 @@ export default function KuryePage() {
                       )
                     })()}
 
-                    {/* Aksiyon Butonları - Mobil Responsive */}
+                    {/* Aksiyon Butonları - Mobil Responsive
+                        Gece otomatik atama: status=assigned, ready_at=null → Kabul Et açık kalmalı */}
                     {(pkg.status === 'new' || pkg.status === 'new_order' || pkg.status === 'preparing' || pkg.status === 'getting_ready' || pkg.status === 'ready' || pkg.status === 'assigned') && (
                       <button
                         disabled={
@@ -3004,8 +3005,7 @@ export default function KuryePage() {
                           pkg.status === 'new' ||
                           pkg.status === 'new_order' ||
                           pkg.status === 'preparing' ||
-                          pkg.status === 'getting_ready' ||
-                          (pkg.status === 'assigned' && !pkg.ready_at)
+                          pkg.status === 'getting_ready'
                         }
                         onClick={() => handleUpdateStatus(pkg.id, 'picking_up')}
                         className={`w-full py-2 sm:py-2.5 text-white text-sm sm:text-base font-bold rounded-md transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm ${
@@ -3013,8 +3013,7 @@ export default function KuryePage() {
                             pkg.status === 'new' ||
                             pkg.status === 'new_order' ||
                             pkg.status === 'preparing' ||
-                            pkg.status === 'getting_ready' ||
-                            (pkg.status === 'assigned' && !pkg.ready_at)
+                            pkg.status === 'getting_ready'
                           )
                             ? 'bg-slate-700 grayscale cursor-not-allowed'
                             : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'
@@ -3022,11 +3021,7 @@ export default function KuryePage() {
                       >
                         {isUpdating.has(pkg.id) ? 'İşleniyor...' :
                          (pkg.status === 'new' || pkg.status === 'new_order') ? 'Paket Bekleniyor...' :
-                         (
-                           pkg.status === 'preparing' ||
-                           pkg.status === 'getting_ready' ||
-                           (pkg.status === 'assigned' && !pkg.ready_at)
-                         ) ? 'Hazırlanıyor...' :
+                         (pkg.status === 'preparing' || pkg.status === 'getting_ready') ? 'Hazırlanıyor...' :
                          'Kabul Et'}
                       </button>
                     )}
