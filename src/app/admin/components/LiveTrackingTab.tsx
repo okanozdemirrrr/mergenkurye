@@ -507,7 +507,7 @@ export function LiveTrackingTab({
                                                 </span>
                                             </div>
                                         </div>
-                                        {!pkg.courier_id && pkg.status === 'ready' && (
+                                        {!pkg.courier_id && (pkg.status === 'ready' || pkg.status === 'getting_ready') && (
                                             <div className="border-t border-slate-700 pt-2 space-y-2 relative z-20" onClick={(e) => e.stopPropagation()}>
                                                 <label className="flex items-center justify-between gap-2 px-2 py-1.5 bg-slate-800/80 border border-purple-500/30 rounded-md cursor-pointer">
                                                     <span className="text-xs font-medium text-purple-200">Uzak Mesafe Paketi</span>

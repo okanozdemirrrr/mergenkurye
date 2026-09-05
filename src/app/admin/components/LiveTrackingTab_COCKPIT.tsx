@@ -238,8 +238,8 @@ export function LiveTrackingTab({
                                                     {/* Adres */}
                                                     <p className="text-[9px] text-slate-400 line-clamp-2 mb-2">{pkg.delivery_address}</p>
 
-                                                    {/* Kurye Atama - Sadece ready durumunda */}
-                                                    {!pkg.courier_id && pkg.status === 'ready' && (
+                                                    {/* Kurye Atama - ready veya getting_ready durumunda */}
+                                                    {!pkg.courier_id && (pkg.status === 'ready' || pkg.status === 'getting_ready') && (
                                                         <div className="space-y-1" onClick={(e) => e.stopPropagation()}>
                                                             <select
                                                                 value={selectedCouriers[pkg.id] || ''}

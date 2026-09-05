@@ -176,7 +176,7 @@ export function isCompletedStatus(status: PackageStatus): boolean {
 export function canTransitionTo(currentStatus: PackageStatus, nextStatus: PackageStatus): boolean {
   const transitions: Record<PackageStatus, PackageStatus[]> = {
     new_order: ['getting_ready', 'cancelled'],
-    getting_ready: ['ready', 'cancelled'],
+    getting_ready: ['ready', 'assigned', 'cancelled'],
     ready: ['assigned', 'cancelled'],
     assigned: ['picking_up', 'cancelled'],
     picking_up: ['on_the_way', 'cancelled'],
@@ -191,7 +191,7 @@ export function canTransitionTo(currentStatus: PackageStatus, nextStatus: Packag
 export function getNextValidStatuses(currentStatus: PackageStatus): PackageStatus[] {
   const transitions: Record<PackageStatus, PackageStatus[]> = {
     new_order: ['getting_ready', 'cancelled'],
-    getting_ready: ['ready', 'cancelled'],
+    getting_ready: ['ready', 'assigned', 'cancelled'],
     ready: ['assigned', 'cancelled'],
     assigned: ['picking_up', 'cancelled'],
     picking_up: ['on_the_way', 'cancelled'],
