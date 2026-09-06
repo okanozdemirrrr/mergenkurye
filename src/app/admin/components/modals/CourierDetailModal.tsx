@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Package, Courier, CourierDebt } from '@/types'
-import { formatTurkishTime, calculateDeliveryDuration } from '@/utils/dateHelpers'
+import { formatTurkishTime, formatTurkishDate, calculateDeliveryDuration } from '@/utils/dateHelpers'
 import { CourierPaymentSettingsModal } from './CourierPaymentSettingsModal'
 import { NightShiftConfirmModal } from './NightShiftConfirmModal'
 import { supabase } from '@/app/lib/supabase'
@@ -394,7 +394,14 @@ export function CourierDetailModal({
                             <td className={`py-2 px-4 text-xs tracking-tight ${cancel ? 'text-slate-500' : 'text-slate-200'}`}>
                               {pkg.order_number || '—'}
                             </td>
-                            <td className="py-2 px-4 text-xs text-slate-400 tracking-tight">{formatTurkishTime(pkg.delivered_at)}</td>
+                            <td className="py-2 px-4">
+                              <div className="text-xs text-slate-300 tracking-tight">
+                                {formatTurkishTime(pkg.delivered_at)}
+                              </div>
+                              <div className="text-[10px] text-slate-600 tracking-tight">
+                                {formatTurkishDate(pkg.delivered_at)}
+                              </div>
+                            </td>
                             <td className="py-2 px-4 text-xs text-slate-400 tracking-tight">{pkg.restaurant?.name || '—'}</td>
                             <td className="py-2 px-4 text-xs text-slate-300 tracking-tight">{pkg.customer_name}</td>
                             <td className="py-2 px-4 text-right text-xs tracking-tight">
@@ -515,10 +522,8 @@ export function CourierDetailModal({
                               <div className="text-xs text-slate-300 tracking-tight">
                                 {formatTurkishTime(order.delivered_at)}
                               </div>
-                              <div className="text-[10px] text-slate-600">
-                                {order.delivered_at
-                                  ? new Date(order.delivered_at).toLocaleDateString('tr-TR')
-                                  : '-'}
+                              <div className="text-[10px] text-slate-600 tracking-tight">
+                                {formatTurkishDate(order.delivered_at)}
                               </div>
                             </td>
                             <td className="py-2.5 px-4 text-xs text-slate-300 tracking-tight">{order.customer_name}</td>
