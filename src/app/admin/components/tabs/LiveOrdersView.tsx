@@ -6,6 +6,8 @@
 
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
 import { NightShiftIndicator } from '../NightShiftIndicator'
+import { PackageStatus } from '@/types'
+import { getStatusBadgeClass, getStatusLabel, normalizeStatus } from '@/utils/statusHelpers'
 import {
   Package as PackageIcon, Clock, Utensils, User, Phone, FileText, MapPin,
   Banknote, CreditCard, Building2, Bike, Truck, Loader2, CheckCircle2, AlertTriangle, Footprints, Car
@@ -298,23 +300,21 @@ export function LiveOrdersView({
                     {/* Paket Durumları */}
                     {courierPackages.length > 0 && (
                       <div className="mt-2 space-y-1">
-                        {courierPackages.map(pkg => (
+                        {courierPackages.map(pkg => {
+                          const displayStatus: PackageStatus =
+                            pkg.status === 'preparing' ? 'getting_ready' : normalizeStatus(pkg.status)
+
+                          return (
                           <div key={pkg.id} className="text-[10px] flex items-center gap-1">
-                            <span className={`px-2 py-0.5 rounded-full font-semibold ${
-                              pkg.status === 'pending' || pkg.status === 'waiting' ? 'bg-yellow-100 text-yellow-700' :
-                              pkg.status === 'assigned' ? 'bg-orange-100 text-orange-700' :
-                              pkg.status === 'picking_up' ? 'bg-orange-100 text-orange-700' :
-                              'bg-red-100 text-red-700'
-                            }`}>
-                              {pkg.status === 'pending' || pkg.status === 'waiting' ? 'Bekliyor' :
-                               pkg.status === 'assigned' ? 'Atandı' :
-                               pkg.status === 'picking_up' ? 'Alıyor' : 'Yolda'}
+                            <span className={`px-2 py-0.5 rounded-full font-semibold ${getStatusBadgeClass(displayStatus)}`}>
+                              {getStatusLabel(displayStatus, true)}
                             </span>
                             <span className="text-slate-600 truncate">
                               {pkg.customer_name}
                             </span>
                           </div>
-                        ))}
+                          )
+                        })}
                       </div>
                     )}
                   </div>

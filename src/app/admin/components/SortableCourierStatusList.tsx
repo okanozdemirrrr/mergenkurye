@@ -20,8 +20,14 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { GripVertical } from 'lucide-react'
 import { supabase } from '@/app/lib/supabase'
-import { Package, Courier } from '@/types'
+import { Package, Courier, PackageStatus } from '@/types'
+import { getStatusBadgeClass, getStatusLabel, normalizeStatus } from '@/utils/statusHelpers'
 import { NightShiftIndicator } from './NightShiftIndicator'
+
+function resolvePackageStatus(status: string): PackageStatus {
+  if (status === 'preparing') return 'getting_ready'
+  return normalizeStatus(status)
+}
 
 interface SortableCourierStatusListProps {
   couriers: Courier[]
@@ -112,6 +118,7 @@ function SortableCourierCard({
                   restaurants.find((r) => String(r.id) === String(pkg.restaurant_id))?.name ??
                   'Restoran'
                 const adres = pkg.delivery_address || '—'
+                const displayStatus = resolvePackageStatus(pkg.status)
 
                 return (
                   <div
@@ -122,23 +129,9 @@ function SortableCourierCard({
                     <div className="flex flex-col gap-0.5 min-w-0">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <span
-                          className={`shrink-0 px-1.5 py-0.5 rounded-full font-semibold text-[10px] ${
-                            pkg.status === 'waiting'
-                              ? 'bg-yellow-900/50 text-yellow-300'
-                              : pkg.status === 'assigned'
-                                ? 'bg-orange-900/50 text-orange-300'
-                                : pkg.status === 'picking_up'
-                                  ? 'bg-orange-900/50 text-orange-300'
-                                  : 'bg-red-900/50 text-red-300'
-                          }`}
+                          className={`shrink-0 px-1.5 py-0.5 rounded-full font-semibold text-[10px] ${getStatusBadgeClass(displayStatus)}`}
                         >
-                          {pkg.status === 'waiting'
-                            ? 'Bekliyor'
-                            : pkg.status === 'assigned'
-                              ? 'Atandı'
-                              : pkg.status === 'picking_up'
-                                ? 'Alıyor'
-                                : 'Yolda'}
+                          {getStatusLabel(displayStatus, true)}
                         </span>
                         <span className="font-semibold text-orange-400 text-[11px] truncate min-w-0">
                           {restoranAdi}
