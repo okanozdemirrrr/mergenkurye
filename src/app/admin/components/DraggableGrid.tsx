@@ -100,13 +100,13 @@ export function DraggableGrid({ children }: DraggableGridProps) {
     setCurrentBreakpoint(newBreakpoint)
   }, [])
 
-  // Aktif breakpoint xs veya xxs ise (veya genişlik < 768px ise) mobildir
-  const isMobile =
-    currentBreakpoint === 'xs' ||
-    currentBreakpoint === 'xxs' ||
-    (width > 0 ? width < 768 : false)
+  // Sadece masaüstünde (lg breakpoint ve genişlik > 1024px) sürükleme ve boyutlandırma aktif
+  // md (996px / 932px yan çevrilmiş cihazlar), sm, xs, xxs ve tabletlerde tamamen devre dışı
+  const isDesktop =
+    currentBreakpoint === 'lg' &&
+    (width > 0 ? width > 1024 : (typeof window !== 'undefined' ? window.innerWidth > 1024 : false))
 
-  // Layout değiştiğinde localStorage'a kaydet (mobil modda bozulmaları engelle)
+  // Layout değiştiğinde localStorage'a kaydet (mobil ve tablet modda bozulmaları engelle)
   const handleLayoutChange = useCallback((_: Layout[], allLayouts: Layouts) => {
     // Mobil düzenlerin (xs, xxs) daima 1 kolon ve alt alta kalmasını garanti et
     const updated: Layouts = {
@@ -115,10 +115,10 @@ export function DraggableGrid({ children }: DraggableGridProps) {
       xxs: mobileLayout,
     }
     setLayouts(updated)
-    if (!isMobile) {
+    if (isDesktop) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
     }
-  }, [isMobile])
+  }, [isDesktop])
 
   // Layout sıfırlama fonksiyonu
   const resetLayout = useCallback(() => {
@@ -130,8 +130,8 @@ export function DraggableGrid({ children }: DraggableGridProps) {
     <div ref={containerRef} className="w-full max-w-full min-w-0 overflow-x-hidden">
       <div className="flex justify-between items-center mb-2 px-1">
         <div className="text-xs text-slate-400">
-          {isMobile ? (
-            <span className="text-slate-500 text-[11px]">📱 Mobil Görünüm (Sabit Kolon Düzeni)</span>
+          {!isDesktop ? (
+            <span className="text-slate-500 text-[11px]">📱 Mobil / Tablet Görünümü (Sabit Düzen)</span>
           ) : (
             <span className="text-slate-500 text-[11px]">🖥️ Kartları başlıktan sürükleyip boyutlandırabilirsiniz</span>
           )}
@@ -156,9 +156,9 @@ export function DraggableGrid({ children }: DraggableGridProps) {
           onBreakpointChange={handleBreakpointChange}
           onLayoutChange={handleLayoutChange}
           draggableHandle=".drag-handle"
-          draggableCancel=".leaflet-container, .leaflet-interactive, .no-drag, input, textarea, button, select"
-          isDraggable={!isMobile}
-          isResizable={!isMobile}
+          draggableCancel=".leaflet-container, .leaflet-interactive, .leaflet-control, .leaflet-pane, .no-drag, input, textarea, button, select"
+          isDraggable={isDesktop}
+          isResizable={isDesktop}
           compactType="vertical"
           preventCollision={false}
         >

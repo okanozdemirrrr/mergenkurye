@@ -433,8 +433,20 @@ export function LiveMapComponent({
 
   return (
     <>
-      <div className={`no-drag ${isFullscreen ? 'fixed inset-0 z-50 bg-slate-950 p-4' : 'relative w-full h-full'}`} onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()}>
-        <div className="no-drag relative w-full h-full rounded-md overflow-hidden border border-slate-700">
+      <div 
+        className={`no-drag ${isFullscreen ? 'fixed inset-0 z-50 bg-slate-950 p-4' : 'relative w-full h-full'}`} 
+        onTouchStart={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        style={{ touchAction: 'pan-x pan-y' }}
+      >
+        <div 
+          className="no-drag relative w-full h-full rounded-md overflow-hidden border border-slate-700"
+          onTouchStart={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          style={{ touchAction: 'pan-x pan-y' }}
+        >
 
 
           {/* Büyüt/Küçült Butonu */}
@@ -486,7 +498,7 @@ export function LiveMapComponent({
           <MapContainer
             center={mapCenter}
             zoom={15}
-            style={{ height: '100%', width: '100%' }}
+            style={{ height: '100%', width: '100%', touchAction: 'pan-x pan-y' }}
             zoomControl={true}
           >
             <MapUpdater center={mapCenter} />

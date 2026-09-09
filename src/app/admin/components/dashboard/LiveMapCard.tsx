@@ -80,8 +80,10 @@ export function LiveMapCard({ packages, couriers, restaurants, onLiveCouriersCha
       {/* Harita Container */}
       <div 
         className="no-drag flex-1 min-h-0 w-full rounded-md overflow-hidden relative"
-        onMouseDown={(e) => e.stopPropagation()}
         onTouchStart={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        style={{ touchAction: 'pan-x pan-y' }}
       >
         <LiveMapComponent 
           packages={packages} 
