@@ -638,19 +638,7 @@ img[src*="logo.png"] {
   transform: scale(1.2);
 }
 
-@media (max-width: 1024px) {
-  .custom-drag-handle,
-  .drag-handle {
-    cursor: default !important;
-    touch-action: auto !important;
-  }
-  .react-resizable-handle {
-    display: none !important;
-  }
-  .react-grid-item {
-    touch-action: auto !important;
-  }
-}
+
 
 .leaflet-container {
   touch-action: pan-x pan-y !important;
