@@ -552,3 +552,80 @@ img[src*="logo.png"] {
   flex-shrink: 0;
   stroke-width: 1.5;
 }
+
+/* ============================================
+   📐 REACT GRID LAYOUT & RESIZABLE STYLES
+   ============================================ */
+.react-grid-layout {
+  position: relative;
+  transition: height 200ms ease;
+}
+
+.react-grid-item {
+  transition: all 200ms ease;
+  transition-property: left, top;
+}
+
+.react-grid-item.cssTransforms {
+  transition-property: transform;
+}
+
+.react-grid-item.resizing {
+  z-index: 100;
+  will-change: width, height;
+}
+
+.react-grid-item.react-draggable-dragging {
+  transition: none;
+  z-index: 100;
+  will-change: transform;
+}
+
+.react-grid-placeholder {
+  background: rgba(249, 115, 22, 0.15) !important;
+  border: 2px dashed rgba(249, 115, 22, 0.6) !important;
+  border-radius: var(--radius-md) !important;
+  opacity: 0.8 !important;
+  transition-duration: 100ms;
+  z-index: 2;
+  user-select: none;
+}
+
+.drag-handle {
+  cursor: grab;
+  user-select: none;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.react-resizable-handle {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  bottom: 0;
+  right: 0;
+  cursor: se-resize !important;
+  z-index: 50 !important;
+  touch-action: none;
+}
+
+.react-resizable-handle::after {
+  content: "";
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 10px;
+  height: 10px;
+  border-right: 2.5px solid #f97316;
+  border-bottom: 2.5px solid #f97316;
+  transition: all 150ms ease;
+}
+
+.react-resizable-handle:hover::after {
+  border-color: #fb923c;
+  transform: scale(1.2);
+}
+
+

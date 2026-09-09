@@ -26,6 +26,7 @@ function toTimeInputValue(raw: string | null | undefined, fallback: string): str
 export default function AdminAyarlarPage() {
   const [startTime, setStartTime] = useState(DEFAULT_START)
   const [endTime, setEndTime] = useState(DEFAULT_END)
+  const [cardSize, setCardSize] = useState<'compact' | 'normal' | 'large'>('normal')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -34,6 +35,12 @@ export default function AdminAyarlarPage() {
     setLoading(true)
     setMessage(null)
     try {
+      // LocalStorage'dan kart boyutunu oku
+      const localSize = localStorage.getItem('admin_order_card_size') as 'compact' | 'normal' | 'large'
+      if (localSize) {
+        setCardSize(localSize)
+      }
+
       const { data, error } = await supabase
         .from('app_settings')
         .select('key, value')
@@ -65,6 +72,11 @@ export default function AdminAyarlarPage() {
     setMessage(null)
 
     try {
+      // 1. Kart boyutu ayarını localStorage ve event yayını ile kaydet
+      localStorage.setItem('admin_order_card_size', cardSize)
+      window.dispatchEvent(new Event('order_card_size_changed'))
+
+      // 2. Otomatik atama saatlerini Supabase'e kaydet
       const { data, error } = await supabase.rpc('set_auto_assign_hours', {
         p_start_time: startTime,
         p_end_time: endTime,
@@ -78,7 +90,7 @@ export default function AdminAyarlarPage() {
 
       setMessage({
         type: 'success',
-        text: `Kaydedildi: ${result?.start_time ?? startTime} — ${result?.end_time ?? endTime}`,
+        text: `Ayarlar başarıyla kaydedildi! (Kart Boyutu: ${cardSize === 'compact' ? 'Küçük' : cardSize === 'large' ? 'Büyük' : 'Orta/Standart'})`,
       })
     } catch (err: unknown) {
       console.error('Ayar kaydı hatası:', err)
@@ -99,7 +111,7 @@ export default function AdminAyarlarPage() {
           Ayarlar
         </h1>
         <p className="text-sm text-slate-400 mt-1">
-          Sistem geneli yapılandırma. Saatler Europe/Istanbul zaman dilimine göredir.
+          Sistem geneli yapılandırma ve panel tercihleri.
         </p>
       </div>
 
@@ -107,11 +119,90 @@ export default function AdminAyarlarPage() {
         onSubmit={handleSave}
         className="bg-slate-900 border border-slate-800 rounded-md p-6 space-y-6"
       >
+        {/* SIPARIS KARTI BOYUTU AYARLARI */}
+        <div className="border-b border-slate-800 pb-6">
+          <h2 className="text-lg font-semibold text-slate-200 tracking-tight mb-1">
+            Sipariş Kartı Görünüm Boyutu
+          </h2>
+          <p className="text-sm text-slate-400 mb-4">
+            Canlı sipariş takibi kartlarının ekrandaki büyüklüğünü ve sütun yoğunluğunu ayarlayın.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <button
+              type="button"
+              onClick={() => setCardSize('compact')}
+              className={`p-4 rounded-md border text-left transition-all flex flex-col justify-between ${
+                cardSize === 'compact'
+                  ? 'bg-orange-600/20 border-orange-500 text-white ring-1 ring-orange-500'
+                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+              }`}
+            >
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-orange-400 block mb-1">
+                  Küçük / Kompakt
+                </span>
+                <span className="text-sm font-semibold block text-slate-200">
+                  3-4 Kolon
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-2">
+                Daha fazla siparişi tek ekranda görmek için küçük kartlar.
+              </p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setCardSize('normal')}
+              className={`p-4 rounded-md border text-left transition-all flex flex-col justify-between ${
+                cardSize === 'normal'
+                  ? 'bg-orange-600/20 border-orange-500 text-white ring-1 ring-orange-500'
+                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+              }`}
+            >
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-orange-400 block mb-1">
+                  Orta / Standart
+                </span>
+                <span className="text-sm font-semibold block text-slate-200">
+                  2-3 Kolon
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-2">
+                Dengeli metin boyutu ve ideal sipariş sığdırma (Varsayılan).
+              </p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setCardSize('large')}
+              className={`p-4 rounded-md border text-left transition-all flex flex-col justify-between ${
+                cardSize === 'large'
+                  ? 'bg-orange-600/20 border-orange-500 text-white ring-1 ring-orange-500'
+                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+              }`}
+            >
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-orange-400 block mb-1">
+                  Büyük
+                </span>
+                <span className="text-sm font-semibold block text-slate-200">
+                  1-2 Kolon
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-2">
+                Büyük metinler ve geniş sipariş kartı detayları.
+              </p>
+            </button>
+          </div>
+        </div>
+
+        {/* OTOMATIK ATAMA SAATLERI */}
         <div>
           <h2 className="text-lg font-semibold text-slate-200 tracking-tight">
             Otomatik Atama Saatleri
           </h2>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-slate-500 mt-1 mb-4">
             Bu aralıkta gelen ve kuryesi atanmamış paketler, gece vardiyacısı kuryeye otomatik atanır.
           </p>
         </div>
@@ -174,3 +265,4 @@ export default function AdminAyarlarPage() {
     </div>
   )
 }
+

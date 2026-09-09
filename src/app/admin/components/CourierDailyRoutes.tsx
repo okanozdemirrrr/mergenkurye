@@ -129,29 +129,34 @@ export function CourierDailyRoutes({ couriers }: CourierDailyRoutesProps) {
   }
 
   return (
-    <div className="bg-slate-900 shadow-sm rounded-md border border-slate-800 p-2 h-full flex flex-col lg:sticky lg:top-4 overflow-x-hidden">
-      <div className="flex items-center gap-2 mb-2 px-1">
-        <button
-          type="button"
-          onClick={() => fetchTodayDelivered()}
-          disabled={loading}
-          className="shrink-0 text-[10px] text-slate-400 hover:text-orange-400 disabled:opacity-50"
-          title="Yenile"
-        >
-          ↻
-        </button>
+    <div className="h-full w-full flex flex-col p-2 overflow-x-hidden">
+      <div className="drag-handle flex items-center justify-between p-2 -mx-2 -mt-2 mb-2 bg-slate-800/80 border-b border-slate-800 rounded-t-md cursor-grab active:cursor-grabbing select-none">
         <h2 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
-          <MapPin className="w-4 h-4 text-gray-400" strokeWidth={1.5} />
+          <MapPin className="w-4 h-4 text-orange-400" strokeWidth={1.5} />
           Kurye Günlük Rota ve Performans
         </h2>
+        <button
+          type="button"
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation()
+            fetchTodayDelivered()
+          }}
+          disabled={loading}
+          className="shrink-0 px-2 py-0.5 rounded text-xs bg-slate-700/50 text-slate-300 hover:text-orange-400 disabled:opacity-50 transition-colors"
+          title="Yenile"
+        >
+          ↻ Yenile
+        </button>
       </div>
+
 
       {loadError && (
         <p className="text-xs text-red-400 px-1 mb-2">{loadError}</p>
       )}
 
       {/* Kurye pill'leri */}
-      <div className="flex gap-1.5 overflow-x-auto admin-scrollbar pb-2 px-0.5 shrink-0">
+      <div className="no-drag flex gap-1.5 overflow-x-auto admin-scrollbar pb-2 px-0.5 shrink-0" onMouseDown={(e) => e.stopPropagation()}>
         {activeCouriersWithToday.map((c) => {
           const isSelected = selectedCourierId === c.id
           const count = allPackages.filter(
@@ -189,7 +194,7 @@ export function CourierDailyRoutes({ couriers }: CourierDailyRoutesProps) {
       </div>
 
       {/* Arama + sayaç */}
-      <div className="flex items-center gap-2 mb-2 shrink-0">
+      <div className="no-drag flex items-center gap-2 mb-2 shrink-0" onMouseDown={(e) => e.stopPropagation()}>
         <input
           type="search"
           value={searchQuery}
@@ -204,7 +209,9 @@ export function CourierDailyRoutes({ couriers }: CourierDailyRoutesProps) {
       </div>
 
       {/* Liste */}
-      <div className="flex-1 min-h-0 max-h-[600px] overflow-y-auto admin-scrollbar rounded-md border border-slate-800/80 bg-slate-950/50">
+      <div className="no-drag flex-1 min-h-0 overflow-y-auto admin-scrollbar rounded-md border border-slate-800/80 bg-slate-950/50" onMouseDown={(e) => e.stopPropagation()}>
+
+
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="h-6 w-6 border-2 border-slate-600 border-t-orange-500 rounded-full animate-spin" />

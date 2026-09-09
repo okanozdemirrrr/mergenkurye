@@ -4,7 +4,7 @@
  */
 'use client'
 
-import { LiveTrackingTab } from './components/LiveTrackingTab'
+import { LiveTrackingTabWithGrid } from './components/LiveTrackingTabWithGrid'
 import { useAdminData } from './AdminDataProvider'
 import { useState } from 'react'
 import { assignCourier, cancelOrder } from '@/services/orderService'
@@ -81,7 +81,7 @@ export default function AdminPage() {
   }
 
   return (
-    <LiveTrackingTab
+    <LiveTrackingTabWithGrid
       packages={packages}
       couriers={couriers}
       restaurants={restaurants}

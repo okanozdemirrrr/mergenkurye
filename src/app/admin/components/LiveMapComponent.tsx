@@ -433,8 +433,9 @@ export function LiveMapComponent({
 
   return (
     <>
-      <div className={`${isFullscreen ? 'fixed inset-0 z-50 bg-slate-950 p-4' : 'relative w-full h-full'}`}>
-        <div className="relative w-full h-full rounded-md overflow-hidden border border-slate-700">
+      <div className={`no-drag ${isFullscreen ? 'fixed inset-0 z-50 bg-slate-950 p-4' : 'relative w-full h-full'}`} onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()}>
+        <div className="no-drag relative w-full h-full rounded-md overflow-hidden border border-slate-700">
+
 
           {/* Büyüt/Küçült Butonu */}
           <button
