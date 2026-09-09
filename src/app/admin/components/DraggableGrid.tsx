@@ -4,7 +4,7 @@
  */
 'use client'
 
-import { useState, useEffect, ReactNode, useCallback } from 'react'
+import { useState, useEffect, ReactNode, useCallback, useMemo } from 'react'
 import { Responsive, useContainerWidth, Layout, Layouts } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
@@ -12,28 +12,28 @@ import 'react-resizable/css/styles.css'
 // LocalStorage key (yeni duyarlı şema için v2)
 const STORAGE_KEY = 'admin_dashboard_layout_v2'
 
-// Masaüstü (lg) layout
+// Masaüstü (lg) layout - Sadece başlıktan sürüklenebilir
 const desktopLayout: Layout[] = [
-  { i: 'map', x: 0, y: 0, w: 8, h: 12, minW: 4, minH: 8 },
-  { i: 'courier-status', x: 8, y: 0, w: 4, h: 12, minW: 3, minH: 8 },
-  { i: 'orders', x: 0, y: 12, w: 8, h: 10, minW: 4, minH: 6 },
-  { i: 'courier-routes', x: 8, y: 12, w: 4, h: 10, minW: 3, minH: 6 },
+  { i: 'map', x: 0, y: 0, w: 8, h: 12, minW: 4, minH: 8, isDraggable: true, isResizable: true },
+  { i: 'courier-status', x: 8, y: 0, w: 4, h: 12, minW: 3, minH: 8, isDraggable: true, isResizable: true },
+  { i: 'orders', x: 0, y: 12, w: 8, h: 10, minW: 4, minH: 6, isDraggable: true, isResizable: true },
+  { i: 'courier-routes', x: 8, y: 12, w: 4, h: 10, minW: 3, minH: 6, isDraggable: true, isResizable: true },
 ]
 
-// Tablet (md, sm) layout - Kutular tam genişlik ve düzgün sıralı
+// Tablet (md, sm) layout - Kutular tam genişlik, sabit ve sürükleme kapalı
 const tabletLayout: Layout[] = [
-  { i: 'map', x: 0, y: 0, w: 10, h: 11, minW: 1, minH: 6 },
-  { i: 'courier-status', x: 0, y: 11, w: 10, h: 10, minW: 1, minH: 6 },
-  { i: 'orders', x: 0, y: 21, w: 10, h: 11, minW: 1, minH: 6 },
-  { i: 'courier-routes', x: 0, y: 32, w: 10, h: 10, minW: 1, minH: 6 },
+  { i: 'map', x: 0, y: 0, w: 10, h: 11, minW: 1, minH: 6, isDraggable: false, isResizable: false, static: true },
+  { i: 'courier-status', x: 0, y: 11, w: 10, h: 10, minW: 1, minH: 6, isDraggable: false, isResizable: false, static: true },
+  { i: 'orders', x: 0, y: 21, w: 10, h: 11, minW: 1, minH: 6, isDraggable: false, isResizable: false, static: true },
+  { i: 'courier-routes', x: 0, y: 32, w: 10, h: 10, minW: 1, minH: 6, isDraggable: false, isResizable: false, static: true },
 ]
 
-// Mobil (xs, xxs) layout - Kutular kesinlikle 1 kolon, x:0 ve alt alta sıralı
+// Mobil (xs, xxs) layout - Kutular kesinlikle 1 kolon, x:0, alt alta ve sabit
 const mobileLayout: Layout[] = [
-  { i: 'map', x: 0, y: 0, w: 1, h: 12, minW: 1, minH: 6 },
-  { i: 'courier-status', x: 0, y: 12, w: 1, h: 10, minW: 1, minH: 6 },
-  { i: 'orders', x: 0, y: 22, w: 1, h: 12, minW: 1, minH: 6 },
-  { i: 'courier-routes', x: 0, y: 34, w: 1, h: 10, minW: 1, minH: 6 },
+  { i: 'map', x: 0, y: 0, w: 1, h: 12, minW: 1, minH: 6, isDraggable: false, isResizable: false, static: true },
+  { i: 'courier-status', x: 0, y: 12, w: 1, h: 10, minW: 1, minH: 6, isDraggable: false, isResizable: false, static: true },
+  { i: 'orders', x: 0, y: 22, w: 1, h: 12, minW: 1, minH: 6, isDraggable: false, isResizable: false, static: true },
+  { i: 'courier-routes', x: 0, y: 34, w: 1, h: 10, minW: 1, minH: 6, isDraggable: false, isResizable: false, static: true },
 ]
 
 // Varsayılan çoklu cihaz layout yapılandırması
@@ -71,24 +71,23 @@ export function DraggableGrid({ children }: DraggableGridProps) {
     }
   }, [])
 
-  // LocalStorage'dan layout'u yükle
+  // LocalStorage'dan layout'u yükle (SADECE masaüstü lg için yükle, mobil ve tableti daima sabit tut)
   useEffect(() => {
     const savedLayouts = localStorage.getItem(STORAGE_KEY)
     if (savedLayouts) {
       try {
         const parsed = JSON.parse(savedLayouts)
-        // Eğer geçerli v2 yapısındaysa ve xs/xxs 1 kolon ise yükle
-        if (parsed && parsed.xs && parsed.xs[0]?.w === 1 && parsed.xxs) {
-          setLayouts(parsed)
-        } else {
-          // Eski versiyon ise sadece lg'yi koru, mobil ve tableti yeni varsayılana ayarla
-          const merged: Layouts = {
-            ...defaultLayouts,
-            lg: parsed.lg || desktopLayout,
-          }
-          setLayouts(merged)
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(merged))
+        const merged: Layouts = {
+          ...defaultLayouts,
+          lg: (parsed.lg && Array.isArray(parsed.lg) && parsed.lg.length === 4)
+            ? parsed.lg.map((item: Layout) => ({ ...item, isDraggable: true, isResizable: true }))
+            : desktopLayout,
+          md: tabletLayout,
+          sm: tabletLayout,
+          xs: mobileLayout,
+          xxs: mobileLayout,
         }
+        setLayouts(merged)
       } catch (error) {
         console.error('Layout yüklenemedi:', error)
       }
@@ -100,24 +99,46 @@ export function DraggableGrid({ children }: DraggableGridProps) {
     setCurrentBreakpoint(newBreakpoint)
   }, [])
 
-  // Sadece masaüstünde (lg breakpoint ve genişlik > 1024px) sürükleme ve boyutlandırma aktif
-  // md (996px / 932px yan çevrilmiş cihazlar), sm, xs, xxs ve tabletlerde tamamen devre dışı
-  const isDesktop =
-    currentBreakpoint === 'lg' &&
-    (width > 0 ? width > 1024 : (typeof window !== 'undefined' ? window.innerWidth > 1024 : false))
+  // Sadece masaüstünde (lg breakpoint ve genişlik > 1024px) sürükleme aktiftir
+  // Mobil veya tablet (md, sm, xs, xxs veya genişlik <= 1024px) kesinlikle sürükleneMEZ
+  const isDesktop = useMemo(() => {
+    if (currentBreakpoint !== 'lg') return false
+    if (width > 0 && width <= 1024) return false
+    if (typeof window !== 'undefined' && window.innerWidth <= 1024) return false
+    return true
+  }, [currentBreakpoint, width])
 
-  // Layout değiştiğinde localStorage'a kaydet (mobil ve tablet modda bozulmaları engelle)
+  // Aktif layout'ları masaüstü/mobil durumuna göre hazırla
+  // Mobilde ve tablette tüm kutuların static: true ve isDraggable: false olmasını garanti et
+  const activeLayouts = useMemo(() => {
+    if (isDesktop) {
+      return layouts
+    }
+    const lockedLayouts: Layouts = {}
+    for (const [bp, items] of Object.entries(layouts)) {
+      lockedLayouts[bp] = (items || []).map((item) => ({
+        ...item,
+        isDraggable: false,
+        isResizable: false,
+        static: true,
+      }))
+    }
+    return lockedLayouts
+  }, [layouts, isDesktop])
+
+  // Layout değiştiğinde localStorage'a kaydet (sadece masaüstünde serbest düzen kaydedilir)
   const handleLayoutChange = useCallback((_: Layout[], allLayouts: Layouts) => {
-    // Mobil düzenlerin (xs, xxs) daima 1 kolon ve alt alta kalmasını garanti et
+    if (!isDesktop) return
+
     const updated: Layouts = {
       ...allLayouts,
+      md: tabletLayout,
+      sm: tabletLayout,
       xs: mobileLayout,
       xxs: mobileLayout,
     }
     setLayouts(updated)
-    if (isDesktop) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
-    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
   }, [isDesktop])
 
   // Layout sıfırlama fonksiyonu
@@ -131,9 +152,9 @@ export function DraggableGrid({ children }: DraggableGridProps) {
       <div className="flex justify-between items-center mb-2 px-1">
         <div className="text-xs text-slate-400">
           {!isDesktop ? (
-            <span className="text-slate-500 text-[11px]">📱 Mobil / Tablet Görünümü (Sabit Düzen)</span>
+            <span className="text-slate-500 text-[11px]">📱 Mobil / Tablet Görünümü (Sabit Düzen - Sürükleme Kapalı)</span>
           ) : (
-            <span className="text-slate-500 text-[11px]">🖥️ Kartları başlıktan sürükleyip boyutlandırabilirsiniz</span>
+            <span className="text-slate-500 text-[11px]">🖥️ Kartları sadece üst başlıktan sürükleyebilirsiniz</span>
           )}
         </div>
         <button
@@ -149,14 +170,24 @@ export function DraggableGrid({ children }: DraggableGridProps) {
         <Responsive
           className="layout"
           width={width}
-          layouts={layouts}
+          layouts={activeLayouts}
           breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
           cols={{ lg: 12, md: 10, sm: 6, xs: 1, xxs: 1 }}
           rowHeight={30}
           onBreakpointChange={handleBreakpointChange}
           onLayoutChange={handleLayoutChange}
-          draggableHandle=".drag-handle"
-          draggableCancel=".leaflet-container, .leaflet-interactive, .leaflet-control, .leaflet-pane, .no-drag, input, textarea, button, select"
+          // react-grid-layout v2 için dragConfig ve resizeConfig
+          dragConfig={{
+            enabled: isDesktop,
+            handle: '.custom-drag-handle',
+            cancel: '.cancel-drag',
+          }}
+          resizeConfig={{
+            enabled: isDesktop,
+          }}
+          // Geriye dönük uyumluluk için flat proplar
+          draggableHandle=".custom-drag-handle"
+          draggableCancel=".cancel-drag"
           isDraggable={isDesktop}
           isResizable={isDesktop}
           compactType="vertical"

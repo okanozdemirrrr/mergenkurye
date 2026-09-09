@@ -113,18 +113,18 @@ export function LiveOrdersCard({
 
   return (
     <div className="h-full w-full min-w-0 flex flex-col p-3">
-      {/* Başlık - Drag Handle */}
-      <div className="drag-handle flex items-center justify-between p-2 -mx-3 -mt-3 mb-3 bg-slate-800/80 border-b border-slate-800 rounded-t-md cursor-grab active:cursor-grabbing select-none flex-wrap gap-2">
-        <h2 className="text-sm font-bold text-white flex items-center gap-2">
+      {/* Başlık - SADECE buradan sürüklenebilir */}
+      <div className="custom-drag-handle cursor-move touch-none flex items-center justify-between p-2 -mx-3 -mt-3 mb-3 bg-slate-800/80 border-b border-slate-800 rounded-t-md select-none flex-wrap gap-2">
+        <h2 className="text-sm font-bold text-white flex items-center gap-2 pointer-events-none">
           <PackageIcon className="w-4 h-4 text-orange-400" strokeWidth={1.5} />
           <span>Canlı Sipariş Takibi</span>
-          <span className="text-xs text-slate-400 bg-slate-700/50 px-2 py-0.5 rounded font-mono" onMouseDown={(e) => e.stopPropagation()}>
+          <span className="text-xs text-slate-400 bg-slate-700/50 px-2 py-0.5 rounded font-mono">
             {unassignedPackages.length} bekleyen
           </span>
         </h2>
 
-        {/* HIZLI KART BOYUTU SEÇİCİ */}
-        <div className="flex items-center gap-1 text-[10px]" onMouseDown={(e) => e.stopPropagation()}>
+        {/* HIZLI KART BOYUTU SEÇİCİ - cancel-drag ile izole */}
+        <div className="cancel-drag touch-auto flex items-center gap-1 text-[10px]" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()}>
           <span className="text-slate-400 mr-1 hidden sm:inline">Kart Boyutu:</span>
           <button
             type="button"
@@ -159,10 +159,12 @@ export function LiveOrdersCard({
         </div>
       </div>
 
-      {/* Content */}
+      {/* Content - Kalkan (cancel-drag touch-auto) */}
       <div 
-        className="no-drag flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden"
+        className="cancel-drag touch-auto flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden"
         onMouseDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
       >
         <div className={gridClass}>
 

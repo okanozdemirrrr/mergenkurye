@@ -26,15 +26,15 @@ export function LiveMapCard({ packages, couriers, restaurants, onLiveCouriersCha
 
   return (
     <div className="h-full w-full min-w-0 flex flex-col p-2">
-      {/* Başlık - Drag Handle */}
-      <div className="drag-handle flex items-center justify-between p-2 -mx-2 -mt-2 mb-2 bg-slate-800/80 border-b border-slate-800 rounded-t-md cursor-grab active:cursor-grabbing select-none flex-wrap gap-2">
-        <h2 className="text-sm font-bold flex items-center gap-2 text-white shrink-0">
+      {/* Başlık - SADECE buradan sürüklenebilir */}
+      <div className="custom-drag-handle cursor-move touch-none flex items-center justify-between p-2 -mx-2 -mt-2 mb-2 bg-slate-800/80 border-b border-slate-800 rounded-t-md select-none flex-wrap gap-2">
+        <h2 className="text-sm font-bold flex items-center gap-2 text-white shrink-0 pointer-events-none">
           <Map className="w-4 h-4 text-orange-400" strokeWidth={1.5} />
           <span>Canlı Harita</span>
         </h2>
         
-        {/* İstatistikler - Yatay */}
-        <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-xs" onMouseDown={(e) => e.stopPropagation()}>
+        {/* İstatistikler - Yatay (cancel-drag ile başlıktan izole) */}
+        <div className="cancel-drag touch-auto flex items-center flex-wrap gap-x-3 gap-y-1 text-xs cursor-default" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
           <div className="flex items-center gap-1">
             <span className="text-slate-400">Toplam:</span>
             <span className="font-bold text-white">
@@ -77,9 +77,9 @@ export function LiveMapCard({ packages, couriers, restaurants, onLiveCouriersCha
       </div>
 
       
-      {/* Harita Container */}
+      {/* Harita Container - Kalkan (cancel-drag touch-auto) */}
       <div 
-        className="no-drag flex-1 min-h-0 w-full rounded-md overflow-hidden relative"
+        className="cancel-drag touch-auto flex-1 min-h-0 w-full rounded-md overflow-hidden relative"
         onTouchStart={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}

@@ -591,6 +591,16 @@ img[src*="logo.png"] {
   user-select: none;
 }
 
+.custom-drag-handle {
+  cursor: move !important;
+  touch-action: none !important;
+  user-select: none !important;
+}
+
+.cancel-drag {
+  touch-action: auto !important;
+}
+
 .drag-handle {
   cursor: grab;
   user-select: none;
@@ -629,11 +639,10 @@ img[src*="logo.png"] {
 }
 
 @media (max-width: 1024px) {
+  .custom-drag-handle,
   .drag-handle {
     cursor: default !important;
-  }
-  .drag-handle:active {
-    cursor: default !important;
+    touch-action: auto !important;
   }
   .react-resizable-handle {
     display: none !important;

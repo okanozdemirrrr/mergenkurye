@@ -130,20 +130,22 @@ export function CourierDailyRoutes({ couriers }: CourierDailyRoutesProps) {
 
   return (
     <div className="h-full w-full flex flex-col p-2 overflow-x-hidden">
-      <div className="drag-handle flex items-center justify-between p-2 -mx-2 -mt-2 mb-2 bg-slate-800/80 border-b border-slate-800 rounded-t-md cursor-grab active:cursor-grabbing select-none">
-        <h2 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
+      {/* Başlık - SADECE buradan sürüklenebilir */}
+      <div className="custom-drag-handle cursor-move touch-none flex items-center justify-between p-2 -mx-2 -mt-2 mb-2 bg-slate-800/80 border-b border-slate-800 rounded-t-md select-none">
+        <h2 className="text-sm font-bold text-white tracking-tight flex items-center gap-2 pointer-events-none">
           <MapPin className="w-4 h-4 text-orange-400" strokeWidth={1.5} />
           Kurye Günlük Rota ve Performans
         </h2>
         <button
           type="button"
           onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation()
             fetchTodayDelivered()
           }}
           disabled={loading}
-          className="shrink-0 px-2 py-0.5 rounded text-xs bg-slate-700/50 text-slate-300 hover:text-orange-400 disabled:opacity-50 transition-colors"
+          className="cancel-drag shrink-0 px-2 py-0.5 rounded text-xs bg-slate-700/50 text-slate-300 hover:text-orange-400 disabled:opacity-50 transition-colors cursor-pointer"
           title="Yenile"
         >
           ↻ Yenile
@@ -155,8 +157,8 @@ export function CourierDailyRoutes({ couriers }: CourierDailyRoutesProps) {
         <p className="text-xs text-red-400 px-1 mb-2">{loadError}</p>
       )}
 
-      {/* Kurye pill'leri */}
-      <div className="no-drag flex gap-1.5 overflow-x-auto admin-scrollbar pb-2 px-0.5 shrink-0" onMouseDown={(e) => e.stopPropagation()}>
+      {/* Kurye pill'leri - cancel-drag touch-auto */}
+      <div className="cancel-drag touch-auto flex gap-1.5 overflow-x-auto admin-scrollbar pb-2 px-0.5 shrink-0" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()}>
         {activeCouriersWithToday.map((c) => {
           const isSelected = selectedCourierId === c.id
           const count = allPackages.filter(
@@ -193,8 +195,8 @@ export function CourierDailyRoutes({ couriers }: CourierDailyRoutesProps) {
         )}
       </div>
 
-      {/* Arama + sayaç */}
-      <div className="no-drag flex items-center gap-2 mb-2 shrink-0" onMouseDown={(e) => e.stopPropagation()}>
+      {/* Arama + sayaç - cancel-drag touch-auto */}
+      <div className="cancel-drag touch-auto flex items-center gap-2 mb-2 shrink-0" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()}>
         <input
           type="search"
           value={searchQuery}
@@ -208,8 +210,8 @@ export function CourierDailyRoutes({ couriers }: CourierDailyRoutesProps) {
         </span>
       </div>
 
-      {/* Liste */}
-      <div className="no-drag flex-1 min-h-0 overflow-y-auto admin-scrollbar rounded-md border border-slate-800/80 bg-slate-950/50" onMouseDown={(e) => e.stopPropagation()}>
+      {/* Liste - cancel-drag touch-auto */}
+      <div className="cancel-drag touch-auto flex-1 min-h-0 overflow-y-auto admin-scrollbar rounded-md border border-slate-800/80 bg-slate-950/50" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
 
 
         {loading ? (
