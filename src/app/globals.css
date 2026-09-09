@@ -628,4 +628,19 @@ img[src*="logo.png"] {
   transform: scale(1.2);
 }
 
+@media (max-width: 767px) {
+  .drag-handle {
+    cursor: default !important;
+  }
+  .drag-handle:active {
+    cursor: default !important;
+  }
+  .react-resizable-handle {
+    display: none !important;
+  }
+  .react-grid-item {
+    touch-action: auto !important;
+  }
+}
+
 

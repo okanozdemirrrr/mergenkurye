@@ -507,8 +507,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       )}
 
       {/* Main Content */}
-      <div className="py-8 px-4 sm:px-6 lg:px-8">
-        <div className="w-full">
+      <div className="py-4 sm:py-8 px-2 sm:px-6 lg:px-8">
+        <div className="w-full min-w-0">
           <NotificationProvider>
             <AdminDataProvider>
               <AdminMessages />

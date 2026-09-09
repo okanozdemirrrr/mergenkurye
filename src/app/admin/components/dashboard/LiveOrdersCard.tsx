@@ -112,7 +112,7 @@ export function LiveOrdersCard({
     : 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 w-full'
 
   return (
-    <div className="h-full flex flex-col p-3">
+    <div className="h-full w-full min-w-0 flex flex-col p-3">
       {/* Başlık - Drag Handle */}
       <div className="drag-handle flex items-center justify-between p-2 -mx-3 -mt-3 mb-3 bg-slate-800/80 border-b border-slate-800 rounded-t-md cursor-grab active:cursor-grabbing select-none flex-wrap gap-2">
         <h2 className="text-sm font-bold text-white flex items-center gap-2">
@@ -161,7 +161,7 @@ export function LiveOrdersCard({
 
       {/* Content */}
       <div 
-        className="no-drag flex-1 min-h-0 overflow-y-auto"
+        className="no-drag flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden"
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className={gridClass}>

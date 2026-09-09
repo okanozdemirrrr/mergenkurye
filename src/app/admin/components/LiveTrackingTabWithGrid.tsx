@@ -268,7 +268,7 @@ export function LiveTrackingTabWithGrid({
       />
       
       {/* DRAGGABLE GRID */}
-      <div className="mt-2">
+      <div className="mt-2 w-full max-w-full min-w-0">
         <DraggableGrid>
           {{
             map: (

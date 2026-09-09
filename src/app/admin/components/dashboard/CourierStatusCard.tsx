@@ -25,7 +25,7 @@ export function CourierStatusCard({
   onPackageClick
 }: CourierStatusCardProps) {
   return (
-    <div className="h-full flex flex-col p-2">
+    <div className="h-full w-full min-w-0 flex flex-col p-2">
       {/* Başlık - Drag Handle */}
       <div className="drag-handle flex justify-between items-center p-2 -mx-2 -mt-2 mb-2 bg-slate-800/80 border-b border-slate-800 rounded-t-md cursor-grab active:cursor-grabbing select-none">
         <h2 className="text-sm font-bold text-white">Kurye Durumları</h2>
@@ -37,7 +37,7 @@ export function CourierStatusCard({
       
       {/* Content */}
       <div 
-        className="no-drag flex-1 min-h-0 overflow-y-auto overflow-x-hidden space-y-2"
+        className="no-drag flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden space-y-2"
         onMouseDown={(e) => e.stopPropagation()}
       >
 
