@@ -12,7 +12,6 @@ import { Restaurant, Package } from '@/types'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { supabase } from '@/app/lib/supabase'
 import { getAllRestaurantsUnpaidBalances } from '@/services/restaurantService'
-import { fetchAllRestaurantsDeliveredStats } from '@/services/restaurantStats'
 import {
   BarChart3, Package as PackageIcon, Inbox, Banknote, Search, Store, Phone, MapPin,
   Pencil, Loader2, CheckCircle2, TrendingDown, FileText, Lightbulb, ClipboardList, CreditCard
@@ -26,6 +25,9 @@ interface RestaurantsTabProps {
     onDebtPayClick?: (id: number | string) => void
     restaurantChartFilter: 'today' | 'week' | 'month'
     setRestaurantChartFilter: (filter: 'today' | 'week' | 'month') => void
+    /** URL'den gelen initial tarih — "Gün Sonu Al" sonrası sayfa remount'ta filtreyi korur */
+    initialStartDate?: string
+    initialEndDate?: string
 }
 
 export function RestaurantsTab({
@@ -35,7 +37,9 @@ export function RestaurantsTab({
     onRestaurantClick,
     onDebtPayClick,
     restaurantChartFilter,
-    setRestaurantChartFilter
+    setRestaurantChartFilter,
+    initialStartDate = '',
+    initialEndDate = '',
 }: RestaurantsTabProps) {
     const [editingRestaurant, setEditingRestaurant] = useState<Restaurant | null>(null)
     const [newPackageFee, setNewPackageFee] = useState('')
@@ -44,10 +48,11 @@ export function RestaurantsTab({
     const [errorMessage, setErrorMessage] = useState('')
     
     // Tarih Filtreleme State'leri - HER ZAMAN EN ÜSTTE!
-    const [startDate, setStartDate] = useState('')
-    const [endDate, setEndDate] = useState('')
-    const [tempStartDate, setTempStartDate] = useState('')
-    const [tempEndDate, setTempEndDate] = useState('')
+    // initialStartDate/initialEndDate: URL'den gelen tarihler ("Gün Sonu Al" sonrası remount'ta filtreyi korur)
+    const [startDate, setStartDate] = useState(initialStartDate)
+    const [endDate, setEndDate] = useState(initialEndDate)
+    const [tempStartDate, setTempStartDate] = useState(initialStartDate)
+    const [tempEndDate, setTempEndDate] = useState(initialEndDate)
     const [filteredOrders, setFilteredOrders] = useState<Package[]>([])
 
     const handleUpdatePackageFee = async () => {
@@ -388,35 +393,19 @@ export function RestaurantsTab({
         const [isLoadingStats, setIsLoadingStats] = useState(false)
         
         // İSTATİSTİKLERİ HESAPLA (RPC Üzerinden Toplu)
+        // Her iki modda da aynı RPC kullanılıyor: getAllRestaurantsUnpaidBalances
+        // → Tarihsiz: tüm zamanlar ödenmemiş bakiye
+        // → Tarihli:  o dönemde ödenmemiş paketler (is_paid_to_restaurant=false)
+        // Modal (getRestaurantPeriodFinancials RPC) ile aynı mantık → değerler tutarlı
         useEffect(() => {
             const fetchStats = async () => {
                 setIsLoadingStats(true)
                 try {
-                    if (startDate && endDate) {
-                        const statsMap = await fetchAllRestaurantsDeliveredStats(startDate, endDate)
-                        setRestaurantsWithStats(
-                            restaurants.map((r) => {
-                                const s = statsMap.get(String(r.id))
-                                const packageFee = r.package_fee || 0
-                                return {
-                                    id: r.id,
-                                    name: r.name,
-                                    package_fee: packageFee,
-                                    unpaid_revenue: s?.revenue ?? 0,
-                                    unpaid_package_count: s?.packageCount ?? 0,
-                                    unpaid_cost: s?.courierCost ?? 0,
-                                    unpaid_commission: s?.commission ?? 0,
-                                    current_balance: s
-                                        ? s.revenue - s.courierCost - s.commission
-                                        : 0,
-                                    totalOrders: s?.packageCount ?? 0,
-                                }
-                            })
-                        )
-                        return
-                    }
-
-                    const result = await getAllRestaurantsUnpaidBalances()
+                    // Tarih filtresi olsun ya da olmasın aynı RPC — sadece parametreler değişiyor
+                    const result = await getAllRestaurantsUnpaidBalances(
+                        startDate || undefined,
+                        endDate || undefined
+                    )
                     if (result.success && result.data) {
                         setRestaurantsWithStats(result.data)
                     } else {
@@ -635,12 +624,9 @@ export function RestaurantsTab({
                                     <div className="flex items-center justify-between gap-4 min-w-0">
                                         {/* Sol: Restoran Bilgileri */}
                                         <div className="flex-1 min-w-0">
-                                            <button
-                                                onClick={() => onRestaurantClick(r.id)}
-                                                className="text-base font-bold text-slate-200 hover:text-slate-100 transition-colors text-left tracking-tight truncate block w-full"
-                                            >
+                                            <span className="text-base font-bold text-slate-200 tracking-tight truncate block w-full">
                                                 {r.name}
-                                            </button>
+                                            </span>
                                             <p className="text-xs text-slate-600 mt-1 tracking-tight whitespace-nowrap shrink-0">
                                                 {hasDateFilter
                                                     ? `${r.unpaid_package_count || 0} teslim paket`
