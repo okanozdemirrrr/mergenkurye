@@ -64,10 +64,10 @@ export const STATUS_CONFIG = {
     code: 5,
     label: 'YOLDA',
     labelShort: 'Yolda',
-    color: 'yellow',
-    bgClass: 'bg-yellow-600',
-    textClass: 'text-yellow-600',
-    badgeClass: 'bg-yellow-900/50 text-yellow-300',
+    color: 'green',
+    bgClass: 'bg-green-600',
+    textClass: 'text-green-600',
+    badgeClass: 'bg-green-900/50 text-green-300',
     description: 'Teslimat yolunda'
   },
   delivered: {
