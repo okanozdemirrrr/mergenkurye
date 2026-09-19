@@ -113,6 +113,31 @@ export default function KanbanBoard({
         throw error
       }
 
+      // 🚀 Kuryeye atanmış paket hazırlandıysa bildirim gönder
+      if (newStatus === 'ready' && currentPkg?.courier_id) {
+        try {
+          const baseUrl = typeof window !== 'undefined'
+            ? window.location.origin
+            : process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+          const apiUrl = `${baseUrl}/api/send-push`
+
+          await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              courierId: currentPkg.courier_id,
+              restaurantName: currentPkg.restaurant?.name || currentPkg.restaurant_name || 'Restoran',
+              deliveryAddress: currentPkg.delivery_address || 'Müşteri',
+              customerName: currentPkg.customer_name,
+              titleOverride: 'Paket Hazır! 🚀',
+              bodyOverride: 'Atanan sipariş hazırlandı, hemen teslim alabilirsiniz.'
+            })
+          })
+        } catch (pushErr) {
+          console.error('Kuryeye hazır bildirimi gönderilemedi:', pushErr)
+        }
+      }
+
       console.log('✅ Sipariş durumu başarıyla güncellendi')
       onRefresh()
     } catch (error: any) {

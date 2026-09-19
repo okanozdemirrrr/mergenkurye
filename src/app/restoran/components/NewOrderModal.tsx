@@ -220,6 +220,45 @@ export default function NewOrderModal({ onClose, onSuccess, restaurantId, darkMo
   const [savedLocations, setSavedLocations] = useState<CustomerLocationPoint[]>([])
   const [selectedLocation, setSelectedLocation] = useState<CustomerLocationPoint | null>(null)
   const [loadingLocations, setLoadingLocations] = useState(false)
+  const [isSystemActive, setIsSystemActive] = useState(true)
+
+  // ── Sistem Durumu Kontrolü ──
+  useEffect(() => {
+    const fetchSystemStatus = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('app_settings')
+          .select('value')
+          .eq('key', 'is_system_active')
+          .single()
+        
+        if (data && data.value === 'false') {
+          setIsSystemActive(false)
+        }
+      } catch (err) {
+        console.warn('Sistem durumu kontrol edilemedi:', err)
+      }
+    }
+
+    fetchSystemStatus()
+
+    const subscription = supabase
+      .channel('public:app_settings_order')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'app_settings', filter: "key=eq.is_system_active" },
+        (payload) => {
+          if (payload.new && 'value' in payload.new) {
+            setIsSystemActive(payload.new.value === 'true')
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(subscription)
+    }
+  }, [])
 
   // ── Dropdown dışı tıklama ──
   useEffect(() => {
@@ -376,6 +415,10 @@ export default function NewOrderModal({ onClose, onSuccess, restaurantId, darkMo
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!isSystemActive) {
+      setError('Sistem şu anda kapalıdır, yeni sipariş girilemez.')
+      return
+    }
     if (!paymentMethod) { setError('Lütfen ödeme yöntemi seçin'); return }
     setIsSubmitting(true)
     setError('')
@@ -744,10 +787,14 @@ export default function NewOrderModal({ onClose, onSuccess, restaurantId, darkMo
               </button>
               <button
                 type="submit"
-                disabled={isSubmitting}
-                className="flex-2 flex-grow-[2] py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-md font-bold transition-colors disabled:opacity-50"
+                disabled={isSubmitting || !isSystemActive}
+                className={`flex-2 flex-grow-[2] py-3 text-white rounded-md font-bold transition-colors disabled:opacity-50 ${
+                  !isSystemActive ? 'bg-slate-600' : 'bg-orange-600 hover:bg-orange-700'
+                }`}
               >
-                {isSubmitting ? (
+                {!isSystemActive ? (
+                  <span className="inline-flex items-center justify-center gap-2">Sistem Kapalı</span>
+                ) : isSubmitting ? (
                   <span className="inline-flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" strokeWidth={1.5} />Kaydediliyor...</span>
                 ) : (
                   <span className="inline-flex items-center justify-center gap-2"><Send className="w-4 h-4" strokeWidth={1.5} />Sipariş Oluştur</span>

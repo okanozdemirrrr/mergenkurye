@@ -18,7 +18,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical } from 'lucide-react'
+import { GripVertical, PowerOff } from 'lucide-react'
 import { supabase } from '@/app/lib/supabase'
 import { Package, Courier, PackageStatus } from '@/types'
 import { getStatusBadgeClass, getStatusLabel, normalizeStatus } from '@/utils/statusHelpers'
@@ -64,6 +64,24 @@ function SortableCourierCard({
     zIndex: isDragging ? 10 : undefined,
   }
 
+  const handleDeactivate = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    const confirmDeactivate = window.confirm(`${courier.full_name} kuryesini pasife almak istediğinize emin misiniz?`)
+    if (!confirmDeactivate) return
+
+    try {
+      const { error } = await supabase
+        .from('couriers')
+        .update({ is_active: false, status: 'idle' })
+        .eq('id', courier.id)
+      
+      if (error) throw error
+    } catch (err) {
+      console.error('Kurye pasife alınırken hata:', err)
+      alert('Kurye pasife alınamadı.')
+    }
+  }
+
   return (
     <div
       ref={setNodeRef}
@@ -87,17 +105,27 @@ function SortableCourierCard({
               <NightShiftIndicator isNightShift={courier.is_night_shift} />
               <span className="font-bold text-xs text-white truncate">{courier.full_name}</span>
             </div>
-            <div className="text-right">
-              <span className="text-[10px] text-green-400 block font-semibold">
-                {courier.todayDeliveryCount || 0} bugün
-              </span>
-              <span className="text-[10px] text-orange-400 block font-semibold">
-                {courier.activePackageCount || 0} üzerinde
-              </span>
+            <div className="text-right flex items-center gap-2">
+              <div>
+                <span className="text-[10px] text-green-400 block font-semibold">
+                  {courier.todayDeliveryCount || 0} bugün
+                </span>
+                <span className="text-[10px] text-orange-400 block font-semibold">
+                  {courier.activePackageCount || 0} üzerinde
+                </span>
+              </div>
+              <button
+                onClick={handleDeactivate}
+                className="p-1.5 bg-red-500/20 hover:bg-red-500/40 text-red-400 rounded-md transition-colors"
+                title="Pasife Al (Vardiyayı Kapat)"
+                aria-label="Pasife Al"
+              >
+                <PowerOff size={14} />
+              </button>
             </div>
           </div>
 
-          <div className="mb-1.5">
+          <div className="mb-1.5 flex items-center gap-2">
             {!courier.is_active && (
               <span className="text-[9px] bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded font-bold">
                 AKTİF DEĞİL

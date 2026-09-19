@@ -6,6 +6,7 @@
  * @version 2.0 - Push notification support added
  */
 import { supabase } from '@/app/lib/supabase'
+import toast from 'react-hot-toast'
 
 /**
  * Sipariş iptal işlemi (Finansal Mantık ile)
@@ -112,7 +113,7 @@ export async function assignCourier(
         // 🚫 GÜVENLİK KONTROLÜ: Kurye paketi aldıysa başka kuryeye atanamaz!
         const blockedStatuses = ['picking_up', 'on_the_way', 'delivered']
         if (blockedStatuses.includes((packageData as any).status)) {
-            alert(`❌ Bu paket "${(packageData as any).status}" durumunda!\n\nKurye paketi aldıktan sonra başka kuryeye atanamaz.`)
+            toast.error(`❌ Bu paket "${(packageData as any).status}" durumunda!\n\nKurye paketi aldıktan sonra başka kuryeye atanamaz.`)
             return { success: false, error: 'Paket kurye tarafından alındı, atanamaz' }
         }
 
@@ -196,14 +197,14 @@ export async function assignCourier(
             
             if (response.ok) {
                 console.log('✅ Push notification başarıyla gönderildi:', result)
-                alert(`✅ Kurye atandı ve bildirim gönderildi!\n\nKurye: ${result.courierName}\nBildirim: ${result.title}`)
+                toast.success('Kurye atandı ve bildirim gönderildi')
             } else {
                 console.warn('⚠️ Push notification gönderilemedi:', result)
-                alert(`⚠️ Kurye atandı ama bildirim gönderilemedi!\n\nHata: ${result.error}\nDetay: ${result.details || 'Yok'}`)
+                toast.error('Kurye atandı ancak bildirim gönderilemedi')
             }
         } catch (pushError) {
             console.error('❌ Push notification hatası (kurye atama başarılı):', pushError)
-            alert(`❌ Push notification hatası!\n\n${pushError}\n\nKurye atandı ama bildirim gönderilemedi.`)
+            toast.error('Kurye atandı ancak bildirim gönderilemedi')
             // Push notification hatası kurye atama işlemini etkilemez
         }
 

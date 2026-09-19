@@ -1529,6 +1529,40 @@ export default function KuryePage() {
     }
   }
 
+  const handleRejectPackage = async (packageId: number) => {
+    const confirmed = window.confirm('Bu paketi reddetmek istediğinize emin misiniz? Paket havuza geri dönecektir.')
+    if (!confirmed) return
+
+    setIsUpdating(prev => new Set(prev).add(packageId))
+
+    try {
+      const { error } = await supabase
+        .from('packages')
+        .update({
+          courier_id: null,
+          status: 'getting_ready'
+        })
+        .eq('id', packageId)
+
+      if (error) throw error
+
+      setPackages(prev => prev.filter(pkg => pkg.id !== packageId))
+      setSuccessMessage('Paket reddedildi ve havuza geri gönderildi.')
+      setTimeout(() => setSuccessMessage(''), 2000)
+    } catch (error: any) {
+      console.error('Reddetme hatası:', error)
+      setErrorMessage('Hata: ' + error.message)
+      setTimeout(() => setErrorMessage(''), 3000)
+      await fetchPackages(false)
+    } finally {
+      setIsUpdating(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(packageId)
+        return newSet
+      })
+    }
+  }
+
   // Ücretlendirilmiş İptal Handlers
   const handleOpenCancelModal = (pkg: Package) => {
     setCancellingPackage(pkg)
@@ -2999,31 +3033,43 @@ export default function KuryePage() {
                     {/* Aksiyon Butonları - Mobil Responsive
                         Gece otomatik atama: status=assigned, ready_at=null → Kabul Et açık kalmalı */}
                     {(pkg.status === 'new' || pkg.status === 'new_order' || pkg.status === 'preparing' || pkg.status === 'getting_ready' || pkg.status === 'ready' || pkg.status === 'assigned') && (
-                      <button
-                        disabled={
-                          isUpdating.has(pkg.id) ||
-                          pkg.status === 'new' ||
-                          pkg.status === 'new_order' ||
-                          pkg.status === 'preparing' ||
-                          pkg.status === 'getting_ready'
-                        }
-                        onClick={() => handleUpdateStatus(pkg.id, 'picking_up')}
-                        className={`w-full py-2 sm:py-2.5 text-white text-sm sm:text-base font-bold rounded-md transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm ${
-                          (
+                      <div className="flex gap-2 w-full">
+                        <button
+                          disabled={
+                            isUpdating.has(pkg.id) ||
                             pkg.status === 'new' ||
                             pkg.status === 'new_order' ||
                             pkg.status === 'preparing' ||
                             pkg.status === 'getting_ready'
-                          )
-                            ? 'bg-slate-700 grayscale cursor-not-allowed'
-                            : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'
-                        }`}
-                      >
-                        {isUpdating.has(pkg.id) ? 'İşleniyor...' :
-                         (pkg.status === 'new' || pkg.status === 'new_order') ? 'Paket Bekleniyor...' :
-                         (pkg.status === 'preparing' || pkg.status === 'getting_ready') ? 'Hazırlanıyor...' :
-                         'Kabul Et'}
-                      </button>
+                          }
+                          onClick={() => handleUpdateStatus(pkg.id, 'picking_up')}
+                          className={`w-full py-2 sm:py-2.5 text-white text-sm sm:text-base font-bold rounded-md transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm ${
+                            (
+                              pkg.status === 'new' ||
+                              pkg.status === 'new_order' ||
+                              pkg.status === 'preparing' ||
+                              pkg.status === 'getting_ready'
+                            )
+                              ? 'bg-slate-700 grayscale cursor-not-allowed'
+                              : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'
+                          }`}
+                        >
+                          {isUpdating.has(pkg.id) ? 'İşleniyor...' :
+                           (pkg.status === 'new' || pkg.status === 'new_order') ? 'Paket Bekleniyor...' :
+                           (pkg.status === 'preparing' || pkg.status === 'getting_ready') ? 'Hazırlanıyor...' :
+                           'Kabul Et'}
+                        </button>
+                        
+                        {(pkg.status === 'preparing' || pkg.status === 'getting_ready' || (pkg.status === 'assigned' && !pkg.ready_at)) && (
+                          <button
+                            onClick={() => handleRejectPackage(pkg.id)}
+                            disabled={isUpdating.has(pkg.id)}
+                            className="py-2 px-3 sm:py-2.5 sm:px-4 bg-red-500/10 hover:bg-red-500/20 text-red-500 text-sm sm:text-base font-bold rounded-md transition-colors border border-red-500/30 disabled:opacity-50 whitespace-nowrap"
+                          >
+                            Reddet
+                          </button>
+                        )}
+                      </div>
                     )}
 
                     {pkg.status === 'picking_up' && (

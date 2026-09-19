@@ -20,7 +20,7 @@ import { buildFcmMessage, looksLikeApnsDeviceToken } from '@/lib/fcmPushPayload'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { courierId, restaurantName, deliveryAddress, customerName } = body
+    const { courierId, restaurantName, deliveryAddress, customerName, titleOverride, bodyOverride } = body
 
     // Validasyon
     if (!courierId) {
@@ -33,7 +33,8 @@ export async function POST(request: NextRequest) {
     console.log('📤 Push notification gönderiliyor:', {
       courierId,
       restaurantName,
-      deliveryAddress
+      deliveryAddress,
+      titleOverride
     })
 
     // 1. Courier'in FCM token'ını al
@@ -73,9 +74,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 2. Trendyol tarzı bildirim formatı
-    const title = 'YENİ SİPARİŞ 🚀'
-    const messageBody = `${restaurantName || 'Restoran'} - ${deliveryAddress || customerName || 'Müşteri'}`
+    // 2. Bildirim formatı
+    const title = titleOverride || 'YENİ SİPARİŞ 🚀'
+    const messageBody = bodyOverride || `${restaurantName || 'Restoran'} - ${deliveryAddress || customerName || 'Müşteri'}`
 
     // 3. FCM ile bildirim gönder — Android + iOS (APNs)
     const message = buildFcmMessage({

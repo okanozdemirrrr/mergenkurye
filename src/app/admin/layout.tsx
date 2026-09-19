@@ -17,6 +17,7 @@ import {
   Bike, User, Receipt, Banknote, FileText, Utensils, CreditCard, Clock,
   ChevronDown, ChevronRight, LogOut, Bell, Settings
 } from 'lucide-react'
+import { GlobalSystemToggle } from './components/GlobalSystemToggle'
 import { NotificationBell } from '@/components/NotificationBell'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -199,7 +200,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </svg>
       </button>
 
-      <div className="fixed top-4 right-4 z-50">
+      <div className="fixed top-4 right-4 z-50 flex items-center">
         <NotificationBell userId="admin" />
       </div>
 
@@ -479,6 +480,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <Settings className="w-4 h-4" strokeWidth={1.5} />
                 Ayarlar
               </Link>
+              
+              <GlobalSystemToggle />
 
               <button
                 onClick={async () => {

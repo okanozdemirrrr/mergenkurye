@@ -4,6 +4,7 @@ import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { ForceUpdateGate } from "@/components/ForceUpdateGate";
 import { CartProvider } from "@/app/context/CartContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
+import { Toaster } from "react-hot-toast";
 
 export const metadata: Metadata = {
   title: "Alda Gel",
@@ -86,6 +87,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="Alda Gel" />
       </head>
       <body className="antialiased">
+        <Toaster position="top-right" />
         <NotificationProvider>
           <CartProvider>
             {children}
