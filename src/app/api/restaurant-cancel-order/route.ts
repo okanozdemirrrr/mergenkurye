@@ -274,20 +274,15 @@ export async function POST(request: NextRequest) {
     })
 
     // ADIM 6: Kuryeye bildirim gönder (eğer atanmışsa)
-    if (pkg.courier_id && courierData?.fcm_token) {
+    if (pkg.courier_id) {
       try {
         await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/send-push`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            token: courierData.fcm_token,
-            title: '⚠️ Sipariş İptal Edildi',
-            body: `${restaurantData?.name || 'Restoran'} #${pkg.order_number} numaralı siparişi iptal etti. O adrese gitmeyin!`,
-            data: {
-              type: 'order_cancelled',
-              packageId: pkg.id.toString(),
-              orderNumber: pkg.order_number
-            }
+            courierId: pkg.courier_id,
+            titleOverride: '⚠️ Sipariş İptal Edildi',
+            bodyOverride: `${restaurantData?.name || 'Restoran'} #${pkg.order_number} numaralı siparişi iptal etti. O adrese gitmeyin!`,
           })
         })
         console.log('✅ Kuryeye iptal bildirimi gönderildi')

@@ -18,9 +18,11 @@ import { firebaseAdmin } from '@/lib/firebaseAdmin'
 import { buildFcmMessage, looksLikeApnsDeviceToken } from '@/lib/fcmPushPayload'
 
 export async function POST(request: NextRequest) {
+  let currentCourierId: string | null = null;
   try {
     const body = await request.json()
     const { courierId, restaurantName, deliveryAddress, customerName, titleOverride, bodyOverride } = body
+    if (courierId) currentCourierId = courierId;
 
     // Validasyon
     if (!courierId) {
@@ -128,15 +130,14 @@ export async function POST(request: NextRequest) {
       console.warn('⚠️ Geçersiz FCM token, veritabanından temizleniyor')
       
       try {
-        const retryBody = await request.clone().json()
-        if (retryBody?.courierId) {
+        if (currentCourierId) {
           await supabase
             .from('couriers')
             .update({ fcm_token: null })
-            .eq('id', retryBody.courierId)
+            .eq('id', currentCourierId)
         }
-      } catch {
-        // body tekrar okunamazsa sessiz geç
+      } catch (dbError) {
+        console.error('⚠️ FCM token temizlenirken hata oluştu:', dbError)
       }
     }
 
