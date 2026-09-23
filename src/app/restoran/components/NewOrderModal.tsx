@@ -8,7 +8,7 @@ import { formatDeliveryAddress } from '@/app/lib/formatDeliveryAddress'
 import { normalizePhoneTR } from '@/utils/normalizePhoneTR'
 import type { CustomerLocationPoint } from '@/components/CustomerMap'
 import {
-  User, Search, MapPin, Package, Banknote, CreditCard, Building2, UtensilsCrossed, Loader2, Send, CheckCircle2
+  User, Search, MapPin, Package, Banknote, CreditCard, Building2, UtensilsCrossed, Loader2, Send, CheckCircle2, Wifi
 } from 'lucide-react'
 
 const CustomerMap = dynamic(() => import('@/components/CustomerMap'), {
@@ -214,7 +214,7 @@ export default function NewOrderModal({ onClose, onSuccess, restaurantId, darkMo
       setSearchQuery(cidCustomer.full_name)
     }
   }, [cidCustomer])
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'online' | null>(null)
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'iban' | 'online' | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [savedLocations, setSavedLocations] = useState<CustomerLocationPoint[]>([])
@@ -435,11 +435,14 @@ export default function NewOrderModal({ onClose, onSuccess, restaurantId, darkMo
       const appliedPrice = restaurantData?.package_fee || 100
 
       // 2. INSERT: applied_price ile birlikte kaydet
+      // Online ödemede tutar her zaman 0 — frontend değerinden bağımsız güvence
+      const finalAmount = paymentMethod === 'online' ? 0 : parseFloat(formData.packageAmount)
+
       const insertPayload: Record<string, unknown> = {
         customer_name: formData.customerName,
         customer_phone: normalizePhoneTR(formData.customerPhone) ?? formData.customerPhone.trim(),
         delivery_address: formData.deliveryAddress,
-        amount: parseFloat(formData.packageAmount),
+        amount: finalAmount,
         content: formData.content,
         status: 'new_order',
         payment_method: paymentMethod,
@@ -724,34 +727,53 @@ export default function NewOrderModal({ onClose, onSuccess, restaurantId, darkMo
                   <input
                     type="number"
                     name="packageAmount"
-                    value={formData.packageAmount}
+                    value={paymentMethod === 'online' ? '0' : formData.packageAmount}
                     onChange={handleChange}
                     required
                     min="0"
                     step="0.01"
                     placeholder="0.00"
-                    className={input}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || paymentMethod === 'online'}
+                    className={`${input} ${
+                      paymentMethod === 'online'
+                        ? darkMode
+                          ? 'bg-slate-700/60 border-slate-600 text-slate-400 cursor-not-allowed'
+                          : 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
+                        : ''
+                    }`}
                   />
+                  {paymentMethod === 'online' && (
+                    <p className={`text-xs mt-1 ${darkMode ? 'text-slate-500' : 'text-gray-400'}`}>
+                      Online ödemelerde tutar 0 olarak kaydedilir.
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className={label}>Ödeme Yöntemi <span className="text-red-400">*</span></label>
-                  <div className="grid grid-cols-3 gap-1.5 h-[42px]">
+                  <div className="grid grid-cols-4 gap-1.5 h-[42px]">
                     {([
-                      ['cash', Banknote, 'Nakit'],
-                      ['card', CreditCard, 'Kart'],
-                      ['iban', Building2, 'IBAN'],
+                      ['cash',   Banknote,    'Nakit'],
+                      ['card',   CreditCard,  'Kart'],
+                      ['iban',   Building2,   'IBAN'],
+                      ['online', Wifi,        'Online'],
                     ] as const).map(([val, Icon, lbl]) => (
                       <button
                         key={val}
                         type="button"
-                        onClick={() => setPaymentMethod(val)}
+                        onClick={() => {
+                          setPaymentMethod(val)
+                          // Online seçilince tutarı sıfırla
+                          if (val === 'online') {
+                            setFormData(prev => ({ ...prev, packageAmount: '0' }))
+                          }
+                        }}
                         disabled={isSubmitting}
                         className={`h-full rounded-md border text-xs font-semibold transition-colors flex items-center justify-center gap-1 ${
                           paymentMethod === val
-                            ? val === 'cash' ? 'bg-green-600 border-green-600 text-white'
-                              : val === 'card' ? 'bg-blue-600 border-blue-600 text-white'
-                              : 'bg-purple-600 border-purple-600 text-white'
+                            ? val === 'cash'   ? 'bg-green-600  border-green-600  text-white'
+                              : val === 'card'   ? 'bg-blue-600   border-blue-600   text-white'
+                              : val === 'iban'   ? 'bg-purple-600 border-purple-600 text-white'
+                              : /* online */       'bg-cyan-600   border-cyan-600   text-white'
                             : darkMode
                             ? 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-500'
                             : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'

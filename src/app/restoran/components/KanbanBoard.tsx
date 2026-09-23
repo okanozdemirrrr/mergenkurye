@@ -15,7 +15,7 @@ import { stopRestaurantAlert } from '@/hooks/useRestaurantRealtimeNotifications'
 import {
   Bell, ChefHat, CheckCircle, Clock, Package, MapPin, Inbox, X, Lock, Loader2,
   Store, ShoppingCart, FileText, User, Phone, Compass, Pencil, AlertTriangle,
-  Bike, Banknote, CreditCard, Building2
+  Bike, Banknote, CreditCard, Building2, Wifi
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 
@@ -656,12 +656,16 @@ export default function KanbanBoard({
                       ? 'bg-green-900/50 text-green-300'
                       : pkg.payment_method === 'iban'
                       ? 'bg-purple-900/50 text-purple-300'
+                      : pkg.payment_method === 'online'
+                      ? 'bg-cyan-900/50 text-cyan-300'
                       : 'bg-orange-900/50 text-orange-300'
                   }`}>
                     {pkg.payment_method === 'cash' ? (
                       <span className="inline-flex items-center gap-1"><Banknote className="w-3.5 h-3.5" strokeWidth={1.5} />Nakit</span>
                     ) : pkg.payment_method === 'iban' ? (
                       <span className="inline-flex items-center gap-1"><Building2 className="w-3.5 h-3.5" strokeWidth={1.5} />IBAN</span>
+                    ) : pkg.payment_method === 'online' ? (
+                      <span className="inline-flex items-center gap-1"><Wifi className="w-3.5 h-3.5" strokeWidth={1.5} />Online</span>
                     ) : (
                       <span className="inline-flex items-center gap-1"><CreditCard className="w-3.5 h-3.5" strokeWidth={1.5} />Kart</span>
                     )}

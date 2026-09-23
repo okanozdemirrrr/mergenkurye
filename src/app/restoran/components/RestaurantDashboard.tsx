@@ -29,7 +29,7 @@ import {
 import {
   Package as PackageIcon, CheckCircle, XCircle, Banknote, Wallet, Search, Lightbulb, Inbox,
   User, Phone, MapPin, FileText, Bike, CreditCard, Building2, Clock, AlertTriangle,
-  CircleDollarSign, Gift
+  CircleDollarSign, Gift, Wifi
 } from 'lucide-react'
 
 interface Restaurant {
@@ -381,10 +381,11 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
 
     const getPaymentMethodLabel = (method?: string) => {
       switch (method) {
-        case 'cash': return 'Nakit'
-        case 'card': return 'Kredi Kartı'
-        case 'iban': return 'IBAN'
-        default: return 'Belirtilmemiş'
+        case 'cash':   return 'Nakit'
+        case 'card':   return 'Kredi Kartı'
+        case 'iban':   return 'IBAN'
+        case 'online': return 'Online'
+        default:       return 'Belirtilmemiş'
       }
     }
 
@@ -816,13 +817,18 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                         : CHARGEABLE_CANCEL_BADGE_CLASS_LIGHT
                       : darkMode ? 'bg-green-900/50 text-green-300' : 'bg-green-100 text-green-700'
                     const paymentLabel =
-                      pkg.payment_method === 'cash' ? 'Nakit' : pkg.payment_method === 'iban' ? 'IBAN' : 'Kart'
+                      pkg.payment_method === 'cash'   ? 'Nakit'
+                      : pkg.payment_method === 'iban'   ? 'IBAN'
+                      : pkg.payment_method === 'online' ? 'Online'
+                      : 'Kart'
                     const paymentClass =
                       pkg.payment_method === 'cash'
                         ? 'bg-green-900/50 text-green-300'
                         : pkg.payment_method === 'iban'
                           ? 'bg-purple-900/50 text-purple-300'
-                          : 'bg-orange-900/50 text-orange-300'
+                          : pkg.payment_method === 'online'
+                            ? 'bg-cyan-900/50 text-cyan-300'
+                            : 'bg-orange-900/50 text-orange-300'
 
                     return (
                     <div
@@ -953,6 +959,8 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                                   <span className="inline-flex items-center gap-1"><Banknote className="w-3 h-3" strokeWidth={1.5} />Nakit</span>
                                 ) : pkg.payment_method === 'iban' ? (
                                   <span className="inline-flex items-center gap-1"><Building2 className="w-3 h-3" strokeWidth={1.5} />IBAN</span>
+                                ) : pkg.payment_method === 'online' ? (
+                                  <span className="inline-flex items-center gap-1"><Wifi className="w-3 h-3" strokeWidth={1.5} />Online</span>
                                 ) : (
                                   <span className="inline-flex items-center gap-1"><CreditCard className="w-3 h-3" strokeWidth={1.5} />Kart</span>
                                 )}
@@ -1278,6 +1286,8 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                                   <span className="inline-flex items-center gap-1"><Banknote className="w-3 h-3" strokeWidth={1.5} />Nakit</span>
                                 ) : pkg.payment_method === 'iban' ? (
                                   <span className="inline-flex items-center gap-1"><Building2 className="w-3 h-3" strokeWidth={1.5} />IBAN</span>
+                                ) : pkg.payment_method === 'online' ? (
+                                  <span className="inline-flex items-center gap-1"><Wifi className="w-3 h-3" strokeWidth={1.5} />Online</span>
                                 ) : (
                                   <span className="inline-flex items-center gap-1"><CreditCard className="w-3 h-3" strokeWidth={1.5} />Kart</span>
                                 )}

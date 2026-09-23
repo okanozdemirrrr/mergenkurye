@@ -13,9 +13,17 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/app/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 import { firebaseAdmin } from '@/lib/firebaseAdmin'
 import { buildFcmMessage, looksLikeApnsDeviceToken } from '@/lib/fcmPushPayload'
+
+// API route'larda SERVICE_ROLE_KEY kullan — RLS'yi bypass et
+// Anon key ile couriers.fcm_token RLS tarafından gizlenebilir
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  { auth: { autoRefreshToken: false, persistSession: false } }
+)
 
 export async function POST(request: NextRequest) {
   let currentCourierId: string | null = null;
@@ -40,7 +48,7 @@ export async function POST(request: NextRequest) {
     })
 
     // 1. Courier'in FCM token'ını al
-    const { data: courier, error: courierError } = await supabase
+    const { data: courier, error: courierError } = await supabaseAdmin
       .from('couriers')
       .select('fcm_token, full_name')
       .eq('id', courierId)
@@ -131,7 +139,7 @@ export async function POST(request: NextRequest) {
       
       try {
         if (currentCourierId) {
-          await supabase
+          await supabaseAdmin
             .from('couriers')
             .update({ fcm_token: null })
             .eq('id', currentCourierId)
