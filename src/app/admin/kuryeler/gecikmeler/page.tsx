@@ -127,7 +127,7 @@ export default function KuryeGecikmelerPage() {
         supabase
           .from('couriers')
           .select('id, full_name')
-          .neq('account_status', 'terminated')
+          .not('account_status', 'in', '("terminated","resigned")')
           .order('full_name', { ascending: true }),
         fetchDelayLogsInRange(startIso, endIso),
       ])

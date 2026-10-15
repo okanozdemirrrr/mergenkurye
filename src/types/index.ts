@@ -107,7 +107,7 @@ export interface Courier {
     long_distance_fee?: number
     todayEarningsAmount?: number
     is_night_shift?: boolean
-    account_status?: 'active' | 'suspended' | 'terminated' | string | null
+    account_status?: 'active' | 'suspended' | 'terminated' | 'resigned' | string | null
 }
 
 // ============================================

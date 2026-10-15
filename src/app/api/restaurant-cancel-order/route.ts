@@ -6,39 +6,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-// API route'lar için service role key kullan (RLS bypass)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseServiceKey = process.env.SERVICE_ROLE_KEY
-
-// Environment variables kontrolü
-if (!supabaseUrl) {
-  console.error('❌ NEXT_PUBLIC_SUPABASE_URL eksik!')
-  throw new Error('Supabase URL yapılandırması eksik')
+/** Supabase admin client — her request'te lazy oluştur (build-time env sorunu önlenir) */
+function getSupabaseAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!url || !key) throw new Error('Supabase ortam değişkenleri eksik')
+  return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } })
 }
-
-if (!supabaseServiceKey) {
-  console.error('❌ SERVICE_ROLE_KEY eksik! Anon key kullanılacak (RLS aktif olacak)')
-  console.warn('⚠️ Production ortamında SERVICE_ROLE_KEY mutlaka tanımlanmalı!')
-}
-
-// Service Role Key yoksa Anon Key kullan (fallback)
-const apiKey = supabaseServiceKey || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-const supabase = createClient(supabaseUrl, apiKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
-  }
-})
-
-console.log('🔑 Supabase Client Yapılandırması:', {
-  url: supabaseUrl,
-  keyType: supabaseServiceKey ? 'SERVICE_ROLE_KEY' : 'ANON_KEY',
-  keyLength: apiKey?.length || 0,
-  keyPrefix: apiKey?.substring(0, 10) + '...'
-})
 
 export async function POST(request: NextRequest) {
+  const supabase = getSupabaseAdmin()
   try {
     const { packageId, restaurantId, cancellationReason } = await request.json()
 

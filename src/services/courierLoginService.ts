@@ -27,8 +27,11 @@ function mapAccountStatusError(status: string | null | undefined): string | null
   if (status === 'terminated') {
     return '❌ Hesabınız kapatılmış! Yöneticinizle iletişime geçin.'
   }
+  if (status === 'resigned') {
+    return '❌ Hesabınız kapatılmış (İşten Ayrılma)! Yöneticinizle iletişime geçin.'
+  }
   if (status === 'suspended') {
-    return '❌ Hesabınız askıya alınmış! Yöneticinizle iletişime geçin.'
+    return '❌ Hesabınız geçici olarak kullanıma kapatılmış! Yöneticinizle iletişime geçin.'
   }
   return null
 }

@@ -20,7 +20,7 @@ import {
 } from '@/utils/calculations'
 import {
   Bike, BarChart3, TrendingUp, ClipboardList, Banknote, Package as PackageIcon,
-  Users, Ban, Calendar, UserX, ArrowLeft
+  Users, Ban, Calendar, UserX, ArrowLeft, LogOut
 } from 'lucide-react'
 
 interface CouriersTabProps {
@@ -44,13 +44,27 @@ export function CouriersTab({
     const [selectedCourierForStatus, setSelectedCourierForStatus] = useState<Courier | null>(null)
     const [selectedCourierForNightShift, setSelectedCourierForNightShift] = useState<Courier | null>(null)
     const [refreshTrigger, setRefreshTrigger] = useState(0)
-    const [showTerminated, setShowTerminated] = useState(false)
+    const [courierAccountView, setCourierAccountView] = useState<'active' | 'terminated' | 'resigned'>('active')
 
     // Kurye Hesapları — BUSINESS DARK THEME
     if (courierSubTab === 'accounts') {
         const terminatedCouriers = couriers.filter(c => c.account_status === 'terminated')
-        const activeListCouriers = couriers.filter(c => c.account_status !== 'terminated')
-        const visibleCouriers = showTerminated ? terminatedCouriers : activeListCouriers
+        const resignedCouriers = couriers.filter(c => c.account_status === 'resigned')
+        const activeListCouriers = couriers.filter(c => c.account_status !== 'terminated' && c.account_status !== 'resigned')
+
+        let visibleCouriers = activeListCouriers
+        let pageTitle = 'Kurye Yönetimi'
+        let pageDescription = 'Aktif kurye hesapları ve günlük performans özeti'
+
+        if (courierAccountView === 'terminated') {
+            visibleCouriers = terminatedCouriers
+            pageTitle = 'İşten Çıkarılanlar'
+            pageDescription = 'Yönetim tarafından işten çıkarılan kurye hesapları'
+        } else if (courierAccountView === 'resigned') {
+            visibleCouriers = resignedCouriers
+            pageTitle = 'İşten Kendisi Çıkanlar'
+            pageDescription = 'Kendi isteğiyle ayrılan (istifa eden) kurye hesapları'
+        }
 
         return (
             <div className="bg-slate-950 min-h-screen p-6">
@@ -58,38 +72,85 @@ export function CouriersTab({
                 <div className="mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                     <div>
                         <h1 className="text-3xl font-black text-slate-100 tracking-tight mb-1">
-                            {showTerminated ? 'İşten Çıkarılanlar' : 'Kurye Yönetimi'}
+                            {pageTitle}
                         </h1>
                         <p className="text-sm text-slate-500 tracking-tight">
-                            {showTerminated
-                                ? 'İşten çıkarılan kurye hesapları'
-                                : 'Aktif kurye hesapları ve günlük performans özeti'}
+                            {pageDescription}
                         </p>
                     </div>
-                    {showTerminated ? (
-                        <button
-                            type="button"
-                            onClick={() => setShowTerminated(false)}
-                            className="inline-flex items-center gap-2 self-start sm:self-auto px-3 py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-medium rounded-md border border-slate-800 shadow-sm transition-colors tracking-tight"
-                        >
-                            <ArrowLeft className="w-3.5 h-3.5" strokeWidth={1.5} />
-                            Ana listeye dön
-                        </button>
-                    ) : (
-                        <button
-                            type="button"
-                            onClick={() => setShowTerminated(true)}
-                            className="inline-flex items-center gap-2 self-start sm:self-auto px-3 py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-medium rounded-md border border-slate-800 shadow-sm transition-colors tracking-tight"
-                        >
-                            <UserX className="w-3.5 h-3.5" strokeWidth={1.5} />
-                            İşten Çıkarılanlar
-                            {terminatedCouriers.length > 0 && (
-                                <span className="text-[10px] font-semibold text-slate-400 bg-slate-800 border border-slate-700 px-1.5 py-0.5 rounded">
-                                    {terminatedCouriers.length}
-                                </span>
-                            )}
-                        </button>
-                    )}
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                        {courierAccountView !== 'active' ? (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={() => setCourierAccountView('active')}
+                                    className="inline-flex items-center gap-2 px-3 py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-medium rounded-md border border-slate-800 shadow-sm transition-colors tracking-tight"
+                                >
+                                    <ArrowLeft className="w-3.5 h-3.5" strokeWidth={1.5} />
+                                    Ana listeye dön
+                                </button>
+                                {courierAccountView === 'terminated' ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => setCourierAccountView('resigned')}
+                                        className="inline-flex items-center gap-2 px-3 py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-medium rounded-md border border-slate-800 shadow-sm transition-colors tracking-tight"
+                                    >
+                                        <LogOut className="w-3.5 h-3.5 text-purple-400" strokeWidth={1.5} />
+                                        İşten Kendisi Çıkanlar
+                                        {resignedCouriers.length > 0 && (
+                                            <span className="text-[10px] font-semibold text-purple-300 bg-purple-950/60 border border-purple-800/60 px-1.5 py-0.5 rounded">
+                                                {resignedCouriers.length}
+                                            </span>
+                                        )}
+                                    </button>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={() => setCourierAccountView('terminated')}
+                                        className="inline-flex items-center gap-2 px-3 py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-medium rounded-md border border-slate-800 shadow-sm transition-colors tracking-tight"
+                                    >
+                                        <UserX className="w-3.5 h-3.5 text-rose-400" strokeWidth={1.5} />
+                                        İşten Çıkarılanlar
+                                        {terminatedCouriers.length > 0 && (
+                                            <span className="text-[10px] font-semibold text-rose-300 bg-rose-950/60 border border-rose-800/60 px-1.5 py-0.5 rounded">
+                                                {terminatedCouriers.length}
+                                            </span>
+                                        )}
+                                    </button>
+                                )}
+                            </>
+                        ) : (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={() => setCourierAccountView('terminated')}
+                                    className="inline-flex items-center gap-2 px-3 py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-medium rounded-md border border-slate-800 shadow-sm transition-colors tracking-tight"
+                                >
+                                    <UserX className="w-3.5 h-3.5 text-rose-400" strokeWidth={1.5} />
+                                    İşten Çıkarılanlar
+                                    {terminatedCouriers.length > 0 && (
+                                        <span className="text-[10px] font-semibold text-rose-300 bg-rose-950/60 border border-rose-800/60 px-1.5 py-0.5 rounded">
+                                            {terminatedCouriers.length}
+                                        </span>
+                                    )}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setCourierAccountView('resigned')}
+                                    className="inline-flex items-center gap-2 px-3 py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-medium rounded-md border border-slate-800 shadow-sm transition-colors tracking-tight"
+                                >
+                                    <LogOut className="w-3.5 h-3.5 text-purple-400" strokeWidth={1.5} />
+                                    İşten Kendisi Çıkanlar
+                                    {resignedCouriers.length > 0 && (
+                                        <span className="text-[10px] font-semibold text-purple-300 bg-purple-950/60 border border-purple-800/60 px-1.5 py-0.5 rounded">
+                                            {resignedCouriers.length}
+                                        </span>
+                                    )}
+                                </button>
+                            </>
+                        )}
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -97,7 +158,11 @@ export function CouriersTab({
                         <div className="col-span-full text-center py-16 text-slate-600">
                             <Bike className="w-8 h-8 mx-auto mb-3 opacity-30 text-gray-400" strokeWidth={1.5} />
                             <p className="text-sm tracking-tight">
-                                {showTerminated ? 'İşten çıkarılan kurye yok' : 'Kurye bulunamadı'}
+                                {courierAccountView === 'terminated'
+                                    ? 'İşten çıkarılan kurye yok'
+                                    : courierAccountView === 'resigned'
+                                    ? 'İşten kendisi çıkan kurye yok'
+                                    : 'Kurye bulunamadı'}
                             </p>
                         </div>
                     ) : (
@@ -123,10 +188,35 @@ export function CouriersTab({
                                             )}
                                         </div>
                                         <div className="flex items-center gap-1.5 mt-1">
-                                            <div className={`w-1.5 h-1.5 rounded-full ${courier.is_active ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                                            <span className={`text-xs font-medium tracking-tight ${courier.is_active ? 'text-green-500/80' : 'text-red-500/80'}`}>
-                                                {courier.is_active ? 'Aktif' : 'Pasif'}
-                                            </span>
+                                            {courier.account_status === 'suspended' ? (
+                                                <>
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div>
+                                                    <span className="text-xs font-medium tracking-tight text-amber-500/90">
+                                                        Geçici Kapalı
+                                                    </span>
+                                                </>
+                                            ) : courier.account_status === 'terminated' ? (
+                                                <>
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-rose-500"></div>
+                                                    <span className="text-xs font-medium tracking-tight text-rose-500/90">
+                                                        İşten Çıkarıldı
+                                                    </span>
+                                                </>
+                                            ) : courier.account_status === 'resigned' ? (
+                                                <>
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-purple-400"></div>
+                                                    <span className="text-xs font-medium tracking-tight text-purple-400/90">
+                                                        İşten Kendisi Çıktı
+                                                    </span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div className={`w-1.5 h-1.5 rounded-full ${courier.is_active ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                                                    <span className={`text-xs font-medium tracking-tight ${courier.is_active ? 'text-green-500/80' : 'text-red-500/80'}`}>
+                                                        {courier.is_active ? 'Aktif' : 'Pasif'}
+                                                    </span>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                     {/* Paket Rate Badge */}
@@ -189,7 +279,7 @@ export function CouriersTab({
                                         Hesap Yönet
                                     </button>
                                 </div>
-                                {!showTerminated && !courier.is_night_shift && (
+                                {courierAccountView === 'active' && !courier.is_night_shift && (
                                     <button
                                         onClick={(e) => {
                                             e.stopPropagation()
