@@ -104,11 +104,16 @@ export async function assignCourier(
         // 1. Paket bilgilerini al (bildirim için gerekli + durum kontrolü)
         const { data: packageData, error: packageError } = await supabase
             .from('packages')
-            .select('customer_name, delivery_address, restaurant_id, status, restaurants(name)')
+            .select('customer_name, delivery_address, restaurant_id, status, exclude_from_courier_queue, is_address_masked, delivery_type, restaurants(name)')
             .eq('id', packageId)
             .single()
 
         if (packageError) throw packageError
+
+        if ((packageData as { exclude_from_courier_queue?: boolean }).exclude_from_courier_queue) {
+            toast.error('Bu sipariş platform kuryesi / kuyruk dışı — filo kuryesine atanamaz.')
+            return { success: false, error: 'exclude_from_courier_queue' }
+        }
 
         // 🚫 GÜVENLİK KONTROLÜ: Kurye paketi aldıysa başka kuryeye atanamaz!
         const blockedStatuses = ['picking_up', 'on_the_way', 'delivered']

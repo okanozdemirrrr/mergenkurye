@@ -102,6 +102,8 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
       let { data, error } = await supabase
         .from('packages')
         .select(selectCols)
+        .eq('gecmis_veri', false)
+        .eq('is_test_order', false)
         .in('status', [...ACTIVE_PACKAGE_STATUSES])
         .order('created_at', { ascending: false })
         .limit(500)
@@ -112,6 +114,8 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
         const retry = await supabase
           .from('packages')
           .select(ACTIVE_PACKAGES_SELECT_NO_UPDATED_AT)
+          .eq('gecmis_veri', false)
+          .eq('is_test_order', false)
           .in('status', [...ACTIVE_PACKAGE_STATUSES])
           .order('created_at', { ascending: false })
           .limit(500)
@@ -145,6 +149,8 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
         let q = supabase
           .from('packages')
           .select(cols)
+          .eq('gecmis_veri', false)
+          .eq('is_test_order', false)
           .in('status', [...ACTIVE_PACKAGE_STATUSES])
 
         if (useUpdatedAt) {
@@ -211,6 +217,8 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase
         .from('packages')
         .select('id, order_number, status, amount, payment_method, customer_name, customer_phone, delivery_address, content, created_at, getting_ready_at, ready_at, assigned_at, picked_up_at, delivered_at, cancelled_at, courier_id, restaurant_id, applied_price, delivered_by_courier_id, restaurants(id, name), couriers!packages_courier_id_fkey(id, full_name)')
+        .eq('gecmis_veri', false)
+        .eq('is_test_order', false)
         .in('status', ['delivered', 'cancelled'])
         .gte('created_at', sevenDaysAgo.toISOString()) // ⚡ Son 7 gün
         .order('created_at', { ascending: false })
@@ -312,6 +320,8 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
             .from('packages')
             .select('id')
             .eq('delivered_by_courier_id', courier.id)
+            .eq('gecmis_veri', false)
+            .eq('is_test_order', false)
             .or(COUNTED_PACKAGE_OR_FILTER)
             .gte('delivered_at', weekStart.toISOString())
 
@@ -366,6 +376,8 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
       const { count, error } = await supabase
         .from('packages')
         .select('id', { count: 'exact', head: true })
+        .eq('gecmis_veri', false)
+        .eq('is_test_order', false)
         .or(COUNTED_PACKAGE_OR_FILTER)
         .gte('delivered_at', startIso)
         .lt('delivered_at', endIso)

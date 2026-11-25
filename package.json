@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:trendyol-go": "tsx --test src/lib/trendyol-go/__tests__/mapper.test.ts"
   },
   "dependencies": {
     "@awesome-cordova-plugins/sms": "^8.1.0",

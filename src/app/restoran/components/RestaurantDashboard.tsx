@@ -207,6 +207,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
           .from('packages')
           .select('*')
           .eq('restaurant_id', restaurantId)
+          .eq('gecmis_veri', false)
           .in('status', ['new_order', 'getting_ready', 'ready', 'assigned', 'picking_up', 'on_the_way'])
           .order('created_at', { ascending: false})
 
@@ -228,6 +229,8 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
               courier:couriers!packages_courier_id_fkey(full_name)
             `)
             .eq('restaurant_id', restaurantId)
+            .eq('gecmis_veri', false)
+            .eq('is_test_order', false)
             .or(COUNTED_PACKAGE_OR_FILTER)
             .gte('created_at', startIso)
             .lte('created_at', endIso)
@@ -253,6 +256,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
             courier:couriers!packages_courier_id_fkey(full_name)
           `)
           .eq('restaurant_id', restaurantId)
+          .eq('gecmis_veri', false)
           .eq('status', 'cancelled')
           .order('cancelled_at', { ascending: false })
 

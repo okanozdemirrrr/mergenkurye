@@ -27,8 +27,8 @@ export interface Restaurant {
 
 // V2 Sipariş Akışı: new_order → getting_ready → ready → assigned → picking_up → on_the_way → delivered
 export type PackageStatus = 'new_order' | 'getting_ready' | 'ready' | 'waiting' | 'assigned' | 'picking_up' | 'on_the_way' | 'delivered' | 'cancelled'
-export type PaymentMethod = 'cash' | 'card' | 'iban'
-export type CancelledBy = 'admin' | 'restaurant'
+export type PaymentMethod = 'cash' | 'card' | 'iban' | 'online'
+export type CancelledBy = 'admin' | 'restaurant' | 'trendyol' | 'courier'
 export type Platform = 'getir' | 'yemeksepeti' | 'trendyol' | 'migros' | 'other'
 
 export interface Package {

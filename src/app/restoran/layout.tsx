@@ -11,7 +11,7 @@ import { App } from '@capacitor/app'
 import { supabase } from '../lib/supabase'
 import { RestoranProvider, useRestoran } from './RestoranProvider'
 import CallerIdListener from './components/CallerIdListener'
-import { Package, Store, BarChart3, CreditCard, Users, Star } from 'lucide-react'
+import { Package, Store, BarChart3, CreditCard, Users, Star, Plug } from 'lucide-react'
 import { NotificationBell } from '@/components/NotificationBell'
 
 const LOGIN_STORAGE_KEY = 'restoran_logged_in'
@@ -128,6 +128,20 @@ export default function RestoranLayout({ children }: { children: React.ReactNode
     if (restaurant) {
       localStorage.setItem(LOGIN_STORAGE_KEY, 'true')
       localStorage.setItem(LOGIN_RESTAURANT_ID_KEY, restaurant.id)
+      try {
+        await fetch('/api/auth/panel-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            role: 'restaurant',
+            username: loginForm.username.trim(),
+            password: loginForm.password,
+          }),
+        })
+      } catch (e) {
+        console.warn('Panel oturumu kurulamadı:', e)
+      }
       setIsLoggedIn(true)
       setSuccessMessage('Giriş başarılı!')
       setTimeout(() => setSuccessMessage(''), 2000)
@@ -401,6 +415,19 @@ function MenuSidebar({ showMenu, setShowMenu, isActive }: { showMenu: boolean, s
           >
             <Users className="inline w-4 h-4 mr-3 text-gray-400" strokeWidth={1.5} />
             Kayıtlı Müşterilerim
+          </Link>
+
+          <Link
+            href="/restoran/entegrasyonlar/trendyol-go"
+            onClick={() => setShowMenu(false)}
+            className={`block w-full text-left px-4 py-3 rounded-md font-medium transition-all ${
+              isActive('/restoran/entegrasyonlar/trendyol-go')
+                ? 'bg-orange-600 text-white'
+                : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+            }`}
+          >
+            <Plug className="inline w-4 h-4 mr-3 text-gray-400" strokeWidth={1.5} />
+            Trendyol Go
           </Link>
 
           <button

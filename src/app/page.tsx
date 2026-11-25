@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Shield, UtensilsCrossed, Bike, ChevronRight } from 'lucide-react'
 import { login } from '@/services/authService'
 import { Preferences } from '@capacitor/preferences'
+import { initScrollBuild } from '@/lib/scroll-build'
 
 type LoginType = 'courier' | 'restaurant' | 'admin' | null
 
@@ -76,6 +77,13 @@ export default function LoginPage() {
 
     checkExistingSession()
   }, [router])
+
+  // Scroll-triggered build animation (role select + login screens)
+  useEffect(() => {
+    if (isAuthLoading) return
+    const dispose = initScrollBuild()
+    return dispose
+  }, [isAuthLoading, selectedType])
 
   if (isAuthLoading) {
     return (
@@ -155,34 +163,46 @@ export default function LoginPage() {
 
   if (!selectedType) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
-        <div className="max-w-5xl w-full">
-          <div className="text-center mb-6">
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4" style={{ backgroundColor: '#0B1D24' }}>
+        <div className="max-w-5xl w-full space-y-10 py-8">
+          {/* Hero — most spectacular build sequence */}
+          <section className="build-section build-section--hero text-center">
             <img
               src="/logo.png"
               alt="Logo"
-              className="w-20 h-20 mx-auto mb-3"
+              className="build-element build-reveal w-20 h-20 mx-auto mb-3"
+              data-build-delay="0"
             />
-            <h1 className="text-2xl font-bold text-white mb-1">
+            <h1
+              className="build-element build-typewriter text-2xl font-bold text-white mb-1 inline-block px-2"
+              data-build-delay="120"
+              data-build-text="Alda Gel Kurye"
+            >
               Alda Gel Kurye
             </h1>
-            <p className="text-slate-400 text-sm">
+            <p
+              className="build-element text-slate-400 text-sm mt-1 inline-block px-2"
+              data-build-delay="280"
+            >
               Giriş yapmak için rolünüzü seçin
             </p>
-          </div>
+          </section>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Role cards — staggered L→R */}
+          <section className="build-section grid grid-cols-1 md:grid-cols-3 gap-6">
             <button
               id="btn-admin-select"
               onClick={() => setSelectedType('admin')}
-              className="group bg-slate-900 hover:bg-slate-800 border border-white/5 hover:border-purple-500 rounded-md p-4 transition-all duration-300 hover:shadow-sm hover:shadow-purple-500/20 shadow-sm"
+              className="build-element group bg-slate-900 hover:bg-slate-800 border border-white/5 hover:border-purple-500 rounded-md p-4 transition-all duration-300 hover:shadow-sm hover:shadow-purple-500/20 shadow-sm"
+              data-build-delay="200"
+              style={{ ['--build-fill-bg' as string]: 'rgb(15 23 42)' }}
             >
               <div className="mb-2 flex justify-center">
                 <Shield className="w-7 h-7 text-purple-400" strokeWidth={1.5} />
               </div>
               <h2 className="text-lg font-bold text-white mb-1">Admin Girişi</h2>
               <p className="text-slate-400 text-xs">Sistem yönetimi ve kontrol paneli</p>
-              <div className="mt-3 flex items-center justify-center text-purple-400 font-medium text-sm">
+              <div className="build-element build-cta mt-3 flex items-center justify-center text-purple-400 font-medium text-sm" data-build-delay="420">
                 Giriş Yap
                 <ChevronRight className="w-5 h-5 ml-2 group-hover:translate-x-2 transition-transform" strokeWidth={1.5} />
               </div>
@@ -191,14 +211,16 @@ export default function LoginPage() {
             <button
               id="btn-restoran-select"
               onClick={() => setSelectedType('restaurant')}
-              className="group bg-slate-900 hover:bg-slate-800 border border-white/5 hover:border-orange-500 rounded-md p-4 transition-all duration-300 hover:shadow-sm hover:shadow-orange-500/20 shadow-sm"
+              className="build-element group bg-slate-900 hover:bg-slate-800 border border-white/5 hover:border-orange-500 rounded-md p-4 transition-all duration-300 hover:shadow-sm hover:shadow-orange-500/20 shadow-sm"
+              data-build-delay="320"
+              style={{ ['--build-fill-bg' as string]: 'rgb(15 23 42)' }}
             >
               <div className="mb-2 flex justify-center">
                 <UtensilsCrossed className="w-7 h-7 text-orange-400" strokeWidth={1.5} />
               </div>
               <h2 className="text-lg font-bold text-white mb-1">Restoran Girişi</h2>
               <p className="text-slate-400 text-xs">Sipariş yönetimi ve raporlama</p>
-              <div className="mt-3 flex items-center justify-center text-orange-400 font-medium text-sm">
+              <div className="build-element build-cta mt-3 flex items-center justify-center text-orange-400 font-medium text-sm" data-build-delay="520">
                 Giriş Yap
                 <ChevronRight className="w-5 h-5 ml-2 group-hover:translate-x-2 transition-transform" strokeWidth={1.5} />
               </div>
@@ -207,23 +229,27 @@ export default function LoginPage() {
             <button
               id="btn-kurye-select"
               onClick={() => setSelectedType('courier')}
-              className="group bg-slate-900 hover:bg-slate-800 border border-white/5 hover:border-blue-500 rounded-md p-4 transition-all duration-300 hover:shadow-sm hover:shadow-blue-500/20 shadow-sm"
+              className="build-element group bg-slate-900 hover:bg-slate-800 border border-white/5 hover:border-blue-500 rounded-md p-4 transition-all duration-300 hover:shadow-sm hover:shadow-blue-500/20 shadow-sm"
+              data-build-delay="420"
+              style={{ ['--build-fill-bg' as string]: 'rgb(15 23 42)' }}
             >
               <div className="mb-2 flex justify-center">
                 <Bike className="w-7 h-7 text-blue-400" strokeWidth={1.5} />
               </div>
               <h2 className="text-lg font-bold text-white mb-1">Kurye Girişi</h2>
               <p className="text-slate-400 text-xs">Paket teslimatı ve takip sistemi</p>
-              <div className="mt-3 flex items-center justify-center text-blue-400 font-medium text-sm">
+              <div className="build-element build-cta mt-3 flex items-center justify-center text-blue-400 font-medium text-sm" data-build-delay="620">
                 Giriş Yap
                 <ChevronRight className="w-5 h-5 ml-2 group-hover:translate-x-2 transition-transform" strokeWidth={1.5} />
               </div>
             </button>
-          </div>
+          </section>
 
-          <div className="text-center mt-12 text-slate-500 text-sm">
-            <p>© 2026 Alda Gel - Tüm hakları saklıdır</p>
-          </div>
+          <section className="build-section text-center text-slate-500 text-sm">
+            <p className="build-element inline-block px-2" data-build-delay="700">
+              © 2026 Alda Gel - Tüm hakları saklıdır
+            </p>
+          </section>
         </div>
       </div>
     )
@@ -244,11 +270,12 @@ export default function LoginPage() {
   const color = getLoginColor()
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4" style={{ backgroundColor: '#0B1D24' }}>
       <div className="max-w-md w-full">
         <button
           onClick={handleBack}
-          className="mb-6 flex items-center text-slate-400 hover:text-white transition-colors"
+          className="build-element mb-6 flex items-center text-slate-400 hover:text-white transition-colors"
+          data-build-delay="0"
         >
           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19l-7-7 7-7" />
@@ -256,15 +283,31 @@ export default function LoginPage() {
           Geri Dön
         </button>
 
-        <div className="bg-slate-900 border border-white/5 rounded-md p-8 shadow-sm">
+        <section
+          className="build-section build-section--hero build-element bg-slate-900 border border-white/5 rounded-md p-8 shadow-sm"
+          data-build-delay="80"
+          style={{ ['--build-fill-bg' as string]: 'rgb(15 23 42)' }}
+        >
           <div className="text-center mb-8">
-            <img src="/logo.png" alt="Logo" className="w-24 h-24 mx-auto mb-4" />
-            <h2 className="text-lg font-semibold text-white mb-2">{getLoginTitle()}</h2>
-            <p className="text-slate-400 text-sm">Lütfen giriş bilgilerinizi girin</p>
+            <img
+              src="/logo.png"
+              alt="Logo"
+              className="build-element build-reveal w-24 h-24 mx-auto mb-4"
+              data-build-delay="0"
+            />
+            <h2
+              className="build-element text-lg font-semibold text-white mb-2 inline-block"
+              data-build-delay="140"
+            >
+              {getLoginTitle()}
+            </h2>
+            <p className="build-element text-slate-400 text-sm" data-build-delay="260">
+              Lütfen giriş bilgilerinizi girin
+            </p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
-            <div>
+            <div className="build-element" data-build-delay="320">
               <label className="block text-sm font-medium text-slate-300 mb-2">Kullanıcı Adı</label>
               <input
                 id="input-username"
@@ -277,7 +320,7 @@ export default function LoginPage() {
               />
             </div>
 
-            <div>
+            <div className="build-element" data-build-delay="400">
               <label className="block text-sm font-medium text-slate-300 mb-2">Şifre</label>
               <input
                 id="input-password"
@@ -300,13 +343,14 @@ export default function LoginPage() {
               id="btn-login-submit"
               type="submit"
               disabled={isLoading}
-              className={`w-full py-3 bg-${color}-600 hover:bg-${color}-700 text-white font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
+              className={`build-element build-cta w-full py-3 bg-${color}-600 hover:bg-${color}-700 text-white font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
+              data-build-delay="520"
             >
               {isLoading ? 'Giriş Yapılıyor...' : 'Giriş Yap'}
             </button>
 
             {selectedType !== 'admin' && (
-              <div className="text-center pt-2">
+              <div className="build-element text-center pt-2" data-build-delay="600">
                 <p className="text-slate-400 text-sm">
                   Hesabınız yok mu?{' '}
                   <Link
@@ -319,7 +363,7 @@ export default function LoginPage() {
               </div>
             )}
           </form>
-        </div>
+        </section>
       </div>
     </div>
   )

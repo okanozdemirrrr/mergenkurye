@@ -14,21 +14,22 @@ export function GlobalSystemToggle() {
           .from('app_settings')
           .select('value')
           .eq('key', 'is_system_active')
-          .single()
+          .maybeSingle()
 
-        if (error && error.code !== 'PGRST116') {
-          console.error('Sistem durumu alınamadı:', error)
+        // Kayıt yoksa veya okunamazsa varsayılan: açık
+        if (error) {
+          console.warn(
+            'Sistem durumu alınamadı:',
+            error.message || error.code || 'bilinmeyen hata'
+          )
+          setIsSystemActive(true)
           return
         }
 
-        if (data) {
-          setIsSystemActive(data.value === 'true')
-        } else {
-          // Varsayılan olarak aktif (tabloda yoksa)
-          setIsSystemActive(true)
-        }
+        setIsSystemActive(data?.value === 'true' || data == null)
       } catch (err) {
-        console.error('Sistem durumu yüklenirken hata:', err)
+        console.warn('Sistem durumu yüklenirken hata:', err)
+        setIsSystemActive(true)
       } finally {
         setIsLoading(false)
       }
@@ -65,33 +66,19 @@ export function GlobalSystemToggle() {
     setIsSystemActive(newState) // Optimistic update
 
     try {
-      const { data: existingData } = await supabase
-        .from('app_settings')
-        .select('key')
-        .eq('key', 'is_system_active')
-        .single()
+      const { error } = await supabase.from('app_settings').upsert(
+        {
+          key: 'is_system_active',
+          value: newState.toString(),
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'key' }
+      )
 
-      let error
-      if (existingData) {
-        // Güncelle
-        const res = await supabase
-          .from('app_settings')
-          .update({ value: newState.toString(), updated_at: new Date().toISOString() })
-          .eq('key', 'is_system_active')
-        error = res.error
-      } else {
-        // Oluştur
-        const res = await supabase
-          .from('app_settings')
-          .insert({ key: 'is_system_active', value: newState.toString() })
-        error = res.error
-      }
-
-      if (error) {
-        throw error
-      }
+      if (error) throw error
     } catch (err) {
-      console.error('Sistem durumu güncellenemedi:', err)
+      const message = err instanceof Error ? err.message : 'Bilinmeyen hata'
+      console.warn('Sistem durumu güncellenemedi:', message)
       alert('Sistem durumu güncellenemedi!')
       setIsSystemActive(!newState) // Geri al
     }

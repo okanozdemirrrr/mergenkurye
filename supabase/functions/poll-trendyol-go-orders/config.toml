@@ -1,0 +1,2 @@
+[functions.poll-trendyol-go-orders]
+verify_jwt = false

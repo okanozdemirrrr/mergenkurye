@@ -633,9 +633,10 @@ export default function KuryePage() {
       // ⚡ OPTİMİZE: Sadece gerekli kolonları çek + LIMIT
       const { data, error } = await supabase
         .from('packages')
-        .select('id, order_number, customer_name, customer_phone, delivery_address, amount, status, payment_method, content, created_at, assigned_at, ready_at, picked_up_at, restaurant_id, platform, latitude, longitude, restaurants(name, phone, address)')
+        .select('id, order_number, customer_name, customer_phone, delivery_address, amount, status, payment_method, content, created_at, assigned_at, ready_at, picked_up_at, restaurant_id, platform, latitude, longitude, trendyol_order_code, call_center_phone, pin_code, kurye_notu, address_description, is_address_masked, delivery_type, courier_collects_payment, cancel_info, restaurants(name, phone, address)')
         .eq('courier_id', courierId)
-        .in('status', ['new', 'new_order', 'preparing', 'getting_ready', 'ready', 'assigned', 'picking_up', 'on_the_way'])
+        .eq('exclude_from_courier_queue', false)
+        .in('status', ['new', 'new_order', 'preparing', 'getting_ready', 'ready', 'assigned', 'picking_up', 'on_the_way', 'cancelled'])
         .order('created_at', { ascending: false })
         .limit(50)
 
@@ -2814,7 +2815,16 @@ export default function KuryePage() {
 
                 {/* Paket Listesi - Mobil Responsive */}
                 {packages.map((pkg, index) => (
-                  <div key={pkg.id} className="bg-slate-900 p-3 sm:p-4 rounded-md border border-white/5">
+                  <div key={pkg.id} className={`bg-slate-900 p-3 sm:p-4 rounded-md border ${pkg.status === 'cancelled' ? 'border-red-500 ring-2 ring-red-500/40' : 'border-white/5'}`}>
+                    {pkg.status === 'cancelled' && (
+                      <div className="mb-3 rounded-md bg-red-600 px-3 py-2 text-center text-sm font-black tracking-wide text-white">
+                        İPTAL EDİLDİ — TESLİMata GİTMEYİN
+                        {(pkg as { cancel_info?: { reasonText?: string; reason?: string } }).cancel_info?.reasonText ||
+                        (pkg as { cancel_info?: { reason?: string } }).cancel_info?.reason
+                          ? ` · ${(pkg as { cancel_info?: { reasonText?: string; reason?: string } }).cancel_info?.reasonText || (pkg as { cancel_info?: { reason?: string } }).cancel_info?.reason}`
+                          : ''}
+                      </div>
+                    )}
                     {/* Üst Kısım */}
                     <div className="flex justify-between items-start mb-2 sm:mb-3">
                       <div className="flex-1">
@@ -2824,7 +2834,7 @@ export default function KuryePage() {
                             {packageSlots[pkg.id] || '?'}
                           </span>
                           <span className="text-xs font-bold text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded">
-                            {pkg.order_number || '......'}
+                            {(pkg as { trendyol_order_code?: string }).trendyol_order_code || pkg.order_number || '......'}
                           </span>
                           {pkg.platform && (
                             <span className={`text-xs font-bold px-2 py-0.5 rounded ${getPlatformBadgeClass(pkg.platform)}`}>

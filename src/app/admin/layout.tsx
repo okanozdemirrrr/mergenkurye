@@ -469,6 +469,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
             <div className="mt-8 space-y-2">
               <Link
+                href="/admin/gelistirici/trendyol-go-import"
+                onClick={() => setShowMenu(false)}
+                className={`w-full px-4 py-3 rounded-md font-medium transition-colors flex items-center justify-center gap-2 border ${
+                  isActive('/admin/gelistirici/trendyol-go-import')
+                    ? 'bg-orange-500 text-white border-orange-500'
+                    : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+                }`}
+              >
+                <FileText className="w-4 h-4" strokeWidth={1.5} />
+                TY Go İçe Aktar
+              </Link>
+
+              <Link
                 href="/admin/ayarlar"
                 onClick={() => setShowMenu(false)}
                 className={`w-full px-4 py-3 rounded-md font-medium transition-colors flex items-center justify-center gap-2 border ${

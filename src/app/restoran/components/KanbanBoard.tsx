@@ -20,7 +20,7 @@ import {
 import type { ReactNode } from 'react'
 
 const PACKAGE_DETAIL_SELECT =
-  'id, order_number, status, created_at, amount, subtotal, delivery_fee, customer_name, customer_phone, delivery_address, payment_method, items, platform, content, courier_id, getting_ready_at, ready_at, assigned_at, picked_up_at, delivered_at'
+  'id, order_number, status, created_at, amount, subtotal, delivery_fee, customer_name, customer_phone, delivery_address, payment_method, items, platform, content, courier_id, getting_ready_at, ready_at, assigned_at, picked_up_at, delivered_at, trendyol_order_code, delivery_type, is_address_masked, call_center_phone, pin_code, kurye_notu, mutfak_notu, address_description, courier_collects_payment'
 
 const formatPrice = (value: number) => `${value.toFixed(2)}₺`
 
@@ -467,6 +467,13 @@ export default function KanbanBoard({
                   {pkg.platform && (
                     <span className={`text-sm py-1 px-3 rounded ${getPlatformBadgeClass(pkg.platform)}`}>
                       {getPlatformDisplayName(pkg.platform)}
+                    </span>
+                  )}
+                  {((pkg as { delivery_type?: string }).delivery_type === 'GO' ||
+                    (pkg as { is_address_masked?: boolean }).is_address_masked) && (
+                    <span className="text-sm py-1 px-3 rounded bg-sky-500/20 text-sky-300">
+                      Platform kuryesi
+                      {(pkg as { is_address_masked?: boolean }).is_address_masked ? ' · adres maskeli' : ''}
                     </span>
                   )}
                 </div>

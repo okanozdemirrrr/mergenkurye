@@ -54,6 +54,11 @@ export async function login(credentials: LoginCredentials): Promise<AuthResponse
           logoUrl: null
         }
         saveSession(authUser)
+        await establishPanelSession({
+          role: 'admin',
+          username,
+          password,
+        })
         return { success: true, user: authUser }
       }
       return { success: false, error: 'Admin kullanıcı adı veya şifre hatalı' }
@@ -119,6 +124,11 @@ export async function login(credentials: LoginCredentials): Promise<AuthResponse
         logoUrl: user.logo_url
       }
       saveSession(authUser)
+      await establishPanelSession({
+        role: 'restaurant',
+        username,
+        password,
+      })
       return { success: true, user: authUser }
     }
 
@@ -132,6 +142,26 @@ export async function login(credentials: LoginCredentials): Promise<AuthResponse
       success: false,
       error: 'Giriş yapılırken bir hata oluştu'
     }
+  }
+}
+
+/**
+ * HttpOnly panel oturumu (API yetkilendirme — restaurantId çerezden).
+ */
+async function establishPanelSession(params: {
+  role: 'restaurant' | 'admin'
+  username: string
+  password: string
+}) {
+  try {
+    await fetch('/api/auth/panel-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(params),
+    })
+  } catch (e) {
+    console.warn('Panel oturumu kurulamadı:', e)
   }
 }
 
@@ -205,8 +235,12 @@ export function logout() {
   // Tema renklerini sıfırla
   resetTheme()
 
-  // Ana sayfaya yönlendir (Login seçim ekranı)
-  window.location.href = '/'
+  void fetch('/api/auth/panel-logout', {
+    method: 'POST',
+    credentials: 'include',
+  }).finally(() => {
+    window.location.href = '/'
+  })
 }
 
 /**

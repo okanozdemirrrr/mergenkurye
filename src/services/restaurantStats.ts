@@ -142,6 +142,8 @@ async function fetchCountedRows(params: {
       .from('packages')
       .select(params.select)
       .or(RESTAURANT_STATS_COUNTED_FILTER)
+      .eq('gecmis_veri', false)
+      .eq('is_test_order', false)
       .gte(RESTAURANT_STATS_DATE_COLUMN, params.startIso)
       .lte(RESTAURANT_STATS_DATE_COLUMN, params.endIso)
 

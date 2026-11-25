@@ -7,6 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { applySessionCookie, buildAdminSession } from '@/lib/panelSession'
 
 function getClientIp(headerStore: Headers): string {
   const forwardedFor = headerStore.get('x-forwarded-for')
@@ -91,7 +92,8 @@ export async function POST(request: NextRequest) {
     // Vercel serverless fire-and-forget'i öldürüyor; kısa await ile garanti gönder
     await sendTelegramLoginLog({ username, ip, userAgent, date })
 
-    return NextResponse.json({ success: true })
+    const res = NextResponse.json({ success: true })
+    return applySessionCookie(res, buildAdminSession())
   } catch (error) {
     console.error('Admin login API hatası:', error)
     return NextResponse.json(
