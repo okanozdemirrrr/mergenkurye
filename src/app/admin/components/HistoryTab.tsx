@@ -131,20 +131,38 @@ export function HistoryTab({
                     query = query.eq('status', statusFilter)
                 }
 
-                // ⚡ TARİH ARALIĞI FİLTRESİ SORGUDAN BYPASS (NULL/BOŞ KONTROLÜ)
-                if (startDate && startDate !== '') {
-                    const start = new Date(startDate)
-                    start.setHours(0, 0, 0, 0)
-                    query = query.gte('created_at', start.toISOString())
-                }
-                if (endDate && endDate !== '') {
-                    const end = new Date(endDate)
-                    end.setHours(23, 59, 59, 999)
-                    query = query.lte('created_at', end.toISOString())
+                // Tarih filtresi: created_at (sipariş tarihi). NULL tarihler filtrede kaybolmasın.
+                const hasStart = Boolean(startDate && startDate !== '')
+                const hasEnd = Boolean(endDate && endDate !== '')
+                if (hasStart || hasEnd) {
+                    const start = hasStart
+                        ? (() => {
+                              const d = new Date(startDate)
+                              d.setHours(0, 0, 0, 0)
+                              return d.toISOString()
+                          })()
+                        : null
+                    const end = hasEnd
+                        ? (() => {
+                              const d = new Date(endDate)
+                              d.setHours(23, 59, 59, 999)
+                              return d.toISOString()
+                          })()
+                        : null
+
+                    if (start && end) {
+                        query = query.or(
+                            `and(created_at.gte."${start}",created_at.lte."${end}"),created_at.is.null`
+                        )
+                    } else if (start) {
+                        query = query.or(`created_at.gte."${start}",created_at.is.null`)
+                    } else if (end) {
+                        query = query.or(`created_at.lte."${end}",created_at.is.null`)
+                    }
                 }
 
-                // Sıralama
-                query = query.order('created_at', { ascending: false })
+                // Sipariş tarihine göre azalan; tarihsizler en altta
+                query = query.order('created_at', { ascending: false, nullsFirst: false })
 
                 // Server-Side Sayfalama Range hesabı
                 const from = (currentPage - 1) * HISTORY_ITEMS_PER_PAGE
@@ -189,23 +207,14 @@ export function HistoryTab({
                     couriers: undefined
                 }))
 
-                // Tarihe göre ekstra sıralama güvencesi
+                // Sipariş tarihi (created_at) azalan; null en sonda
                 transformedData.sort((a, b) => {
-                    const dateA = a.status === 'cancelled' && a.cancelled_at
-                        ? new Date(a.cancelled_at).getTime()
-                        : a.delivered_at
-                            ? new Date(a.delivered_at).getTime()
-                            : a.created_at
-                                ? new Date(a.created_at).getTime()
-                                : 0
-                    const dateB = b.status === 'cancelled' && b.cancelled_at
-                        ? new Date(b.cancelled_at).getTime()
-                        : b.delivered_at
-                            ? new Date(b.delivered_at).getTime()
-                            : b.created_at
-                                ? new Date(b.created_at).getTime()
-                                : 0
-                    return dateB - dateA
+                    const ta = a.created_at ? new Date(a.created_at).getTime() : null
+                    const tb = b.created_at ? new Date(b.created_at).getTime() : null
+                    if (ta == null && tb == null) return 0
+                    if (ta == null) return 1
+                    if (tb == null) return -1
+                    return tb - ta
                 })
 
                 setPackagesList(sortChargeableCancelsLast(transformedData))
@@ -346,9 +355,16 @@ export function HistoryTab({
         return 'bg-orange-950/60 text-orange-400 border border-orange-900/30'
     }
 
+    /** Liste/detay: teslim/iptal saati; yoksa sipariş oluşturulma (created_at) */
+    const getHistoryEventAt = (pkg: Package): string | null => {
+        if (pkg.status === 'cancelled') {
+            return pkg.cancelled_at || pkg.created_at || null
+        }
+        return pkg.delivered_at || pkg.created_at || null
+    }
+
     const getPackageEventTime = (pkg: Package) => {
-        if (pkg.status === 'cancelled') return formatTurkishTime(pkg.cancelled_at || undefined)
-        return formatTurkishTime(pkg.delivered_at)
+        return formatTurkishTime(getHistoryEventAt(pkg))
     }
 
     const emptyHistoryMessage =
@@ -848,16 +864,15 @@ export function HistoryTab({
                                         <td className="py-3 px-4 text-white">
                                             <div className="text-sm">
                                                 <div className="font-medium">
-                                                    {pkg.status === 'cancelled'
-                                                        ? formatTurkishTime(pkg.cancelled_at || undefined)
-                                                        : formatTurkishTime(pkg.delivered_at)}
+                                                    {getPackageEventTime(pkg)}
                                                 </div>
                                                 <div className="text-slate-400 text-xs">
-                                                    {pkg.status === 'cancelled' && pkg.cancelled_at
-                                                        ? new Date(pkg.cancelled_at).toLocaleDateString('tr-TR')
-                                                        : pkg.delivered_at
-                                                            ? new Date(pkg.delivered_at).toLocaleDateString('tr-TR')
-                                                            : '-'}
+                                                    {(() => {
+                                                        const at = getHistoryEventAt(pkg)
+                                                        return at
+                                                            ? new Date(at).toLocaleDateString('tr-TR')
+                                                            : '-'
+                                                    })()}
                                                 </div>
                                             </div>
                                         </td>
