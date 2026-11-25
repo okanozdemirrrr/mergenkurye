@@ -207,7 +207,6 @@ export default function TrendyolGoImportPage() {
                 <p>Maskeli adres: {report.maskedAddressCount}</p>
                 <p>Kurye notu olan: {report.courierNoteCount}</p>
                 <p>Tariften telefon: {report.phoneFromDescriptionCount}</p>
-                <p>Eşleşmeyen ürün (adet): {report.unmatchedProductCount}</p>
                 <p>İptal sayısı: {report.cancelledCount}</p>
                 <p>Test paket: {report.testPackageCount}</p>
                 <div>

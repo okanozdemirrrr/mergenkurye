@@ -22,16 +22,8 @@ type Settings = {
   son_basarili_baglanti?: string | null
   son_hata?: string | null
   durum?: 'ok' | 'sorunlu'
+  call_dial_template?: string
 }
-
-type Unmatched = {
-  id: string
-  trendyol_product_id: string
-  trendyol_name: string | null
-  last_seen_at: string
-}
-
-type LocalProduct = { id: string; name: string; price: number }
 
 export default function TrendyolGoSettingsPage() {
   const [loading, setLoading] = useState(true)
@@ -52,10 +44,7 @@ export default function TrendyolGoSettingsPage() {
   const [ortam, setOrtam] = useState<'prod' | 'stage'>('prod')
   const [aktifMi, setAktifMi] = useState(false)
   const [pollingSn, setPollingSn] = useState(15)
-
-  const [unmatched, setUnmatched] = useState<Unmatched[]>([])
-  const [products, setProducts] = useState<LocalProduct[]>([])
-  const [mapSelect, setMapSelect] = useState<Record<string, string>>({})
+  const [dialTemplate, setDialTemplate] = useState('{callCenterPhone},,,{pinCode}#')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -77,12 +66,9 @@ export default function TrendyolGoSettingsPage() {
         setOrtam(s.ortam === 'stage' ? 'stage' : 'prod')
         setAktifMi(Boolean(s.aktif_mi))
         setPollingSn(Number(s.polling_araligi_sn) || 15)
-      }
-
-      const u = await fetch('/api/trendyol-go/unmatched-products', { credentials: 'include' })
-      if (u.ok) {
-        const uj = await u.json()
-        setUnmatched(uj.items || [])
+        setDialTemplate(
+          String(s.call_dial_template || '{callCenterPhone},,,{pinCode}#')
+        )
       }
     } finally {
       setLoading(false)
@@ -92,25 +78,6 @@ export default function TrendyolGoSettingsPage() {
   useEffect(() => {
     void load()
   }, [load])
-
-  useEffect(() => {
-    // Yerel ürün listesi — eşleme için (Supabase client)
-    void (async () => {
-      try {
-        const { supabase } = await import('@/app/lib/supabase')
-        const restaurantId = localStorage.getItem('restoran_logged_restaurant_id')
-        if (!restaurantId) return
-        const { data } = await supabase
-          .from('products')
-          .select('id, name, price')
-          .eq('restaurant_id', restaurantId)
-          .order('name')
-        setProducts((data as LocalProduct[]) || [])
-      } catch {
-        /* ignore */
-      }
-    })()
-  }, [])
 
   async function testConnection() {
     setTesting(true)
@@ -173,6 +140,7 @@ export default function TrendyolGoSettingsPage() {
           ortam,
           aktif_mi: aktifMi,
           polling_araligi_sn: pollingSn,
+          call_dial_template: dialTemplate,
           connection_tested: true,
         }),
       })
@@ -192,27 +160,6 @@ export default function TrendyolGoSettingsPage() {
     } finally {
       setSaving(false)
     }
-  }
-
-  async function mapProduct(trendyolProductId: string) {
-    const localId = mapSelect[trendyolProductId]
-    if (!localId) return
-    const res = await fetch('/api/trendyol-go/map-product', {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        trendyol_product_id: trendyolProductId,
-        local_product_id: localId,
-      }),
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      setError(data.error || 'Eşleme başarısız')
-      return
-    }
-    setUnmatched((prev) => prev.filter((u) => u.trendyol_product_id !== trendyolProductId))
-    setSuccess('Ürün eşlendi')
   }
 
   if (loading) {
@@ -397,6 +344,19 @@ export default function TrendyolGoSettingsPage() {
               />
               Canlı polling aktif
             </label>
+            <label className="block text-sm md:col-span-2">
+              <span className="text-slate-400">Arama şablonu (kurye → müşteri IVR)</span>
+              <input
+                className="mt-1 w-full rounded-md bg-slate-950 border border-slate-700 px-3 py-2 font-mono text-sm"
+                value={dialTemplate}
+                onChange={(e) => setDialTemplate(e.target.value)}
+                placeholder="{callCenterPhone},,,{pinCode}#"
+              />
+              <span className="text-xs text-slate-500 mt-1 block">
+                Yer tutucular: {'{callCenterPhone}'}, {'{pinCode}'}. Virgül ≈ 2 sn duraklama.
+                Örn. tel:02123653403,,,11870235694#
+              </span>
+            </label>
           </div>
 
           <div className="flex flex-wrap gap-3 pt-2">
@@ -412,7 +372,13 @@ export default function TrendyolGoSettingsPage() {
             <button
               type="button"
               onClick={() => void save()}
-              disabled={saving || !connectionTested}
+              disabled={
+                saving ||
+                (!settings && !connectionTested) ||
+                (!!settings &&
+                  !connectionTested &&
+                  !!(apiKey || apiSecret || basicToken))
+              }
               className="inline-flex items-center gap-2 rounded-md bg-orange-600 text-white px-4 py-2 text-sm font-medium disabled:opacity-50"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
@@ -424,50 +390,6 @@ export default function TrendyolGoSettingsPage() {
           </p>
         </section>
 
-        <section className="space-y-3 rounded-xl border border-slate-800 bg-slate-900/60 p-5">
-          <h2 className="font-medium text-lg">Eşleşmeyen ürünler</h2>
-          {unmatched.length === 0 ? (
-            <p className="text-sm text-slate-400">Eşleşmeyen ürün yok.</p>
-          ) : (
-            <ul className="space-y-3">
-              {unmatched.map((u) => (
-                <li
-                  key={u.id}
-                  className="flex flex-col md:flex-row md:items-center gap-2 border border-slate-800 rounded-md p-3"
-                >
-                  <div className="flex-1 text-sm">
-                    <div className="font-medium">{u.trendyol_name || 'İsimsiz'}</div>
-                    <div className="text-slate-500 text-xs">ID: {u.trendyol_product_id}</div>
-                  </div>
-                  <select
-                    className="rounded-md bg-slate-950 border border-slate-700 px-2 py-1.5 text-sm"
-                    value={mapSelect[u.trendyol_product_id] || ''}
-                    onChange={(e) =>
-                      setMapSelect((prev) => ({
-                        ...prev,
-                        [u.trendyol_product_id]: e.target.value,
-                      }))
-                    }
-                  >
-                    <option value="">Ürün seç…</option>
-                    {products.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} ({p.price}₺)
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    className="rounded-md bg-orange-600 px-3 py-1.5 text-sm"
-                    onClick={() => void mapProduct(u.trendyol_product_id)}
-                  >
-                    Eşle
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
       </div>
     </div>
   )

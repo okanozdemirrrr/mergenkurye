@@ -29,6 +29,7 @@ function publicSettings(row: Record<string, unknown> | null) {
     ortam: row.ortam,
     aktif_mi: row.aktif_mi,
     polling_araligi_sn: row.polling_araligi_sn,
+    call_dial_template: row.call_dial_template || '{callCenterPhone},,,{pinCode}#',
     son_polling_imleci: row.son_polling_imleci,
     son_basarili_baglanti: row.son_basarili_baglanti,
     son_hata: row.son_hata,
@@ -82,6 +83,12 @@ export async function PUT(request: NextRequest) {
     const ortam = body.ortam === 'stage' ? 'stage' : 'prod'
     const aktifMi = Boolean(body.aktif_mi)
     const polling = Math.min(120, Math.max(5, Number(body.polling_araligi_sn) || 15))
+    const dialTemplateRaw =
+      typeof body.call_dial_template === 'string'
+        ? body.call_dial_template.trim()
+        : '{callCenterPhone},,,{pinCode}#'
+    const callDialTemplate =
+      dialTemplateRaw || '{callCenterPhone},,,{pinCode}#'
 
     if (!supplierId || !storeId || !executorEmail) {
       return NextResponse.json(
@@ -118,12 +125,22 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // Bağlantı testi zorunlu bayrak: connection_tested === true
-    if (body.connection_tested !== true) {
+    // Yeni kayıt veya kimlik bilgisi değişiminde test zorunlu; salt şablon/polling için değil
+    const credentialsChanging = Boolean(apiKeyInput || apiSecretPlain || basicTokenPlain)
+    if (!existing && body.connection_tested !== true) {
       return NextResponse.json(
         {
           error:
             'Önce “Bağlantıyı Test Et” ile başarılı test yapın, sonra kaydedin.',
+        },
+        { status: 400 }
+      )
+    }
+    if (existing && credentialsChanging && body.connection_tested !== true) {
+      return NextResponse.json(
+        {
+          error:
+            'Kimlik bilgisi değişti — önce “Bağlantıyı Test Et”, sonra kaydedin.',
         },
         { status: 400 }
       )
@@ -140,6 +157,7 @@ export async function PUT(request: NextRequest) {
       ortam,
       aktif_mi: aktifMi,
       polling_araligi_sn: polling,
+      call_dial_template: callDialTemplate,
       key_version: keyVersion,
       updated_at: new Date().toISOString(),
       durum: 'ok',

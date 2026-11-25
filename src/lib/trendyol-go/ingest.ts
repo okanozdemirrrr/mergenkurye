@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { mapPackageToLocal } from './mapPackageToLocal'
+import { DEFAULT_CALL_DIAL_TEMPLATE } from './dialTemplate'
 import type {
   MappedLocalPackage,
   MappingReportAccumulator,
@@ -33,32 +34,11 @@ async function loadProductLookup(
   return map
 }
 
-async function upsertUnmatchedProducts(
-  supabase: SupabaseClient,
-  restaurantId: string,
-  mapped: MappedLocalPackage
-) {
-  for (const item of mapped.items) {
-    if (!item.trendyol_product_id) continue
-    const matched = Boolean(item.product_id) && !item.unmatched
-    await supabase.from('trendyol_go_product_mappings').upsert(
-      {
-        restaurant_id: restaurantId,
-        trendyol_product_id: item.trendyol_product_id,
-        trendyol_name: item.product_name,
-        local_product_id: item.product_id || null,
-        eslesmedi_mi: !matched,
-        last_seen_at: new Date().toISOString(),
-      },
-      { onConflict: 'restaurant_id,trendyol_product_id' }
-    )
-  }
-}
-
 function toPackageRow(
   mapped: MappedLocalPackage,
   restaurantId: string,
-  gecmisVeri: boolean
+  gecmisVeri: boolean,
+  callDialTemplate?: string | null
 ) {
   const isCancel =
     mapped.local_status === 'cancelled' ||
@@ -110,6 +90,7 @@ function toPackageRow(
     delivery_type: mapped.delivery_type,
     cancel_info: mapped.cancel_info,
     ham_payload: mapped.ham_payload,
+    call_dial_template: callDialTemplate || null,
     package_creation_at: mapped.package_creation_at,
     package_modification_at: mapped.package_modification_at,
     status: isCancel
@@ -243,9 +224,19 @@ export async function ingestTrendyolPackage(
       }
     }
 
-    await upsertUnmatchedProducts(supabase, opts.restaurantId, mapped)
+    // Ürün eşleştirme uyarısı/upsert yok (tablo dursun, sessiz)
 
-    const row = toPackageRow(mapped, opts.restaurantId, gecmisVeri)
+    const { data: integRow } = await supabase
+      .from('trendyol_go_integrations')
+      .select('call_dial_template')
+      .eq('restaurant_id', opts.restaurantId)
+      .maybeSingle()
+
+    const dialTemplate =
+      (integRow?.call_dial_template as string | undefined)?.trim() ||
+      DEFAULT_CALL_DIAL_TEMPLATE
+
+    const row = toPackageRow(mapped, opts.restaurantId, gecmisVeri, dialTemplate)
 
     let existingPkg = await findExistingByConflict(supabase, row)
 

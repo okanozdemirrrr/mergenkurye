@@ -164,7 +164,7 @@ export function mapPackageToLocal(
     if (mapped.is_address_masked) report.maskedAddressCount += 1
     if (mapped.kurye_notu) report.courierNoteCount += 1
     if (mapped.adres_tarifinden_bulunan_telefon) report.phoneFromDescriptionCount += 1
-    report.unmatchedProductCount += unmatchedProductIds.length
+    // Ürün eşleştirme uyarısı yok — rapor satırı tutulmaz
     report.paymentTypesSeen[mapped.payment_type_raw] =
       (report.paymentTypesSeen[mapped.payment_type_raw] || 0) + 1
     if (mapped.local_status === 'cancelled') report.cancelledCount += 1

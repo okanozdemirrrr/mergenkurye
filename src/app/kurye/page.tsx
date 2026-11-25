@@ -14,7 +14,12 @@ import { App } from '@capacitor/app'
 import { Preferences } from '@capacitor/preferences'
 import { supabase } from '../lib/supabase'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '../lib/platformUtils'
-import { getDisplayOrderCode, getDetailOrderNumber } from '../lib/orderDisplay'
+import { getDisplayOrderCode, getDetailOrderNumber, isTrendyolGoOrder } from '../lib/orderDisplay'
+import {
+  buildCustomerCallHref,
+  DEFAULT_CALL_DIAL_TEMPLATE,
+  normalizeCallCenterPhone,
+} from '@/lib/trendyol-go/dialTemplate'
 import { CourierEarningsStats } from '@/components/CourierEarningsStats'
 import { useCourierRealtimeNotifications } from '@/hooks/useCourierRealtimeNotifications'
 import { useCourierLocationBroadcast } from '@/hooks/useCourierLocationBroadcast'
@@ -634,7 +639,7 @@ export default function KuryePage() {
       // ⚡ OPTİMİZE: Sadece gerekli kolonları çek + LIMIT
       const { data, error } = await supabase
         .from('packages')
-        .select('id, order_number, customer_name, customer_phone, delivery_address, amount, status, payment_method, content, created_at, assigned_at, ready_at, picked_up_at, restaurant_id, platform, latitude, longitude, trendyol_order_code, trendyol_app_name, source, call_center_phone, pin_code, kurye_notu, address_description, is_address_masked, delivery_type, courier_collects_payment, cancel_info, restaurants(name, phone, address)')
+        .select('id, order_number, customer_name, customer_phone, delivery_address, amount, status, payment_method, content, created_at, assigned_at, ready_at, picked_up_at, restaurant_id, platform, latitude, longitude, trendyol_order_code, trendyol_app_name, source, call_center_phone, pin_code, call_dial_template, adres_tarifinden_bulunan_telefon, kurye_notu, address_description, is_address_masked, delivery_type, courier_collects_payment, cancel_info, restaurants(name, phone, address)')
         .eq('courier_id', courierId)
         .eq('exclude_from_courier_queue', false)
         .in('status', ['new', 'new_order', 'preparing', 'getting_ready', 'ready', 'assigned', 'picking_up', 'on_the_way', 'cancelled'])
@@ -2957,6 +2962,89 @@ export default function KuryePage() {
                             >
                               <Phone size={14} strokeWidth={1.5} /> Restoranı Ara
                             </a>
+                          </div>
+                        )}
+
+                        {/* Trendyol: Müşteriye Ulaş (çağrı merkezi + pin) */}
+                        {isTrendyolGoOrder(pkg) &&
+                          (pkg as { call_center_phone?: string }).call_center_phone && (
+                          <div className="mt-2 p-3 bg-sky-950/50 rounded-md border border-sky-500/30">
+                            <p className="text-xs font-semibold text-sky-200 mb-2">Müşteriye Ulaş</p>
+                            {((pkg as { is_address_masked?: boolean }).is_address_masked ||
+                              (pkg as { delivery_type?: string }).delivery_type === 'GO') && (
+                              <p className="text-[11px] text-amber-300 mb-2">
+                                Teslimatı platform kuryesi yapıyor
+                              </p>
+                            )}
+                            {(() => {
+                              const callCenter = String(
+                                (pkg as { call_center_phone?: string }).call_center_phone || ''
+                              )
+                              const pin = String((pkg as { pin_code?: string }).pin_code || '')
+                              const template =
+                                (pkg as { call_dial_template?: string }).call_dial_template ||
+                                DEFAULT_CALL_DIAL_TEMPLATE
+                              const href = buildCustomerCallHref({
+                                template,
+                                callCenterPhone: callCenter,
+                                pinCode: pin,
+                              })
+                              const displayPhone = normalizeCallCenterPhone(callCenter) || callCenter
+                              const fromDesc = (pkg as { adres_tarifinden_bulunan_telefon?: string })
+                                .adres_tarifinden_bulunan_telefon
+                              return (
+                                <>
+                                  {href && (
+                                    <a
+                                      href={href}
+                                      className="block w-full py-3 px-4 bg-green-500 hover:bg-green-600 active:bg-green-700 text-white text-sm font-bold rounded-md transition-all text-center shadow-sm"
+                                    >
+                                      <span className="inline-flex items-center justify-center gap-2">
+                                        <Phone size={18} strokeWidth={1.5} />
+                                        Müşteriyi Ara
+                                      </span>
+                                    </a>
+                                  )}
+                                  <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-sky-100/90">
+                                    <button
+                                      type="button"
+                                      className="underline decoration-dotted underline-offset-2 hover:text-white"
+                                      onClick={() => {
+                                        void navigator.clipboard?.writeText(displayPhone)
+                                      }}
+                                      title="Kopyala"
+                                    >
+                                      {displayPhone}
+                                    </button>
+                                    {pin && (
+                                      <button
+                                        type="button"
+                                        className="underline decoration-dotted underline-offset-2 hover:text-white"
+                                        onClick={() => {
+                                          void navigator.clipboard?.writeText(pin)
+                                        }}
+                                        title="Pin kopyala"
+                                      >
+                                        Pin: {pin}
+                                      </button>
+                                    )}
+                                  </div>
+                                  {fromDesc && (
+                                    <div className="mt-2">
+                                      <a
+                                        href={`tel:${fromDesc}`}
+                                        className="block w-full py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-100 text-xs font-medium rounded-md text-center border border-slate-600"
+                                      >
+                                        Direkt Ara (tariften)
+                                      </a>
+                                      <p className="text-[10px] text-slate-400 mt-1 text-center">
+                                        Doğrulanmamış — adres tarifinden okundu
+                                      </p>
+                                    </div>
+                                  )}
+                                </>
+                              )
+                            })()}
                           </div>
                         )}
                       </div>
