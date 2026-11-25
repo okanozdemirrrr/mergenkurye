@@ -8,6 +8,7 @@ import PullToRefresh from '@/components/PullToRefresh'
 import { Package, Courier } from '@/types'
 import { formatTurkishTime, formatShortDateTime } from '@/utils/dateHelpers'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
+import { getDisplayOrderCode, getDetailOrderNumber } from '@/app/lib/orderDisplay'
 import { useRestaurantReminder } from '@/hooks/useRestaurantReminder'
 import { playRestaurantAlert } from '@/hooks/useRestaurantRealtimeNotifications'
 import { useRestoran } from '../RestoranProvider'
@@ -856,11 +857,11 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <p className={`font-bold text-sm truncate ${darkMode ? 'text-orange-400' : 'text-orange-600'}`}>
-                              {pkg.order_number || '......'}
+                              {getDisplayOrderCode(pkg)}
                             </p>
                             {pkg.platform && (
-                              <span className={`inline-block mt-1 text-[10px] py-0.5 px-1.5 rounded ${getPlatformBadgeClass(pkg.platform)}`}>
-                                {getPlatformDisplayName(pkg.platform)}
+                              <span className={`inline-block mt-1 text-[10px] py-0.5 px-1.5 rounded ${getPlatformBadgeClass({ platform: pkg.platform, trendyol_app_name: (pkg as { trendyol_app_name?: string }).trendyol_app_name })}`}>
+                                {getPlatformDisplayName({ platform: pkg.platform, trendyol_app_name: (pkg as { trendyol_app_name?: string }).trendyol_app_name })}
                               </span>
                             )}
                           </div>
@@ -927,11 +928,11 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                             <span className={`text-sm font-bold px-2 py-1 rounded ${
                               darkMode ? 'bg-orange-900/50 text-orange-300' : 'bg-orange-100 text-orange-700'
                             }`}>
-                              {pkg.order_number || '......'}
+                              {getDisplayOrderCode(pkg)}
                             </span>
                             {pkg.platform && (
-                              <span className={`text-xs py-0.5 px-2 rounded ${getPlatformBadgeClass(pkg.platform)}`}>
-                                {getPlatformDisplayName(pkg.platform)}
+                              <span className={`text-xs py-0.5 px-2 rounded ${getPlatformBadgeClass({ platform: pkg.platform, trendyol_app_name: (pkg as { trendyol_app_name?: string }).trendyol_app_name })}`}>
+                                {getPlatformDisplayName({ platform: pkg.platform, trendyol_app_name: (pkg as { trendyol_app_name?: string }).trendyol_app_name })}
                               </span>
                             )}
                             <span className={`text-xs px-2 py-1 rounded flex items-center gap-1 ${statusBadgeClass}`}>
@@ -1167,7 +1168,7 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <p className={`font-bold text-sm truncate ${darkMode ? 'text-orange-400' : 'text-orange-600'}`}>
-                              {pkg.order_number || '......'}
+                              {getDisplayOrderCode(pkg)}
                             </p>
                           </div>
                           <div className="text-right shrink-0">
@@ -1229,11 +1230,11 @@ export default function RestaurantDashboard({ restaurantId, darkMode, setDarkMod
                             <span className={`text-sm font-bold px-2 py-1 rounded ${
                               darkMode ? 'bg-orange-900/50 text-orange-300' : 'bg-orange-100 text-orange-700'
                             }`}>
-                              {pkg.order_number || '......'}
+                              {getDisplayOrderCode(pkg)}
                             </span>
                             {pkg.platform && (
-                              <span className={`text-xs py-0.5 px-2 rounded ${getPlatformBadgeClass(pkg.platform)}`}>
-                                {getPlatformDisplayName(pkg.platform)}
+                              <span className={`text-xs py-0.5 px-2 rounded ${getPlatformBadgeClass({ platform: pkg.platform, trendyol_app_name: (pkg as { trendyol_app_name?: string }).trendyol_app_name })}`}>
+                                {getPlatformDisplayName({ platform: pkg.platform, trendyol_app_name: (pkg as { trendyol_app_name?: string }).trendyol_app_name })}
                               </span>
                             )}
                             <span className={`text-xs px-2 py-1 rounded flex items-center gap-1 ${

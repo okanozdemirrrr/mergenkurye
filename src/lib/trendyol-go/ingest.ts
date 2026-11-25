@@ -7,11 +7,12 @@ import type {
 } from './types'
 
 export interface IngestResult {
-  action: 'inserted' | 'updated' | 'skipped_idempotent' | 'cancelled'
+  action: 'inserted' | 'updated' | 'skipped_idempotent' | 'cancelled' | 'error'
   localPackageId: number | null
   trendyolPackageId: string
   packageStatus: string
-  mapped: MappedLocalPackage
+  mapped: MappedLocalPackage | null
+  error?: string
 }
 
 async function loadProductLookup(
@@ -66,12 +67,13 @@ function toPackageRow(
 
   return {
     restaurant_id: restaurantId,
-    platform: 'trendyol',
+    platform: mapped.platform,
     source: 'trendyol_go',
     trendyol_package_id: mapped.trendyol_package_id,
     trendyol_order_code: mapped.trendyol_order_code,
     trendyol_order_id: mapped.trendyol_order_id,
     trendyol_order_number: mapped.trendyol_order_number,
+    trendyol_app_name: mapped.trendyol_app_name,
     external_order_number: mapped.external_order_number,
     order_number: mapped.order_number,
     customer_name: mapped.customer_name,
@@ -125,9 +127,70 @@ function toPackageRow(
   }
 }
 
+function isUniqueViolation(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false
+  if (error.code === '23505') return true
+  const msg = (error.message || '').toLowerCase()
+  return (
+    msg.includes('duplicate key') ||
+    msg.includes('unique_order_per_platform') ||
+    msg.includes('uq_packages_trendyol_package_id')
+  )
+}
+
+async function findExistingByConflict(
+  supabase: SupabaseClient,
+  row: ReturnType<typeof toPackageRow>
+) {
+  if (row.trendyol_package_id) {
+    const { data } = await supabase
+      .from('packages')
+      .select('id, status, courier_id')
+      .eq('trendyol_package_id', row.trendyol_package_id)
+      .maybeSingle()
+    if (data) return data
+  }
+  if (row.order_number && row.platform) {
+    const { data } = await supabase
+      .from('packages')
+      .select('id, status, courier_id')
+      .eq('order_number', row.order_number)
+      .eq('platform', row.platform)
+      .maybeSingle()
+    if (data) return data
+  }
+  return null
+}
+
+async function recordEvent(
+  supabase: SupabaseClient,
+  opts: {
+    restaurantId: string
+    trendyolPackageId: string
+    packageStatus: string
+    localPackageId: number
+    isTest: boolean
+    gecmisVeri: boolean
+  }
+) {
+  await supabase.from('trendyol_go_package_events').upsert(
+    {
+      restaurant_id: opts.restaurantId,
+      trendyol_package_id: opts.trendyolPackageId,
+      package_status: opts.packageStatus,
+      local_package_id: opts.localPackageId,
+      is_test: opts.isTest,
+      gecmis_veri: opts.gecmisVeri,
+      processed_at: new Date().toISOString(),
+    },
+    { onConflict: 'trendyol_package_id,package_status', ignoreDuplicates: true }
+  )
+}
+
 /**
  * packageId + packageStatus idempotent.
- * Aynı packageId farklı status → mevcut yerel kaydı GÜNCELLE (yeni satır açma).
+ * Aynı packageId farklı status → mevcut yerel kaydı GÜNCELLE.
+ * UNIQUE çakışmalarında hata fırlatmaz; günceller veya atlar.
  */
 export async function ingestTrendyolPackage(
   supabase: SupabaseClient,
@@ -136,7 +199,7 @@ export async function ingestTrendyolPackage(
     pkg: TrendyolPackage
     gecmisVeri?: boolean
     report?: MappingReportAccumulator
-    /** İptal bildirimi için callback (canlı, kuryeye atanmış) */
+    productLookupCache?: Map<string, string>
     onCancelledAssigned?: (info: {
       localPackageId: number
       courierId: string
@@ -145,108 +208,180 @@ export async function ingestTrendyolPackage(
   }
 ): Promise<IngestResult> {
   const gecmisVeri = Boolean(opts.gecmisVeri)
-  const productMap = await loadProductLookup(supabase, opts.restaurantId)
-  const mapped = mapPackageToLocal(opts.pkg, {
-    gecmisVeri,
-    productLookup: {
-      getLocalProductId: (id) => productMap.get(id),
-    },
-    report: opts.report,
-  })
+  let mapped: MappedLocalPackage | null = null
+  const trendyolPackageId = String(opts.pkg.id || '')
 
-  const packageStatus = mapped.package_status
-  const trendyolPackageId = mapped.trendyol_package_id
+  try {
+    const productMap =
+      opts.productLookupCache ||
+      (await loadProductLookup(supabase, opts.restaurantId))
+    mapped = mapPackageToLocal(opts.pkg, {
+      gecmisVeri,
+      productLookup: {
+        getLocalProductId: (id) => productMap.get(id),
+      },
+      report: opts.report,
+    })
 
-  // Idempotency: aynı packageId+status → no-op
-  const { data: existingEvent } = await supabase
-    .from('trendyol_go_package_events')
-    .select('id, local_package_id')
-    .eq('trendyol_package_id', trendyolPackageId)
-    .eq('package_status', packageStatus)
-    .maybeSingle()
+    const packageStatus = mapped.package_status
 
-  if (existingEvent) {
+    // Idempotency: aynı packageId+status → no-op
+    const { data: existingEvent } = await supabase
+      .from('trendyol_go_package_events')
+      .select('id, local_package_id')
+      .eq('trendyol_package_id', trendyolPackageId)
+      .eq('package_status', packageStatus)
+      .maybeSingle()
+
+    if (existingEvent) {
+      return {
+        action: 'skipped_idempotent',
+        localPackageId: existingEvent.local_package_id,
+        trendyolPackageId,
+        packageStatus,
+        mapped,
+      }
+    }
+
+    await upsertUnmatchedProducts(supabase, opts.restaurantId, mapped)
+
+    const row = toPackageRow(mapped, opts.restaurantId, gecmisVeri)
+
+    let existingPkg = await findExistingByConflict(supabase, row)
+
+    let localPackageId: number
+    let action: IngestResult['action']
+
+    if (existingPkg?.id) {
+      const prevCourierId = existingPkg.courier_id as string | null
+      const { data: updated, error } = await supabase
+        .from('packages')
+        .update(row)
+        .eq('id', existingPkg.id)
+        .select('id, courier_id, status')
+        .single()
+
+      if (error) {
+        // Çakışma: tekrar bul ve güncelle / atla
+        if (isUniqueViolation(error)) {
+          const again = await findExistingByConflict(supabase, row)
+          if (again?.id) {
+            const { data: retryUpd, error: retryErr } = await supabase
+              .from('packages')
+              .update(row)
+              .eq('id', again.id)
+              .select('id')
+              .single()
+            if (retryErr) throw new Error(`Paket güncellenemedi: ${retryErr.message}`)
+            localPackageId = retryUpd.id
+            action = row.status === 'cancelled' ? 'cancelled' : 'updated'
+          } else {
+            throw new Error(`Paket güncellenemedi: ${error.message}`)
+          }
+        } else {
+          throw new Error(`Paket güncellenemedi: ${error.message}`)
+        }
+      } else {
+        localPackageId = updated.id
+        action = row.status === 'cancelled' ? 'cancelled' : 'updated'
+      }
+
+      if (
+        action === 'cancelled' &&
+        prevCourierId &&
+        !gecmisVeri &&
+        opts.onCancelledAssigned &&
+        mapped
+      ) {
+        await opts.onCancelledAssigned({
+          localPackageId,
+          courierId: prevCourierId,
+          mapped,
+        })
+      }
+    } else {
+      const { data: inserted, error } = await supabase
+        .from('packages')
+        .insert([row])
+        .select('id')
+        .single()
+
+      if (error) {
+        if (isUniqueViolation(error)) {
+          // Çakışmada UPDATE'e düş
+          existingPkg = await findExistingByConflict(supabase, row)
+          if (existingPkg?.id) {
+            const { data: updated, error: updErr } = await supabase
+              .from('packages')
+              .update(row)
+              .eq('id', existingPkg.id)
+              .select('id')
+              .single()
+            if (updErr) throw new Error(`Çakışma sonrası güncelleme: ${updErr.message}`)
+            localPackageId = updated.id
+            action = row.status === 'cancelled' ? 'cancelled' : 'updated'
+          } else {
+            throw new Error(`Paket eklenemedi (unique): ${error.message}`)
+          }
+        } else {
+          throw new Error(`Paket eklenemedi: ${error.message}`)
+        }
+      } else {
+        localPackageId = inserted.id
+        action = row.status === 'cancelled' ? 'cancelled' : 'inserted'
+      }
+    }
+
+    await recordEvent(supabase, {
+      restaurantId: opts.restaurantId,
+      trendyolPackageId,
+      packageStatus,
+      localPackageId,
+      isTest: mapped.is_test_order,
+      gecmisVeri,
+    })
+
     return {
-      action: 'skipped_idempotent',
-      localPackageId: existingEvent.local_package_id,
+      action,
+      localPackageId,
       trendyolPackageId,
       packageStatus,
       mapped,
     }
-  }
-
-  await upsertUnmatchedProducts(supabase, opts.restaurantId, mapped)
-
-  const row = toPackageRow(mapped, opts.restaurantId, gecmisVeri)
-
-  const { data: existingPkg } = await supabase
-    .from('packages')
-    .select('id, status, courier_id, exclude_from_courier_queue')
-    .eq('trendyol_package_id', trendyolPackageId)
-    .maybeSingle()
-
-  let localPackageId: number
-  let action: IngestResult['action']
-
-  if (existingPkg?.id) {
-    const prevCourierId = existingPkg.courier_id as string | null
-    const updatePayload: Record<string, unknown> = { ...row }
-    // Geçmiş import canlı kaydı bozmasın diye status'u delivered/cancelled dışına zorlama
-    // ama iptal her zaman uygulanır
-    if (gecmisVeri && existingPkg.status !== 'cancelled') {
-      // geçmiş: sadece metadata güncelle, operasyonel status'u ezme (zaten yeni kayıt olmalı)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    return {
+      action: 'error',
+      localPackageId: null,
+      trendyolPackageId: trendyolPackageId || String(opts.pkg.id || ''),
+      packageStatus: String(opts.pkg.packageStatus || ''),
+      mapped,
+      error: message,
     }
-
-    const { data: updated, error } = await supabase
-      .from('packages')
-      .update(updatePayload)
-      .eq('id', existingPkg.id)
-      .select('id, courier_id, status')
-      .single()
-
-    if (error) throw new Error(`Paket güncellenemedi: ${error.message}`)
-    localPackageId = updated.id
-    action =
-      row.status === 'cancelled' ? 'cancelled' : 'updated'
-
-    if (
-      action === 'cancelled' &&
-      prevCourierId &&
-      !gecmisVeri &&
-      opts.onCancelledAssigned
-    ) {
-      await opts.onCancelledAssigned({
-        localPackageId,
-        courierId: prevCourierId,
-        mapped,
-      })
-    }
-  } else {
-    const { data: inserted, error } = await supabase
-      .from('packages')
-      .insert([row])
-      .select('id')
-      .single()
-
-    if (error) throw new Error(`Paket eklenemedi: ${error.message}`)
-    localPackageId = inserted.id
-    action = row.status === 'cancelled' ? 'cancelled' : 'inserted'
   }
+}
 
-  await supabase.from('trendyol_go_package_events').insert({
+/** Ingest hata logu — sessiz yutma yok */
+export async function logIngestFailure(
+  supabase: SupabaseClient,
+  opts: {
+    integrationId?: string | null
+    restaurantId: string
+    trendyolPackageId: string
+    packageStatus?: string
+    error: string
+  }
+) {
+  await supabase.from('trendyol_go_api_logs').insert({
+    integration_id: opts.integrationId || null,
     restaurant_id: opts.restaurantId,
-    trendyol_package_id: trendyolPackageId,
-    package_status: packageStatus,
-    local_package_id: localPackageId,
-    is_test: mapped.is_test_order,
-    gecmis_veri: gecmisVeri,
+    method: 'INGEST',
+    path: `/local/packages/${opts.trendyolPackageId}`,
+    query_masked: opts.packageStatus || null,
+    status_code: 0,
+    request_summary: null,
+    response_summary: null,
+    hata: opts.error,
+    duration_ms: null,
   })
-
-  return {
-    action,
-    localPackageId,
-    trendyolPackageId,
-    packageStatus,
-    mapped,
-  }
 }

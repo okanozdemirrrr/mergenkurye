@@ -90,7 +90,15 @@ export function mapPackageToLocal(
   const excludeFromCourierQueue =
     gecmisVeri || isTest || isGoOrMasked
 
+  // packages.order_number = orderNumber (11 hane, UNIQUE ile platform). Kısa kod ayrı kolonda.
   const orderNumber = pkg.orderNumber != null ? String(pkg.orderNumber) : null
+  const appName =
+    pkg.userInformation?.appName != null
+      ? String(pkg.userInformation.appName)
+      : null
+  const platform: MappedLocalPackage['platform'] =
+    appName?.toLowerCase() === 'galaxy' ? 'getir' : 'trendyol'
+
   const amount = typeof pkg.totalPrice === 'number' ? pkg.totalPrice : 0
   const deliveryFee =
     typeof pkg.totalDeliveryPrice === 'number' ? pkg.totalDeliveryPrice : null
@@ -100,8 +108,10 @@ export function mapPackageToLocal(
     trendyol_order_code: pkg.orderCode != null ? String(pkg.orderCode) : null,
     trendyol_order_id: pkg.orderId != null ? String(pkg.orderId) : null,
     trendyol_order_number: orderNumber,
+    trendyol_app_name: appName,
+    platform,
     external_order_number: orderNumber,
-    order_number: pkg.orderCode != null ? String(pkg.orderCode) : orderNumber,
+    order_number: orderNumber,
     delivery_type: pkg.deliveryType != null ? String(pkg.deliveryType) : null,
     package_status: packageStatus,
     customer_name: customerNameFrom(pkg),

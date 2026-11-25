@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react'
 import { Package, Courier } from '@/types'
 import { OrderActionMenu } from '@/components/ui/OrderActionMenu'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
+import { getDisplayOrderCode } from '@/app/lib/orderDisplay'
 import { formatTurkishTime } from '@/utils/dateHelpers'
 import {
   Package as PackageIcon, Circle, ChefHat, CheckCircle2, User, Footprints, Car,
@@ -204,15 +205,15 @@ export function LiveOrdersCard({
                   </div>
                   <div className="flex justify-between items-center mb-2 ml-8 relative z-10">
                     <div className="flex items-center gap-2">
-                      <span className={`text-xs font-bold px-2 py-1 rounded ${pkg.order_number
+                      <span className={`text-xs font-bold px-2 py-1 rounded ${getDisplayOrderCode(pkg) !== '......'
                         ? 'text-orange-600 bg-orange-900/50'
                         : 'text-slate-400 bg-slate-100 animate-pulse'
                       }`}>
-                        {pkg.order_number || '......'}
+                        {getDisplayOrderCode(pkg)}
                       </span>
                       {pkg.platform && pkg.platform !== 'web' && (
-                        <span className={`text-xs py-0.5 px-2 rounded ${getPlatformBadgeClass(pkg.platform)}`}>
-                          {getPlatformDisplayName(pkg.platform)}
+                        <span className={`text-xs py-0.5 px-2 rounded ${getPlatformBadgeClass({ platform: pkg.platform, trendyol_app_name: (pkg as { trendyol_app_name?: string }).trendyol_app_name })}`}>
+                          {getPlatformDisplayName({ platform: pkg.platform, trendyol_app_name: (pkg as { trendyol_app_name?: string }).trendyol_app_name })}
                         </span>
                       )}
                     </div>

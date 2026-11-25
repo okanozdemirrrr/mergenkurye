@@ -86,16 +86,28 @@ describe('mapLines', () => {
 })
 
 describe('mapPackageToLocal', () => {
-  it('Model 1 gerçek adres; customer_phone null', () => {
+  it('Model 1 gerçek adres; customer_phone null; order_number=orderNumber', () => {
     const m = mapPackageToLocal(fixtureModel1Store)
     assert.equal(m.is_address_masked, false)
     assert.equal(m.customer_phone, null)
     assert.equal(m.pin_code, '11866940602')
+    assert.equal(m.order_number, '11866940602')
     assert.equal(m.external_order_number, '11866940602')
     assert.equal(m.trendyol_order_code, '006')
     assert.equal(m.adres_tarifinden_bulunan_telefon, '05310311211')
     assert.equal(m.exclude_from_courier_queue, false)
     assert.ok(m.delivery_address.includes('Örnek Mah'))
+  })
+
+  it('Galaxy appName → platform getir', () => {
+    const m = mapPackageToLocal({
+      ...fixtureModel1Store,
+      id: 'galaxy00000000000000000000000000000000000000000000000000000001',
+      orderNumber: '11866949999',
+      userInformation: { appName: 'Galaxy' },
+    })
+    assert.equal(m.trendyol_app_name, 'Galaxy')
+    assert.equal(m.platform, 'getir')
   })
 
   it('Model 2 maskeli + kurye kuyruğu dışı; restoran için saklanır', () => {

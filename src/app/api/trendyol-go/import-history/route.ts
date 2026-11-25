@@ -16,6 +16,7 @@ import {
 import {
   createEmptyMappingReport,
   ingestTrendyolPackage,
+  logIngestFailure,
 } from '@/lib/trendyol-go'
 import { HISTORY_IMPORT_STATUSES } from '@/lib/trendyol-go/types'
 
@@ -136,23 +137,58 @@ export async function POST(request: NextRequest) {
     })
 
     const report = createEmptyMappingReport()
-    const results: Array<{ action: string; packageId: string; status: string }> = []
+    const results: Array<{
+      action: string
+      packageId: string
+      status: string
+      error?: string
+    }> = []
 
     for (const pkg of packages) {
-      const r = await ingestTrendyolPackage(supabase, {
-        restaurantId,
-        pkg,
-        gecmisVeri: true,
-        report,
-      })
-      results.push({
-        action: r.action,
-        packageId: r.trendyolPackageId,
-        status: r.packageStatus,
-      })
+      try {
+        const r = await ingestTrendyolPackage(supabase, {
+          restaurantId,
+          pkg,
+          gecmisVeri: true,
+          report,
+        })
+        results.push({
+          action: r.action,
+          packageId: r.trendyolPackageId,
+          status: r.packageStatus,
+          error: r.error,
+        })
+        if (r.action === 'error' && r.error) {
+          await logIngestFailure(supabase, {
+            integrationId: integ.id,
+            restaurantId,
+            trendyolPackageId: r.trendyolPackageId,
+            packageStatus: r.packageStatus,
+            error: r.error,
+          })
+        }
+      } catch (pkgErr) {
+        const msg = pkgErr instanceof Error ? pkgErr.message : String(pkgErr)
+        const pid = String(pkg.id || '?')
+        results.push({
+          action: 'error',
+          packageId: pid,
+          status: String(pkg.packageStatus || ''),
+          error: msg,
+        })
+        await logIngestFailure(supabase, {
+          integrationId: integ.id,
+          restaurantId,
+          trendyolPackageId: pid,
+          packageStatus: String(pkg.packageStatus || ''),
+          error: msg,
+        })
+      }
     }
 
     // son_polling_imleci bilerek dokunulmaz
+
+    const errorCount = results.filter((r) => r.action === 'error').length
 
     return NextResponse.json({
       ok: true,
@@ -164,7 +200,12 @@ export async function POST(request: NextRequest) {
         updated: results.filter((r) => r.action === 'updated').length,
         skipped: results.filter((r) => r.action === 'skipped_idempotent').length,
         cancelled: results.filter((r) => r.action === 'cancelled').length,
+        errors: errorCount,
       },
+      sampleErrors: results
+        .filter((r) => r.action === 'error')
+        .slice(0, 10)
+        .map((r) => ({ packageId: r.packageId, error: r.error })),
     })
   } catch (err) {
     console.error('import-history:', err)

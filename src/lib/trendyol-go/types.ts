@@ -218,7 +218,11 @@ export interface MappedLocalPackage {
   trendyol_order_code: string | null
   trendyol_order_id: string | null
   trendyol_order_number: string | null
+  trendyol_app_name: string | null
+  /** DB packages.platform: Galaxy→getir, diğer TGO→trendyol */
+  platform: 'trendyol' | 'getir'
   external_order_number: string | null
+  /** packages.order_number = Trendyol orderNumber (11 hane, global benzersiz) */
   order_number: string | null
   delivery_type: string | null
   package_status: string

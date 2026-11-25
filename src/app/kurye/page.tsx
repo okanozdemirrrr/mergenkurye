@@ -14,6 +14,7 @@ import { App } from '@capacitor/app'
 import { Preferences } from '@capacitor/preferences'
 import { supabase } from '../lib/supabase'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '../lib/platformUtils'
+import { getDisplayOrderCode, getDetailOrderNumber } from '../lib/orderDisplay'
 import { CourierEarningsStats } from '@/components/CourierEarningsStats'
 import { useCourierRealtimeNotifications } from '@/hooks/useCourierRealtimeNotifications'
 import { useCourierLocationBroadcast } from '@/hooks/useCourierLocationBroadcast'
@@ -633,7 +634,7 @@ export default function KuryePage() {
       // ⚡ OPTİMİZE: Sadece gerekli kolonları çek + LIMIT
       const { data, error } = await supabase
         .from('packages')
-        .select('id, order_number, customer_name, customer_phone, delivery_address, amount, status, payment_method, content, created_at, assigned_at, ready_at, picked_up_at, restaurant_id, platform, latitude, longitude, trendyol_order_code, call_center_phone, pin_code, kurye_notu, address_description, is_address_masked, delivery_type, courier_collects_payment, cancel_info, restaurants(name, phone, address)')
+        .select('id, order_number, customer_name, customer_phone, delivery_address, amount, status, payment_method, content, created_at, assigned_at, ready_at, picked_up_at, restaurant_id, platform, latitude, longitude, trendyol_order_code, trendyol_app_name, source, call_center_phone, pin_code, kurye_notu, address_description, is_address_masked, delivery_type, courier_collects_payment, cancel_info, restaurants(name, phone, address)')
         .eq('courier_id', courierId)
         .eq('exclude_from_courier_queue', false)
         .in('status', ['new', 'new_order', 'preparing', 'getting_ready', 'ready', 'assigned', 'picking_up', 'on_the_way', 'cancelled'])
@@ -2834,11 +2835,11 @@ export default function KuryePage() {
                             {packageSlots[pkg.id] || '?'}
                           </span>
                           <span className="text-xs font-bold text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded">
-                            {(pkg as { trendyol_order_code?: string }).trendyol_order_code || pkg.order_number || '......'}
+                            {getDisplayOrderCode(pkg)}
                           </span>
                           {pkg.platform && (
-                            <span className={`text-xs font-bold px-2 py-0.5 rounded ${getPlatformBadgeClass(pkg.platform)}`}>
-                              {getPlatformDisplayName(pkg.platform)}
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded ${getPlatformBadgeClass({ platform: pkg.platform, trendyol_app_name: (pkg as { trendyol_app_name?: string }).trendyol_app_name })}`}>
+                              {getPlatformDisplayName({ platform: pkg.platform, trendyol_app_name: (pkg as { trendyol_app_name?: string }).trendyol_app_name })}
                             </span>
                           )}
                           <span className="text-xs px-2 py-0.5 bg-orange-500/20 text-orange-400 rounded">
@@ -3237,11 +3238,11 @@ export default function KuryePage() {
                               ? 'text-slate-400 bg-slate-700/40'
                               : 'text-blue-400 bg-blue-500/20'
                           }`}>
-                            {pkg.order_number || '......'}
+                            {getDisplayOrderCode(pkg)}
                           </span>
                           {pkg.platform && (
-                            <span className={`text-xs font-bold px-2 py-0.5 rounded ${getPlatformBadgeClass(pkg.platform)}`}>
-                              {getPlatformDisplayName(pkg.platform)}
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded ${getPlatformBadgeClass({ platform: pkg.platform, trendyol_app_name: (pkg as { trendyol_app_name?: string }).trendyol_app_name })}`}>
+                              {getPlatformDisplayName({ platform: pkg.platform, trendyol_app_name: (pkg as { trendyol_app_name?: string }).trendyol_app_name })}
                             </span>
                           )}
                           {pkg.is_long_distance && (
@@ -3417,11 +3418,11 @@ export default function KuryePage() {
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="text-xs font-bold text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded">
-                              {pkg.order_number || '......'}
+                              {getDisplayOrderCode(pkg)}
                             </span>
                             {pkg.platform && (
-                              <span className={`text-xs font-bold px-2 py-0.5 rounded ${getPlatformBadgeClass(pkg.platform)}`}>
-                                {getPlatformDisplayName(pkg.platform)}
+                              <span className={`text-xs font-bold px-2 py-0.5 rounded ${getPlatformBadgeClass({ platform: pkg.platform, trendyol_app_name: (pkg as { trendyol_app_name?: string }).trendyol_app_name })}`}>
+                                {getPlatformDisplayName({ platform: pkg.platform, trendyol_app_name: (pkg as { trendyol_app_name?: string }).trendyol_app_name })}
                               </span>
                             )}
                             {pkg.is_long_distance && (
@@ -3811,7 +3812,7 @@ export default function KuryePage() {
             <div className="p-6 space-y-6">
               <p className="text-slate-200 text-lg leading-relaxed text-center">
                 <span className="font-bold text-red-400">
-                  {cancellingPackage.order_number || '......'}
+                  {getDisplayOrderCode(cancellingPackage)}
                 </span>{' '}
                 numaralı siparişi iptal etmek istediğinize emin misiniz?
               </p>

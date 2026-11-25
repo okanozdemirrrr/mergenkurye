@@ -18,6 +18,8 @@ import {
   sortChargeableCancelsLast,
   CHARGEABLE_CANCEL_ROW_CLASS,
 } from '@/components/ui/OrderAmountDisplay'
+import { getDisplayOrderCode } from '@/app/lib/orderDisplay'
+import { getPlatformBadgeClass as platformBadgeClass, getPlatformDisplayName as platformDisplayName } from '@/app/lib/platformUtils'
 
 interface CourierDetailModalProps {
   show: boolean
@@ -509,11 +511,11 @@ export function CourierDetailModal({
                             <td className="py-2.5 px-4">
                               <div className="flex items-center gap-1.5">
                                 <span className="font-medium text-slate-200 text-xs tracking-tight">
-                                  {order.order_number || '......'}
+                                  {getDisplayOrderCode(order)}
                                 </span>
                                 {order.platform && (
-                                  <span className={`text-[10px] py-0.5 px-1.5 rounded ${getPlatformBadgeClass(order.platform)}`}>
-                                    {getPlatformDisplayName(order.platform)}
+                                  <span className={`text-[10px] py-0.5 px-1.5 rounded ${platformBadgeClass({ platform: order.platform, trendyol_app_name: (order as { trendyol_app_name?: string }).trendyol_app_name })}`}>
+                                    {platformDisplayName({ platform: order.platform, trendyol_app_name: (order as { trendyol_app_name?: string }).trendyol_app_name })}
                                   </span>
                                 )}
                               </div>

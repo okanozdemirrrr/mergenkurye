@@ -7,7 +7,7 @@ const KEY_ENV = 'INTEGRATION_SECRETS_KEY'
 const CURRENT_KEY_VERSION = 1
 
 function getRawKey(): string {
-  const key = process.env[KEY_ENV]
+  const key = process.env[KEY_ENV]?.trim().replace(/^["']|["']$/g, '')
   if (!key || key.length < 32) {
     throw new Error(`${KEY_ENV} tanımlı değil veya en az 32 karakter olmalı`)
   }
@@ -37,8 +37,9 @@ async function deriveAesKey(raw: string, version: number): Promise<CryptoKey> {
   )
 }
 
-function toBase64(buf: ArrayBuffer): string {
-  return Buffer.from(buf).toString('base64')
+function toBase64(bytes: ArrayBuffer | Uint8Array): string {
+  const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes)
+  return Buffer.from(u8).toString('base64')
 }
 
 function fromBase64(s: string): Uint8Array {
@@ -55,7 +56,8 @@ export async function encryptSecret(plaintext: string, keyVersion = CURRENT_KEY_
     aesKey,
     new TextEncoder().encode(plaintext)
   )
-  return `v${keyVersion}:${toBase64(iv.buffer)}:${toBase64(cipher)}`
+  // iv'nin kendisini encode et — iv.buffer kullanma (ArrayBuffer offset hatası)
+  return `v${keyVersion}:${toBase64(iv)}:${toBase64(new Uint8Array(cipher))}`
 }
 
 export async function decryptSecret(ciphertext: string): Promise<string> {
@@ -65,11 +67,19 @@ export async function decryptSecret(ciphertext: string): Promise<string> {
     throw new Error('Geçersiz şifreli secret formatı')
   }
   const version = Number(parts[0].slice(1))
-  const iv = fromBase64(parts[1])
+  const ivRaw = fromBase64(parts[1])
+  // Eski buggy encode: iv.buffer fazla byte içerebilirdi — ilk 12 byte dene
+  const iv = ivRaw.length === 12 ? ivRaw : ivRaw.slice(0, 12)
   const data = fromBase64(parts[2])
   const aesKey = await deriveAesKey(getRawKey(), version)
-  const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, aesKey, data)
-  return new TextDecoder().decode(plain)
+  try {
+    const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, aesKey, data)
+    return new TextDecoder().decode(plain)
+  } catch (e) {
+    throw new Error(
+      'Secret çözülemedi — INTEGRATION_SECRETS_KEY eşleşmiyor veya secret yeniden kaydedilmeli'
+    )
+  }
 }
 
 export function getCurrentKeyVersion(): number {

@@ -27,10 +27,10 @@ const ACTIVE_PACKAGE_STATUSES = [
 ] as const
 
 const ACTIVE_PACKAGES_SELECT =
-  'id, order_number, status, amount, payment_method, customer_name, customer_phone, delivery_address, content, platform, created_at, updated_at, getting_ready_at, ready_at, assigned_at, picked_up_at, delivered_at, courier_id, restaurant_id, latitude, longitude, restaurants(id, name, phone)'
+  'id, order_number, status, amount, payment_method, customer_name, customer_phone, delivery_address, content, platform, created_at, updated_at, getting_ready_at, ready_at, assigned_at, picked_up_at, delivered_at, courier_id, restaurant_id, latitude, longitude, trendyol_order_code, trendyol_app_name, source, delivery_type, is_address_masked, restaurants(id, name, phone)'
 
 const ACTIVE_PACKAGES_SELECT_NO_UPDATED_AT =
-  'id, order_number, status, amount, payment_method, customer_name, customer_phone, delivery_address, content, platform, created_at, getting_ready_at, ready_at, assigned_at, picked_up_at, delivered_at, courier_id, restaurant_id, latitude, longitude, restaurants(id, name, phone)'
+  'id, order_number, status, amount, payment_method, customer_name, customer_phone, delivery_address, content, platform, created_at, getting_ready_at, ready_at, assigned_at, picked_up_at, delivered_at, courier_id, restaurant_id, latitude, longitude, trendyol_order_code, trendyol_app_name, source, delivery_type, is_address_masked, restaurants(id, name, phone)'
 
 function transformActivePackages(data: any[] | null): Package[] {
   return (data || []).map((pkg: any) => ({

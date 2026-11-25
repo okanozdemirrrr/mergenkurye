@@ -9,6 +9,7 @@ import { Package, Restaurant } from '@/types'
 import { supabase } from '@/app/lib/supabase'
 import { formatTurkishTime } from '@/utils/dateHelpers'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
+import { getDisplayOrderCode, getDetailOrderNumber, isTrendyolGoOrder } from '@/app/lib/orderDisplay'
 import { getRestaurantPeriodFinancials, PeriodFinancials } from '@/services/restaurantService'
 import { Clock } from 'lucide-react'
 import {
@@ -167,7 +168,7 @@ function DrawerOrderRow({ pkg }: { pkg: Package }) {
       >
         <div className="flex items-center gap-3">
           <span className={`text-sm font-bold ${isChargeableCancellation(pkg) ? 'text-slate-400' : 'text-slate-300'}`}>
-            #{pkg?.order_number?.trim() || '......'}
+            #{getDisplayOrderCode(pkg)}
           </span>
           <span className="text-xs text-slate-500 font-medium">
             {safeFormatHeaderDate(pkg?.created_at)}
@@ -648,7 +649,7 @@ export function RestaurantDetailModal({
                                   }`}
                                 >
                                   <td className={`px-6 py-4 font-medium ${isChargeableCancellation(order) ? 'text-slate-500' : 'text-slate-300'}`}>
-                                    {order.order_number || '......'}
+                                    {getDisplayOrderCode(order)}
                                   </td>
                                   <td className="px-6 py-4 text-slate-400">
                                     {formatTurkishTime(order.created_at)}
@@ -878,13 +879,20 @@ export function RestaurantDetailModal({
             </div>
 
             <div className="space-y-4 pt-2">
-              <div className="flex items-center gap-3">
-                <span className="text-lg font-bold text-orange-400">
-                  {selectedOrder.order_number || '......'}
-                </span>
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex flex-col">
+                  <span className="text-lg font-bold text-orange-400">
+                    {selectedOrder.trendyol_order_code && selectedOrder.order_number && isTrendyolGoOrder(selectedOrder)
+                      ? getDisplayOrderCode(selectedOrder)
+                      : getDetailOrderNumber(selectedOrder)}
+                  </span>
+                  {selectedOrder.trendyol_order_code && selectedOrder.order_number && isTrendyolGoOrder(selectedOrder) && (
+                    <span className="text-xs text-slate-400">{selectedOrder.order_number}</span>
+                  )}
+                </div>
                 {selectedOrder.platform && (
-                  <span className={`text-sm py-1 px-3 rounded ${getPlatformBadgeClass(selectedOrder.platform)}`}>
-                    {getPlatformDisplayName(selectedOrder.platform)}
+                  <span className={`text-sm py-1 px-3 rounded ${getPlatformBadgeClass({ platform: selectedOrder.platform, trendyol_app_name: (selectedOrder as { trendyol_app_name?: string }).trendyol_app_name })}`}>
+                    {getPlatformDisplayName({ platform: selectedOrder.platform, trendyol_app_name: (selectedOrder as { trendyol_app_name?: string }).trendyol_app_name })}
                   </span>
                 )}
               </div>

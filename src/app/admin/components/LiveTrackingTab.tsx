@@ -15,6 +15,7 @@ import { OrderActionMenu } from '@/components/ui/OrderActionMenu'
 import { OrderDrawer } from './OrderDrawer'
 import { CourierTransferModal } from './CourierTransferModal'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
+import { getDisplayOrderCode, getDetailOrderNumber, isTrendyolGoOrder } from '@/app/lib/orderDisplay'
 import { formatTurkishTime } from '@/utils/dateHelpers'
 import { CourierDailyRoutes } from './CourierDailyRoutes'
 import { SortableCourierStatusList } from './SortableCourierStatusList'
@@ -145,13 +146,20 @@ export function LiveTrackingTab({
                         {/* İçerik */}
                         <div className="space-y-4 pt-2">
                             {/* Sipariş No ve Platform */}
-                            <div className="flex items-center gap-3">
-                                <span className="text-lg font-bold text-orange-400">
-                                    {selectedPackage.order_number || '......'}
-                                </span>
+                            <div className="flex items-center gap-3 flex-wrap">
+                                <div className="flex flex-col">
+                                    <span className="text-lg font-bold text-orange-400">
+                                        {selectedPackage.trendyol_order_code && selectedPackage.order_number && isTrendyolGoOrder(selectedPackage)
+                                            ? getDisplayOrderCode(selectedPackage)
+                                            : getDetailOrderNumber(selectedPackage)}
+                                    </span>
+                                    {selectedPackage.trendyol_order_code && selectedPackage.order_number && isTrendyolGoOrder(selectedPackage) && (
+                                        <span className="text-xs text-slate-400">{selectedPackage.order_number}</span>
+                                    )}
+                                </div>
                                 {selectedPackage.platform && (
-                                    <span className={`text-sm py-1 px-3 rounded ${getPlatformBadgeClass(selectedPackage.platform)}`}>
-                                        {getPlatformDisplayName(selectedPackage.platform)}
+                                    <span className={`text-sm py-1 px-3 rounded ${getPlatformBadgeClass({ platform: selectedPackage.platform, trendyol_app_name: (selectedPackage as { trendyol_app_name?: string }).trendyol_app_name })}`}>
+                                        {getPlatformDisplayName({ platform: selectedPackage.platform, trendyol_app_name: (selectedPackage as { trendyol_app_name?: string }).trendyol_app_name })}
                                     </span>
                                 )}
                             </div>
@@ -428,15 +436,15 @@ export function LiveTrackingTab({
                                         </div>
                                         <div className="flex justify-between items-center mb-2 ml-8 relative z-10">
                                             <div className="flex items-center gap-2">
-                                                <span className={`text-xs font-bold px-2 py-1 rounded ${pkg.order_number
+                                                <span className={`text-xs font-bold px-2 py-1 rounded ${getDisplayOrderCode(pkg) !== '......'
                                                     ? 'text-orange-600 bg-orange-900/50'
                                                     : 'text-slate-400 bg-slate-100 animate-pulse'
                                                     }`}>
-                                                    {pkg.order_number || '......'}
+                                                    {getDisplayOrderCode(pkg)}
                                                 </span>
                                                 {pkg.platform && pkg.platform !== 'web' && (
-                                                    <span className={`text-xs py-0.5 px-2 rounded ${getPlatformBadgeClass(pkg.platform)}`}>
-                                                        {getPlatformDisplayName(pkg.platform)}
+                                                    <span className={`text-xs py-0.5 px-2 rounded ${getPlatformBadgeClass({ platform: pkg.platform, trendyol_app_name: (pkg as { trendyol_app_name?: string }).trendyol_app_name })}`}>
+                                                        {getPlatformDisplayName({ platform: pkg.platform, trendyol_app_name: (pkg as { trendyol_app_name?: string }).trendyol_app_name })}
                                                     </span>
                                                 )}
                                             </div>

@@ -103,7 +103,7 @@ export function RestoranProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase
         .from('packages')
         // Egress koruması: select('*') yerine spesifik kolonlar (content dahil - yazıcı için şart)
-        .select('id, customer_name, customer_phone, delivery_address, amount, status, content, courier_id, payment_method, order_number, platform, created_at, assigned_at, picked_up_at, delivered_at, cancelled_at, trendyol_order_code, delivery_type, is_address_masked, call_center_phone, pin_code, kurye_notu, mutfak_notu, address_description, courier_collects_payment, gecmis_veri, courier:couriers!packages_courier_id_fkey(full_name)')
+        .select('id, customer_name, customer_phone, delivery_address, amount, status, content, courier_id, payment_method, order_number, platform, created_at, assigned_at, picked_up_at, delivered_at, cancelled_at, trendyol_order_code, trendyol_app_name, delivery_type, is_address_masked, call_center_phone, pin_code, kurye_notu, mutfak_notu, address_description, courier_collects_payment, gecmis_veri, courier:couriers!packages_courier_id_fkey(full_name)')
         .eq('gecmis_veri', false)
         .eq('restaurant_id', restaurantId)
         // ✅ Egress koruması: Statü filtresi YOK (tüm statüler gelsin), sadece son 24 saat

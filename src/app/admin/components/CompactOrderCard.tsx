@@ -6,6 +6,7 @@
 
 import { Package, Courier } from '@/types'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
+import { getDisplayOrderCode } from '@/app/lib/orderDisplay'
 import { supabase } from '@/app/lib/supabase'
 import { RefreshCw, XCircle } from 'lucide-react'
 
@@ -178,8 +179,8 @@ export function CompactOrderCard({
             {/* Platform Badge */}
             {pkg.platform && (
                 <div className="absolute top-1 left-1 z-10">
-                    <span className={`text-[9px] py-0.5 px-1.5 rounded font-bold ${getPlatformBadgeClass(pkg.platform)}`}>
-                        {getPlatformDisplayName(pkg.platform)}
+                    <span className={`text-[9px] py-0.5 px-1.5 rounded font-bold ${getPlatformBadgeClass({ platform: pkg.platform, trendyol_app_name: (pkg as { trendyol_app_name?: string }).trendyol_app_name })}`}>
+                        {getPlatformDisplayName({ platform: pkg.platform, trendyol_app_name: (pkg as { trendyol_app_name?: string }).trendyol_app_name })}
                     </span>
                 </div>
             )}
@@ -189,7 +190,7 @@ export function CompactOrderCard({
                 {/* Sipariş No - Kalın ve Belirgin */}
                 <div className="text-center">
                     <div className="text-sm font-black text-orange-600">
-                        #{pkg.order_number || '......'}
+                        #{getDisplayOrderCode(pkg)}
                     </div>
                 </div>
 

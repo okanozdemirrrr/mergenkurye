@@ -8,7 +8,7 @@ import { randomUUID } from 'crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { decryptSecret } from './crypto'
 import { TrendyolGoHttpError, TrendyolGoReadClient } from './client'
-import { ingestTrendyolPackage } from './ingest'
+import { ingestTrendyolPackage, logIngestFailure } from './ingest'
 import { LIVE_POLL_STATUSES } from './types'
 
 const LOOKBACK_MS = 2 * 60 * 1000
@@ -24,6 +24,7 @@ export interface PollTickResult {
   updated: number
   skipped: number
   cancelled: number
+  errors: number
   error?: string
   markedSorunlu?: boolean
 }
@@ -122,6 +123,7 @@ export async function pollOneIntegration(
     updated: 0,
     skipped: 0,
     cancelled: 0,
+    errors: 0,
   }
 
   const locked = await tryAcquireLock(supabase, integrationId, workerId)
@@ -179,37 +181,70 @@ export async function pollOneIntegration(
     })
 
     result.fetched = packages.length
+    const ingestErrors: string[] = []
 
     for (const pkg of packages) {
-      const r = await ingestTrendyolPackage(supabase, {
-        restaurantId,
-        pkg,
-        gecmisVeri: false,
-        onCancelledAssigned: async ({ localPackageId, courierId, mapped }) => {
-          await notifyCourierCancel(supabase, {
-            localPackageId,
-            courierId,
-            orderCode: mapped.trendyol_order_code,
+      try {
+        const r = await ingestTrendyolPackage(supabase, {
+          restaurantId,
+          pkg,
+          gecmisVeri: false,
+          onCancelledAssigned: async ({ localPackageId, courierId, mapped }) => {
+            await notifyCourierCancel(supabase, {
+              localPackageId,
+              courierId,
+              orderCode: mapped.trendyol_order_code,
+            })
+          },
+        })
+        if (r.action === 'inserted') result.inserted += 1
+        else if (r.action === 'updated') result.updated += 1
+        else if (r.action === 'skipped_idempotent') result.skipped += 1
+        else if (r.action === 'cancelled') result.cancelled += 1
+        else if (r.action === 'error') {
+          result.errors += 1
+          const msg = r.error || 'bilinmeyen ingest hatası'
+          ingestErrors.push(`${r.trendyolPackageId}: ${msg}`)
+          await logIngestFailure(supabase, {
+            integrationId,
+            restaurantId,
+            trendyolPackageId: r.trendyolPackageId,
+            packageStatus: r.packageStatus,
+            error: msg,
           })
-        },
-      })
-      if (r.action === 'inserted') result.inserted += 1
-      else if (r.action === 'updated') result.updated += 1
-      else if (r.action === 'skipped_idempotent') result.skipped += 1
-      else if (r.action === 'cancelled') result.cancelled += 1
+        }
+      } catch (pkgErr) {
+        result.errors += 1
+        const msg = pkgErr instanceof Error ? pkgErr.message : String(pkgErr)
+        const pid = String(pkg.id || '?')
+        ingestErrors.push(`${pid}: ${msg}`)
+        await logIngestFailure(supabase, {
+          integrationId,
+          restaurantId,
+          trendyolPackageId: pid,
+          packageStatus: String(pkg.packageStatus || ''),
+          error: msg,
+        })
+      }
     }
 
-    // Tüm sayfalar okundu → imleci ilerlet
+    // Tüm sayfalar okundu → imleci ilerlet (kısmi hatalarda da ilerler; hatalar loglandı)
+    const sonHata =
+      ingestErrors.length > 0
+        ? `Ingest: ${ingestErrors.length} hata — ${ingestErrors.slice(0, 3).join(' | ')}`
+        : null
+
     await supabase
       .from('trendyol_go_integrations')
       .update({
         son_polling_imleci: endMs,
         son_basarili_baglanti: new Date().toISOString(),
-        son_hata: null,
+        son_hata: sonHata,
         durum: 'ok',
       })
       .eq('id', integrationId)
 
+    if (sonHata) result.error = sonHata
     return result
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
@@ -299,6 +334,7 @@ export async function runPollWithTicks(
           updated: 0,
           skipped: 0,
           cancelled: 0,
+          errors: 0,
           error: e instanceof Error ? e.message : String(e),
         })
       }

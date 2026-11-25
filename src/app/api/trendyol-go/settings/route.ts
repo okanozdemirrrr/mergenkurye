@@ -147,11 +147,23 @@ export async function PUT(request: NextRequest) {
       son_basarili_baglanti: new Date().toISOString(),
     }
 
-    if (apiSecretPlain) {
-      patch.api_secret_encrypted = await encryptSecret(apiSecretPlain, keyVersion)
-    }
-    if (basicTokenPlain) {
-      patch.basic_token_encrypted = await encryptSecret(basicTokenPlain, keyVersion)
+    try {
+      if (apiSecretPlain) {
+        patch.api_secret_encrypted = await encryptSecret(apiSecretPlain, keyVersion)
+      }
+      if (basicTokenPlain) {
+        patch.basic_token_encrypted = await encryptSecret(basicTokenPlain, keyVersion)
+      }
+    } catch (encErr) {
+      return NextResponse.json(
+        {
+          error:
+            encErr instanceof Error
+              ? encErr.message
+              : 'Secret şifrelenemedi — INTEGRATION_SECRETS_KEY kontrol edin',
+        },
+        { status: 500 }
+      )
     }
 
     const { data, error } = await supabase

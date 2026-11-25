@@ -41,6 +41,7 @@ export default function TrendyolGoImportPage() {
   const [report, setReport] = useState<Report | null>(null)
   const [summary, setSummary] = useState<Record<string, number> | null>(null)
   const [fetched, setFetched] = useState<number | null>(null)
+  const [sampleErrors, setSampleErrors] = useState<Array<{ packageId: string; error?: string }>>([])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -74,6 +75,7 @@ export default function TrendyolGoImportPage() {
     setError('')
     setReport(null)
     setSummary(null)
+    setSampleErrors([])
     try {
       const startMs = new Date(startDate).getTime()
       const endMs = new Date(endDate).getTime() + 24 * 60 * 60 * 1000 - 1
@@ -95,6 +97,7 @@ export default function TrendyolGoImportPage() {
       setReport(data.report)
       setSummary(data.resultsSummary)
       setFetched(data.fetched)
+      setSampleErrors(data.sampleErrors || [])
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Hata')
     } finally {
@@ -191,6 +194,11 @@ export default function TrendyolGoImportPage() {
                 <li>Güncellenen: {summary.updated}</li>
                 <li>Atlanan (idempotent): {summary.skipped}</li>
                 <li>İptal: {summary.cancelled}</li>
+                {'errors' in summary && (
+                  <li className={(summary as { errors?: number }).errors ? 'text-red-300' : ''}>
+                    Hata: {(summary as { errors?: number }).errors ?? 0}
+                  </li>
+                )}
               </ul>
             )}
             {report && (
@@ -214,6 +222,14 @@ export default function TrendyolGoImportPage() {
                     <p className="text-xs text-amber-200">
                       {report.unexpectedFields.join(', ')}
                     </p>
+                  </div>
+                )}
+                {sampleErrors.length > 0 && (
+                  <div>
+                    <p className="text-red-300 mb-1">Örnek hatalar:</p>
+                    <pre className="bg-slate-950 rounded p-2 text-xs overflow-auto text-red-200">
+                      {JSON.stringify(sampleErrors, null, 2)}
+                    </pre>
                   </div>
                 )}
               </div>

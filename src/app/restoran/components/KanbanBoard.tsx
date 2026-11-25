@@ -9,6 +9,7 @@ import { normalizeOrderItems } from '@/app/lib/orderItems'
 import { parseDeliveryAddress } from '@/app/lib/formatDeliveryAddress'
 import { formatTurkishTime } from '@/utils/dateHelpers'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
+import { getDisplayOrderCode, getDetailOrderNumber } from '@/app/lib/orderDisplay'
 import UpdateAmountModal from './UpdateAmountModal'
 import CancelOrderModal from './CancelOrderModal'
 import { stopRestaurantAlert } from '@/hooks/useRestaurantRealtimeNotifications'
@@ -20,7 +21,7 @@ import {
 import type { ReactNode } from 'react'
 
 const PACKAGE_DETAIL_SELECT =
-  'id, order_number, status, created_at, amount, subtotal, delivery_fee, customer_name, customer_phone, delivery_address, payment_method, items, platform, content, courier_id, getting_ready_at, ready_at, assigned_at, picked_up_at, delivered_at, trendyol_order_code, delivery_type, is_address_masked, call_center_phone, pin_code, kurye_notu, mutfak_notu, address_description, courier_collects_payment'
+  'id, order_number, status, created_at, amount, subtotal, delivery_fee, customer_name, customer_phone, delivery_address, payment_method, items, platform, content, courier_id, getting_ready_at, ready_at, assigned_at, picked_up_at, delivered_at, trendyol_order_code, trendyol_app_name, delivery_type, is_address_masked, call_center_phone, pin_code, kurye_notu, mutfak_notu, address_description, courier_collects_payment'
 
 const formatPrice = (value: number) => `${value.toFixed(2)}₺`
 
@@ -462,11 +463,11 @@ export default function KanbanBoard({
               <div className="space-y-1">
                 <div className="flex items-center gap-3 flex-wrap">
                   <span className={`text-lg font-bold ${darkMode ? 'text-orange-400' : 'text-orange-600'}`}>
-                    {pkg.order_number || '......'}
+                    {getDisplayOrderCode(pkg as { order_number?: string; trendyol_order_code?: string; platform?: string; source?: string })}
                   </span>
                   {pkg.platform && (
-                    <span className={`text-sm py-1 px-3 rounded ${getPlatformBadgeClass(pkg.platform)}`}>
-                      {getPlatformDisplayName(pkg.platform)}
+                    <span className={`text-sm py-1 px-3 rounded ${getPlatformBadgeClass({ platform: pkg.platform, trendyol_app_name: (pkg as { trendyol_app_name?: string }).trendyol_app_name })}`}>
+                      {getPlatformDisplayName({ platform: pkg.platform, trendyol_app_name: (pkg as { trendyol_app_name?: string }).trendyol_app_name })}
                     </span>
                   )}
                   {((pkg as { delivery_type?: string }).delivery_type === 'GO' ||

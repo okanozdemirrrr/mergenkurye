@@ -11,6 +11,7 @@ import { Package } from '@/types'
 import { supabase } from '@/app/lib/supabase'
 import { OrderActionMenu } from '@/components/ui/OrderActionMenu'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
+import { getDisplayOrderCode, getDetailOrderNumber, isTrendyolGoOrder } from '@/app/lib/orderDisplay'
 import { formatTurkishTime } from '@/utils/dateHelpers'
 import { useAdminData } from '../AdminDataProvider'
 import { LongDistanceBadge } from '@/components/ui/LongDistanceBadge'
@@ -367,13 +368,20 @@ export function HistoryTab({
                         </div>
 
                         <div className="space-y-4 pt-2">
-                            <div className="flex items-center gap-3">
-                                <span className="text-lg font-bold text-orange-400">
-                                    {selectedPackage.order_number || '......'}
-                                </span>
+                            <div className="flex items-center gap-3 flex-wrap">
+                                <div className="flex flex-col">
+                                    <span className="text-lg font-bold text-orange-400">
+                                        {selectedPackage.trendyol_order_code && selectedPackage.order_number && isTrendyolGoOrder(selectedPackage)
+                                            ? getDisplayOrderCode(selectedPackage)
+                                            : getDetailOrderNumber(selectedPackage)}
+                                    </span>
+                                    {selectedPackage.trendyol_order_code && selectedPackage.order_number && isTrendyolGoOrder(selectedPackage) && (
+                                        <span className="text-xs text-slate-400">{selectedPackage.order_number}</span>
+                                    )}
+                                </div>
                                 {selectedPackage.platform && (
-                                    <span className={`text-sm py-1 px-3 rounded ${getPlatformBadgeClass(selectedPackage.platform)}`}>
-                                        {getPlatformDisplayName(selectedPackage.platform)}
+                                    <span className={`text-sm py-1 px-3 rounded ${getPlatformBadgeClass({ platform: selectedPackage.platform, trendyol_app_name: (selectedPackage as { trendyol_app_name?: string }).trendyol_app_name })}`}>
+                                        {getPlatformDisplayName({ platform: selectedPackage.platform, trendyol_app_name: (selectedPackage as { trendyol_app_name?: string }).trendyol_app_name })}
                                     </span>
                                 )}
                             </div>
@@ -702,11 +710,11 @@ export function HistoryTab({
                                 <div className="flex items-start justify-between gap-3 pl-8">
                                     <div className="min-w-0">
                                         <p className="font-bold text-orange-400 text-sm truncate">
-                                            {pkg.order_number || '......'}
+                                            {getDisplayOrderCode(pkg)}
                                         </p>
                                         {pkg.platform && (
-                                            <span className={`inline-block mt-1 text-[10px] py-0.5 px-1.5 rounded ${getPlatformBadgeClass(pkg.platform)}`}>
-                                                {getPlatformDisplayName(pkg.platform)}
+                                            <span className={`inline-block mt-1 text-[10px] py-0.5 px-1.5 rounded ${getPlatformBadgeClass({ platform: pkg.platform, trendyol_app_name: (pkg as { trendyol_app_name?: string }).trendyol_app_name })}`}>
+                                                {getPlatformDisplayName({ platform: pkg.platform, trendyol_app_name: (pkg as { trendyol_app_name?: string }).trendyol_app_name })}
                                             </span>
                                         )}
                                         {pkg.is_long_distance && (
@@ -825,11 +833,11 @@ export function HistoryTab({
                                         <td className="py-3 px-4 text-white">
                                             <div className="flex items-center gap-2">
                                                 <span className="font-bold text-orange-450">
-                                                    {pkg.order_number || '......'}
+                                                    {getDisplayOrderCode(pkg)}
                                                 </span>
                                                 {pkg.platform && (
-                                                    <span className={`text-xs py-0.5 px-2 rounded ${getPlatformBadgeClass(pkg.platform)}`}>
-                                                        {getPlatformDisplayName(pkg.platform)}
+                                                    <span className={`text-xs py-0.5 px-2 rounded ${getPlatformBadgeClass({ platform: pkg.platform, trendyol_app_name: (pkg as { trendyol_app_name?: string }).trendyol_app_name })}`}>
+                                                        {getPlatformDisplayName({ platform: pkg.platform, trendyol_app_name: (pkg as { trendyol_app_name?: string }).trendyol_app_name })}
                                                     </span>
                                                 )}
                                                 {pkg.is_long_distance && <LongDistanceBadge className="text-[10px] py-0.5 px-1.5" />}
@@ -991,7 +999,7 @@ export function HistoryTab({
                         <div className="mb-4 p-3 rounded-md bg-slate-800">
                             <p className="text-sm text-slate-400">Sipariş / Müşteri</p>
                             <p className="font-bold text-orange-400">
-                                {amountModalPackage.order_number?.trim() || '......'}
+                                {getDetailOrderNumber(amountModalPackage)}
                             </p>
                             <p className="text-white mt-1">{amountModalPackage.customer_name}</p>
                         </div>
