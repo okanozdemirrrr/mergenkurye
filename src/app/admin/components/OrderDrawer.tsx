@@ -13,6 +13,7 @@ import { CompactOrderCard } from './CompactOrderCard'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
 import { formatTurkishTime } from '@/utils/dateHelpers'
 import { Package as PackageIcon, Inbox, Clock } from 'lucide-react'
+import AdminOrderCustomerInfo from './AdminOrderCustomerInfo'
 
 interface OrderDrawerProps {
     packages: Package[]
@@ -134,24 +135,7 @@ export function OrderDrawer({
                                 </div>
                             </div>
 
-                            {/* Müşteri Bilgileri */}
-                            <div className="bg-slate-800 p-4 rounded-md space-y-3">
-                                <h4 className="text-white font-semibold mb-2">Müşteri Bilgileri</h4>
-                                <div>
-                                    <p className="text-slate-400 text-xs mb-1">Ad Soyad</p>
-                                    <p className="text-white">{selectedPackage.customer_name}</p>
-                                </div>
-                                {selectedPackage.customer_phone && (
-                                    <div>
-                                        <p className="text-slate-400 text-xs mb-1">Telefon</p>
-                                        <p className="text-white">{selectedPackage.customer_phone}</p>
-                                    </div>
-                                )}
-                                <div>
-                                    <p className="text-slate-400 text-xs mb-1">Teslimat Adresi</p>
-                                    <p className="text-white">{selectedPackage.delivery_address}</p>
-                                </div>
-                            </div>
+                            <AdminOrderCustomerInfo pkg={selectedPackage} />
 
                             {/* Paket İçeriği */}
                             {selectedPackage.content && (

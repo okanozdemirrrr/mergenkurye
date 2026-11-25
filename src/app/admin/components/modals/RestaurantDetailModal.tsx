@@ -10,6 +10,7 @@ import { supabase } from '@/app/lib/supabase'
 import { formatTurkishTime } from '@/utils/dateHelpers'
 import { getPlatformBadgeClass, getPlatformDisplayName } from '@/app/lib/platformUtils'
 import { getDisplayOrderCode, getDetailOrderNumber, isTrendyolGoOrder } from '@/app/lib/orderDisplay'
+import AdminOrderCustomerInfo from '../AdminOrderCustomerInfo'
 import { getRestaurantPeriodFinancials, PeriodFinancials } from '@/services/restaurantService'
 import { Clock } from 'lucide-react'
 import {
@@ -73,8 +74,19 @@ function DrawerOrderRow({ pkg }: { pkg: Package }) {
             <div>
               <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1">Müşteri Bilgileri</p>
               <p className="text-slate-300 font-semibold">{pkg?.customer_name ?? 'Bilinmeyen Müşteri'}</p>
-              {pkg?.customer_phone && (
+              {(pkg as { call_center_phone?: string })?.call_center_phone && isTrendyolGoOrder(pkg) ? (
+                <>
+                  <p className="text-slate-400 mt-0.5 font-medium text-[11px]">
+                    ÇM: {(pkg as { call_center_phone?: string }).call_center_phone}
+                    {(pkg as { pin_code?: string }).pin_code
+                      ? ` · Pin: ${(pkg as { pin_code?: string }).pin_code}`
+                      : ''}
+                  </p>
+                </>
+              ) : pkg?.customer_phone ? (
                 <p className="text-slate-400 mt-0.5 font-medium">{pkg.customer_phone}</p>
+              ) : (
+                <p className="text-slate-500 mt-0.5 font-medium">Telefon yok</p>
               )}
             </div>
             <div>
@@ -83,6 +95,14 @@ function DrawerOrderRow({ pkg }: { pkg: Package }) {
               <p className="text-slate-400 truncate mt-0.5 font-medium" title={pkg?.delivery_address ?? 'Adres Belirtilmemiş'}>
                 {pkg?.delivery_address ?? 'Adres Belirtilmemiş'}
               </p>
+              {(pkg as { address_description?: string })?.address_description &&
+                !['tgo yemek', 'trendyol yemek'].includes(
+                  String((pkg as { address_description?: string }).address_description).toLowerCase()
+                ) && (
+                <p className="text-sky-300/80 truncate mt-0.5 text-[11px]" title={(pkg as { address_description?: string }).address_description}>
+                  {(pkg as { address_description?: string }).address_description}
+                </p>
+              )}
             </div>
           </div>
 
@@ -923,23 +943,7 @@ export function RestaurantDetailModal({
                 </div>
               </div>
 
-              <div className="bg-slate-800 p-4 rounded-md space-y-3">
-                <h4 className="text-white font-semibold mb-2">Müşteri Bilgileri</h4>
-                <div>
-                  <p className="text-slate-400 text-xs mb-1">Ad Soyad</p>
-                  <p className="text-white">{selectedOrder.customer_name}</p>
-                </div>
-                {selectedOrder.customer_phone && (
-                  <div>
-                    <p className="text-slate-400 text-xs mb-1">Telefon</p>
-                    <p className="text-white">{selectedOrder.customer_phone}</p>
-                  </div>
-                )}
-                <div>
-                  <p className="text-slate-400 text-xs mb-1">Teslimat Adresi</p>
-                  <p className="text-white">{selectedOrder.delivery_address}</p>
-                </div>
-              </div>
+              <AdminOrderCustomerInfo pkg={selectedOrder} />
 
               {selectedOrder.content && (
                 <div className="bg-slate-800 p-4 rounded-md">

@@ -24,6 +24,7 @@ import {
   CHARGEABLE_CANCEL_ROW_CLASS,
 } from '@/components/ui/OrderAmountDisplay'
 import { ClipboardList, Package as PackageIcon, Ban, Clock } from 'lucide-react'
+import AdminOrderCustomerInfo from './AdminOrderCustomerInfo'
 
 interface HistoryTabProps {
     deliveredPackages?: Package[]
@@ -95,6 +96,14 @@ export function HistoryTab({
                             customer_name, 
                             customer_phone, 
                             delivery_address, 
+                            address_description,
+                            call_center_phone,
+                            pin_code,
+                            adres_tarifinden_bulunan_telefon,
+                            trendyol_order_code,
+                            trendyol_app_name,
+                            platform,
+                            source,
                             content, 
                             created_at, 
                             getting_ready_at, 
@@ -420,23 +429,7 @@ export function HistoryTab({
                                 </div>
                             </div>
 
-                            <div className="bg-slate-800 p-4 rounded-md space-y-3">
-                                <h4 className="text-white font-semibold mb-2">Müşteri Bilgileri</h4>
-                                <div>
-                                    <p className="text-slate-400 text-xs mb-1">Ad Soyad</p>
-                                    <p className="text-white">{selectedPackage.customer_name}</p>
-                                </div>
-                                {selectedPackage.customer_phone && (
-                                    <div>
-                                        <p className="text-slate-400 text-xs mb-1">Telefon</p>
-                                        <p className="text-white">{selectedPackage.customer_phone}</p>
-                                    </div>
-                                )}
-                                <div>
-                                    <p className="text-slate-400 text-xs mb-1">Teslimat Adresi</p>
-                                    <p className="text-white">{selectedPackage.delivery_address}</p>
-                                </div>
-                            </div>
+                            <AdminOrderCustomerInfo pkg={selectedPackage} />
 
                             {selectedPackage.content && (
                                 <div className="bg-slate-800 p-4 rounded-md">
